@@ -1,0 +1,563 @@
+<!DOCTYPE html><html class="dark" lang="es"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_standard" name="shell-type"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Space+Grotesk:wght@400;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "on-tertiary-fixed-variant": "#3c475a",
+          "surface-container": "#201f1f",
+          "surface-tint": "#ffb3af",
+          "error-container": "#93000a",
+          "on-secondary": "#680011",
+          "secondary-fixed": "#ffdad8",
+          "on-tertiary-container": "#e8efff",
+          "on-primary-container": "#ffeae8",
+          "on-background": "#e5e2e1",
+          "on-surface-variant": "#e7bcba",
+          "surface-container-low": "#1c1b1b",
+          "primary-fixed": "#ffdad7",
+          "surface": "#131313",
+          "on-secondary-fixed-variant": "#92001c",
+          "on-surface": "#e5e2e1",
+          "inverse-surface": "#e5e2e1",
+          "surface-variant": "#353534",
+          "on-secondary-fixed": "#410007",
+          "on-primary-fixed-variant": "#930018",
+          "surface-container-highest": "#353534",
+          "on-primary-fixed": "#410005",
+          "primary-fixed-dim": "#ffb3af",
+          "secondary-fixed-dim": "#ffb3b1",
+          "primary": "#ffb3af",
+          "tertiary-fixed": "#d7e3fa",
+          "inverse-on-surface": "#313030",
+          "surface-container-high": "#2a2a2a",
+          "outline-variant": "#5d3f3d",
+          "on-error": "#690005",
+          "secondary-container": "#d6022e",
+          "surface-bright": "#3a3939",
+          "inverse-primary": "#bf0022",
+          "surface-container-lowest": "#0e0e0e",
+          "on-error-container": "#ffdad6",
+          "tertiary-container": "#616d81",
+          "primary-container": "#d90429",
+          "outline": "#ae8885",
+          "tertiary-fixed-dim": "#bbc7dd",
+          "on-primary": "#68000e",
+          "on-secondary-container": "#ffe7e5",
+          "tertiary": "#bbc7dd",
+          "background": "#131313",
+          "on-tertiary-fixed": "#101c2c",
+          "error": "#ffb4ab",
+          "on-tertiary": "#253142",
+          "secondary": "#ffb3b1",
+          "surface-dim": "#131313"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "gutter": "1.25rem",
+          "gutter-desktop": "2rem",
+          "space-xl": "2.5rem",
+          "margin": "1rem",
+          "space-md": "1rem",
+          "margin-desktop": "3rem",
+          "space-xs": "0.25rem",
+          "space-sm": "0.5rem",
+          "space-lg": "1.5rem",
+          "space-2xl": "4rem"
+        },
+        "fontFamily": {
+          "headline-lg-mobile": [
+            "Anton"
+          ],
+          "label-md": [
+            "Space Grotesk"
+          ],
+          "label-sm": [
+            "Space Grotesk"
+          ],
+          "label-lg": [
+            "Space Grotesk"
+          ],
+          "body-lg": [
+            "Space Grotesk"
+          ],
+          "headline-md": [
+            "Anton"
+          ],
+          "body-md": [
+            "Space Grotesk"
+          ],
+          "display-xl": [
+            "Anton"
+          ],
+          "headline-lg": [
+            "Anton"
+          ],
+          "body-sm": [
+            "Space Grotesk"
+          ],
+          "display-xl-mobile": [
+            "Anton"
+          ],
+          "score-display": [
+            "Anton"
+          ],
+          "headline-sm": [
+            "Space Grotesk"
+          ]
+        },
+        "fontSize": {
+          "headline-lg-mobile": [
+            "28px",
+            {
+              "lineHeight": "32px",
+              "letterSpacing": "0.03em",
+              "fontWeight": "400"
+            }
+          ],
+          "label-md": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.06em",
+              "fontWeight": "600"
+            }
+          ],
+          "label-sm": [
+            "10px",
+            {
+              "lineHeight": "12px",
+              "letterSpacing": "0.1em",
+              "fontWeight": "700"
+            }
+          ],
+          "label-lg": [
+            "14px",
+            {
+              "lineHeight": "18px",
+              "letterSpacing": "0.08em",
+              "fontWeight": "700"
+            }
+          ],
+          "body-lg": [
+            "18px",
+            {
+              "lineHeight": "28px",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-md": [
+            "28px",
+            {
+              "lineHeight": "32px",
+              "letterSpacing": "0.04em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-md": [
+            "15px",
+            {
+              "lineHeight": "22px",
+              "fontWeight": "400"
+            }
+          ],
+          "display-xl": [
+            "72px",
+            {
+              "lineHeight": "76px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-lg": [
+            "40px",
+            {
+              "lineHeight": "44px",
+              "letterSpacing": "0.03em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-sm": [
+            "13px",
+            {
+              "lineHeight": "18px",
+              "fontWeight": "400"
+            }
+          ],
+          "display-xl-mobile": [
+            "44px",
+            {
+              "lineHeight": "48px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "400"
+            }
+          ],
+          "score-display": [
+            "56px",
+            {
+              "lineHeight": "56px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-sm": [
+            "20px",
+            {
+              "lineHeight": "26px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "700"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-20 w-full px-margin-desktop flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-md shrink-0"><img alt="C.D. Voleibol San Pedro" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"><span class="font-headline-md text-headline-md tracking-wider text-on-surface uppercase whitespace-nowrap">C.D. VOLEIBOL SAN PEDRO</span></div><nav class="hidden xl:flex items-center justify-center gap-space-xl flex-1 px-space-md" data-active-classes="text-primary font-bold"><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="inicio" href="#">INICIO</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="plantillas" href="#">PLANTILLAS</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="calendario" href="#">CALENDARIO</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="partidos" href="#">PARTIDOS</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="clasificacion" href="#">CLASIFICACIÓN</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="noticias" href="#">NOTICIAS</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="fan-zone" href="#">FAN-ZONE</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="patrocinio" href="#">PATROCINIO</a></nav><div class="flex items-center gap-space-md shrink-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-20 bg-surface min-h-[calc(100vh-80px)]"><div class="flex flex-col w-full">
+<!-- SECTION HEADER & CATEGORY BAR -->
+<section class="w-full bg-surface-container-lowest px-margin-desktop py-space-xl">
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-lg">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<span class="inline-block w-2.5 h-2.5 bg-primary-container"></span>
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-widest">TEMPORADA REGULAR 2024 / 2025</span>
+<span class="text-outline text-label-sm">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">JORNADA 13 DE 22</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg uppercase text-on-surface tracking-tight">
+          TABLA OFICIAL DE CLASIFICACIÓN
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Supervisión en tiempo real de partidos, sets y puntos oficiales homologados por la Federación Andaluza de Voleibol (FAVB).</p>
+</div>
+<!-- Quick Status Strip -->
+<div class="flex items-center gap-space-md shrink-0 bg-surface-container-high px-space-lg py-space-sm rounded">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase">LIDERATO VIGENTE</span>
+<span class="font-headline-sm text-headline-sm text-primary-container">1º PUESTO GENERAL</span>
+</div>
+<div class="h-8 w-px bg-surface-variant"></div>
+<div class="flex items-center gap-space-xs text-secondary-fixed">
+<span class="material-symbols-outlined text-primary-container text-[20px]">verified</span>
+<span class="font-label-md text-label-md tracking-wider uppercase">Fase Ascenso Mat.</span>
+</div>
+</div>
+</div>
+<!-- Multi-league selector tabs -->
+<div class="mt-space-xl flex items-center gap-space-xs overflow-x-auto no-scrollbar pb-space-xs">
+<button class="cat-pill active shrink-0 px-space-md py-space-sm bg-primary-container text-on-primary font-label-md text-label-md uppercase tracking-wider transition-all flex items-center gap-space-xs shadow-md" onclick="switchCategory('sm2', this)">
+<span class="material-symbols-outlined text-[16px]">military_tech</span>
+<span class="">Superliga 2 Masc. (Grupo B)</span>
+</button>
+<button class="cat-pill shrink-0 px-space-md py-space-sm bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider transition-all flex items-center gap-space-xs" onclick="switchCategory('1and', this)">
+<span class="material-symbols-outlined text-[16px]">sports_volleyball</span>
+<span class="">1ª Div. Andaluza Oriental (Senior B)</span>
+</button>
+<button class="cat-pill shrink-0 px-space-md py-space-sm bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider transition-all flex items-center gap-space-xs" onclick="switchCategory('1fem', this)">
+<span class="material-symbols-outlined text-[16px]">female</span>
+<span class="">1ª Nac. Femenina (Senior A)</span>
+</button>
+<button class="cat-pill shrink-0 px-space-md py-space-sm bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider transition-all flex items-center gap-space-xs" onclick="switchCategory('provfem', this)">
+<span class="material-symbols-outlined text-[16px]">groups</span>
+<span class="">Liga Provincial Fem. (Senior B)</span>
+</button>
+<button class="cat-pill shrink-0 px-space-md py-space-sm bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider transition-all flex items-center gap-space-xs" onclick="switchCategory('juv', this)">
+<span class="material-symbols-outlined text-[16px]">stars</span>
+<span class="">Camp. Andalucía (Juvenil A)</span>
+</button>
+</div>
+</section>
+<!-- KEY TEAM METRICS BENTO -->
+<section class="w-full px-margin-desktop py-space-lg bg-surface">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop"><div class="bg-surface-container-low p-space-lg flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-all"><div class="flex items-start justify-between"><div class="flex flex-col"><span class="font-label-sm text-label-sm uppercase text-outline tracking-wider">TOTAL DISPUTADOS</span><span class="font-headline-sm text-headline-sm uppercase text-on-surface">PARTIDOS JUGADOS</span></div><div class="w-10 h-10 bg-surface-container flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[24px]">sports_volleyball</span></div></div><div class="pt-space-md flex items-baseline gap-space-sm"><span class="font-score-display text-score-display text-primary">13</span><span class="font-label-md text-label-md text-on-surface-variant uppercase">Jornadas FAVB</span></div><div class="mt-space-sm flex items-center justify-between text-body-sm text-outline"><span class="">Competición Regular</span><span class="text-primary font-label-sm text-label-sm">Oficial</span></div></div><div class="bg-surface-container-low p-space-lg flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-all"><div class="flex items-start justify-between"><div class="flex flex-col"><span class="font-label-sm text-label-sm uppercase text-outline tracking-wider">RENDIMIENTO TOTAL</span><span class="font-headline-sm text-headline-sm uppercase text-on-surface">BALANCE VICTORIAS</span></div><div class="w-10 h-10 bg-surface-container flex items-center justify-center text-primary-container"><span class="material-symbols-outlined text-[24px]">military_tech</span></div></div><div class="pt-space-md flex items-baseline gap-space-sm"><span class="font-score-display text-score-display text-on-surface">12-1</span><span class="font-label-md text-label-md text-primary-container uppercase">92.3%</span></div><div class="w-full bg-surface-container-highest h-1.5 mt-space-sm rounded-full overflow-hidden"><div class="bg-primary-container h-full w-[92%]"></div></div></div><div class="bg-surface-container-low p-space-lg flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-all"><div class="flex items-start justify-between"><div class="flex flex-col"><span class="font-label-sm text-label-sm uppercase text-outline tracking-wider">CÓMPUTO GLOBAL</span><span class="font-headline-sm text-headline-sm uppercase text-on-surface">SETS A FAVOR / CONTRA</span></div><div class="w-10 h-10 bg-surface-container flex items-center justify-center text-secondary"><span class="material-symbols-outlined text-[24px]">bar_chart</span></div></div><div class="pt-space-md flex items-baseline gap-space-sm"><span class="font-score-display text-score-display text-on-surface">37 / 9</span><span class="font-label-md text-label-md text-secondary uppercase">+28 Dif</span></div><div class="mt-space-sm flex items-center justify-between text-body-sm text-outline"><span class="">Coeficiente: 4.11</span><span class="text-on-surface font-label-sm text-label-sm">FAVB Homologado</span></div></div><div class="bg-primary-container text-on-primary-container p-space-lg flex flex-col justify-between relative overflow-hidden shadow-lg"><div class="flex items-start justify-between"><div class="flex flex-col"><span class="font-label-sm text-label-sm uppercase text-on-primary-container/80 tracking-wider">FORTALEZA LOCAL</span><span class="font-headline-sm text-headline-sm uppercase text-on-primary-container">PABELLÓN SERGIO SCARIOLO</span></div><div class="w-10 h-10 bg-on-primary-container/10 flex items-center justify-center text-on-primary-container"><span class="material-symbols-outlined text-[24px]">stadium</span></div></div><div class="pt-space-md flex items-baseline gap-space-sm"><span class="font-score-display text-score-display text-on-primary-container">7 / 7</span><span class="font-label-md text-label-md text-on-primary-container uppercase">Victorias Locales</span></div><div class="mt-space-sm flex items-center justify-between text-body-sm text-on-primary-container/90"><span class="">21 sets a favor • 3 en contra</span><span class="font-label-sm text-label-sm uppercase font-bold">INVICTOS</span></div></div></div>
+</section>
+<!-- CLASSIFICATION TABLE SECTION -->
+<section class="w-full px-margin-desktop py-space-lg bg-surface">
+<div class="w-full bg-surface-container-lowest p-space-lg">
+<!-- Table Header & Toolbar -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pb-space-lg">
+<div class="flex items-center gap-space-md">
+<span class="w-3 h-3 bg-primary-container inline-block"></span>
+<h2 class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wider" id="categoryTitle">
+            Superliga 2 Masculina - Grupo B
+          </h2>
+<span class="px-space-sm py-0.5 bg-surface-container-high text-outline font-label-sm text-label-sm rounded uppercase">
+            Actualizado: Ayer, 22:45h
+          </span>
+</div>
+<!-- Legend Pill Strip -->
+<div class="flex flex-wrap items-center gap-space-sm text-body-sm text-on-surface-variant">
+<div class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 bg-primary-container"></span>
+<span class="font-label-sm text-label-sm uppercase">1-2 Playoff Ascenso</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 bg-surface-variant"></span>
+<span class="font-label-sm text-label-sm uppercase">3-10 Permanencia</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 bg-error-container"></span>
+<span class="font-label-sm text-label-sm uppercase">11-12 Descenso</span>
+</div>
+</div>
+</div>
+<!-- Main Classification Table -->
+<div class="w-full overflow-x-auto no-scrollbar">
+<table class="w-full text-left border-collapse min-w-[850px]"><thead><tr class="bg-surface-container-low text-outline font-label-md text-label-md uppercase tracking-wider"><th class="py-space-md px-space-md text-center w-16">POS</th><th class="py-space-md px-space-md">CLUB / ENTIDAD</th><th class="py-space-md px-space-sm text-center">PJ</th><th class="py-space-md px-space-sm text-center">PG</th><th class="py-space-md px-space-sm text-center">PP</th><th class="py-space-md px-space-sm text-center">SF</th><th class="py-space-md px-space-sm text-center">SC</th><th class="py-space-md px-space-md text-center text-primary font-bold">PTS</th><th class="py-space-md px-space-md text-center">RACHA (ÚLTIMOS 5)</th></tr></thead><tbody class="font-body-md text-body-md divide-y divide-transparent" id="standingsBody"><tr class="bg-surface-container-high transition-all relative shadow-[0_0_24px_-4px_rgba(217,4,41,0.35)]"><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-space-xs"><span class="w-1.5 h-6 bg-primary-container"></span><span class="font-headline-md text-headline-md text-primary-container">01</span></div></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-primary-container flex items-center justify-center p-1 shrink-0"><span class="material-symbols-outlined text-on-primary text-[20px]">sports_volleyball</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wide flex items-center gap-space-xs">C.D. VOLEIBOL SAN PEDRO <span class="px-space-xs py-0.5 bg-primary-container text-on-primary font-label-sm text-label-sm">LÍDER</span></span><span class="font-body-sm text-body-sm text-on-surface-variant">San Pedro Alcántara, Málaga • Pabellón Sergio Scariolo</span></div></div></td><td class="py-space-md px-space-sm text-center font-bold text-on-surface">13</td><td class="py-space-md px-space-sm text-center text-primary font-bold">12</td><td class="py-space-md px-space-sm text-center text-outline">1</td><td class="py-space-md px-space-sm text-center">37</td><td class="py-space-md px-space-sm text-center">9</td><td class="py-space-md px-space-md text-center bg-primary-container/20"><span class="font-headline-md text-headline-md text-primary tracking-tight">35</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span></div></td></tr><tr class="bg-surface-container-low hover:bg-surface-container transition-all"><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-space-xs"><span class="w-1.5 h-6 bg-primary-container"></span><span class="font-headline-sm text-headline-sm text-on-surface">02</span></div></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">shield</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">Club Voleibol Benidorm</span><span class="font-body-sm text-body-sm text-outline">Benidorm, Alicante</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">10</td><td class="py-space-md px-space-sm text-center">3</td><td class="py-space-md px-space-sm text-center">32</td><td class="py-space-md px-space-sm text-center">14</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface">30</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span></div></td></tr><tr class="bg-surface-container hover:bg-surface-container-high transition-all"><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface-variant">03</span></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">sports</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">C.V. Utrera</span><span class="font-body-sm text-body-sm text-outline">Utrera, Sevilla</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">9</td><td class="py-space-md px-space-sm text-center">4</td><td class="py-space-md px-space-sm text-center">29</td><td class="py-space-md px-space-sm text-center">18</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface">26</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span></div></td></tr><tr class="bg-surface-container-low hover:bg-surface-container transition-all"><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface-variant">04</span></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">circle</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">Mintonette Almería</span><span class="font-body-sm text-body-sm text-outline">Almería, Andalucía</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">8</td><td class="py-space-md px-space-sm text-center">5</td><td class="py-space-md px-space-sm text-center">27</td><td class="py-space-md px-space-sm text-center">20</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface">24</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span></div></td></tr><tr class="bg-surface-container hover:bg-surface-container-high transition-all"><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface-variant">05</span></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">flag</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">C.V. Roquetas</span><span class="font-body-sm text-body-sm text-outline">Roquetas de Mar, Almería</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">7</td><td class="py-space-md px-space-sm text-center">6</td><td class="py-space-md px-space-sm text-center">26</td><td class="py-space-md px-space-sm text-center">23</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface">21</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span></div></td></tr><tr class="bg-surface-container-low hover:bg-surface-container transition-all"><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface-variant">06</span></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">sports_volleyball</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">Vóley Murcia</span><span class="font-body-sm text-body-sm text-outline">Murcia</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">7</td><td class="py-space-md px-space-sm text-center">6</td><td class="py-space-md px-space-sm text-center">24</td><td class="py-space-md px-space-sm text-center">24</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface">19</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span></div></td></tr><tr class="bg-surface-container hover:bg-surface-container-high transition-all"><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface-variant">07</span></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">navigation</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">C.V. Costa del Sol Marbella</span><span class="font-body-sm text-body-sm text-outline">Marbella, Málaga</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">6</td><td class="py-space-md px-space-sm text-center">7</td><td class="py-space-md px-space-sm text-center">21</td><td class="py-space-md px-space-sm text-center">25</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface">17</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span></div></td></tr><tr class="bg-surface-container-low hover:bg-surface-container transition-all"><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface-variant">08</span></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">school</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">Universidad de Granada</span><span class="font-body-sm text-body-sm text-outline">Granada</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">5</td><td class="py-space-md px-space-sm text-center">8</td><td class="py-space-md px-space-sm text-center">20</td><td class="py-space-md px-space-sm text-center">28</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface">15</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span></div></td></tr><tr class="bg-surface-container hover:bg-surface-container-high transition-all"><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface-variant">09</span></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">sports_volleyball</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">Judesa Voley Molina</span><span class="font-body-sm text-body-sm text-outline">Molina de Segura, Murcia</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">4</td><td class="py-space-md px-space-sm text-center">9</td><td class="py-space-md px-space-sm text-center">18</td><td class="py-space-md px-space-sm text-center">31</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface">12</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span></div></td></tr><tr class="bg-surface-container-low hover:bg-surface-container transition-all"><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface-variant">10</span></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">sports_volleyball</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">ADV Miguelturra</span><span class="font-body-sm text-body-sm text-outline">Miguelturra, Ciudad Real</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">3</td><td class="py-space-md px-space-sm text-center">10</td><td class="py-space-md px-space-sm text-center">15</td><td class="py-space-md px-space-sm text-center">33</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-on-surface">10</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span></div></td></tr><tr class="bg-surface-container hover:bg-surface-container-high transition-all"><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-space-xs"><span class="w-1.5 h-6 bg-error-container"></span><span class="font-headline-sm text-headline-sm text-error">11</span></div></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">sports_volleyball</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">C.V. Caravaca Postres Reina</span><span class="font-body-sm text-body-sm text-outline">Caravaca, Murcia</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">3</td><td class="py-space-md px-space-sm text-center">10</td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">34</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-error">9</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-primary-container text-on-primary text-label-sm font-label-sm flex items-center justify-center">V</span></div></td></tr><tr class="bg-surface-container-low hover:bg-surface-container transition-all"><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-space-xs"><span class="w-1.5 h-6 bg-error-container"></span><span class="font-headline-sm text-headline-sm text-error">12</span></div></td><td class="py-space-md px-space-md"><div class="flex items-center gap-space-md"><div class="w-9 h-9 bg-surface-variant flex items-center justify-center shrink-0 text-on-surface"><span class="material-symbols-outlined text-[20px]">sports_volleyball</span></div><div class="flex flex-col"><span class="font-body-md text-body-md font-bold text-on-surface uppercase">A.D. Voleibol Rivas</span><span class="font-body-sm text-body-sm text-outline">Rivas-Vaciamadrid, Madrid</span></div></div></td><td class="py-space-md px-space-sm text-center">13</td><td class="py-space-md px-space-sm text-center">1</td><td class="py-space-md px-space-sm text-center">12</td><td class="py-space-md px-space-sm text-center">8</td><td class="py-space-md px-space-sm text-center">38</td><td class="py-space-md px-space-md text-center"><span class="font-headline-sm text-headline-sm text-error">4</span></td><td class="py-space-md px-space-md text-center"><div class="flex items-center justify-center gap-1"><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span><span class="w-6 h-6 bg-surface-variant text-outline text-label-sm font-label-sm flex items-center justify-center">D</span></div></td></tr></tbody></table>
+</div>
+<!-- Regulatory system notes -->
+<div class="mt-space-lg pt-space-md bg-surface-container p-space-md flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm text-on-surface-variant"><span class="material-symbols-outlined text-outline text-[18px]">info</span><span class="font-body-sm text-body-sm">Sistema oficial FAVB: Victoria 3-0 o 3-1 otorga 3 pts; Victoria 3-2 otorga 2 pts; Derrota 2-3 otorga 1 pt; Derrota 0-3 o 1-3 otorga 0 pts.</span></div><div class="flex flex-wrap items-center gap-space-md shrink-0"><a class="px-space-md py-space-xs bg-primary-container text-on-primary hover:opacity-80 font-label-sm text-label-sm uppercase tracking-wider flex items-center gap-space-xs transition-all shadow-md" href="https://favoleibol.es" rel="noopener noreferrer" target="_blank"><span class="material-symbols-outlined text-[16px]">open_in_new</span>Ver Actas y Clasificación en Federación Andaluza de Voleibol (FAVB)</a><button class="px-space-md py-space-xs bg-surface-container-high text-on-surface hover:bg-surface-bright font-label-sm text-label-sm uppercase tracking-wider flex items-center gap-space-xs transition-colors"><span class="material-symbols-outlined text-[16px]">download</span>Descargar PDF Oficial</button></div></div>
+</div>
+</section>
+<!-- FORM COMPARISON & DATA VISUALIZATION SECTION -->
+<section class="w-full px-margin-desktop py-space-xl bg-surface">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop">
+<!-- Head-to-Head & Form Dynamics (8 Cols) -->
+<div class="lg:col-span-8 bg-surface-container-low p-space-xl flex flex-col justify-between">
+<div>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-space-lg">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase text-primary tracking-widest">DINÁMICA DE COMPETICIÓN</span>
+<h3 class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wide">
+                COMPARATIVA DE RENDIMIENTO: TOP 3 GRUPO B
+              </h3>
+</div>
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Últimas 6 Jornadas</span>
+</div>
+<!-- Inline SVG Form Evolution Chart -->
+<div class="w-full bg-surface-container p-space-md">
+<div class="flex items-center justify-between text-label-sm font-label-sm text-outline pb-space-sm">
+<span class="">JORNADA 8</span>
+<span class="">JORNADA 9</span>
+<span class="">JORNADA 10</span>
+<span class="">JORNADA 11</span>
+<span class="">JORNADA 12</span>
+<span class="">JORNADA 13</span>
+</div>
+<svg class="w-full h-44 overflow-visible" preserveAspectRatio="none" viewBox="0 0 600 160">
+<!-- Grid lines -->
+<line stroke="#353534" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="600" y1="30" y2="30"></line>
+<line stroke="#353534" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="600" y1="80" y2="80"></line>
+<line stroke="#353534" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="600" y1="130" y2="130"></line>
+<!-- San Pedro Line (#1 Crimson) -->
+<polyline fill="none" points="20,110 130,80 250,60 360,40 470,25 580,15" stroke="#d90429" stroke-width="4"></polyline>
+<!-- CV Benidorm (#2 White) -->
+<polyline fill="none" points="20,120 130,105 250,75 360,65 470,75 580,45" stroke="#e5e2e1" stroke-dasharray="4 2" stroke-width="2"></polyline>
+<!-- CV Utrera (#3 Slate) -->
+<polyline fill="none" points="20,135 130,120 250,110 360,95 470,85 580,70" stroke="#bbc7dd" stroke-dasharray="2 2" stroke-width="2"></polyline>
+<!-- Highlight points for San Pedro -->
+<circle cx="20" cy="110" fill="#d90429" r="4"></circle>
+<circle cx="130" cy="80" fill="#d90429" r="4"></circle>
+<circle cx="250" cy="60" fill="#d90429" r="4"></circle>
+<circle cx="360" cy="40" fill="#d90429" r="4"></circle>
+<circle cx="470" cy="25" fill="#d90429" r="4"></circle>
+<circle cx="580" cy="15" fill="#ffb3af" r="6" stroke="#d90429" stroke-width="3"></circle>
+</svg>
+<!-- Chart Legends -->
+<div class="mt-space-md pt-space-xs flex flex-wrap items-center gap-space-lg text-body-sm">
+<div class="flex items-center gap-space-xs">
+<span class="w-3 h-1 bg-primary-container"></span>
+<span class="font-label-sm text-label-sm text-on-surface uppercase font-bold">C.D. Voleibol San Pedro (35 pts)</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="w-3 h-1 bg-on-surface"></span>
+<span class="font-label-sm text-label-sm text-outline uppercase">C.V. Benidorm (30 pts)</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="w-3 h-1 bg-tertiary"></span>
+<span class="font-label-sm text-label-sm text-outline uppercase">C.V. Utrera (26 pts)</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-space-lg pt-space-md grid grid-cols-1 sm:grid-cols-3 gap-space-md text-on-surface">
+<div class="bg-surface-container p-space-md">
+<span class="font-label-sm text-label-sm text-outline uppercase">Próximo Rival</span>
+<div class="font-headline-sm text-headline-sm text-on-surface mt-1">CV Benidorm</div>
+<span class="font-body-sm text-body-sm text-primary">Duelo por el Liderato • Sáb 18:00</span>
+</div>
+<div class="bg-surface-container p-space-md">
+<span class="font-label-sm text-label-sm text-outline uppercase">Colchón Playoff</span>
+<div class="font-headline-sm text-headline-sm text-primary mt-1">+9 Puntos</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Sobre el 3º clasificado</span>
+</div>
+<div class="bg-surface-container p-space-md">
+<span class="font-label-sm text-label-sm text-outline uppercase">Coeficiente Sets</span>
+<div class="font-headline-sm text-headline-sm text-on-surface mt-1">4.625</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Mayor registro nacional</span>
+</div>
+</div>
+</div>
+<!-- Tactical Spotlight & Next Fixture Teaser (4 Cols) -->
+<div class="lg:col-span-4 flex flex-col gap-space-md">
+<!-- Visual Photo Card with Duotone Gradient -->
+<div class="relative bg-surface-container-high overflow-hidden flex flex-col justify-end p-space-lg min-h-[280px]">
+<div class="absolute inset-0 bg-cover bg-center mix-blend-luminosity opacity-40 hover:opacity-75 transition-opacity" data-alt="Indoor volleyball team players huddling aggressively in celebration on court under intense arena floodlights with subtle red atmosphere reflections in Costa del Sol sports complex" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAxwzSq5X-jJwVloSA_AcdEh8pQBe8TM5B52oKXBA39gHsOzF7oVcwZZ8qj_XA-7eG5pWnQ-Z9upxeo4CmS35K9S8wteVNWWmj2skjhzJVaGyE3BPmC3RWEQDiFI8AWtLmBQHOlmjE3pH6ozoyWaZoXP7TjnONubVuwRC4tUj_JiKLgjumM8L28NUKstzcbV3u76K3WvbqZe0M5I03Ja4bKOC56-xcvhWhVxNCj6nOG33RCKL-hewZo')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent"></div>
+<div class="relative z-10 flex flex-col gap-space-xs">
+<span class="px-space-xs py-0.5 bg-primary-container text-on-primary font-label-sm text-label-sm uppercase self-start">
+              PARTIDO CLAVE J14
+            </span>
+<h4 class="font-headline-md text-headline-md uppercase text-on-surface leading-tight">
+              C.D.V. SAN PEDRO vs C.V. BENIDORM
+            </h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">El Pabellón Sergio Scariolo acoge la batalla directa por asegurar la primera plaza con pase directo al Grupo de Ascenso a Superliga 1.</p>
+<div class="pt-space-sm flex items-center justify-between"><div class="w-full bg-primary-container/20 p-space-sm flex items-center gap-space-xs text-on-surface"><span class="material-symbols-outlined text-primary text-[18px] shrink-0">confirmation_number</span><span class="font-label-sm text-label-sm text-primary uppercase font-bold tracking-wide">Entrada Libre y Gratuita - Acceso hasta completar aforo en Pabellón Sergio Scariolo</span></div></div>
+</div>
+</div>
+<!-- Official Classification Sponsor Card -->
+<div class="bg-surface-container-high p-space-lg flex flex-col justify-between flex-1">
+<div class="flex items-center justify-between pb-space-sm">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-widest">PATROCINADOR OFICIAL</span>
+<span class="material-symbols-outlined text-outline text-[18px]">verified_user</span>
+</div>
+<div class="py-space-md flex flex-col items-center justify-center text-center gap-space-xs bg-surface-container-lowest p-space-md">
+<span class="font-headline-md text-headline-md tracking-wider uppercase text-on-surface">
+              AYUNTAMIENTO DE MARBELLA
+            </span>
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-widest">
+              DELEGACIÓN DE DEPORTES &amp; TENENCIA SAN PEDRO
+            </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pt-space-sm text-center">
+            Impulsando el deporte de élite y el desarrollo del voleibol base en la Costa del Sol.
+          </p>
+</div>
+</div>
+</div>
+</section>
+<!-- MULTI-TEAM SQUADRON OVERVIEW (Cards for other active categories) -->
+<section class="w-full px-margin-desktop py-space-xl bg-surface-container-lowest">
+<div class="flex flex-col gap-space-xs mb-space-lg">
+<span class="font-label-sm text-label-sm uppercase text-primary tracking-widest">PANORAMA DEL CLUB</span>
+<h3 class="font-headline-lg text-headline-lg uppercase text-on-surface tracking-tight">
+        SITUACIÓN DE LAS DEMÁS CATEGORÍAS
+      </h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+<!-- Card 1: Senior B Masc -->
+<div class="bg-surface-container-low p-space-lg flex flex-col justify-between group hover:bg-surface-container transition-all">
+<div>
+<div class="flex items-center justify-between text-outline text-label-sm font-label-sm pb-space-sm">
+<span class="">1ª DIVISIÓN ANDALUZA</span>
+<span class="">JORNADA 11</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm uppercase text-on-surface">Senior B Masculino</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Grupo Oriental • Cantera y formación continua</p>
+</div>
+<div class="pt-space-lg flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-primary">3º PUESTO</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">22 PTS (7V - 4D)</span>
+</div>
+<button class="px-space-sm py-space-xs bg-surface-container-high text-on-surface hover:text-primary font-label-sm text-label-sm uppercase transition-colors" onclick="switchCategory('1and', null)">
+            Ver Tabla
+          </button>
+</div>
+</div>
+<!-- Card 2: Senior A Fem -->
+<div class="bg-surface-container-low p-space-lg flex flex-col justify-between group hover:bg-surface-container transition-all">
+<div>
+<div class="flex items-center justify-between text-outline text-label-sm font-label-sm pb-space-sm">
+<span class="">1ª NACIONAL FEMENINA</span>
+<span class="">JORNADA 12</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm uppercase text-on-surface">Senior A Femenino</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Grupo C • En pugna por la fase final</p>
+</div>
+<div class="pt-space-lg flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface">2º PUESTO</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">28 PTS (9V - 3D)</span>
+</div>
+<button class="px-space-sm py-space-xs bg-surface-container-high text-on-surface hover:text-primary font-label-sm text-label-sm uppercase transition-colors" onclick="switchCategory('1fem', null)">
+            Ver Tabla
+          </button>
+</div>
+</div>
+<!-- Card 3: Senior B Fem -->
+<div class="bg-surface-container-low p-space-lg flex flex-col justify-between group hover:bg-surface-container transition-all">
+<div>
+<div class="flex items-center justify-between text-outline text-label-sm font-label-sm pb-space-sm">
+<span class="">LIGA PROVINCIAL</span>
+<span class="">JORNADA 9</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm uppercase text-on-surface">Senior B Femenino</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Provincial Málaga • Jóvenes promesas</p>
+</div>
+<div class="pt-space-lg flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-primary">1º PUESTO</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">24 PTS (8V - 1D)</span>
+</div>
+<button class="px-space-sm py-space-xs bg-surface-container-high text-on-surface hover:text-primary font-label-sm text-label-sm uppercase transition-colors" onclick="switchCategory('provfem', null)">
+            Ver Tabla
+          </button>
+</div>
+</div>
+<!-- Card 4: Juvenil A -->
+<div class="bg-surface-container-low p-space-lg flex flex-col justify-between group hover:bg-surface-container transition-all">
+<div>
+<div class="flex items-center justify-between text-outline text-label-sm font-label-sm pb-space-sm">
+<span class="">CAMP. ANDALUCÍA</span>
+<span class="">FASE CLASIF.</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm uppercase text-on-surface">Juvenil A Masc.</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Rumbo al Campeonato de España</p>
+</div>
+<div class="pt-space-lg flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface">1º GRUPO</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">15 PTS (5V - 0D)</span>
+</div>
+<button class="px-space-sm py-space-xs bg-surface-container-high text-on-surface hover:text-primary font-label-sm text-label-sm uppercase transition-colors" onclick="switchCategory('juv', null)">
+            Ver Tabla
+          </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Interactive script for dynamic category title update -->
+<script>
+    function switchCategory(catId, btnElement) {
+      const titles = {
+        'sm2': 'Superliga 2 Masculina - Grupo B (Senior A Masc)',
+        '1and': 'Primera División Andaluza - Grupo Oriental (Senior B Masc)',
+        '1fem': 'Primera División Nacional Femenina - Grupo C (Senior A Fem)',
+        'provfem': 'Liga Provincial Femenina de Málaga (Senior B Fem)',
+        'juv': 'Campeonato de Andalucía Juvenil - Fase Oro (Juvenil A)'
+      };
+
+      const titleElem = document.getElementById('categoryTitle');
+      if (titleElem && titles[catId]) {
+        titleElem.textContent = titles[catId];
+      }
+
+      // Update pills styling
+      document.querySelectorAll('.cat-pill').forEach(btn => {
+        btn.classList.remove('bg-primary-container', 'text-on-primary', 'shadow-md');
+        btn.classList.add('bg-surface-container', 'text-on-surface-variant');
+      });
+
+      if (btnElement) {
+        btnElement.classList.add('bg-primary-container', 'text-on-primary', 'shadow-md');
+        btnElement.classList.remove('bg-surface-container', 'text-on-surface-variant');
+      } else {
+        // Find corresponding button if clicked from squad cards
+        const buttons = document.querySelectorAll('.cat-pill');
+        const mapIndex = {'sm2': 0, '1and': 1, '1fem': 2, 'provfem': 3, 'juv': 4};
+        if (buttons[mapIndex[catId]]) {
+          buttons[mapIndex[catId]].classList.add('bg-primary-container', 'text-on-primary', 'shadow-md');
+          buttons[mapIndex[catId]].classList.remove('bg-surface-container', 'text-on-surface-variant');
+        }
+      }
+
+      // Scroll smoothly back to table
+      document.getElementById('categoryTitle')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest text-on-surface"><div class="w-full px-margin-desktop py-space-2xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop"><div class="flex flex-col gap-space-md"><div class="flex items-center gap-space-sm"><img alt="C.D. Voleibol San Pedro" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"><span class="font-headline-md text-headline-md text-on-surface tracking-wider uppercase">C.D.V. SAN PEDRO</span></div><p class="font-body-sm text-body-sm text-on-surface-variant max-w-sm">Pasión, disciplina y garra deportiva en la Costa del Sol. Formando atletas y compitiendo al máximo nivel en el voleibol andaluz y nacional.</p><div class="flex items-center gap-space-sm pt-space-xs"><span class="material-symbols-outlined text-primary text-[20px]">sports_volleyball</span><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">Temporada 2024 / 2025</span></div></div><div class="flex flex-col gap-space-md"><h4 class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wide">SEDE Y PABELLÓN</h4><div class="flex flex-col gap-space-xs text-on-surface-variant"><div class="flex items-start gap-space-xs"><span class="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">location_on</span><span class="font-body-sm text-body-sm">Pabellón Polideportivo Sergio Scariolo<br>Calle Fuentenueva, s/n<br>29670 San Pedro Alcántara, Málaga</span></div><div class="flex items-center gap-space-xs pt-space-xs"><span class="material-symbols-outlined text-outline text-[18px] shrink-0">mail</span><span class="font-body-sm text-body-sm">info@voleibolsanpedro.es</span></div><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-outline text-[18px] shrink-0">call</span><span class="font-body-sm text-body-sm">+34 952 78 00 00</span></div></div></div><div class="flex flex-col gap-space-md"><h4 class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wide">COMPETICIÓN</h4><ul class="flex flex-col gap-space-xs font-body-sm text-body-sm text-on-surface-variant"><li class=""><a class="hover:text-primary transition-colors" data-path="partidos" href="#">Primera División Nacional Masculina</a></li><li class=""><a class="hover:text-primary transition-colors" data-path="partidos" href="#">Primera Andaluza Femenina</a></li><li class=""><a class="hover:text-primary transition-colors" data-path="plantillas" href="#">Cantera y Voley Base</a></li><li class=""><a class="hover:text-primary transition-colors" data-path="calendario" href="#">Jornadas y Resultados</a></li><li class=""><a class="hover:text-primary transition-colors" data-path="clasificacion" href="#">Tablas Clasificatorias</a></li></ul></div><div class="flex flex-col gap-space-md"><h4 class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wide">LEGAL Y CLUB</h4><ul class="flex flex-col gap-space-xs font-body-sm text-body-sm text-on-surface-variant"><li class=""><a class="hover:text-primary transition-colors" href="#">Aviso Legal</a></li><li class=""><a class="hover:text-primary transition-colors" href="#">Política de Privacidad</a></li><li class=""><a class="hover:text-primary transition-colors" href="#">Política de Cookies</a></li><li class=""><a class="hover:text-primary transition-colors" href="#">Estatutos del Club</a></li><li class=""><a class="hover:text-primary transition-colors" href="#">Transparencia y Normativa RFEVB</a></li></ul></div></div><div class="w-full bg-surface-container-low py-space-lg px-margin-desktop"><div class="flex flex-col lg:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><span class="font-label-sm text-label-sm uppercase tracking-widest text-outline">PATROCINADORES OFICIALES:</span></div><div class="flex flex-wrap items-center justify-center gap-space-xl text-on-surface-variant font-headline-sm text-headline-sm tracking-wider uppercase opacity-80"><span class="">AYUNTAMIENTO DE MARBELLA</span><span class="">TENENCIA SAN PEDRO</span><span class="">DIPUTACIÓN DE MÁLAGA</span><span class="">ANDALUCÍA REGION</span><span class="">GSPORT APPAREL</span></div></div></div><div class="w-full bg-surface px-margin-desktop py-space-md flex flex-col md:flex-row items-center justify-between gap-space-sm text-on-surface-variant"><span class="font-label-sm text-label-sm tracking-wide">© 2025 C.D. VOLEIBOL SAN PEDRO. TODOS LOS DERECHOS RESERVADOS.</span><span class="font-label-sm text-label-sm tracking-wide text-outline">HECHO CON PASIÓN POR EL VOLEIBOL</span></div></footer>
+
+</body></html>

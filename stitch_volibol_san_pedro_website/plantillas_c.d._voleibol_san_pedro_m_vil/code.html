@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Space+Grotesk:wght@400;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#131313;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-tertiary-container": "#e8efff", "error": "#ffb4ab", "background": "#131313", "tertiary": "#bbc7dd", "surface-container-low": "#1c1b1b", "on-secondary-fixed": "#410007", "secondary": "#ffb3b1", "tertiary-fixed-dim": "#bbc7dd", "primary-container": "#d90429", "surface-bright": "#3a3939", "surface-dim": "#131313", "surface": "#131313", "on-secondary": "#680011", "outline-variant": "#5d3f3d", "secondary-container": "#d6022e", "on-primary-fixed": "#410005", "on-surface": "#e5e2e1", "on-error": "#690005", "surface-container": "#201f1f", "tertiary-container": "#616d81", "outline": "#ae8885", "on-tertiary-fixed": "#101c2c", "surface-container-high": "#2a2a2a", "primary-fixed": "#ffdad7", "on-secondary-fixed-variant": "#92001c", "inverse-primary": "#bf0022", "surface-variant": "#353534", "on-secondary-container": "#ffe7e5", "surface-container-lowest": "#0e0e0e", "secondary-fixed": "#ffdad8", "on-tertiary-fixed-variant": "#3c475a", "on-tertiary": "#253142", "surface-tint": "#ffb3af", "on-primary-fixed-variant": "#930018", "inverse-surface": "#e5e2e1", "error-container": "#93000a", "on-primary-container": "#ffeae8", "surface-container-highest": "#353534", "on-error-container": "#ffdad6", "primary-fixed-dim": "#ffb3af", "tertiary-fixed": "#d7e3fa", "on-background": "#e5e2e1", "inverse-on-surface": "#313030", "primary": "#ffb3af", "on-surface-variant": "#e7bcba", "on-primary": "#68000e", "secondary-fixed-dim": "#ffb3b1" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-sm": "0.5rem", "gutter": "1.25rem", "space-lg": "1.5rem", "margin": "1rem", "space-xl": "2.5rem", "margin-desktop": "3rem", "space-2xl": "4rem", "gutter-desktop": "2rem", "space-xs": "0.25rem", "space-md": "1rem" }, fontFamily: { "headline-md": ["Anton"], "display-xl": ["Anton"], "display-xl-mobile": ["Anton"], "body-lg": ["Space Grotesk"], "body-sm": ["Space Grotesk"], "label-lg": ["Space Grotesk"], "label-sm": ["Space Grotesk"], "body-md": ["Space Grotesk"], "headline-lg": ["Anton"], "headline-sm": ["Space Grotesk"], "headline-lg-mobile": ["Anton"], "score-display": ["Anton"], "label-md": ["Space Grotesk"] }, fontSize: { "headline-md": ["28px", { "lineHeight": "32px", "letterSpacing": "0.04em", "fontWeight": "400" }], "display-xl": ["72px", { "lineHeight": "76px", "letterSpacing": "0.02em", "fontWeight": "400" }], "display-xl-mobile": ["44px", { "lineHeight": "48px", "letterSpacing": "0.02em", "fontWeight": "400" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.08em", "fontWeight": "700" }], "label-sm": ["10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" }], "body-md": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "headline-lg": ["40px", { "lineHeight": "44px", "letterSpacing": "0.03em", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "26px", "letterSpacing": "0.01em", "fontWeight": "700" }], "headline-lg-mobile": ["28px", { "lineHeight": "32px", "letterSpacing": "0.03em", "fontWeight": "400" }], "score-display": ["56px", { "lineHeight": "56px", "letterSpacing": "0.01em", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.5)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0 flex-1"><button aria-label="Abrir menú de navegación" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary transition-colors shrink-0" onclick="document.getElementById('mobile-drawer').classList.toggle('hidden')" type="button"><span class="material-symbols-outlined text-[24px]">menu</span></button><img alt="LOGO.jpg" class="h-8 w-auto object-contain shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><div class="flex flex-col min-w-0 flex-1"><span class="font-headline-sm text-headline-sm uppercase text-on-surface truncate tracking-wider leading-none">C.D. VOLEIBOL SAN PEDRO</span><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary truncate mt-0.5">Plantillas</span></div></div><div class="flex items-center gap-space-xs shrink-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><div class="hidden fixed inset-0 z-50 bg-surface/95 backdrop-blur-2xl flex flex-col pt-safe pb-safe overflow-y-auto" id="mobile-drawer"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="LOGO.jpg" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><span class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wider">C.D. VOLEIBOL SAN PEDRO</span></div><button aria-label="Cerrar menú" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary" onclick="document.getElementById('mobile-drawer').classList.add('hidden')" type="button"><span class="material-symbols-outlined text-[28px]">close</span></button></div><div class="px-margin py-space-md flex flex-col gap-space-xs"><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="inicio" href="#"><span>INICIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="plantillas" href="#"><span>PLANTILLAS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="calendario" href="#"><span>CALENDARIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="partidos" href="#"><span>PARTIDOS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="clasificacion" href="#"><span>CLASIFICACIÓN</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="noticias" href="#"><span>NOTICIAS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="fan-zone" href="#"><span>FAN-ZONE</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="patrocinio" href="#"><span>PATROCINIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a></div><div class="mt-auto px-margin py-space-md bg-surface-container-low flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-outline">PATROCINADORES OFICIALES</span><p class="font-body-sm text-body-sm text-tertiary">Ayuntamiento de Marbella • Tenencia de Alcaldía San Pedro • Diputación de Málaga</p></div></div><main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-surface"><div class="flex flex-col w-full text-on-surface">
+<!-- Dynamic Category Switcher Carousel -->
+<section class="w-full bg-surface-container-lowest px-margin pt-space-md pb-space-sm">
+<div class="flex items-center justify-between mb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-4 bg-primary-container inline-block"></span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">DIVISIÓN OFICIAL 2024/25</span>
+</div>
+<span class="font-label-sm text-label-sm uppercase text-outline">14 EFECTIVOS</span>
+</div>
+<div class="flex items-center gap-space-xs overflow-x-auto no-scrollbar py-space-xs -mx-margin px-margin" id="categoryScroll">
+<button class="cat-pill shrink-0 px-space-md py-space-xs bg-primary-container text-on-primary-container font-label-md text-label-md uppercase tracking-wider transition-all duration-200 shadow-[2px_2px_0px_0px_#ffffff]" data-category="senior-masc-a" type="button">
+        Senior Masc A
+      </button>
+<button class="cat-pill shrink-0 px-space-md py-space-xs bg-surface-container-high text-on-surface font-label-md text-label-md uppercase tracking-wider transition-all duration-200" data-category="senior-fem-a" type="button">
+        Senior Fem A
+      </button>
+<button class="cat-pill shrink-0 px-space-md py-space-xs bg-surface-container-high text-on-surface font-label-md text-label-md uppercase tracking-wider transition-all duration-200" data-category="senior-masc-b" type="button">
+        Senior Masc B
+      </button>
+<button class="cat-pill shrink-0 px-space-md py-space-xs bg-surface-container-high text-on-surface font-label-md text-label-md uppercase tracking-wider transition-all duration-200" data-category="senior-fem-b" type="button">
+        Senior Fem B
+      </button>
+<button class="cat-pill shrink-0 px-space-md py-space-xs bg-surface-container-high text-on-surface font-label-md text-label-md uppercase tracking-wider transition-all duration-200" data-category="juvenil-fed" type="button">
+        Juvenil Fed.
+      </button>
+<button class="cat-pill shrink-0 px-space-md py-space-xs bg-surface-container-high text-on-surface font-label-md text-label-md uppercase tracking-wider transition-all duration-200" data-category="cadete-base" type="button">
+        Cadete Base
+      </button>
+</div>
+</section>
+<!-- Squad Header Metric Banner -->
+<section class="px-margin py-space-sm bg-surface-container flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">LIGA REGULAR</span>
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface leading-tight">1ª NACIONAL RFEVB</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="flex flex-col items-end">
+<span class="font-label-sm text-label-sm uppercase text-outline">ESTADO</span>
+<span class="font-label-md text-label-md uppercase text-primary font-bold">ACTIVO • J18</span>
+</div>
+<div class="w-10 h-10 bg-surface-container-highest flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[24px]">groups</span>
+</div>
+</div>
+</section>
+<!-- Position Tactical Filters -->
+<section class="w-full px-margin pt-space-md pb-space-xs">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">FILTRAR POSICIÓN TÁCTICA</span>
+<span class="material-symbols-outlined text-outline text-[16px]">tune</span>
+</div>
+<div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-space-xs -mx-margin px-margin" id="positionFilters">
+<button class="pos-chip shrink-0 px-space-sm py-1 bg-surface-bright text-on-surface font-label-sm text-label-sm uppercase transition-colors shadow-sm" data-pos="all" type="button">
+        TODOS
+      </button>
+<button class="pos-chip shrink-0 px-space-sm py-1 bg-surface-container-high text-outline font-label-sm text-label-sm uppercase transition-colors" data-pos="colocador" type="button">
+        COLOCADORES
+      </button>
+<button class="pos-chip shrink-0 px-space-sm py-1 bg-surface-container-high text-outline font-label-sm text-label-sm uppercase transition-colors" data-pos="opuesto" type="button">
+        OPUESTOS
+      </button>
+<button class="pos-chip shrink-0 px-space-sm py-1 bg-surface-container-high text-outline font-label-sm text-label-sm uppercase transition-colors" data-pos="receptor" type="button">
+        RECEPTORES / PUNTAS
+      </button>
+<button class="pos-chip shrink-0 px-space-sm py-1 bg-surface-container-high text-outline font-label-sm text-label-sm uppercase transition-colors" data-pos="central" type="button">
+        CENTRALES
+      </button>
+<button class="pos-chip shrink-0 px-space-sm py-1 bg-surface-container-high text-outline font-label-sm text-label-sm uppercase transition-colors" data-pos="libero" type="button">
+        LÍBEROS
+      </button>
+</div>
+</section>
+<!-- Squad Roster Roster Grid (Mobile Stack) -->
+<section class="px-margin py-space-sm flex flex-col gap-space-md" id="rosterList">
+<!-- Card 1: Captain / Opuesto -->
+<article class="player-card w-full bg-surface-container-low shadow-[0px_4px_16px_rgba(0,0,0,0.4)] relative overflow-hidden" data-pos="opuesto">
+<div class="relative w-full h-72 overflow-hidden bg-surface-container-lowest">
+<img class="w-full h-full object-cover object-top grayscale contrast-125" data-alt="Athletic high-contrast portrait of a male professional volleyball captain in mid-jump or proud stance, wearing red and black athletic jersey, gritty court background, dramatic arena spotlighting, intense focused gaze, monochromatic duotone tone." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXbLMxOX9SUeGUq8phdaGa9WXf9wGntK2hSkMmSAuO6DiWxp0lD8NjQYR8m-mh4Xj-CLguX2YRiqb7e0OckQdrmxTCi-lX-qknzWvRT48XN8QvTog12GW4eTz1h-S87yaDNSglQPyqErn-Sut_0TWlnIYrrv_zfSIgA6xsN4l4yp6oKXNp0UIvCcBPwZj2BmRLr0ID3L7E4zLB3q0btD6sVqo6DACGDHNs2wCRybV5Nfm7pvCXJtAD"/>
+<!-- Subtle Speed Trail Overlay Shape -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low via-surface-container-low/40 to-transparent"></div>
+<!-- Big Searing Number Watermark -->
+<div class="absolute -top-3 -right-2 font-display-xl-mobile text-display-xl-mobile text-primary-container/30 select-none pointer-events-none">
+          07
+        </div>
+<!-- Badges -->
+<div class="absolute top-space-sm left-space-sm flex flex-col gap-1 z-10">
+<span class="bg-primary-container text-on-primary-container font-label-sm text-label-sm uppercase px-space-xs py-0.5 tracking-wider shadow-[2px_2px_0px_#111111]">
+            CAPITÁN
+          </span>
+<span class="bg-surface-container-highest text-tertiary font-label-sm text-label-sm uppercase px-space-xs py-0.5 tracking-wider">
+            CANTERA SAN PEDRO
+          </span>
+</div>
+<!-- Dynamic Diagonal Name Plate -->
+<div class="absolute bottom-0 left-0 right-0 p-space-sm bg-gradient-to-r from-surface-container-low via-surface-container-low/95 to-transparent">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container leading-none">#07</span>
+<div class="flex flex-col min-w-0">
+<h2 class="font-headline-sm text-headline-sm uppercase text-on-surface truncate tracking-wide leading-none">
+                JAVIER ALARCÓN
+              </h2>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary mt-1">
+                OPUESTO TITULAR
+              </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Tactical Specs Matrix -->
+<div class="p-space-sm bg-surface-container grid grid-cols-4 gap-space-xs text-center">
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">EDAD</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">26</span>
+<span class="font-label-sm text-[9px] text-tertiary">AÑOS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">ALTURA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">1.98</span>
+<span class="font-label-sm text-[9px] text-tertiary">METROS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">REMAT</span>
+<span class="font-headline-sm text-headline-sm text-primary">342</span>
+<span class="font-label-sm text-[9px] text-tertiary">CM ALCANCE</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">EFIC.</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">64%</span>
+<span class="font-label-sm text-[9px] text-primary font-bold">+18 PTS/P</span>
+</div>
+</div>
+<!-- Micro Action Bar -->
+<div class="px-space-sm py-space-xs bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+<span class="font-body-sm text-body-sm text-tertiary">Titular indiscutible</span>
+</div>
+<button class="text-primary hover:text-on-surface flex items-center gap-0.5 font-label-sm text-label-sm uppercase transition-colors" onclick="alert('Estadísticas avanzadas: Javier Alarcón - 212 saques directos acumulados en Fase Regular.')" type="button">
+<span>FICHA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Card 2: Colocador -->
+<article class="player-card w-full bg-surface-container-low shadow-[0px_4px_16px_rgba(0,0,0,0.4)] relative overflow-hidden" data-pos="colocador">
+<div class="relative w-full h-72 overflow-hidden bg-surface-container-lowest">
+<img class="w-full h-full object-cover object-center grayscale contrast-125" data-alt="Dynamic indoor shot of a focused male volleyball setter setting a precision overhead pass, hands extended toward ceiling lights, high tension athletic composition, black and white with deep scarlet shadows, stark arena illumination." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtXin5bMLhy7pxrJPCRqtr9P4UAz6oeJFNuzr5-tkNPBWlqES3QIFdCMqgRZM66hcPQ8VfGCvbRZlpHSU9PCKfWW29osfSpw-Gf9VpOPJICeT983Iw1E9MmT7-0q3CNBFrg2dXMjKO5ItRcX7cAz45AFzQ8H_EJ1GGcrxBwqnHgcbpBmPavPiy_Iz3Q53LHVT5KSibslqrV3FXRMwzA0Wam2phXUehzZ4Pypb-998vJRUMd7oCkcWE"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low via-surface-container-low/40 to-transparent"></div>
+<div class="absolute -top-3 -right-2 font-display-xl-mobile text-display-xl-mobile text-primary-container/30 select-none pointer-events-none">
+          02
+        </div>
+<!-- Badges -->
+<div class="absolute top-space-sm left-space-sm flex flex-col gap-1 z-10">
+<span class="bg-surface-container-highest text-tertiary font-label-sm text-label-sm uppercase px-space-xs py-0.5 tracking-wider">
+            CANTERA SAN PEDRO
+          </span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 p-space-sm bg-gradient-to-r from-surface-container-low via-surface-container-low/95 to-transparent">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container leading-none">#02</span>
+<div class="flex flex-col min-w-0">
+<h2 class="font-headline-sm text-headline-sm uppercase text-on-surface truncate tracking-wide leading-none">
+                MATEO GUERRERO
+              </h2>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary mt-1">
+                COLOCADOR PRINCIPAL
+              </span>
+</div>
+</div>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container grid grid-cols-4 gap-space-xs text-center">
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">EDAD</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">22</span>
+<span class="font-label-sm text-[9px] text-tertiary">AÑOS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">ALTURA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">1.89</span>
+<span class="font-label-sm text-[9px] text-tertiary">METROS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">BLOQ</span>
+<span class="font-headline-sm text-headline-sm text-primary">318</span>
+<span class="font-label-sm text-[9px] text-tertiary">CM ALCANCE</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">PREC.</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">88%</span>
+<span class="font-label-sm text-[9px] text-primary font-bold">DISTRIB.</span>
+</div>
+</div>
+<div class="px-space-sm py-space-xs bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-body-sm text-body-sm text-tertiary">Especialista en tempo rápido</span>
+</div>
+<button class="text-primary hover:text-on-surface flex items-center gap-0.5 font-label-sm text-label-sm uppercase transition-colors" onclick="alert('Estadísticas avanzadas: Mateo Guerrero - 48 asistencias de colocación por encuentro.')" type="button">
+<span>FICHA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Card 3: Receptor / Punta -->
+<article class="player-card w-full bg-surface-container-low shadow-[0px_4px_16px_rgba(0,0,0,0.4)] relative overflow-hidden" data-pos="receptor">
+<div class="relative w-full h-72 overflow-hidden bg-surface-container-lowest">
+<img class="w-full h-full object-cover object-center grayscale contrast-125" data-alt="Intense action capture of a male wing spiker volleyball player executing a powerful pipe attack in mid-air over the net, strong muscular definition, monochromatic styling with dramatic venue backlights, sports brutalism mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkcUeZ8LlIWE-hZf06_oQ2cg1xLhd-OPyUJiS-8JYv0SB5p9MY4xdiTBR3HUfHc2Ehk8fViutNUgG-BpQ5-vbwA91ZQG62CEcTnqAv4MKYUvcawDdhi3MskgyJVPvgTScGXq1IEc9msNhVemjgyWYSS8ZQ45idgfa5V9zR9A04d0MEqp1vN52usHaDSHxYN8Hoa5AjV2xbzMf5H98Xej9D1aUaUy5ebP6hYvJ6B7YoNbtVV3XRQxqL"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low via-surface-container-low/40 to-transparent"></div>
+<div class="absolute -top-3 -right-2 font-display-xl-mobile text-display-xl-mobile text-primary-container/30 select-none pointer-events-none">
+          11
+        </div>
+<div class="absolute top-space-sm left-space-sm flex flex-col gap-1 z-10">
+<span class="bg-surface-variant text-on-surface font-label-sm text-label-sm uppercase px-space-xs py-0.5 tracking-wider">
+            SUB-CAPITÁN
+          </span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 p-space-sm bg-gradient-to-r from-surface-container-low via-surface-container-low/95 to-transparent">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container leading-none">#11</span>
+<div class="flex flex-col min-w-0">
+<h2 class="font-headline-sm text-headline-sm uppercase text-on-surface truncate tracking-wide leading-none">
+                DANI VELÁZQUEZ
+              </h2>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary mt-1">
+                RECEPTOR / PUNTA ATACANTE
+              </span>
+</div>
+</div>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container grid grid-cols-4 gap-space-xs text-center">
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">EDAD</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">25</span>
+<span class="font-label-sm text-[9px] text-tertiary">AÑOS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">ALTURA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">1.94</span>
+<span class="font-label-sm text-[9px] text-tertiary">METROS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">REMAT</span>
+<span class="font-headline-sm text-headline-sm text-primary">338</span>
+<span class="font-label-sm text-[9px] text-tertiary">CM ALCANCE</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">RECEPC</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">72%</span>
+<span class="font-label-sm text-[9px] text-primary font-bold">POSITIVA</span>
+</div>
+</div>
+<div class="px-space-sm py-space-xs bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span class="font-body-sm text-body-sm text-tertiary">Líder en saques aces</span>
+</div>
+<button class="text-primary hover:text-on-surface flex items-center gap-0.5 font-label-sm text-label-sm uppercase transition-colors" onclick="alert('Estadísticas avanzadas: Dani Velázquez - 15 puntos por set en playoff.')" type="button">
+<span>FICHA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Card 4: Líbero -->
+<article class="player-card w-full bg-surface-container-low shadow-[0px_4px_16px_rgba(0,0,0,0.4)] relative overflow-hidden" data-pos="libero">
+<div class="relative w-full h-72 overflow-hidden bg-surface-container-lowest">
+<img class="w-full h-full object-cover object-center grayscale contrast-125" data-alt="Athletic action close-up of a defensive volleyball libero in contrasting white and red kit diving to save the ball on the floor, sweat beads, extreme sharp focus, aggressive low-angle shot, gymnasium lighting reflections." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHmlvUayinoJ8Ll15kKogaZEt2nZcg5xKVKzy5zMe2b9urAamvca2J30A4zbraKpirHZcqWunPdYyZKNfFEs8dzWJ1xrKhbJ3E_6i_0T3PP330HzTCT5bFtqCC3Iatd_VckU6yUxx_AjBz_p0JE-Qt9oAwXiTjcJsndvCLtsqeU1BLPjTKY6h4-AEGcz8zDK3CJk0liZD-OAVZaWhg0mLdSyGzKz3PhvzjNUaOkCmSjXjGeJEZYdsS"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low via-surface-container-low/40 to-transparent"></div>
+<div class="absolute -top-3 -right-2 font-display-xl-mobile text-display-xl-mobile text-primary-container/30 select-none pointer-events-none">
+          04
+        </div>
+<div class="absolute top-space-sm left-space-sm flex flex-col gap-1 z-10">
+<span class="bg-primary-container text-on-primary-container font-label-sm text-label-sm uppercase px-space-xs py-0.5 tracking-wider">
+            ESPECIALISTA DEFENSIVO
+          </span>
+<span class="bg-surface-container-highest text-tertiary font-label-sm text-label-sm uppercase px-space-xs py-0.5 tracking-wider">
+            CANTERA SAN PEDRO
+          </span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 p-space-sm bg-gradient-to-r from-surface-container-low via-surface-container-low/95 to-transparent">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container leading-none">#04</span>
+<div class="flex flex-col min-w-0">
+<h2 class="font-headline-sm text-headline-sm uppercase text-on-surface truncate tracking-wide leading-none">
+                ADRIÁN RÍOS
+              </h2>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary mt-1">
+                LÍBERO DEFENSIVO
+              </span>
+</div>
+</div>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container grid grid-cols-4 gap-space-xs text-center">
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">EDAD</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">21</span>
+<span class="font-label-sm text-[9px] text-tertiary">AÑOS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">ALTURA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">1.78</span>
+<span class="font-label-sm text-[9px] text-tertiary">METROS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">DEFENS</span>
+<span class="font-headline-sm text-headline-sm text-primary">89%</span>
+<span class="font-label-sm text-[9px] text-tertiary">RECUPEROS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">RECEPC</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">81%</span>
+<span class="font-label-sm text-[9px] text-primary font-bold">PERFECTA</span>
+</div>
+</div>
+<div class="px-space-sm py-space-xs bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed"></span>
+<span class="font-body-sm text-body-sm text-tertiary">Camiseta de contraste reglamentaria</span>
+</div>
+<button class="text-primary hover:text-on-surface flex items-center gap-0.5 font-label-sm text-label-sm uppercase transition-colors" onclick="alert('Estadísticas avanzadas: Adrián Ríos - 32 defensas espectaculares en el último derbi provincial.')" type="button">
+<span>FICHA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Card 5: Central -->
+<article class="player-card w-full bg-surface-container-low shadow-[0px_4px_16px_rgba(0,0,0,0.4)] relative overflow-hidden" data-pos="central">
+<div class="relative w-full h-72 overflow-hidden bg-surface-container-lowest">
+<img class="w-full h-full object-cover object-top grayscale contrast-125" data-alt="Towering male middle blocker volleyball athlete jumping at the net with arms fully locked in aggressive block position, dynamic low angle, athletic brutalism aesthetic, arena smoke and laser red illumination, monochrome texture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAh3VnydjLrWk6aRvDFr9vL19p8h4zK1mSzKg_0RlvsK5EF00AuFd01uG_rTf3KCQOgYABoNBomnJKSuEE02WXya2qgADvOCqIIbxnK-OGHVwV7oIbE3dOxdAmAczyFc1FhfAH5DyG1XN2RSlx5iH5w5i2h7DsRomtcM4JtMxroyQDzvp3Y03QM2IRTZ4xY2AEvDhStmX0-i0s3oq2CbxGu9QmjGjhHhcUaf3WVGOsXsh7FXDXlSJqT"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low via-surface-container-low/40 to-transparent"></div>
+<div class="absolute -top-3 -right-2 font-display-xl-mobile text-display-xl-mobile text-primary-container/30 select-none pointer-events-none">
+          15
+        </div>
+<div class="absolute top-space-sm left-space-sm flex flex-col gap-1 z-10">
+<span class="bg-surface-variant text-on-surface font-label-sm text-label-sm uppercase px-space-xs py-0.5 tracking-wider">
+            MURO ROJO
+          </span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 p-space-sm bg-gradient-to-r from-surface-container-low via-surface-container-low/95 to-transparent">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container leading-none">#15</span>
+<div class="flex flex-col min-w-0">
+<h2 class="font-headline-sm text-headline-sm uppercase text-on-surface truncate tracking-wide leading-none">
+                PABLO MONTORO
+              </h2>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary mt-1">
+                CENTRAL BLOQUEADOR
+              </span>
+</div>
+</div>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container grid grid-cols-4 gap-space-xs text-center">
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">EDAD</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">27</span>
+<span class="font-label-sm text-[9px] text-tertiary">AÑOS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">ALTURA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">2.04</span>
+<span class="font-label-sm text-[9px] text-tertiary">METROS</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">BLOQ</span>
+<span class="font-headline-sm text-headline-sm text-primary">348</span>
+<span class="font-label-sm text-[9px] text-tertiary">CM ALCANCE</span>
+</div>
+<div class="bg-surface-container-low p-space-xs flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-outline uppercase">BLOQS</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">3.8</span>
+<span class="font-label-sm text-[9px] text-primary font-bold">POR PARTIDO</span>
+</div>
+</div>
+<div class="px-space-sm py-space-xs bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span class="font-body-sm text-body-sm text-tertiary">Máximo taponador del grupo</span>
+</div>
+<button class="text-primary hover:text-on-surface flex items-center gap-0.5 font-label-sm text-label-sm uppercase transition-colors" onclick="alert('Estadísticas avanzadas: Pablo Montoro - 52 bloqueos efectivos en temporada.')" type="button">
+<span>FICHA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+</section>
+<!-- Interactive Collapsible Technical Staff Section -->
+<section class="mt-space-lg px-margin">
+<div class="bg-surface-container p-space-md shadow-md">
+<button class="w-full flex items-center justify-between text-left focus:outline-none" id="staffToggle" onclick="toggleStaff()" type="button">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 bg-primary-container flex items-center justify-center text-on-primary-container shrink-0">
+<span class="material-symbols-outlined text-[20px]">sports</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface">CUERPO TÉCNICO</span>
+<span class="font-label-sm text-label-sm uppercase text-outline">DIRECCIÓN Y READAPTACIÓN</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary text-[24px] transition-transform duration-200" id="staffIcon">
+          expand_more
+        </span>
+</button>
+<!-- Collapsible Body -->
+<div class="hidden flex-col gap-space-sm pt-space-md mt-space-sm bg-surface-container" id="staffContent">
+<!-- Head Coach -->
+<div class="p-space-sm bg-surface-container-low flex items-center gap-space-sm">
+<div class="w-12 h-12 bg-surface-container-highest shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover grayscale" data-alt="Headshot portrait of a determined male volleyball head coach holding a tactical clipboard, wearing a club black polo shirt with crimson accents, high contrast studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKC9PPwFNMaEAKEYfYEon89632rHYsKbsmzGZeQq_PZcN6fFHkyu6b9vOY0DH7lIK13OfKeZtSyzxmLJFziab2rDKCTqcrjcKlqgqj4jvvt3OD06lsJ4lLN-OuhXrnrxC1zaru8pPJl01Z-wv5X4UDClVHWQ_idEmJGvyV-Wl9771xtpoBB_-5WS7_WMKjw80IJAi6C7LLtrCxiKdICFRrKAr9zhZ-HNw9Hlmm2gmtP3nCxO9Hlf-X"/>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm uppercase text-on-surface truncate text-[17px]">
+                MANUEL 'MANOLO' BERMEJO
+              </h3>
+<span class="font-label-sm text-label-sm text-primary uppercase font-bold">NIVEL III</span>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary uppercase">ENTRENADOR JEFE</span>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">5ª Temporada al mando del primer equipo</p>
+</div>
+</div>
+<!-- Physio -->
+<div class="p-space-sm bg-surface-container-low flex items-center gap-space-sm">
+<div class="w-12 h-12 bg-surface-container-highest shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover grayscale" data-alt="Athletic medical professional headshot of a female volleyball club physiotherapist in team sports apparel, focused confident posture, athletic brutalism aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVNCk8rygioHmYi0RV35TMoQZWIafXYoSPjxiOAeeS1vXoJ4fkzD-PFNvrWzBFdS9TFoer1mUVQLqMObju9LaTzHvAXhqyNbeL2bbE_Xtr3FZZULGny9K_dGnehAtybJ-nOqXxazIZf9RC0bHdAGvrBYtIIyngIHEG9GPURLohLYPVx_wowLdzJ8FZ45fD5oiqQYoGwl0H7WSPP5iylNwSiSuD5xY26njjRllVQmb5uY6TA7c0Px7Z"/>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm uppercase text-on-surface truncate text-[17px]">
+                DRA. LUCÍA NAVARRO
+              </h3>
+<span class="font-label-sm text-label-sm text-tertiary uppercase font-bold">FISIO-COL</span>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary uppercase">FISIOTERAPEUTA Y BIOMECÁNICA</span>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">Control de fatiga y protocolo de hombro</p>
+</div>
+</div>
+<!-- Fitness Coach -->
+<div class="p-space-sm bg-surface-container-low flex items-center gap-space-sm">
+<div class="w-12 h-12 bg-surface-container-highest shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover grayscale" data-alt="Athletic portrait of a muscular strength and conditioning coach holding gym resistance bands, black background, intense monochrome sports styling." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsiI8fKeGSgnf09bORwCciCfliJ51oapEb-eaX_LevFpzk9n9aCXuzT0Sbtz0JhwuKThuOKkWe3nAiGDFKTfYmKVJ6LSY2VnxiLMvdFPhBcFYOb6UAt317n2zsN0InpNhwFl7o8Q_9FGDr1ku5bUJTYRxh-szpbwbR_wInG0v6c-lhev31iZGU4vNflnwPJAjg9GFTDJf4mxpdkG6RtHQ-uygtc40oo4pw48Hr6Gr4kBHbBUdl3J4N"/>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm uppercase text-on-surface truncate text-[17px]">
+                SERGIO CARMONA
+              </h3>
+<span class="font-label-sm text-label-sm text-tertiary uppercase font-bold">CAFYD</span>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary uppercase">PREPARADOR FÍSICO</span>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">Potencia de salto vertical y pliometría</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Exclusive Squad Sponsor High-Contrast Banner -->
+<section class="mt-space-lg px-margin">
+<div class="w-full bg-gradient-to-br from-surface-container-high to-surface-container-lowest p-space-md relative overflow-hidden shadow-lg">
+<div class="absolute -right-8 -bottom-8 w-32 h-32 bg-primary-container/10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex flex-col relative z-10">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary font-bold">
+            PATROCINADOR EXCLUSIVO DE PLANTILLA
+          </span>
+<span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+</div>
+<div class="flex flex-col my-space-xs">
+<span class="font-headline-md text-headline-md uppercase text-on-surface leading-tight tracking-wider">
+            CONSTRUCCIONES &amp; PROYECTOS
+          </span>
+<span class="font-headline-sm text-headline-sm text-primary tracking-widest uppercase">
+            COSTA DEL SOL
+          </span>
+</div>
+<p class="font-body-sm text-body-sm text-tertiary mt-space-xs">
+          Impulsando la cantera, la excelencia deportiva y el salto a la Superliga del vóley sampedreño.
+        </p>
+<div class="mt-space-md flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase text-outline">MARBELLA • SAN PEDRO ALCÁNTARA</span>
+<a class="px-space-md py-space-xs bg-on-surface text-surface font-label-sm text-label-sm uppercase font-bold tracking-wider hover:bg-primary hover:text-on-primary transition-colors" href="#">
+            CONOCER MÁS
+          </a>
+</div>
+</div>
+</div>
+</section>
+<!-- Interactive Quick Fact Widget -->
+<section class="mt-space-md px-margin mb-space-sm">
+<div class="p-space-sm bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">fitness_center</span>
+<span class="font-body-sm text-body-sm text-tertiary">Media de altura del sexteto titular:</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-surface">1.94 M</span>
+</div>
+</section>
+</div>
+<script>
+  // Filter by Position Functionality
+  const posChips = document.querySelectorAll('.pos-chip');
+  const playerCards = document.querySelectorAll('.player-card');
+
+  posChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      posChips.forEach(c => {
+        c.classList.remove('bg-surface-bright', 'text-on-surface', 'shadow-sm');
+        c.classList.add('bg-surface-container-high', 'text-outline');
+      });
+      chip.classList.remove('bg-surface-container-high', 'text-outline');
+      chip.classList.add('bg-surface-bright', 'text-on-surface', 'shadow-sm');
+
+      const targetPos = chip.getAttribute('data-pos');
+
+      playerCards.forEach(card => {
+        const cardPos = card.getAttribute('data-pos');
+        if (targetPos === 'all' || cardPos === targetPos) {
+          card.classList.remove('hidden');
+          card.classList.add('flex');
+        } else {
+          card.classList.add('hidden');
+          card.classList.remove('flex');
+        }
+      });
+    });
+  });
+
+  // Category Switcher Animation & Selection
+  const catPills = document.querySelectorAll('.cat-pill');
+  catPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      catPills.forEach(p => {
+        p.classList.remove('bg-primary-container', 'text-on-primary-container', 'shadow-[2px_2px_0px_0px_#ffffff]');
+        p.classList.add('bg-surface-container-high', 'text-on-surface');
+      });
+      pill.classList.remove('bg-surface-container-high', 'text-on-surface');
+      pill.classList.add('bg-primary-container', 'text-on-primary-container', 'shadow-[2px_2px_0px_0px_#ffffff]');
+    });
+  });
+
+  // Toggle Technical Staff Accordion
+  function toggleStaff() {
+    const content = document.getElementById('staffContent');
+    const icon = document.getElementById('staffIcon');
+    if (content.classList.contains('hidden')) {
+      content.classList.remove('hidden');
+      content.classList.add('flex');
+      icon.style.transform = 'rotate(180deg)';
+    } else {
+      content.classList.add('hidden');
+      content.classList.remove('flex');
+      icon.style.transform = 'rotate(0deg)';
+    }
+  }
+</script><footer class="w-full px-margin py-space-lg bg-surface-container-lowest mt-space-xl flex flex-col gap-space-md"><div class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">PATROCINADORES INSTITUCIONALES</span><div class="flex flex-wrap items-center gap-space-sm text-on-surface-variant font-label-md text-label-md uppercase"><span class="bg-surface-container px-space-sm py-space-xs">Ayuntamiento de Marbella</span><span class="bg-surface-container px-space-sm py-space-xs">Tenencia San Pedro</span><span class="bg-surface-container px-space-sm py-space-xs">Diputación de Málaga</span></div></div><div class="flex flex-wrap gap-space-md font-body-sm text-body-sm text-tertiary"><a class="hover:text-primary" href="#">Aviso Legal</a><a class="hover:text-primary" href="#">Privacidad</a><a class="hover:text-primary" href="#">Contacto</a></div><div class="font-label-sm text-label-sm text-outline uppercase tracking-wider">© C.D. VOLEIBOL SAN PEDRO • TODOS LOS DERECHOS RESERVADOS</div></footer></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/95 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.6)]" data-active-classes="text-primary-container font-bold"><div class="h-16 px-space-xs flex items-center justify-around"><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="inicio" href="#"><span class="material-symbols-outlined text-[22px]">sports_volleyball</span><span class="font-label-sm text-label-sm mt-0.5">Inicio</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="partidos" href="#"><span class="material-symbols-outlined text-[22px]">scoreboard</span><span class="font-label-sm text-label-sm mt-0.5">Partidos</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="calendario" href="#"><span class="material-symbols-outlined text-[22px]">calendar_today</span><span class="font-label-sm text-label-sm mt-0.5">Fechas</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="clasificacion" href="#"><span class="material-symbols-outlined text-[22px]">leaderboard</span><span class="font-label-sm text-label-sm mt-0.5">Tabla</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="fan-zone" href="#"><span class="material-symbols-outlined text-[22px]">stadium</span><span class="font-label-sm text-label-sm mt-0.5">FanZone</span></a></div></nav></body></html>

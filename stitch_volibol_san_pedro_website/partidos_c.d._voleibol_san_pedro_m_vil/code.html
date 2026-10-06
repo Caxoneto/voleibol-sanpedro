@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Space+Grotesk:wght@400;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#131313;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-tertiary-container": "#e8efff", "error": "#ffb4ab", "background": "#131313", "tertiary": "#bbc7dd", "surface-container-low": "#1c1b1b", "on-secondary-fixed": "#410007", "secondary": "#ffb3b1", "tertiary-fixed-dim": "#bbc7dd", "primary-container": "#d90429", "surface-bright": "#3a3939", "surface-dim": "#131313", "surface": "#131313", "on-secondary": "#680011", "outline-variant": "#5d3f3d", "secondary-container": "#d6022e", "on-primary-fixed": "#410005", "on-surface": "#e5e2e1", "on-error": "#690005", "surface-container": "#201f1f", "tertiary-container": "#616d81", "outline": "#ae8885", "on-tertiary-fixed": "#101c2c", "surface-container-high": "#2a2a2a", "primary-fixed": "#ffdad7", "on-secondary-fixed-variant": "#92001c", "inverse-primary": "#bf0022", "surface-variant": "#353534", "on-secondary-container": "#ffe7e5", "surface-container-lowest": "#0e0e0e", "secondary-fixed": "#ffdad8", "on-tertiary-fixed-variant": "#3c475a", "on-tertiary": "#253142", "surface-tint": "#ffb3af", "on-primary-fixed-variant": "#930018", "inverse-surface": "#e5e2e1", "error-container": "#93000a", "on-primary-container": "#ffeae8", "surface-container-highest": "#353534", "on-error-container": "#ffdad6", "primary-fixed-dim": "#ffb3af", "tertiary-fixed": "#d7e3fa", "on-background": "#e5e2e1", "inverse-on-surface": "#313030", "primary": "#ffb3af", "on-surface-variant": "#e7bcba", "on-primary": "#68000e", "secondary-fixed-dim": "#ffb3b1" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-sm": "0.5rem", "gutter": "1.25rem", "space-lg": "1.5rem", "margin": "1rem", "space-xl": "2.5rem", "margin-desktop": "3rem", "space-2xl": "4rem", "gutter-desktop": "2rem", "space-xs": "0.25rem", "space-md": "1rem" }, fontFamily: { "headline-md": ["Anton"], "display-xl": ["Anton"], "display-xl-mobile": ["Anton"], "body-lg": ["Space Grotesk"], "body-sm": ["Space Grotesk"], "label-lg": ["Space Grotesk"], "label-sm": ["Space Grotesk"], "body-md": ["Space Grotesk"], "headline-lg": ["Anton"], "headline-sm": ["Space Grotesk"], "headline-lg-mobile": ["Anton"], "score-display": ["Anton"], "label-md": ["Space Grotesk"] }, fontSize: { "headline-md": ["28px", { "lineHeight": "32px", "letterSpacing": "0.04em", "fontWeight": "400" }], "display-xl": ["72px", { "lineHeight": "76px", "letterSpacing": "0.02em", "fontWeight": "400" }], "display-xl-mobile": ["44px", { "lineHeight": "48px", "letterSpacing": "0.02em", "fontWeight": "400" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.08em", "fontWeight": "700" }], "label-sm": ["10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" }], "body-md": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "headline-lg": ["40px", { "lineHeight": "44px", "letterSpacing": "0.03em", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "26px", "letterSpacing": "0.01em", "fontWeight": "700" }], "headline-lg-mobile": ["28px", { "lineHeight": "32px", "letterSpacing": "0.03em", "fontWeight": "400" }], "score-display": ["56px", { "lineHeight": "56px", "letterSpacing": "0.01em", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.5)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0 flex-1"><button aria-label="Abrir menú de navegación" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary transition-colors shrink-0" onclick="document.getElementById('mobile-drawer').classList.toggle('hidden')" type="button"><span class="material-symbols-outlined text-[24px]">menu</span></button><img alt="LOGO.jpg" class="h-8 w-auto object-contain shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><div class="flex flex-col min-w-0 flex-1"><span class="font-headline-sm text-headline-sm uppercase text-on-surface truncate tracking-wider leading-none">C.D. VOLEIBOL SAN PEDRO</span><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary truncate mt-0.5">Partidos</span></div></div><div class="flex items-center gap-space-xs shrink-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><div class="hidden fixed inset-0 z-50 bg-surface/95 backdrop-blur-2xl flex flex-col pt-safe pb-safe overflow-y-auto" id="mobile-drawer"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="LOGO.jpg" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><span class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wider">C.D. VOLEIBOL SAN PEDRO</span></div><button aria-label="Cerrar menú" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary" onclick="document.getElementById('mobile-drawer').classList.add('hidden')" type="button"><span class="material-symbols-outlined text-[28px]">close</span></button></div><div class="px-margin py-space-md flex flex-col gap-space-xs"><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="inicio" href="#"><span>INICIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="plantillas" href="#"><span>PLANTILLAS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="calendario" href="#"><span>CALENDARIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="partidos" href="#"><span>PARTIDOS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="clasificacion" href="#"><span>CLASIFICACIÓN</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="noticias" href="#"><span>NOTICIAS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="fan-zone" href="#"><span>FAN-ZONE</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="patrocinio" href="#"><span>PATROCINIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a></div><div class="mt-auto px-margin py-space-md bg-surface-container-low flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-outline">PATROCINADORES OFICIALES</span><p class="font-body-sm text-body-sm text-tertiary">Ayuntamiento de Marbella • Tenencia de Alcaldía San Pedro • Diputación de Málaga</p></div></div><main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-surface"><div class="flex flex-col w-full">
+<div class="w-full bg-surface-container-lowest px-margin pt-space-md pb-space-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-widest flex items-center gap-space-xs">
+<span class="inline-block w-2 h-2 rounded-full bg-primary-container animate-ping"></span>
+        TEMPORADA OFICIAL 2024/25
+      </span>
+<span class="font-label-sm text-label-sm bg-surface-container-high px-space-xs py-0.5 text-on-surface-variant uppercase">
+        JORNADA 18
+      </span>
+</div>
+<div class="flex items-center gap-space-xs overflow-x-auto no-scrollbar py-space-xs -mx-margin px-margin">
+<button class="category-chip shrink-0 px-space-md py-space-xs bg-primary-container text-on-primary-container font-label-md text-label-md uppercase shadow-[2px_2px_0px_0px_#131313] transition-transform active:scale-95" data-category="senior-masc" type="button">
+        Senior Masc A
+      </button>
+<button class="category-chip shrink-0 px-space-md py-space-xs bg-surface-container text-on-surface-variant font-label-md text-label-md uppercase transition-transform active:scale-95 hover:bg-surface-container-high" data-category="senior-fem" type="button">
+        Senior Fem A
+      </button>
+<button class="category-chip shrink-0 px-space-md py-space-xs bg-surface-container text-on-surface-variant font-label-md text-label-md uppercase transition-transform active:scale-95 hover:bg-surface-container-high" data-category="senior-b" type="button">
+        Senior B
+      </button>
+<button class="category-chip shrink-0 px-space-md py-space-xs bg-surface-container text-on-surface-variant font-label-md text-label-md uppercase transition-transform active:scale-95 hover:bg-surface-container-high" data-category="juvenil" type="button">
+        Juvenil Promesas
+      </button>
+</div>
+</div>
+<section class="w-full px-margin pt-space-md flex flex-col gap-space-md">
+<div class="relative w-full bg-surface-container p-space-md shadow-[0_4px_24px_rgba(0,0,0,0.8)] overflow-hidden">
+<div class="absolute -right-12 -top-12 w-48 h-48 bg-primary-container/15 rounded-full blur-3xl pointer-events-none"></div>
+<div class="relative z-10 flex flex-col gap-space-sm">
+<div class="flex items-center justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs bg-primary-container px-space-sm py-1 shadow-[2px_2px_0px_0px_#0e0e0e]">
+<span class="material-symbols-outlined text-[14px] text-on-primary-container animate-pulse">local_fire_department</span>
+<span class="font-label-sm text-label-sm uppercase text-on-primary-container tracking-wider">DERBI PROVINCIAL • SUPERLIGA 2</span>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary uppercase flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">event</span> SÁB 18:30H
+          </span>
+</div>
+<div class="grid grid-cols-5 items-center py-space-sm">
+<div class="col-span-2 flex flex-col items-center text-center gap-space-xs">
+<div class="w-16 h-16 bg-surface-container-low flex items-center justify-center p-2 relative shadow-md">
+<img alt="Escudo San Pedro" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/>
+<span class="absolute -bottom-1.5 bg-primary-container text-on-primary-container font-label-sm text-label-sm px-1 leading-tight">LOCAL</span>
+</div>
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface leading-none mt-1">C.D.V. SAN PEDRO</span>
+<span class="font-label-sm text-label-sm text-primary uppercase">2º Clasificado</span>
+</div>
+<div class="col-span-1 flex flex-col items-center justify-center">
+<span class="font-display-xl-mobile text-display-xl-mobile text-outline-variant italic leading-none">VS</span>
+</div>
+<div class="col-span-2 flex flex-col items-center text-center gap-space-xs">
+<div class="w-16 h-16 bg-surface-container-low flex items-center justify-center p-2 relative shadow-md">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[30px]">shield</span>
+</div>
+<span class="absolute -bottom-1.5 bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm px-1 leading-tight">VISITANTE</span>
+</div>
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface leading-none mt-1">C.V. COSTA DEL SOL</span>
+<span class="font-label-sm text-label-sm text-tertiary uppercase">3º Clasificado</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between text-tertiary">
+<span class="font-label-sm text-label-sm flex items-center gap-1 uppercase">
+<span class="material-symbols-outlined text-[16px] text-primary">stadium</span>
+              PABELLÓN ELENA BENÍTEZ (SAN PEDRO)
+            </span>
+<span class="font-label-sm text-label-sm text-primary uppercase font-bold">85% AFORO</span>
+</div>
+<div class="w-full bg-surface-container-highest h-2 overflow-hidden">
+<div class="bg-primary-container h-full w-[85%]"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-tertiary">
+<span>680 / 800 BUTACAS CONFIRMADAS</span>
+<span class="text-secondary font-bold">¡ÚLTIMOS PASES!</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-sm flex flex-col items-center gap-space-xs">
+<span class="font-label-sm text-label-sm text-tertiary uppercase tracking-widest">EL SILBATO INICIAL SUENA EN</span>
+<div class="grid grid-cols-3 gap-space-sm w-full text-center">
+<div class="bg-surface-container p-space-xs flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface leading-none" id="countdown-days">02</span>
+<span class="font-label-sm text-label-sm text-tertiary uppercase mt-1">Días</span>
+</div>
+<div class="bg-surface-container p-space-xs flex flex-col">
+<span class="font-headline-md text-headline-md text-primary leading-none" id="countdown-hours">14</span>
+<span class="font-label-sm text-label-sm text-tertiary uppercase mt-1">Horas</span>
+</div>
+<div class="bg-surface-container p-space-xs flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface leading-none" id="countdown-mins">42</span>
+<span class="font-label-sm text-label-sm text-tertiary uppercase mt-1">Minutos</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<button class="w-full py-space-sm bg-primary-container text-on-primary-container font-label-lg text-label-lg uppercase tracking-wider shadow-[4px_4px_0px_0px_#68000e] flex items-center justify-center gap-space-xs transition-transform active:translate-x-0.5 active:translate-y-0.5" type="button">
+<span class="material-symbols-outlined text-[20px]">confirmation_number</span>
+            RESERVAR ENTRADA GRATIS
+          </button>
+<a class="w-full py-space-sm bg-surface-container-high text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs hover:bg-surface-bright transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] text-primary">play_circle</span>
+            CANAL DE STREAMING DIRECTO
+          </a>
+</div>
+</div>
+</div>
+</section>
+<section class="w-full px-margin pt-space-lg flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">query_stats</span>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">
+          RADAR TÁCTICO
+        </h2>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary uppercase">PROMEDIO / JORNADA</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs">
+<div class="bg-surface-container p-space-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-tertiary uppercase">Ataque</span>
+<span class="material-symbols-outlined text-primary text-[16px]">sports_volleyball</span>
+</div>
+<span class="font-headline-md text-headline-md text-on-surface leading-none mt-1">88%</span>
+<span class="font-label-sm text-label-sm text-secondary uppercase">Efectividad Zona 4</span>
+</div>
+<div class="bg-surface-container p-space-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-tertiary uppercase">Bloqueos</span>
+<span class="material-symbols-outlined text-primary text-[16px]">front_hand</span>
+</div>
+<span class="font-headline-md text-headline-md text-primary leading-none mt-1">19</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Puntos Muralla</span>
+</div>
+<div class="bg-surface-container p-space-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-tertiary uppercase">Aces</span>
+<span class="material-symbols-outlined text-primary text-[16px]">bolt</span>
+</div>
+<span class="font-headline-md text-headline-md text-on-surface leading-none mt-1">14</span>
+<span class="font-label-sm text-label-sm text-tertiary uppercase">Saques Directos</span>
+</div>
+</div>
+</section>
+<section class="w-full pt-space-lg flex flex-col gap-space-sm">
+<div class="px-margin flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">history</span>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">
+          ÚLTIMOS RESULTADOS
+        </h2>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary uppercase">DESLIZA PARA VER MÁS</span>
+</div>
+<div class="flex items-stretch gap-space-md overflow-x-auto no-scrollbar px-margin py-space-xs">
+<div class="shrink-0 w-[300px] bg-surface-container p-space-md flex flex-col justify-between shadow-lg">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm bg-primary-container text-on-primary-container px-space-xs py-0.5 uppercase tracking-wider font-bold">VICTORIA (3 - 1)</span>
+<span class="font-label-sm text-label-sm text-tertiary">10 MAR • J17</span>
+</div>
+<span class="font-label-md text-label-md text-tertiary uppercase">Superliga 2 Masculina</span>
+<div class="flex items-center justify-between py-space-xs">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm uppercase text-primary">C.D.V. SAN PEDRO</span>
+<span class="font-body-sm text-body-sm text-tertiary">Paterna Voleibol</span>
+</div>
+<span class="font-score-display text-score-display text-on-surface leading-none">3-1</span>
+</div>
+<div class="bg-surface-container-lowest p-space-xs flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-tertiary uppercase">Parciales Oficiales:</span>
+<div class="flex items-center gap-1 font-label-sm text-label-sm">
+<span class="bg-surface-container-high px-1.5 py-0.5 text-on-surface">25-22</span>
+<span class="bg-surface-container-high px-1.5 py-0.5 text-outline">23-25</span>
+<span class="bg-surface-container-high px-1.5 py-0.5 text-on-surface">25-18</span>
+<span class="bg-surface-container-high px-1.5 py-0.5 text-on-surface font-bold text-primary">25-19</span>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs bg-surface-container-low p-space-xs flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">workspace_premium</span>
+<span class="font-label-sm text-label-sm uppercase text-on-surface">MVP: Mario Galán (#10)</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-bold">24 PTS</span>
+</div>
+</div>
+<div class="shrink-0 w-[300px] bg-surface-container p-space-md flex flex-col justify-between shadow-lg">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm bg-primary-container text-on-primary-container px-space-xs py-0.5 uppercase tracking-wider font-bold">VICTORIA (3 - 0)</span>
+<span class="font-label-sm text-label-sm text-tertiary">03 MAR • J16</span>
+</div>
+<span class="font-label-md text-label-md text-tertiary uppercase">Primera Andaluza Fem</span>
+<div class="flex items-center justify-between py-space-xs">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm uppercase text-primary">SAN PEDRO FEM</span>
+<span class="font-body-sm text-body-sm text-tertiary">C.V. Alhaurín</span>
+</div>
+<span class="font-score-display text-score-display text-on-surface leading-none">3-0</span>
+</div>
+<div class="bg-surface-container-lowest p-space-xs flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-tertiary uppercase">Parciales Oficiales:</span>
+<div class="flex items-center gap-1 font-label-sm text-label-sm">
+<span class="bg-surface-container-high px-1.5 py-0.5 text-on-surface">25-16</span>
+<span class="bg-surface-container-high px-1.5 py-0.5 text-on-surface">25-21</span>
+<span class="bg-surface-container-high px-1.5 py-0.5 text-on-surface font-bold text-primary">25-14</span>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs bg-surface-container-low p-space-xs flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">workspace_premium</span>
+<span class="font-label-sm text-label-sm uppercase text-on-surface">MVP: Lucía Ramos (#4)</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-bold">18 PTS</span>
+</div>
+</div>
+<div class="shrink-0 w-[300px] bg-surface-container p-space-md flex flex-col justify-between shadow-lg">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm bg-surface-container-highest text-on-surface-variant px-space-xs py-0.5 uppercase tracking-wider font-bold">AJUSTADO (2 - 3)</span>
+<span class="font-label-sm text-label-sm text-tertiary">24 FEB • J15</span>
+</div>
+<span class="font-label-md text-label-md text-tertiary uppercase">Liga Juvenil Autonómica</span>
+<div class="flex items-center justify-between py-space-xs">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface">C.V. Fuengirola</span>
+<span class="font-body-sm text-body-sm text-primary">SAN PEDRO JUV</span>
+</div>
+<span class="font-score-display text-score-display text-on-surface-variant leading-none">3-2</span>
+</div>
+<div class="bg-surface-container-lowest p-space-xs flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-tertiary uppercase">Tie-Break Final:</span>
+<div class="flex items-center gap-1 font-label-sm text-label-sm">
+<span class="bg-surface-container-high px-1.5 py-0.5 text-outline">21-25</span>
+<span class="bg-surface-container-high px-1.5 py-0.5 text-on-surface">25-23</span>
+<span class="bg-surface-container-high px-1.5 py-0.5 text-outline">19-25</span>
+<span class="bg-surface-container-high px-1.5 py-0.5 text-on-surface">25-17</span>
+<span class="bg-surface-container-high px-1.5 py-0.5 text-error font-bold">15-13</span>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs bg-surface-container-low p-space-xs flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">sports_kabaddi</span>
+<span class="font-label-sm text-label-sm uppercase text-on-surface">ESPÍRITU ROJO SAMPA</span>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary">+1 PUNTO</span>
+</div>
+</div>
+</div>
+</section>
+<section class="w-full px-margin pt-space-lg flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">calendar_month</span>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">
+          AGENDA DE LA CANTERA
+        </h2>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary uppercase">FIN DE SEMANA</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<div class="bg-surface-container p-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 bg-surface-container-highest flex flex-col items-center justify-center shrink-0">
+<span class="font-label-sm text-label-sm text-primary uppercase font-bold leading-none">DOM</span>
+<span class="font-headline-sm text-headline-sm leading-none mt-0.5">17</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-secondary uppercase font-bold truncate">SENIOR FEMENINO A</span>
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate leading-tight">C.D.V. San Pedro vs Marbella Vóley</span>
+<span class="font-body-sm text-body-sm text-tertiary truncate">11:00H • Palacio San Pedro (Pista 2)</span>
+</div>
+</div>
+<button aria-label="Ver detalles" class="shrink-0 p-space-xs text-primary hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">notifications_none</span>
+</button>
+</div>
+<div class="bg-surface-container p-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 bg-surface-container-highest flex flex-col items-center justify-center shrink-0">
+<span class="font-label-sm text-label-sm text-tertiary uppercase font-bold leading-none">DOM</span>
+<span class="font-headline-sm text-headline-sm leading-none mt-0.5">17</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-outline uppercase font-bold truncate">JUVENIL MASCULINO</span>
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate leading-tight">Voleibol Nerja vs C.D.V. San Pedro</span>
+<span class="font-body-sm text-body-sm text-tertiary truncate">13:00H • Pabellón Nerja Centro</span>
+</div>
+</div>
+<button aria-label="Ver detalles" class="shrink-0 p-space-xs text-primary hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">notifications_none</span>
+</button>
+</div>
+<div class="bg-surface-container p-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 bg-surface-container-highest flex flex-col items-center justify-center shrink-0">
+<span class="font-label-sm text-label-sm text-tertiary uppercase font-bold leading-none">DOM</span>
+<span class="font-headline-sm text-headline-sm leading-none mt-0.5">17</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-outline uppercase font-bold truncate">SENIOR MASCULINO B</span>
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate leading-tight">C.D.V. San Pedro B vs Mijas Voley</span>
+<span class="font-body-sm text-body-sm text-tertiary truncate">17:00H • Palacio San Pedro (Pista 1)</span>
+</div>
+</div>
+<button aria-label="Ver detalles" class="shrink-0 p-space-xs text-primary hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">notifications_none</span>
+</button>
+</div>
+</div>
+</section>
+<div class="w-full px-margin pt-space-lg">
+<div class="bg-surface-container-low p-space-md flex items-center gap-space-md">
+<div class="w-12 h-12 bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[26px]">groups</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface leading-tight">¿ERES SOCIO O ABONADO?</span>
+<span class="font-body-sm text-body-sm text-tertiary leading-snug">Presenta tu carnet digital en el acceso preferente para evitar colas en partidos clave.</span>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function initMatchdayInteractive() {
+    const chips = document.querySelectorAll('.category-chip');
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        chips.forEach(c => {
+          c.classList.remove('bg-primary-container', 'text-on-primary-container', 'shadow-[2px_2px_0px_0px_#131313]');
+          c.classList.add('bg-surface-container', 'text-on-surface-variant');
+        });
+        chip.classList.add('bg-primary-container', 'text-on-primary-container', 'shadow-[2px_2px_0px_0px_#131313]');
+        chip.classList.remove('bg-surface-container', 'text-on-surface-variant');
+      });
+    });
+
+    let mins = 42;
+    let hours = 14;
+    let days = 2;
+
+    const elMins = document.getElementById('countdown-mins');
+    const elHours = document.getElementById('countdown-hours');
+    const elDays = document.getElementById('countdown-days');
+
+    setInterval(() => {
+      if (mins > 0) {
+        mins--;
+      } else {
+        mins = 59;
+        if (hours > 0) {
+          hours--;
+        } else {
+          hours = 23;
+          if (days > 0) days--;
+        }
+      }
+      if (elMins) elMins.textContent = mins < 10 ? '0' + mins : mins;
+      if (elHours) elHours.textContent = hours < 10 ? '0' + hours : hours;
+      if (elDays) elDays.textContent = days < 10 ? '0' + days : days;
+    }, 60000);
+  })();
+</script><footer class="w-full px-margin py-space-lg bg-surface-container-lowest mt-space-xl flex flex-col gap-space-md"><div class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">PATROCINADORES INSTITUCIONALES</span><div class="flex flex-wrap items-center gap-space-sm text-on-surface-variant font-label-md text-label-md uppercase"><span class="bg-surface-container px-space-sm py-space-xs">Ayuntamiento de Marbella</span><span class="bg-surface-container px-space-sm py-space-xs">Tenencia San Pedro</span><span class="bg-surface-container px-space-sm py-space-xs">Diputación de Málaga</span></div></div><div class="flex flex-wrap gap-space-md font-body-sm text-body-sm text-tertiary"><a class="hover:text-primary" href="#">Aviso Legal</a><a class="hover:text-primary" href="#">Privacidad</a><a class="hover:text-primary" href="#">Contacto</a></div><div class="font-label-sm text-label-sm text-outline uppercase tracking-wider">© C.D. VOLEIBOL SAN PEDRO • TODOS LOS DERECHOS RESERVADOS</div></footer></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/95 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.6)]" data-active-classes="text-primary-container font-bold"><div class="h-16 px-space-xs flex items-center justify-around"><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="inicio" href="#"><span class="material-symbols-outlined text-[22px]">sports_volleyball</span><span class="font-label-sm text-label-sm mt-0.5">Inicio</span></a><a aria-current="page" class="flex flex-col items-center justify-center w-14 h-14 transition-colors text-primary-container font-bold" data-path="partidos" href="#"><span class="material-symbols-outlined text-[22px]">scoreboard</span><span class="font-label-sm text-label-sm mt-0.5">Partidos</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="calendario" href="#"><span class="material-symbols-outlined text-[22px]">calendar_today</span><span class="font-label-sm text-label-sm mt-0.5">Fechas</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="clasificacion" href="#"><span class="material-symbols-outlined text-[22px]">leaderboard</span><span class="font-label-sm text-label-sm mt-0.5">Tabla</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="fan-zone" href="#"><span class="material-symbols-outlined text-[22px]">stadium</span><span class="font-label-sm text-label-sm mt-0.5">FanZone</span></a></div></nav></body></html>

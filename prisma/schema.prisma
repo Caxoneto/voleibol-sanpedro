@@ -1,0 +1,171 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Category {
+  id        String      @id @default(uuid())
+  name      String
+  slug      String      @unique
+  order     Int         @default(0)
+  teams     Team[]
+  standings Standings[]
+  articles  Article[]
+}
+
+model Team {
+  id          String    @id @default(uuid())
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  name        String
+  division    String
+  season      String
+  players     Player[]
+  staff       Staff[]
+  matches     Match[]
+}
+
+enum Position {
+  SETTER
+  OPPOSITE
+  OUTSIDE_HITTER
+  MIDDLE_BLOCKER
+  LIBERO
+}
+
+model Player {
+  id           String     @id @default(uuid())
+  teamId       String
+  team         Team       @relation(fields: [teamId], references: [id])
+  number       Int
+  firstName    String
+  lastName     String
+  position     Position
+  birthYear    Int
+  heightCm     Int
+  photoUrl     String
+  isCaptain    Boolean    @default(false)
+  isHomegrown  Boolean    @default(false)
+  fanVotes     FanVote[]
+}
+
+enum StaffRole {
+  HEAD_COACH
+  ASSISTANT
+  PHYSIO
+  TRAINER
+}
+
+model Staff {
+  id        String    @id @default(uuid())
+  teamId    String
+  team      Team      @relation(fields: [teamId], references: [id])
+  name      String
+  role      StaffRole
+  photoUrl  String
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+  CANCELLED
+}
+
+model Match {
+  id             String          @id @default(uuid())
+  teamId         String
+  team           Team            @relation(fields: [teamId], references: [id])
+  round          Int
+  homeTeamName   String
+  awayTeamName   String
+  isClubHome     Boolean         @default(true)
+  venueName      String          @default("Pabellón Polideportivo Sergio Scariolo")
+  matchDate      DateTime
+  status         MatchStatus     @default(SCHEDULED)
+  setScores      String          // JSON: [{"home": 25, "away": 22}, ...]
+  favbMatchUrl   String?
+  fanVotes       FanVote[]
+  accreditations PressAccreditation[]
+}
+
+model Standings {
+  id            String    @id @default(uuid())
+  categoryId    String
+  category      Category  @relation(fields: [categoryId], references: [id])
+  teamName      String
+  isCurrentClub Boolean   @default(false)
+  played        Int       @default(0)
+  won           Int       @default(0)
+  lost          Int       @default(0)
+  setsFor       Int       @default(0)
+  setsAgainst   Int       @default(0)
+  points        Int       @default(0)
+}
+
+model Article {
+  id              String    @id @default(uuid())
+  title           String
+  slug            String    @unique
+  excerpt         String
+  contentMarkdown String
+  categoryId      String
+  category        Category  @relation(fields: [categoryId], references: [id])
+  coverImageUrl   String
+  publishedAt     DateTime  @default(now())
+  isFeatured      Boolean   @default(false)
+}
+
+model SponsorTier {
+  id          String   @id @default(uuid())
+  name        String
+  priceAnnual String
+  description String
+  features    String   // JSON array
+  isFeatured  Boolean  @default(false)
+}
+
+model SponsorInquiry {
+  id                String   @id @default(uuid())
+  companyName       String
+  contactPerson     String
+  phone             String
+  email             String
+  packageInterested String
+  message           String
+  createdAt         DateTime @default(now())
+}
+
+model FanVote {
+  id        String   @id @default(uuid())
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id])
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id])
+  ipHash    String
+  createdAt DateTime @default(now())
+}
+
+model PressAccreditation {
+  id          String   @id @default(uuid())
+  fullName    String
+  mediaOutlet String
+  role        String
+  email       String
+  phone       String
+  matchId     String
+  match       Match    @relation(fields: [matchId], references: [id])
+  notes       String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}

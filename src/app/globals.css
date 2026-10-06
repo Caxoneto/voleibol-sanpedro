@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #131313;
+    color: #e5e2e1;
+  }
+  
+  body {
+    overflow-x: hidden;
+  }
+
+  main > :first-child { margin-top: 0 !important; }
+  main > :last-child { margin-bottom: 0 !important; }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #131313;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d90429;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee-smooth {
+  display: inline-flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+.animate-marquee-smooth:hover {
+  animation-play-state: paused;
+}
+
+@keyframes heroZoom {
+  0%, 100% { transform: scale(1.03) translateY(0); }
+  50% { transform: scale(1.07) translateY(-4px); }
+}
+.animate-hero-bg {
+  animation: heroZoom 18s ease-in-out infinite;
+}
+
+@keyframes pulseAura {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(1.15); }
+}
+.animate-pulse-aura {
+  animation: pulseAura 8s ease-in-out infinite;
+}
+
+@keyframes shimmerSweep {
+  0% { transform: translateX(-150%) skewX(-25deg); }
+  100% { transform: translateX(250%) skewX(-25deg); }
+}
+.shimmer-effect::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), rgba(217, 4, 41, 0.15), transparent);
+  animation: shimmerSweep 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0%;
+  height: 2px;
+  background-color: #d90429;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-link:hover::after, .nav-link.active-link::after {
+  width: 100%;
+}
+
+/* Sharp athletic button hover effect */
+.btn-athletic {
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-athletic:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px 0px #0e0e0e;
+}
+.btn-athletic-crimson:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px 0px #d90429;
+}

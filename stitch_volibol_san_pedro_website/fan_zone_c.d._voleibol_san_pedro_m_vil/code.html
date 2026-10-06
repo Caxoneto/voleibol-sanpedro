@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Space+Grotesk:wght@400;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#131313;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-tertiary-container": "#e8efff", "error": "#ffb4ab", "background": "#131313", "tertiary": "#bbc7dd", "surface-container-low": "#1c1b1b", "on-secondary-fixed": "#410007", "secondary": "#ffb3b1", "tertiary-fixed-dim": "#bbc7dd", "primary-container": "#d90429", "surface-bright": "#3a3939", "surface-dim": "#131313", "surface": "#131313", "on-secondary": "#680011", "outline-variant": "#5d3f3d", "secondary-container": "#d6022e", "on-primary-fixed": "#410005", "on-surface": "#e5e2e1", "on-error": "#690005", "surface-container": "#201f1f", "tertiary-container": "#616d81", "outline": "#ae8885", "on-tertiary-fixed": "#101c2c", "surface-container-high": "#2a2a2a", "primary-fixed": "#ffdad7", "on-secondary-fixed-variant": "#92001c", "inverse-primary": "#bf0022", "surface-variant": "#353534", "on-secondary-container": "#ffe7e5", "surface-container-lowest": "#0e0e0e", "secondary-fixed": "#ffdad8", "on-tertiary-fixed-variant": "#3c475a", "on-tertiary": "#253142", "surface-tint": "#ffb3af", "on-primary-fixed-variant": "#930018", "inverse-surface": "#e5e2e1", "error-container": "#93000a", "on-primary-container": "#ffeae8", "surface-container-highest": "#353534", "on-error-container": "#ffdad6", "primary-fixed-dim": "#ffb3af", "tertiary-fixed": "#d7e3fa", "on-background": "#e5e2e1", "inverse-on-surface": "#313030", "primary": "#ffb3af", "on-surface-variant": "#e7bcba", "on-primary": "#68000e", "secondary-fixed-dim": "#ffb3b1" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-sm": "0.5rem", "gutter": "1.25rem", "space-lg": "1.5rem", "margin": "1rem", "space-xl": "2.5rem", "margin-desktop": "3rem", "space-2xl": "4rem", "gutter-desktop": "2rem", "space-xs": "0.25rem", "space-md": "1rem" }, fontFamily: { "headline-md": ["Anton"], "display-xl": ["Anton"], "display-xl-mobile": ["Anton"], "body-lg": ["Space Grotesk"], "body-sm": ["Space Grotesk"], "label-lg": ["Space Grotesk"], "label-sm": ["Space Grotesk"], "body-md": ["Space Grotesk"], "headline-lg": ["Anton"], "headline-sm": ["Space Grotesk"], "headline-lg-mobile": ["Anton"], "score-display": ["Anton"], "label-md": ["Space Grotesk"] }, fontSize: { "headline-md": ["28px", { "lineHeight": "32px", "letterSpacing": "0.04em", "fontWeight": "400" }], "display-xl": ["72px", { "lineHeight": "76px", "letterSpacing": "0.02em", "fontWeight": "400" }], "display-xl-mobile": ["44px", { "lineHeight": "48px", "letterSpacing": "0.02em", "fontWeight": "400" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.08em", "fontWeight": "700" }], "label-sm": ["10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" }], "body-md": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "headline-lg": ["40px", { "lineHeight": "44px", "letterSpacing": "0.03em", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "26px", "letterSpacing": "0.01em", "fontWeight": "700" }], "headline-lg-mobile": ["28px", { "lineHeight": "32px", "letterSpacing": "0.03em", "fontWeight": "400" }], "score-display": ["56px", { "lineHeight": "56px", "letterSpacing": "0.01em", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.5)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0 flex-1"><button aria-label="Abrir menú de navegación" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary transition-colors shrink-0" onclick="document.getElementById('mobile-drawer').classList.toggle('hidden')" type="button"><span class="material-symbols-outlined text-[24px]">menu</span></button><img alt="LOGO.jpg" class="h-8 w-auto object-contain shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><div class="flex flex-col min-w-0 flex-1"><span class="font-headline-sm text-headline-sm uppercase text-on-surface truncate tracking-wider leading-none">C.D. VOLEIBOL SAN PEDRO</span><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary truncate mt-0.5">Fan Zone</span></div></div><div class="flex items-center gap-space-xs shrink-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><div class="hidden fixed inset-0 z-50 bg-surface/95 backdrop-blur-2xl flex flex-col pt-safe pb-safe overflow-y-auto" id="mobile-drawer"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="LOGO.jpg" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><span class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wider">C.D. VOLEIBOL SAN PEDRO</span></div><button aria-label="Cerrar menú" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary" onclick="document.getElementById('mobile-drawer').classList.add('hidden')" type="button"><span class="material-symbols-outlined text-[28px]">close</span></button></div><div class="px-margin py-space-md flex flex-col gap-space-xs"><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="inicio" href="#"><span>INICIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="plantillas" href="#"><span>PLANTILLAS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="calendario" href="#"><span>CALENDARIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="partidos" href="#"><span>PARTIDOS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="clasificacion" href="#"><span>CLASIFICACIÓN</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="noticias" href="#"><span>NOTICIAS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="fan-zone" href="#"><span>FAN-ZONE</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="patrocinio" href="#"><span>PATROCINIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a></div><div class="mt-auto px-margin py-space-md bg-surface-container-low flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-outline">PATROCINADORES OFICIALES</span><p class="font-body-sm text-body-sm text-tertiary">Ayuntamiento de Marbella • Tenencia de Alcaldía San Pedro • Diputación de Málaga</p></div></div><main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-surface"><div class="flex flex-col w-full">
+<div class="px-margin pt-space-md pb-space-sm flex flex-col gap-space-sm relative overflow-hidden bg-surface-container-low">
+<div class="absolute -top-10 -right-8 w-40 h-40 rounded-full bg-primary-container/15 blur-3xl pointer-events-none"></div>
+<div class="flex items-center gap-space-xs">
+<span class="inline-flex items-center justify-center w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">GRADA ROJINEGRA • EDICIÓN 2024/25</span>
+</div>
+<div class="flex flex-col">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile uppercase text-on-surface tracking-wider leading-none">
+        FAN-ZONE ROJINEGRA
+      </h2>
+<p class="font-label-md text-label-md text-primary tracking-widest uppercase mt-0.5">
+        EL CORAZÓN DEL ELENA BENÍTEZ
+      </p>
+</div>
+<div class="grid grid-cols-2 gap-space-sm mt-space-xs">
+<div class="bg-surface-container p-space-sm flex flex-col relative overflow-hidden shadow-sm">
+<div class="absolute right-1 bottom-0 opacity-10 text-on-surface pointer-events-none">
+<span class="material-symbols-outlined text-[42px]">loyalty</span>
+</div>
+<span class="font-label-sm text-label-sm uppercase text-outline">Abonados Activos</span>
+<span class="font-headline-md text-headline-md text-on-surface mt-0.5">1.240</span>
+<span class="font-body-sm text-body-sm text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +18% este mes
+        </span>
+</div>
+<div class="bg-surface-container p-space-sm flex flex-col relative overflow-hidden shadow-sm">
+<div class="absolute right-1 bottom-0 opacity-10 text-on-surface pointer-events-none">
+<span class="material-symbols-outlined text-[42px]">volume_up</span>
+</div>
+<span class="font-label-sm text-label-sm uppercase text-outline">Récord Grada</span>
+<span class="font-headline-md text-headline-md text-primary mt-0.5">104 <span class="font-label-md text-label-md text-outline">dB</span></span>
+<span class="font-body-sm text-body-sm text-tertiary">vs Unicaja Almería</span>
+</div>
+</div>
+</div>
+<section class="px-margin mt-space-lg flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">military_tech</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider">MVP DE LA JORNADA</h3>
+</div>
+<span class="bg-primary-container/20 text-primary font-label-sm text-label-sm px-2 py-0.5 rounded uppercase">Votación abierta</span>
+</div>
+<p class="font-body-sm text-body-sm text-tertiary">
+      Elige al jugador determinante de la victoria 3-1 en el Pabellón Elena Benítez.
+    </p>
+<div class="flex flex-col gap-space-sm mt-space-xs" id="mvp-voting-group">
+<div class="bg-surface-container p-space-sm flex flex-col gap-space-sm shadow-md transition-all relative" id="card-mvp-1">
+<div class="flex items-center gap-space-md">
+<div class="w-16 h-20 shrink-0 bg-surface-container-high overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Dynamic portrait photo of volleyball player Miguel Sanchez wearing the black and red jersey of CD Voleibol San Pedro, intense athletic gaze, sweat droplets, indoor arena rim lighting in crimson" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWL0yy1GrH-NBeseDZcBy-sRY52Qf1yG5tlJkvC2v0pxo3vpq23HfD1ZcOuw6Bsyv5DHMkB7t4yOskmwkoQ20nZkp1IlPhoWR06UtdOwY_03m0s86XZ4eGp8BtO9pYo6Y0WowiWGucRJgRaX0dhNkbgTVcYrmCfjevjxMrqLZAHRbXQ9PEBRvtHoanq5L7iGuUpMR3srylWaTKMaZ1J5bw_5U_J8p7scp3DbYaznPvarDfxnWEm45b"/>
+<span class="absolute top-0 left-0 bg-primary-container text-on-primary-container font-label-sm text-label-sm px-1.5 py-0.5 font-bold">#7</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface uppercase truncate">Miguel Sánchez</span>
+<span class="font-label-sm text-label-sm uppercase text-tertiary tracking-wider">Receptor / Atacante</span>
+<div class="flex items-center gap-space-sm mt-1 text-on-surface-variant font-label-md text-label-md">
+<span class="bg-surface-container-high px-1.5 py-0.5">24 Pts</span>
+<span class="bg-surface-container-high px-1.5 py-0.5">5 Aces</span>
+<span class="bg-surface-container-high px-1.5 py-0.5">68% Efic.</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div class="w-32 bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full transition-all duration-500" id="bar-mvp-1" style="width: 58%;"></div>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary" id="pct-mvp-1">58% (612 votos)</span>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container font-label-lg text-label-lg uppercase py-space-sm transition-transform active:scale-95 flex items-center justify-center gap-space-xs shadow-md" onclick="voteMvp(1, 'Miguel Sánchez')" type="button">
+<span class="material-symbols-outlined text-[18px]">how_to_vote</span>
+<span>Votar a Miguel Sánchez</span>
+</button>
+</div>
+<div class="bg-surface-container p-space-sm flex flex-col gap-space-sm shadow-md transition-all relative" id="card-mvp-2">
+<div class="flex items-center gap-space-md">
+<div class="w-16 h-20 shrink-0 bg-surface-container-high overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Athletic action close-up of volleyball player Javi Ortega setting a ball with concentrated expression wearing dark red San Pedro kit under arena stadium lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYfbjOU7TSO-EUAG-QVmrI8P9FfcH3q_f_0FuvrVVi2dgY8f1ObDw-3cFErl-KelDDzzb5BNYmdJbuUkZ2VfucgvpfktS40iAszEq0BC5xSAGfvge7OHSh-frrzCEMJtKzR1gMna9ogzfI-V8cIbExBMH4JQdzCCY3w_fmh_d2f-o0DbeUMSL13FHyUWZNTvhGhkfz1Ev13OAJWUP4AMG4PfmUU7YiKKRV3hWXuVWSK6IxZOZXmj6u"/>
+<span class="absolute top-0 left-0 bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-1.5 py-0.5 font-bold">#10</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface uppercase truncate">Javi Ortega</span>
+<span class="font-label-sm text-label-sm uppercase text-tertiary tracking-wider">Colocador Capitán</span>
+<div class="flex items-center gap-space-sm mt-1 text-on-surface-variant font-label-md text-label-md">
+<span class="bg-surface-container-high px-1.5 py-0.5">42 Asist.</span>
+<span class="bg-surface-container-high px-1.5 py-0.5">3 Bloqueos</span>
+<span class="bg-surface-container-high px-1.5 py-0.5">9 Def.</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div class="w-32 bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full transition-all duration-500" id="bar-mvp-2" style="width: 32%;"></div>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary" id="pct-mvp-2">32% (338 votos)</span>
+</div>
+<button class="w-full bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-lg text-label-lg uppercase py-space-sm transition-transform active:scale-95 flex items-center justify-center gap-space-xs" onclick="voteMvp(2, 'Javi Ortega')" type="button">
+<span class="material-symbols-outlined text-[18px]">how_to_vote</span>
+<span>Votar a Javi Ortega</span>
+</button>
+</div>
+<div class="bg-surface-container p-space-sm flex flex-col gap-space-sm shadow-md transition-all relative" id="card-mvp-3">
+<div class="flex items-center gap-space-md">
+<div class="w-16 h-20 shrink-0 bg-surface-container-high overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Dynamic portrait of young Spanish volleyball middle blocker Alex Bravo diving for a dig wearing red jersey with white numbers on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgLgPLxLWKuEqYse45ReIqZpws1inWyLKfs9AvvG10pM5IIrWF3GanqKOft-QvNEgTup1h5w3Rqr03MN7fh-n-zreSlb-Og-wq5OmuExQFztYAcc0No5ufUAg6kgDyDsYGk2bsYZup9AskM_HY4l7ccG1HEIUh34qYtj2XOZRzzuUw2rUWTCWNGvdiE3lq5MSUWD-mBELxW81OlFJdp2bUsHd75F_i6Hg-K1nk4V96O5WPzEbHmluG"/>
+<span class="absolute top-0 left-0 bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-1.5 py-0.5 font-bold">#4</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface uppercase truncate">Álex Bravo</span>
+<span class="font-label-sm text-label-sm uppercase text-tertiary tracking-wider">Central</span>
+<div class="flex items-center gap-space-sm mt-1 text-on-surface-variant font-label-md text-label-md">
+<span class="bg-surface-container-high px-1.5 py-0.5">7 Bloqueos</span>
+<span class="bg-surface-container-high px-1.5 py-0.5">11 Pts</span>
+<span class="bg-surface-container-high px-1.5 py-0.5">100% Serv.</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div class="w-32 bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full transition-all duration-500" id="bar-mvp-3" style="width: 10%;"></div>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary" id="pct-mvp-3">10% (105 votos)</span>
+</div>
+<button class="w-full bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-lg text-label-lg uppercase py-space-sm transition-transform active:scale-95 flex items-center justify-center gap-space-xs" onclick="voteMvp(3, 'Álex Bravo')" type="button">
+<span class="material-symbols-outlined text-[18px]">how_to_vote</span>
+<span>Votar a Álex Bravo</span>
+</button>
+</div>
+</div>
+<div class="hidden bg-secondary-container text-on-secondary-container px-space-md py-space-sm mt-space-xs flex items-center justify-between shadow-lg" id="vote-toast">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+<span class="font-label-md text-label-md" id="vote-toast-text">¡Voto registrado con éxito!</span>
+</div>
+<button class="w-6 h-6 flex items-center justify-center" onclick="document.getElementById('vote-toast').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</section>
+<section class="px-margin mt-space-xl flex flex-col gap-space-sm">
+<div class="bg-gradient-to-br from-surface-container-high to-surface-container p-space-md relative overflow-hidden shadow-xl">
+<div class="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-primary-container/20 blur-2xl pointer-events-none"></div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[24px]">badge</span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">CARNET DIGITAL OFICIAL</span>
+</div>
+<span class="font-label-sm text-label-sm bg-primary-container text-on-primary-container px-2 py-0.5 font-bold">2024/2025</span>
+</div>
+<div class="mt-space-md flex flex-col">
+<span class="font-headline-lg-mobile text-headline-lg-mobile uppercase text-on-surface leading-tight">
+          HAZTE SOCIO ROJINEGRO
+        </span>
+<p class="font-body-md text-body-md text-tertiary mt-1">
+          Acceso ilimitado a todos los partidos de Primera Nacional en el Elena Benítez, asiento reservado y 15% de descuento en la tienda oficial.
+        </p>
+</div>
+<div class="grid grid-cols-2 gap-space-xs mt-space-md text-on-surface font-label-md text-label-md">
+<div class="flex items-center gap-space-xs bg-surface-container-lowest/60 p-2">
+<span class="material-symbols-outlined text-primary text-[16px]">check</span>
+<span>Acceso temporada</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container-lowest/60 p-2">
+<span class="material-symbols-outlined text-primary text-[16px]">check</span>
+<span>Carnet en Wallet</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container-lowest/60 p-2">
+<span class="material-symbols-outlined text-primary text-[16px]">check</span>
+<span>Voto Asamblea Club</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container-lowest/60 p-2">
+<span class="material-symbols-outlined text-primary text-[16px]">check</span>
+<span>Sorteo camisetas</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm flex items-center justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase text-outline">Cuota Anual</span>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">45€</span>
+<span class="font-label-sm text-label-sm text-tertiary">/ Año</span>
+</div>
+</div>
+<button class="bg-primary-container text-on-primary-container font-label-lg text-label-lg uppercase px-space-md py-3 shadow-lg hover:bg-secondary-container transition-transform active:scale-95 flex items-center gap-2" type="button">
+<span class="material-symbols-outlined text-[18px]">credit_card</span>
+<span>Hazte Socio por 45€ / Año</span>
+</button>
+</div>
+</div>
+</section>
+<section class="px-margin mt-space-xl flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">music_note</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider">CÁNTICOS DE LA GRADA</h3>
+</div>
+<span class="font-label-sm text-label-sm uppercase text-tertiary">Audio &amp; Letras</span>
+</div>
+<div class="bg-surface-container p-space-md flex flex-col gap-space-md shadow-md">
+<div class="flex items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm min-w-0">
+<button class="w-12 h-12 bg-primary-container text-on-primary-container flex items-center justify-center shrink-0 shadow-md hover:bg-secondary-container transition-transform active:scale-95" id="btn-audio-play" onclick="toggleHymnAudio()" type="button">
+<span class="material-symbols-outlined text-[26px]" id="icon-audio-play">play_arrow</span>
+</button>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-on-surface uppercase truncate">En la Red de la Costa</span>
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-wider">Himno Oficial C.D.V. San Pedro</span>
+</div>
+</div>
+<a class="w-10 h-10 bg-surface-container-high text-on-surface flex items-center justify-center shrink-0 hover:text-primary transition-colors" download="Himno_Oficial_CDV_San_Pedro.mp3" href="#" title="Descargar MP3">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</a>
+</div>
+<div class="w-full bg-surface-container-lowest p-space-sm flex flex-col gap-1">
+<div class="flex items-center justify-between text-outline font-label-sm text-label-sm">
+<span id="audio-current-time">0:00</span>
+<span>3:14</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden cursor-pointer" onclick="seekAudioBar(event)">
+<div class="bg-primary-container h-full w-0 transition-all duration-200" id="audio-progress-bar"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between cursor-pointer" onclick="document.getElementById('lyrics-box').classList.toggle('hidden')">
+<span class="font-label-md text-label-md uppercase text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">lyrics</span> Letra del Himno y Cánticos
+          </span>
+<span class="material-symbols-outlined text-outline text-[18px]">expand_more</span>
+</div>
+<div class="pt-space-xs flex flex-col gap-space-sm font-body-sm text-body-sm text-tertiary" id="lyrics-box">
+<div class="bg-surface-container p-space-sm">
+<span class="font-label-sm text-label-sm uppercase text-primary block mb-1">Estribillo Oficial</span>
+<p class="italic text-on-surface">
+              "¡Sube el balón hasta el cielo de Marbella!<br/>
+              ¡Fuerte en la red, rugiendo la marea!<br/>
+              San Pedro avanza, con garra y con pasión,<br/>
+              ¡Rojinegro late nuestro corazón!"
+            </p>
+</div>
+<div class="bg-surface-container p-space-sm">
+<span class="font-label-sm text-label-sm uppercase text-secondary block mb-1">Cántico de Remate (Grada Joven)</span>
+<p class="italic text-on-surface">
+              "¡Bota el Elena Benítez, no pares de animar!<br/>
+              ¡Pasa, coloca y remata... el punto va a caer ya!"
+            </p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="px-margin mt-space-xl flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">photo_camera</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider">MURO SOCIAL &amp; AFICIÓN</h3>
+</div>
+<span class="font-label-sm text-label-sm text-outline">@CDV_SanPedro</span>
+</div>
+<div class="bg-surface-container p-space-sm flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="material-symbols-outlined text-primary text-[22px]">videocam</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md uppercase text-on-surface">¿Estás en el pabellón?</span>
+<span class="font-body-sm text-body-sm text-tertiary truncate">Sube tu foto y sal en el descanso</span>
+</div>
+</div>
+<button class="bg-primary text-on-primary font-label-sm text-label-sm uppercase px-3 py-2 shrink-0 font-bold flex items-center gap-1 active:scale-95 shadow" onclick="document.getElementById('photo-modal').classList.remove('hidden')" type="button">
+<span class="material-symbols-outlined text-[16px]">upload</span>
+<span>Enviar Foto</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-space-sm mt-space-xs">
+<div class="group relative bg-surface-container overflow-hidden shadow-sm aspect-square">
+<img class="w-full h-full object-cover" data-alt="Passionate volleyball fans inside Pabellon Elena Benitez cheering in the bleachers with red and black flags and scarves, vibrant sports atmosphere" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtdMUvpgICgKIdYNBNHuQLG7ue3ps7lFmoOCo0YjK_WnCDrJMIK2LHEtcUQ6fZ4ngmFaqUEJE-1mZaK4ZoOTsOP853CnqAJ083R8F3fK6IB7opXiwCH8HK-qBcfZFfc7JzHLT2lwztLOW8PD6lTGNIDbvR110LYwdFmuRhn26GjZUPzhY0avIApOPDtQyTS9GPBeSCYXONtaiLq57do6K7Xg1iqP4YyP3WxDJtHLfmvOQUGUfkgETT"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent flex flex-col justify-end p-2">
+<span class="font-label-sm text-label-sm text-on-surface font-bold">@carlos_sp_89</span>
+<span class="font-body-sm text-body-sm text-secondary text-[11px] truncate">¡Qué ambientazo hoy! 🔥🏐</span>
+</div>
+</div>
+<div class="group relative bg-surface-container overflow-hidden shadow-sm aspect-square">
+<img class="w-full h-full object-cover" data-alt="Youth team supporters CD Voleibol San Pedro painted faces waving hands celebrating set point victory in indoor gym court" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfrkBFPZl71_yGp4IyCHmdoEm2vzpPQioxxvDYo8kjmp7OWPes7mirTtYJdXvV32V26Z6sAzPEQhJFYvF38Yl-v0tOeZ_OCQDflPEgObi8MkEZeBv_JnnWx0vFTHZHfBH9uqlnwyCXfeRqdW1w8GnpdcTRNfmV97v6yiDpK1syjpmSHcJyYmU9ddZceQlbIAotcHkWuyUR37WtylfyV65MXy1BjaaO7sWGoA4PtyaLjPimm7AKqdid"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent flex flex-col justify-end p-2">
+<span class="font-label-sm text-label-sm text-on-surface font-bold">@laura_voley_sp</span>
+<span class="font-body-sm text-body-sm text-secondary text-[11px] truncate">¡Hasta el tie-break! 🔴⚫</span>
+</div>
+</div>
+<div class="group relative bg-surface-container overflow-hidden shadow-sm aspect-square">
+<img class="w-full h-full object-cover" data-alt="Supporters club CDV San Pedro banner hanging on the sports arena barrier with fans clapping in rhythmic unison in background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUOMaNHmGLxF0SAAqG42UGbWaRN4X1d0KFulp36piIc04kErEWRbM5Pa1H0EYvlwibpaU5V-LuGA9EPk8YlueDJ8AQ5eLNzuqBGSgPOBRQZmKtBSjgaE6JXUAHfN-lukVppMIjPry8UNJYCEJa73xhBd9fJIkZTRa90aNYUmIdfryQoxyF7cYf23v4Dxjm5YFlwQyi6r3TwoFcbJ6w-vfncErjD37Jvk4ZdPiy46R_Eww4QEmtUsYS"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent flex flex-col justify-end p-2">
+<span class="font-label-sm text-label-sm text-on-surface font-bold">@grada_rojinegra</span>
+<span class="font-body-sm text-body-sm text-secondary text-[11px] truncate">Siempre a vuestro lado 🛡️</span>
+</div>
+</div>
+<div class="group relative bg-surface-container overflow-hidden shadow-sm aspect-square">
+<img class="w-full h-full object-cover" data-alt="High angle shot of the volleyball court Elena Benitez full stands during match intermission with scoreboard showing team logos" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5YFakxeDxNY1Y0kbCl_JqfuMdOhe0xGenGZSXQ14SwotUL0YEWMoqFHtsl1C3ezI_n_O-OnlSl9MOZUvZsE-drjyIkHVkeiauJYQIpAtFt7QPHR4DyRYQrYY2Ms4i7rb7jRnFj7ubuBNjAZE5QgcZinLHJe6mvoynqREHiA5nYl7Yhk2nWj2EXxwh3xVbtAl-SO-4VsXCzf55PMvXsfyTZ2l1Kx-5OEjHEgbZpMrQg4EmvBfC6wCU"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent flex flex-col justify-end p-2">
+<span class="font-label-sm text-label-sm text-on-surface font-bold">@marbella_deportes</span>
+<span class="font-body-sm text-body-sm text-secondary text-[11px] truncate">Lleno absoluto en San Pedro</span>
+</div>
+</div>
+</div>
+</section>
+<section class="px-margin mt-space-xl mb-space-lg flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">file_download</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider">ZONA DE DESCARGAS</h3>
+</div>
+<span class="font-label-sm text-label-sm uppercase text-secondary">Material Gratuito</span>
+</div>
+<div class="flex flex-col gap-space-sm">
+<div class="bg-surface-container p-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-12 h-14 bg-surface-container-high shrink-0 overflow-hidden flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[28px]">wallpaper</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-on-surface uppercase truncate">Fondos Pantalla 4K</span>
+<span class="font-body-sm text-body-sm text-tertiary">3 fondos oficiales para smartphone</span>
+</div>
+</div>
+<button class="bg-surface-container-high hover:bg-surface-bright text-on-surface p-space-sm shrink-0 flex items-center justify-center transition-colors" onclick="triggerDownload('Fondos 4K Móvil')" type="button">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</button>
+</div>
+<div class="bg-surface-container p-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-12 h-14 bg-surface-container-high shrink-0 overflow-hidden flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[28px]">sports</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-on-surface uppercase truncate">Póster Oficial 24/25</span>
+<span class="font-body-sm text-body-sm text-tertiary">Foto de plantilla en alta resolución (PDF)</span>
+</div>
+</div>
+<button class="bg-surface-container-high hover:bg-surface-bright text-on-surface p-space-sm shrink-0 flex items-center justify-center transition-colors" onclick="triggerDownload('Póster Plantilla')" type="button">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</button>
+</div>
+<div class="bg-surface-container p-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-12 h-14 bg-surface-container-high shrink-0 overflow-hidden flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[28px]">sentiment_very_satisfied</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-on-surface uppercase truncate">Pack Stickers WhatsApp</span>
+<span class="font-body-sm text-body-sm text-tertiary">16 stickers con cánticos, caras y jugadas</span>
+</div>
+</div>
+<button class="bg-primary-container text-on-primary-container p-space-sm shrink-0 flex items-center justify-center hover:bg-secondary-container transition-transform active:scale-95 shadow" onclick="triggerDownload('Stickers WhatsApp')" type="button">
+<span class="material-symbols-outlined text-[20px]">add_circle</span>
+</button>
+</div>
+</div>
+</section>
+<div class="hidden fixed inset-0 z-50 bg-surface/90 backdrop-blur-md flex items-end justify-center pb-safe p-margin" id="photo-modal">
+<div class="bg-surface-container-high w-full p-space-md flex flex-col gap-space-md shadow-2xl relative">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[22px]">videocam</span>
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface">Enviar Foto al Marcador</span>
+</div>
+<button class="w-8 h-8 flex items-center justify-center text-outline hover:text-on-surface" onclick="document.getElementById('photo-modal').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[22px]">close</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-tertiary">
+        Las fotos aprobadas por moderación se proyectarán en el videomarcador central del pabellón durante el descanso de cada set.
+      </p>
+<div class="bg-surface-container-lowest p-space-lg flex flex-col items-center justify-center gap-space-xs text-center cursor-pointer" onclick="document.getElementById('mock-file-input').click()">
+<span class="material-symbols-outlined text-primary text-[36px]">add_photo_alternate</span>
+<span class="font-label-md text-label-md uppercase text-on-surface">Toca para seleccionar foto o abrir cámara</span>
+<span class="font-body-sm text-body-sm text-outline">Formatos JPG, PNG hasta 10MB</span>
+<input class="hidden" id="mock-file-input" onchange="simulatePhotoUpload(event)" type="file"/>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm uppercase text-outline">Tu nombre o usuario de Instagram</label>
+<input class="bg-surface-container-low text-on-surface px-space-sm py-space-sm font-body-md text-body-md focus:outline-none" id="fan-handle-input" placeholder="@usuario_aficionado" type="text"/>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container font-label-lg text-label-lg uppercase py-space-sm flex items-center justify-center gap-space-xs active:scale-95 shadow" onclick="submitFanPhoto()" type="button">
+<span class="material-symbols-outlined text-[18px]">send</span>
+<span>Enviar al Videomarcador</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  let isPlayingAudio = false;
+  let audioTimer = null;
+  let audioSeconds = 0;
+  const totalAudioSeconds = 194;
+
+  function toggleHymnAudio() {
+    const icon = document.getElementById('icon-audio-play');
+    const bar = document.getElementById('audio-progress-bar');
+    const timeDisplay = document.getElementById('audio-current-time');
+    
+    isPlayingAudio = !isPlayingAudio;
+    
+    if (isPlayingAudio) {
+      icon.textContent = 'pause';
+      audioTimer = setInterval(() => {
+        audioSeconds++;
+        if (audioSeconds > totalAudioSeconds) {
+          audioSeconds = 0;
+          isPlayingAudio = false;
+          icon.textContent = 'play_arrow';
+          clearInterval(audioTimer);
+        }
+        const m = Math.floor(audioSeconds / 60);
+        const s = audioSeconds % 60;
+        timeDisplay.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+        bar.style.width = ((audioSeconds / totalAudioSeconds) * 100) + '%';
+      }, 1000);
+    } else {
+      icon.textContent = 'play_arrow';
+      clearInterval(audioTimer);
+    }
+  }
+
+  function seekAudioBar(e) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const pct = Math.max(0, Math.min(1, clickX / rect.width));
+    audioSeconds = Math.floor(pct * totalAudioSeconds);
+    const m = Math.floor(audioSeconds / 60);
+    const s = audioSeconds % 60;
+    document.getElementById('audio-current-time').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    document.getElementById('audio-progress-bar').style.width = (pct * 100) + '%';
+  }
+
+  function voteMvp(id, name) {
+    const toast = document.getElementById('vote-toast');
+    const toastText = document.getElementById('vote-toast-text');
+    toastText.textContent = '¡Voto registrado para ' + name + '! Gracias por apoyar al equipo.';
+    toast.classList.remove('hidden');
+
+    const card = document.getElementById('card-mvp-' + id);
+    if (card) {
+      card.classList.add('bg-surface-container-high');
+    }
+
+    if (id === 1) {
+      document.getElementById('bar-mvp-1').style.width = '59%';
+      document.getElementById('pct-mvp-1').textContent = '59% (613 votos)';
+    } else if (id === 2) {
+      document.getElementById('bar-mvp-2').style.width = '33%';
+      document.getElementById('pct-mvp-2').textContent = '33% (339 votos)';
+    } else {
+      document.getElementById('bar-mvp-3').style.width = '11%';
+      document.getElementById('pct-mvp-3').textContent = '11% (106 votos)';
+    }
+
+    setTimeout(() => {
+      toast.classList.add('hidden');
+    }, 4500);
+  }
+
+  function simulatePhotoUpload(event) {
+    if (event.target.files && event.target.files[0]) {
+      alert('Foto seleccionada: ' + event.target.files[0].name);
+    }
+  }
+
+  function submitFanPhoto() {
+    const handle = document.getElementById('fan-handle-input').value.trim() || 'Aficionado';
+    document.getElementById('photo-modal').classList.add('hidden');
+    const toast = document.getElementById('vote-toast');
+    const toastText = document.getElementById('vote-toast-text');
+    toastText.textContent = '¡Foto de ' + handle + ' enviada a realización! La verás en el videomarcador.';
+    toast.classList.remove('hidden');
+    setTimeout(() => {
+      toast.classList.add('hidden');
+    }, 5000);
+  }
+
+  function triggerDownload(item) {
+    const toast = document.getElementById('vote-toast');
+    const toastText = document.getElementById('vote-toast-text');
+    toastText.textContent = 'Iniciando descarga: ' + item + '...';
+    toast.classList.remove('hidden');
+    setTimeout(() => {
+      toast.classList.add('hidden');
+    }, 3000);
+  }
+</script><footer class="w-full px-margin py-space-lg bg-surface-container-lowest mt-space-xl flex flex-col gap-space-md"><div class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">PATROCINADORES INSTITUCIONALES</span><div class="flex flex-wrap items-center gap-space-sm text-on-surface-variant font-label-md text-label-md uppercase"><span class="bg-surface-container px-space-sm py-space-xs">Ayuntamiento de Marbella</span><span class="bg-surface-container px-space-sm py-space-xs">Tenencia San Pedro</span><span class="bg-surface-container px-space-sm py-space-xs">Diputación de Málaga</span></div></div><div class="flex flex-wrap gap-space-md font-body-sm text-body-sm text-tertiary"><a class="hover:text-primary" href="#">Aviso Legal</a><a class="hover:text-primary" href="#">Privacidad</a><a class="hover:text-primary" href="#">Contacto</a></div><div class="font-label-sm text-label-sm text-outline uppercase tracking-wider">© C.D. VOLEIBOL SAN PEDRO • TODOS LOS DERECHOS RESERVADOS</div></footer></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/95 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.6)]" data-active-classes="text-primary-container font-bold"><div class="h-16 px-space-xs flex items-center justify-around"><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="inicio" href="#"><span class="material-symbols-outlined text-[22px]">sports_volleyball</span><span class="font-label-sm text-label-sm mt-0.5">Inicio</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="partidos" href="#"><span class="material-symbols-outlined text-[22px]">scoreboard</span><span class="font-label-sm text-label-sm mt-0.5">Partidos</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="calendario" href="#"><span class="material-symbols-outlined text-[22px]">calendar_today</span><span class="font-label-sm text-label-sm mt-0.5">Fechas</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="clasificacion" href="#"><span class="material-symbols-outlined text-[22px]">leaderboard</span><span class="font-label-sm text-label-sm mt-0.5">Tabla</span></a><a aria-current="page" class="flex flex-col items-center justify-center w-14 h-14 transition-colors text-primary-container font-bold" data-path="fan-zone" href="#"><span class="material-symbols-outlined text-[22px]">stadium</span><span class="font-label-sm text-label-sm mt-0.5">FanZone</span></a></div></nav></body></html>

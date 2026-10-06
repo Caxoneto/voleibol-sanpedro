@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Space+Grotesk:wght@400;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "on-tertiary-fixed-variant": "#3c475a",
+          "surface-container": "#201f1f",
+          "surface-tint": "#ffb3af",
+          "error-container": "#93000a",
+          "on-secondary": "#680011",
+          "secondary-fixed": "#ffdad8",
+          "on-tertiary-container": "#e8efff",
+          "on-primary-container": "#ffeae8",
+          "on-background": "#e5e2e1",
+          "on-surface-variant": "#e7bcba",
+          "surface-container-low": "#1c1b1b",
+          "primary-fixed": "#ffdad7",
+          "surface": "#131313",
+          "on-secondary-fixed-variant": "#92001c",
+          "on-surface": "#e5e2e1",
+          "inverse-surface": "#e5e2e1",
+          "surface-variant": "#353534",
+          "on-secondary-fixed": "#410007",
+          "on-primary-fixed-variant": "#930018",
+          "surface-container-highest": "#353534",
+          "on-primary-fixed": "#410005",
+          "primary-fixed-dim": "#ffb3af",
+          "secondary-fixed-dim": "#ffb3b1",
+          "primary": "#ffb3af",
+          "tertiary-fixed": "#d7e3fa",
+          "inverse-on-surface": "#313030",
+          "surface-container-high": "#2a2a2a",
+          "outline-variant": "#5d3f3d",
+          "on-error": "#690005",
+          "secondary-container": "#d6022e",
+          "surface-bright": "#3a3939",
+          "inverse-primary": "#bf0022",
+          "surface-container-lowest": "#0e0e0e",
+          "on-error-container": "#ffdad6",
+          "tertiary-container": "#616d81",
+          "primary-container": "#d90429",
+          "outline": "#ae8885",
+          "tertiary-fixed-dim": "#bbc7dd",
+          "on-primary": "#68000e",
+          "on-secondary-container": "#ffe7e5",
+          "tertiary": "#bbc7dd",
+          "background": "#131313",
+          "on-tertiary-fixed": "#101c2c",
+          "error": "#ffb4ab",
+          "on-tertiary": "#253142",
+          "secondary": "#ffb3b1",
+          "surface-dim": "#131313"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "gutter": "1.25rem",
+          "gutter-desktop": "2rem",
+          "space-xl": "2.5rem",
+          "margin": "1rem",
+          "space-md": "1rem",
+          "margin-desktop": "3rem",
+          "space-xs": "0.25rem",
+          "space-sm": "0.5rem",
+          "space-lg": "1.5rem",
+          "space-2xl": "4rem"
+        },
+        "fontFamily": {
+          "headline-lg-mobile": [
+            "Anton"
+          ],
+          "label-md": [
+            "Space Grotesk"
+          ],
+          "label-sm": [
+            "Space Grotesk"
+          ],
+          "label-lg": [
+            "Space Grotesk"
+          ],
+          "body-lg": [
+            "Space Grotesk"
+          ],
+          "headline-md": [
+            "Anton"
+          ],
+          "body-md": [
+            "Space Grotesk"
+          ],
+          "display-xl": [
+            "Anton"
+          ],
+          "headline-lg": [
+            "Anton"
+          ],
+          "body-sm": [
+            "Space Grotesk"
+          ],
+          "display-xl-mobile": [
+            "Anton"
+          ],
+          "score-display": [
+            "Anton"
+          ],
+          "headline-sm": [
+            "Space Grotesk"
+          ]
+        },
+        "fontSize": {
+          "headline-lg-mobile": [
+            "28px",
+            {
+              "lineHeight": "32px",
+              "letterSpacing": "0.03em",
+              "fontWeight": "400"
+            }
+          ],
+          "label-md": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.06em",
+              "fontWeight": "600"
+            }
+          ],
+          "label-sm": [
+            "10px",
+            {
+              "lineHeight": "12px",
+              "letterSpacing": "0.1em",
+              "fontWeight": "700"
+            }
+          ],
+          "label-lg": [
+            "14px",
+            {
+              "lineHeight": "18px",
+              "letterSpacing": "0.08em",
+              "fontWeight": "700"
+            }
+          ],
+          "body-lg": [
+            "18px",
+            {
+              "lineHeight": "28px",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-md": [
+            "28px",
+            {
+              "lineHeight": "32px",
+              "letterSpacing": "0.04em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-md": [
+            "15px",
+            {
+              "lineHeight": "22px",
+              "fontWeight": "400"
+            }
+          ],
+          "display-xl": [
+            "72px",
+            {
+              "lineHeight": "76px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-lg": [
+            "40px",
+            {
+              "lineHeight": "44px",
+              "letterSpacing": "0.03em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-sm": [
+            "13px",
+            {
+              "lineHeight": "18px",
+              "fontWeight": "400"
+            }
+          ],
+          "display-xl-mobile": [
+            "44px",
+            {
+              "lineHeight": "48px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "400"
+            }
+          ],
+          "score-display": [
+            "56px",
+            {
+              "lineHeight": "56px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-sm": [
+            "20px",
+            {
+              "lineHeight": "26px",
+              "letterSpacing": "0.01em",
+              "fontWeight": "700"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-20 w-full px-margin-desktop flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-md shrink-0"><img alt="C.D. Voleibol San Pedro" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><span class="font-headline-md text-headline-md tracking-wider text-on-surface uppercase whitespace-nowrap">C.D. VOLEIBOL SAN PEDRO</span></div><nav class="hidden xl:flex items-center justify-center gap-space-xl flex-1 px-space-md" data-active-classes="text-primary font-bold"><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="inicio" href="#">INICIO</a><a aria-current="page" class="uppercase tracking-wider transition-colors text-primary font-bold" data-path="plantillas" href="#">PLANTILLAS</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="calendario" href="#">CALENDARIO</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="partidos" href="#">PARTIDOS</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="clasificacion" href="#">CLASIFICACIÓN</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="noticias" href="#">NOTICIAS</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="fan-zone" href="#">FAN-ZONE</a><a class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors" data-path="patrocinio" href="#">PATROCINIO</a></nav><div class="flex items-center gap-space-md shrink-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-20 bg-surface min-h-[calc(100vh-80px)]"><div class="flex flex-col w-full">
+<!-- Dynamic Category Switcher & Filter Hub -->
+<section class="w-full bg-surface-container-lowest px-margin-desktop py-space-lg flex flex-col gap-space-md">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="w-3 h-8 bg-primary-container inline-block"></span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">TEMPORADA 2024 / 2025</span>
+<span class="font-headline-md text-headline-md tracking-wider text-on-surface uppercase">PLANTILLAS OFICIALES CLUB</span>
+</div>
+</div>
+<!-- Quick Category Select Bar -->
+<div class="flex flex-wrap items-center gap-space-xs" id="categoryNav">
+<button class="category-btn active px-space-md py-space-xs font-label-md text-label-md uppercase tracking-wider bg-primary-container text-on-primary shadow-md transition-all" type="button">
+          Senior Masc.
+        </button>
+<button class="category-btn px-space-md py-space-xs font-label-md text-label-md uppercase tracking-wider bg-surface-container text-on-surface hover:bg-surface-container-high transition-all" type="button">
+          Senior Fem.
+        </button>
+<button class="category-btn px-space-md py-space-xs font-label-md text-label-md uppercase tracking-wider bg-surface-container text-on-surface hover:bg-surface-container-high transition-all" type="button">
+          Juveniles
+        </button>
+<button class="category-btn px-space-md py-space-xs font-label-md text-label-md uppercase tracking-wider bg-surface-container text-on-surface hover:bg-surface-container-high transition-all" type="button">
+          Cadetes
+        </button>
+<button class="category-btn px-space-md py-space-xs font-label-md text-label-md uppercase tracking-wider bg-surface-container text-on-surface hover:bg-surface-container-high transition-all" type="button">
+          Cantera &amp; Base
+        </button>
+</div>
+</div>
+<!-- Sub-tier / Division Selector -->
+<div class="flex flex-wrap items-center gap-space-sm bg-surface-container-low p-space-sm">
+<span class="font-label-sm text-label-sm text-outline uppercase px-space-sm hidden sm:inline">Equipos:</span>
+<button class="team-sub-btn active flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container-high text-primary font-label-md text-label-md uppercase tracking-wide">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+        Senior A • Superliga 2 (Masculino)
+      </button>
+<button class="team-sub-btn flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wide transition-colors">
+        Senior B • 1ª Andaluza (Masculino)
+      </button>
+<button class="team-sub-btn flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wide transition-colors">
+        Senior A • 1ª Nacional (Femenino)
+      </button>
+<button class="team-sub-btn flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wide transition-colors">
+        Senior B • Liga Provincial (Femenino)
+      </button>
+<button class="team-sub-btn flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wide transition-colors">
+        Juvenil A Masc. / Fem.
+      </button>
+<button class="team-sub-btn flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wide transition-colors">
+        Infantil &amp; Alevín (Vóley Base)
+      </button>
+</div>
+</section>
+<!-- Team Header Billboard -->
+<section class="relative w-full bg-surface-container-high overflow-hidden px-margin-desktop py-space-xl">
+<div class="absolute -right-12 -top-12 opacity-5 pointer-events-none select-none">
+<span class="font-display-xl text-[260px] leading-none text-on-surface">SM2</span>
+</div>
+<div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-center">
+<div class="lg:col-span-8 flex flex-col gap-space-sm">
+<div class="flex flex-wrap items-center gap-space-sm">
+<span class="bg-primary-container text-on-primary font-label-sm text-label-sm px-space-sm py-0.5 uppercase tracking-widest font-bold">
+            PRIMER EQUIPO
+          </span>
+<span class="bg-surface-container-lowest text-primary font-label-sm text-label-sm px-space-sm py-0.5 uppercase tracking-wider">
+            RFEVB SUPERLIGA 2 • GRUPO B
+          </span>
+<span class="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-primary">verified</span> Plantilla Validada
+          </span>
+</div>
+<h1 class="font-headline-lg text-headline-lg uppercase text-on-surface tracking-wide -mt-1">
+          SENIOR MASCULINO A
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
+          El bloque élite de San Pedro Alcántara disputa el circuito de plata del voleibol nacional español. Un combinado caracterizado por potencia en primera línea, solidez en el muro central y transición defensiva vertiginosa.
+        </p>
+<!-- Tactical Overview Cards -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-sm pt-space-sm">
+<div class="bg-surface-container-lowest p-space-sm flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Entrenador Jefe</span>
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface">J. M. VALLEJO</span>
+</div>
+<div class="bg-surface-container-lowest p-space-sm flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Segundo Técnico</span>
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface">ALBERTO OJEDA</span>
+</div>
+<div class="bg-surface-container-lowest p-space-sm flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Sede de Juego</span>
+<span class="font-headline-sm text-headline-sm uppercase text-primary">PAB. ELENA BENÍTEZ</span>
+</div>
+<div class="bg-surface-container-lowest p-space-sm flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Promedio Altura</span>
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface">1.94 M</span>
+</div>
+</div>
+</div>
+<!-- Quick Metrics Radial Visualization -->
+<div class="lg:col-span-4 bg-surface-container-lowest p-space-lg flex flex-col justify-between shadow-xl relative overflow-hidden">
+<div class="flex items-center justify-between pb-space-sm">
+<span class="font-label-md text-label-md uppercase tracking-wider text-on-surface">Balance Táctico de Plantilla</span>
+<span class="font-label-sm text-label-sm text-primary uppercase">14 Fichas Activas</span>
+</div>
+<div class="flex items-center justify-center py-space-sm">
+<!-- Athletic Profile SVG Visualizer -->
+<svg class="w-48 h-48" viewbox="0 0 100 100">
+<polygon fill="none" points="50,12 85,32 75,78 25,78 15,32" stroke="#353534" stroke-width="1"></polygon>
+<polygon fill="none" points="50,25 73,38 67,68 33,68 27,38" stroke="#353534" stroke-dasharray="2 2" stroke-width="0.8"></polygon>
+<!-- Team Data Radar Shape -->
+<polygon fill="rgba(217, 4, 41, 0.25)" points="50,15 82,34 70,72 28,75 18,36" stroke="#d90429" stroke-width="2"></polygon>
+<!-- Axis Points -->
+<circle cx="50" cy="15" fill="#ffb3af" r="2.5"></circle>
+<circle cx="82" cy="34" fill="#ffb3af" r="2.5"></circle>
+<circle cx="70" cy="72" fill="#ffb3af" r="2.5"></circle>
+<circle cx="28" cy="75" fill="#ffb3af" r="2.5"></circle>
+<circle cx="18" cy="36" fill="#ffb3af" r="2.5"></circle>
+<!-- Axis Labels -->
+<text fill="#e5e2e1" font-family="Space Grotesk" font-size="5" font-weight="700" text-anchor="middle" x="50" y="8">ATAQUE</text>
+<text fill="#e5e2e1" font-family="Space Grotesk" font-size="5" font-weight="700" text-anchor="start" x="90" y="34">BLOQUEO</text>
+<text fill="#e5e2e1" font-family="Space Grotesk" font-size="5" font-weight="700" text-anchor="middle" x="75" y="86">SAQUE</text>
+<text fill="#e5e2e1" font-family="Space Grotesk" font-size="5" font-weight="700" text-anchor="middle" x="25" y="86">RECEPCIÓN</text>
+<text fill="#e5e2e1" font-family="Space Grotesk" font-size="5" font-weight="700" text-anchor="end" x="10" y="34">RITMO</text>
+</svg>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm pt-space-xs">
+<span>Eficacia global de ataque: <strong class="text-on-surface">54.8%</strong></span>
+<span>Bloqueos por set: <strong class="text-primary">2.9 pts</strong></span>
+</div>
+</div>
+</div>
+</section>
+<!-- Position Filter Pill Nav -->
+<section class="w-full bg-surface px-margin-desktop py-space-md sticky top-20 z-40 shadow-md">
+<div class="flex items-center justify-between overflow-x-auto gap-space-sm pb-1">
+<div class="flex items-center gap-space-xs shrink-0" id="positionFilters">
+<button class="pos-filter active px-space-md py-space-xs font-label-sm text-label-sm uppercase tracking-widest bg-primary-container text-on-primary">
+          Todos (14)
+        </button>
+<button class="pos-filter px-space-md py-space-xs font-label-sm text-label-sm uppercase tracking-widest bg-surface-container text-on-surface-variant hover:text-on-surface">
+          Colocadores (2)
+        </button>
+<button class="pos-filter px-space-md py-space-xs font-label-sm text-label-sm uppercase tracking-widest bg-surface-container text-on-surface-variant hover:text-on-surface">
+          Opuestos (2)
+        </button>
+<button class="pos-filter px-space-md py-space-xs font-label-sm text-label-sm uppercase tracking-widest bg-surface-container text-on-surface-variant hover:text-on-surface">
+          Receptores / Puntas (4)
+        </button>
+<button class="pos-filter px-space-md py-space-xs font-label-sm text-label-sm uppercase tracking-widest bg-surface-container text-on-surface-variant hover:text-on-surface">
+          Centrales (4)
+        </button>
+<button class="pos-filter px-space-md py-space-xs font-label-sm text-label-sm uppercase tracking-widest bg-surface-container text-on-surface-variant hover:text-on-surface">
+          Líberos (2)
+        </button>
+</div>
+<div class="hidden md:flex items-center gap-space-sm shrink-0">
+<span class="font-label-sm text-label-sm text-outline uppercase">Modo de Vista:</span>
+<button class="p-1 bg-surface-container text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">grid_view</span>
+</button>
+<button class="p-1 bg-surface-container-low text-on-surface-variant hover:text-on-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">table_rows</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Main Roster Area: By Tactical Position -->
+<div class="w-full px-margin-desktop py-space-xl flex flex-col gap-space-2xl">
+<!-- POSICIÓN 1: COLOCADORES -->
+<section class="flex flex-col gap-space-md" data-position="colocador">
+<div class="flex items-end justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-1.5 h-6 bg-primary-container"></div>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider">
+            COLOCADORES <span class="text-primary font-headline-sm text-headline-sm font-normal">/ DIRECCIÓN Y TIEMPO</span>
+</h2>
+</div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">2 ATLETAS EN LISTA</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+<!-- Player Card: Lucas Morales -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Athletic portrait of Spanish volleyball setter Lucas Morales posing intensely in black and red uniform holding an official volleyball ball in hands under dramatic high-contrast indoor stadium lighting, dark shadows, cinematic action capture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSqSIaD6Y2YTOYYrZzTYlyAUj5kTNnZqnMVoxbN5j4BsTThLc-l5CPIW3gj7xTd4mFBA472mVQvlBaMQ00-ACnLl3-i13iRmGlZOPIJdmxYiGvFjQDmPT6Wx7120R8z4TfMnSdDmx0fheQHxj3s1jce5I69pDE4jB_kLsIswdQSrAtSIzIFcjVlqcMNUPBAjs75n2C768sVRbF3ZBdjhFYP29ppl1x66tULtM1pkA9BoGO7sI8UJKg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<!-- Huge Ghost Number -->
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">07</span>
+<!-- Badge -->
+<div class="absolute top-4 left-4 bg-primary-container text-on-primary px-space-xs py-0.5 font-label-sm text-label-sm uppercase font-bold tracking-widest">
+              TITULAR
+            </div>
+<!-- Reach Indicator -->
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">arrow_upward</span>
+<span class="font-label-sm text-label-sm text-on-surface">ALCANCE: 3.32m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">COLOCADOR #07</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">LUCAS MORALES</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">25 años • 1.92m • San Pedro Alcántara</span>
+</div>
+<!-- Performance Metrics Grid -->
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PRECISIÓN</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">62%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ASIST./SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">9.4</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ACES</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">18</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Lucas Morales', '#07', 'Colocador', '1.92m', '82kg', '3.32m', '3.18m', 'San Pedro Alcántara', '4ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Player Card: Pau Esteve -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Athletic portrait of young volleyball setter Pau Esteve preparing a jump set, side profile, red and dark athletic sports kit, strong rim light with stadium arena background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeWxLFEDgQkWwV71wpCsJUPeL3Prn7ROQpFyIA8LXi0On7i4mP3HY3t5ty7dUPfDQIN3tyNPM7oCjOtWRAgjQw5INFt3QWy25mWdyCbnw2vXPzIqVB3oF1XLJwQXB-EdHe5UANEs-TlRRsxght2_Qm0-Ut9UIg6yjd9qJvqYVIibZEwMLV2mMpWfi7Fy8r8vfF4IBKGtA0GLOYEmPV20IFD-Ldv2SQih3sn-S7SVjMV9t10uum1yyM"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">12</span>
+<div class="absolute top-4 left-4 bg-surface-container-highest text-on-surface px-space-xs py-0.5 font-label-sm text-label-sm uppercase font-bold tracking-widest">
+              CANTERA
+            </div>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">arrow_upward</span>
+<span class="font-label-sm text-label-sm text-on-surface">ALCANCE: 3.25m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">COLOCADOR #12</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">PAU ESTEVE</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">20 años • 1.88m • Málaga</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PRECISIÓN</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">58%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ASIST./SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">6.1</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ACES</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">9</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Pau Esteve', '#12', 'Colocador', '1.88m', '78kg', '3.25m', '3.10m', 'Málaga', '2ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+</div>
+</section>
+<!-- POSICIÓN 2: REMATADORES OPUESTOS -->
+<section class="flex flex-col gap-space-md" data-position="opuesto">
+<div class="flex items-end justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-1.5 h-6 bg-primary-container"></div>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider">
+            REMATADORES OPUESTOS <span class="text-primary font-headline-sm text-headline-sm font-normal">/ FINALIZACIÓN Y FUERZA BRUTA</span>
+</h2>
+</div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">2 ATLETAS EN LISTA</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+<!-- Player Card: Mateo Silva (Capitán) -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Muscular male volleyball opposite spiker Mateo Silva in captain pose with serious focused expression, arms folded, dressed in red and black athletic volleyball kit against deep dark sports arena background with red atmospheric backlight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByNi-dx_3XMHnLVABr8vzjeU-db9sNk1piEDlVygUmbWlv-XLLlUQXgzgeO9KNI1umA9wMRtAyn4uy9P3R-bXeusPc6SJFXaTl4p5YTESo_UBDam47Ytp2oZPHC7uf9V54R8OkIJVRT6_cjR364IxtPYLAnrLJziKq6_9WakyjOwxOq67tjt000jvc247T_ByM_0cPxJ2yRmoEa0aLqZ5XLvDw1cO9oxHnRECJHLubicN-9PCnhfL3"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">10</span>
+<div class="absolute top-4 left-4 bg-primary-container text-on-primary px-space-xs py-0.5 font-label-sm text-label-sm uppercase font-bold tracking-widest flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">military_tech</span> CAPITÁN
+            </div>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">arrow_upward</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO DE REMATE: 3.52m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">OPUESTO • CAPITÁN #10</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">MATEO SILVA</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">28 años • 1.98m • Marbella</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PTS/PARTIDO</span>
+<span class="font-headline-sm text-headline-sm text-primary">19.2</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">EFICACIA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">57%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">BLOQUEOS</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">34</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Mateo Silva', '#10', 'Rematador Opuesto (Capitán)', '1.98m', '92kg', '3.52m', '3.30m', 'Marbella', '6ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Player Card: Ivan Petrov -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Athletic portrait of towering volleyball opposite hitter Ivan Petrov mid-motion preparing spike, muscular physique in jersey, moody athletic rim lighting in sports hall with red ambient tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCe9sU_oo_V1x0VzYjdVH0E57RiTPhdO5lV4XQ_tPwgVldyAplNozSN0i7XXL8JuGRG00yhHM7kQws5fZ20oLRtN39KNoDSsl7VKtREA6DHHTJW1crQT5b2-abieEFYsMs3QpFcdNE-r5OXf7B0whhW9RNRrFQ3v8Ki0zyCSQKEaVm8phE8NwyGpGoEfSUpC7cO6POEpzw_N9_rHMsuBHx8bj3cH9ac26AkzHA5fHGyEsFYW9O6DKMa"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">18</span>
+<div class="absolute top-4 left-4 bg-surface-container-highest text-on-surface px-space-xs py-0.5 font-label-sm text-label-sm uppercase font-bold tracking-widest">
+              INTERNACIONAL
+            </div>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">arrow_upward</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO DE REMATE: 3.49m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">OPUESTO #18</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">IVAN PETROV</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">24 años • 2.01m • Sofía (Bulgaria)</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PTS/PARTIDO</span>
+<span class="font-headline-sm text-headline-sm text-primary">14.6</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">EFICACIA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">51%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">BLOQUEOS</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">22</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Ivan Petrov', '#18', 'Rematador Opuesto', '2.01m', '95kg', '3.49m', '3.28m', 'Sofía (Bulgaria)', '1ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+</div>
+</section>
+<!-- POSICIÓN 3: RECEPTORES / PUNTAS -->
+<section class="flex flex-col gap-space-md" data-position="receptor">
+<div class="flex items-end justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-1.5 h-6 bg-primary-container"></div>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider">
+            RECEPTORES / PUNTAS <span class="text-primary font-headline-sm text-headline-sm font-normal">/ EQUILIBRIO RECEPCIÓN Y BOMBARDERO</span>
+</h2>
+</div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">4 ATLETAS EN LISTA</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+<!-- Player Card: Adrián López -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Portrait of dynamic volleyball outside hitter Adrián López with athletic wrist wraps, ready for receive stance, sharp lighting with carbon textures and scarlet highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHB2wkrVMmUBm5ok-kdLd-YJw4r3kSMaCaGOolJPGGl0oX65jmQKek811pTO39JHg096jDBkKc_awwJLkP9ENn1wbTuUXyRh4N831FyFV6bP2DVa5faooXkrIs8fd2c4k1kbNEx8XRCi619AlBcCIyEaj2D8ghVr1flUNvW-zkejS09jDg207LT4gMKNJ-DI9xKqzE51UO0pFNVNUXpcJeFjQBRdraZsu3ppxXy2BQKG_T7-Yqm633"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">04</span>
+<div class="absolute top-4 left-4 bg-primary-container text-on-primary px-space-xs py-0.5 font-label-sm text-label-sm uppercase font-bold tracking-widest">
+              TITULAR
+            </div>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">arrow_upward</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO DE REMATE: 3.42m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">RECEPTOR PUNTA #04</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">ADRIÁN LÓPEZ</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">26 años • 1.95m • San Pedro Alcántara</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">REC. POSITIVA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">68%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PTS/SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">4.6</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ACES</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">24</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Adrián López', '#04', 'Receptor / Punta', '1.95m', '86kg', '3.42m', '3.22m', 'San Pedro Alcántara', '5ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Player Card: Carlos Romero -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Athletic portrait of energetic volleyball outside hitter Carlos Romero celebrating a point with clenched fist, sharp athletic features, dark sports stadium background with red rim illumination." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpBHVdqnqqizhUXOfJNyH4N4NjJTexUzGw_Mzf6ENfWebkUHbtlFkHiIqnQCP7xgBJC2J0osZu6whutmdO2CRytjuKwrdD0RxZv0W7ZSIuOLXxjiq5OiZ64cDSynH32MSHmqZtJXFsvVq5C_QTJuavWF-ESmfcXl3n4OkEqTJi_31ls9PHxMe0Ltl4m4c2Awna5iHitk03CY_GKfzk73Hw_-6HI6w-TInui6GljDk9og7v4tbqK-4d"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">11</span>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">arrow_upward</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO DE REMATE: 3.39m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">RECEPTOR PUNTA #11</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">CARLOS ROMERO</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">23 años • 1.93m • Estepona</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">REC. POSITIVA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">61%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PTS/SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">3.9</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ACES</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">15</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Carlos Romero', '#11', 'Receptor / Punta', '1.93m', '83kg', '3.39m', '3.19m', 'Estepona', '3ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Player Card: Gonzalo Martín -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Action portrait of young volleyball receiver Gonzalo Martín diving low in defense, focused gaze, volleyball gym setting with directional dark aesthetic lighting and vivid crimson floor reflections." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDalfEX9XcbEaM5dzcrpQGntWsPqmStmXX04ITaRmi3K33ltgYU4gfVuNkSsbu31tY3d3Hbbi64nLq-fA3t1hBVEOHQeIsXeWedL4qtPmogvf4SyTwLWSc2QAAHnIwCplyy0mEBAyTNHXUvrwzfX2SkK1BvIwUl260si8nPKNf7oqk84sYMqaZZMH-hG22hyccImvMg8n8yjqldKl33CSLlHkjtXs2ppj6iCt7UdhfH-lnwZwKlbJ1q"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">08</span>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">arrow_upward</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO DE REMATE: 3.36m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">RECEPTOR PUNTA #08</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">GONZALO MARTÍN</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">21 años • 1.91m • Fuengirola</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">REC. POSITIVA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">64%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PTS/SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">3.2</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ACES</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">11</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Gonzalo Martín', '#08', 'Receptor / Punta', '1.91m', '80kg', '3.36m', '3.16m', 'Fuengirola', '2ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Player Card: Marc Beltrán -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Athletic portrait of volleyball player Marc Beltrán with intense determined eyes looking straight into the camera, sports jersey, dark moody sports photography with high contrast crimson aura." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyMSfIkRILd6e7V55bAm685P3k9a6YnVXLPiopXfrCiA2-PDNEkPDnIRdeYiEkC1jFKJFDz1L_1NSWxuBOEAu-BIwdZHkC7NYWapi3SmpcRqX0h2H3d73xhUletksJKjshZROdsniKHAClE1a6LvhpSZ-Bsh-Bv9SwoYvvj2ah-yJpm4MJyeQzgoM6pWPpnRPkwIGYQvYemY-7hSMrKcfQuy5-PiZtVeXL6SMgSmLh9fWXDn3GQ9nD"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">14</span>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">arrow_upward</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO DE REMATE: 3.38m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">RECEPTOR PUNTA #14</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">MARC BELTRÁN</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">22 años • 1.94m • Almería</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">REC. POSITIVA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">59%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PTS/SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">2.8</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ACES</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">8</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Marc Beltrán', '#14', 'Receptor / Punta', '1.94m', '85kg', '3.38m', '3.20m', 'Almería', '1ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+</div>
+</section>
+<!-- POSICIÓN 4: CENTRALES / MURO DEFENSIVO -->
+<section class="flex flex-col gap-space-md" data-position="central">
+<div class="flex items-end justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-1.5 h-6 bg-primary-container"></div>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider">
+            CENTRALES <span class="text-primary font-headline-sm text-headline-sm font-normal">/ EL MURO DE LA COSTA DEL SOL</span>
+</h2>
+</div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">4 ATLETAS EN LISTA</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+<!-- Player Card: David Garrido -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Portrait of tall volleyball middle blocker David Garrido with hands held up in blocking position over the net, fierce expression, dynamic arena spotlights and deep shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuANaQ30AjOMWo2UauuvvpaeYg79QAEYfywE_K16XunEnV4TjyyaE8YZuSYubBwX_1iqzPJldqSm9Mx3YtYIoB5o_nKGZ9RQjl-y7xahZtrc33aVpS9QQXgCgsh0PqwoYbGsI0Vl-1NKMOkaNx2UP0ZZmDxlIqHM1NTTAG_aM-cXImqwX_YQ-VKScnZPt9uE-sRFJaw5WGRtuxrhnRC9X9AUAbf7rGN0ug4Y-hLKtu0v7qHSVpuqlBVj"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">15</span>
+<div class="absolute top-4 left-4 bg-primary-container text-on-primary px-space-xs py-0.5 font-label-sm text-label-sm uppercase font-bold tracking-widest">
+              LÍDER BLOQUEO
+            </div>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">shield</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO BLOQUEO: 3.35m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">CENTRAL #15</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">DAVID GARRIDO</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">27 años • 2.04m • San Pedro Alcántara</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">BLOQ./SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">1.28</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">EFIC. ATAQUE</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">63%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PUNTOS TOTAL</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">148</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('David Garrido', '#15', 'Central', '2.04m', '98kg', '3.50m', '3.35m', 'San Pedro Alcántara', '7ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Player Card: Sergio Blanco -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Athletic portrait of agile volleyball middle blocker Sergio Blanco looking alert and ready at the net, black athletic jersey with red team emblem, high contrast sports studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5bhmEIr7PnOvtHMLgrZshagUimFFM7QGs9e-HjZC2Tkveumawhx1rr7oZdMczvlMV6FG_K1Hh5WPlzAdt8As-bqfWKd0t73LW6Ip3fAdWXJVmI8ZYU1EAK2B13jMlr2a9ILF4K5Hsaif1uM20tnoFGF3sRLJXHhb4dnUO0cWF6boQqftzCykNP-KmFTfhySS_8lSQftrs1V1vwoskNBdUy0qIBGZ7clOrTX8bt2sVJC-ipr5IxoSy"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">09</span>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">shield</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO BLOQUEO: 3.30m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">CENTRAL #09</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">SERGIO BLANCO</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">24 años • 1.99m • Sevilla</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">BLOQ./SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">0.95</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">EFIC. ATAQUE</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">59%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PUNTOS TOTAL</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">112</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Sergio Blanco', '#09', 'Central', '1.99m', '90kg', '3.44m', '3.30m', 'Sevilla', '3ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Player Card: Javier Ruiz -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Athletic studio portrait of young volleyball middle blocker Javier Ruiz, arms crossed, athletic red jersey, intense look, dark background with subtle red motion lines." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPv4n1YtztdLpY6LER-PytLauiFmIndD5BCszey9XOoYCXMZ8sOXh8WiGX5v8-qWuUCt29hjkk-lU37D8yxD-q0_ju3RkvJo3gxuwqTZvnZaTb3vz9i1NgJZUUhiB7XMW3QQ3ZnZmzueAGWeRkuv0JvsBCM3JUOc2t-uj4jmzOLIahS7rZnDkTliuRygShFur1KDa6IZa1nQdbl1sMXGTIt1E3eeQ_PlhrfuFPe55VS6QGL75iqsSK"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">05</span>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">shield</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO BLOQUEO: 3.26m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">CENTRAL #05</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">JAVIER RUIZ</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">21 años • 1.97m • Marbella</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">BLOQ./SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">0.78</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">EFIC. ATAQUE</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">54%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PUNTOS TOTAL</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">64</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Javier Ruiz', '#05', 'Central', '1.97m', '88kg', '3.40m', '3.26m', 'Marbella', '2ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Player Card: Samuel Ortega -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Athletic portrait of emerging volleyball central player Samuel Ortega ready to jump, intense training session atmosphere, deep shadows, crisp red athletic uniform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcWR0PltvLUcx4aCHIDpX6Y2MplklFCr9PlPU2DcKkTBPJ4Z4NpgmaorKDdIzb8OGfCBiG9Q2GGWfICneOo8-P7zB_rWAbgkQDPQJMsEso-nrZTp8s_qtVDXhmbjTFIZSNtO4g5_tWv9gXnBC4CI2wlHlrFMOD6OJfwd6qE7sRcy664uUUsF6RFezuAeqazNpMpBjzLYQOwrVO9fvruRJpzZIanjp69AtfMpXG0i4lwETLf_Vq4umN"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">16</span>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">shield</span>
+<span class="font-label-sm text-label-sm text-on-surface">SALTO BLOQUEO: 3.25m</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">CENTRAL #16</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">SAMUEL ORTEGA</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">19 años • 1.98m • San Pedro Alcántara</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">BLOQ./SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">0.65</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">EFIC. ATAQUE</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">52%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">PUNTOS TOTAL</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">42</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Samuel Ortega', '#16', 'Central', '1.98m', '86kg', '3.38m', '3.25m', 'San Pedro Alcántara', '1ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+</div>
+</section>
+<!-- POSICIÓN 5: LÍBEROS -->
+<section class="flex flex-col gap-space-md" data-position="libero">
+<div class="flex items-end justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-1.5 h-6 bg-primary-container"></div>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wider">
+            LÍBEROS <span class="text-primary font-headline-sm text-headline-sm font-normal">/ REFLEJOS Y AGILIDAD DEFENSIVA</span>
+</h2>
+</div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">2 ATLETAS EN LISTA</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+<!-- Player Card: Hugo Navarro -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Dynamic portrait of volleyball libero Hugo Navarro in distinctive contrasting white and red libero jersey, low athletic defense stance, hyper-focused gaze, dark arena court background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUWFEPyscYsddSEbCpMgEVLgDvJmWEGdNsT_zxTHNaD-Ma8DpnQwHgIryryqUvSLMZGRAm7HQV1Vzv1e_NguVoQUxfiYUkejv_3djpk25TvhEFIievNNrdA2mbviXylt1aMBXo-htbTuWo66Bz86ak4xRdrSc88bcQKpfA47q3XUujk5cHdCwsmlQzjuHF8ixCJiW9GeC1DwcpAVeXInkhqONdSHei4ujM01ieI8qV4hpNvSaO7_aT"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">02</span>
+<div class="absolute top-4 left-4 bg-tertiary text-on-tertiary px-space-xs py-0.5 font-label-sm text-label-sm uppercase font-bold tracking-widest">
+              LÍBERO TITULAR
+            </div>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">sports_volleyball</span>
+<span class="font-label-sm text-label-sm text-on-surface">DEFENSAS CLAVE: 182</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-tertiary">LÍBERO #02</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">HUGO NAVARRO</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">29 años • 1.80m • San Pedro Alcántara</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">REC. EXCELENTE</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">74%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">DEF./SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">4.8</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ERRORES</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">6</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Hugo Navarro', '#02', 'Líbero', '1.80m', '74kg', '3.10m', '2.95m', 'San Pedro Alcántara', '8ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- Player Card: Dani Alarcón -->
+<article class="player-card group relative bg-surface-container flex flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+<div class="relative h-96 w-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" data-alt="Athletic portrait of young second libero Dani Alarcón preparing to roll receive a ball, agility and dynamic body angle, dark lighting with saturated red accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-MEfyr_W-559w_IIIculk_OWESRmbDxppd3lxc_utixWJ2ORg0zv5HtOTHRKlrfRcN_RBIhJLP8X9IIlg_MAu6vzsHXYvNrr9MdQ77TAD5dhRRnV45S4FSdq18IsdMLTI8u0nE6dzku2epk3lUs49fnWpOlN-KzvXAxkmDW__3VIJjddGgTr34pSnJcwTkr-0IZAmcln4knTumpto8JniLdVQ4fjyQ6zdVt4N7fDv6Amv705loRjN"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<span class="absolute top-2 right-3 font-display-xl text-[100px] leading-none text-on-surface/10 select-none group-hover:text-primary-container/25 transition-colors">13</span>
+<div class="absolute top-4 left-4 bg-surface-container-highest text-on-surface px-space-xs py-0.5 font-label-sm text-label-sm uppercase font-bold tracking-widest">
+              LÍBERO ROTACIÓN
+            </div>
+<div class="absolute bottom-4 left-4 flex items-center gap-1 bg-surface/80 backdrop-blur-sm px-space-xs py-1">
+<span class="material-symbols-outlined text-primary text-[14px]">sports_volleyball</span>
+<span class="font-label-sm text-label-sm text-on-surface">DEFENSAS CLAVE: 76</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col flex-1 justify-between gap-space-md">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-tertiary">LÍBERO #13</span>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">DANI ALARCÓN</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">20 años • 1.78m • Marbella</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container-lowest p-space-xs">
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">REC. EXCELENTE</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">66%</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">DEF./SET</span>
+<span class="font-headline-sm text-headline-sm text-primary">3.1</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-outline">ERRORES</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">4</span>
+</div>
+</div>
+<button class="w-full py-space-xs bg-surface-container-high hover:bg-primary-container hover:text-on-primary text-on-surface font-label-md text-label-md uppercase tracking-wider flex items-center justify-center gap-space-xs transition-colors" onclick="openPlayerModal('Dani Alarcón', '#13', 'Líbero', '1.78m', '71kg', '3.08m', '2.92m', 'Marbella', '2ª Temporada')" type="button">
+<span>FICHA COMPLETA</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</article>
+</div>
+</section>
+</div>
+<!-- Staff Técnico & Cuadro de Alto Rendimiento -->
+<section class="w-full bg-surface-container-low px-margin-desktop py-space-2xl flex flex-col gap-space-xl">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">CUERPO TÉCNICO • SUPERLIGA 2</span>
+<h2 class="font-headline-lg text-headline-lg uppercase text-on-surface tracking-wide">STAFF Y DIRECCIÓN DEPORTIVA</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-md">
+        Estructura profesional dedicada a la optimización biomecánica, análisis de scouting rival y prevención de lesiones del primer equipo.
+      </p>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+<!-- Staff 1: Head Coach -->
+<div class="bg-surface-container p-space-lg flex flex-col gap-space-md shadow-md">
+<div class="relative w-full h-56 bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Portrait of senior professional volleyball head coach José Manuel Vallejo in coaching jacket with tactical clipboard, athletic stadium setting, intense leader expression, dark cinematic red accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMU01dn_iki9rs9OvMW_4FfUUCLXxhMZc_BhW0cM-kOAeZKzU2GpOojt9Ou4fRTBacPrU9qsS8fvG5IMi87Dl-WI-Os02hnYI6RO3jOLT896444wNbBSIOQRmiEGf6Lc-Ap1beVsXfO3jDn_x2_Jkx_lBPxyCHa-GfJs5XPNIndkozPjBHHceFZYXsFsLf63Fk4ExxCE0FunWRFbCCpP78OkmV5ZkxhOegucBROVBDO8XqDHrimshG"/>
+<div class="absolute bottom-2 left-2 bg-primary-container text-on-primary px-space-xs py-0.5 font-label-sm text-label-sm font-bold uppercase">
+            NIVEL III NACIONAL
+          </div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-widest">PRIMER ENTRENADOR</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface uppercase">JOSÉ MANUEL VALLEJO</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant pt-1">8 temporadas al frente del club. Ex-jugador Superliga 1 y especialista en sistemas de recepción rápida.</span>
+</div>
+</div>
+<!-- Staff 2: Preparador Físico -->
+<div class="bg-surface-container p-space-lg flex flex-col gap-space-md shadow-md">
+<div class="relative w-full h-56 bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Portrait of professional athletic fitness trainer in dark gym holding stopwatch and resistance bands, focused and disciplined stance, dark athletic backdrop with crimson tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRcs3Vlh-ygjVxsIEtfh5Mw9zunuGnHLvEY8t336khJwbmmOD_pky5yLxWEBE0H6m0gS5ZrfuoKCFX04dQ53Ci5MePE4FJmjsVc-CQBbqWbBIFo_qM2WCl2-dDSXx2ryEqDmGSWF-fQjXrtu1zbJfpysowmDnpy0SAJkoKN3ixq38osQuFPO9srN1HiRMimm1cCkK4A8iTnCjHTvIOoul6MhuPD1h2JhXGMfV-8AMLNdaXPMRwImhO"/>
+<div class="absolute bottom-2 left-2 bg-surface-container-highest text-on-surface px-space-xs py-0.5 font-label-sm text-label-sm font-bold uppercase">
+            CCAFD • MÁSTER ALTO RENDIMIENTO
+          </div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-widest">PREPARADOR FÍSICO</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface uppercase">MARCOS DEL RÍO</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant pt-1">Especialista en salto vertical, potencia explosiva pliométrica y control de fatiga por encoder lineal.</span>
+</div>
+</div>
+<!-- Staff 3: Fisioterapeuta -->
+<div class="bg-surface-container p-space-lg flex flex-col gap-space-md shadow-md">
+<div class="relative w-full h-56 bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Portrait of certified sports physiotherapist in medical polo shirt inside athletic clinic room with kinesiotape and ultrasound equipment, professional welcoming stance, high contrast dark theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgkB18D8_SNi4a6lrEQDNd7zPpv8dyJbJO0AggIqwjmpzVG2jGWE_ZJzVNXT-g_3CxYBEjDV6hU8RVqdxOl2qu0LHn6K2y65p3Sx0JuAyojw0NJLS2UO2yUxXKRyP7GT9S1yDyWvAx_3YiR4Jlq6RMpGIDws8hBMibpwR2ObpnRaQS-0ngElA9HxdYb2doMwTZfUC3rgduM3zll2p6KbHucL4Vxp88yZ_1USSCWjVBC5YUjOKuHVki"/>
+<div class="absolute bottom-2 left-2 bg-surface-container-highest text-on-surface px-space-xs py-0.5 font-label-sm text-label-sm font-bold uppercase">
+            FISIOTERAPIA DEPORTIVA
+          </div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-widest">FISIOTERAPEUTA JEFE</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface uppercase">DRA. ELENA BASTIDA</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant pt-1">Gestión de readaptación funcional articular de hombro, tendón rotuliano y protocolos de crioterapia.</span>
+</div>
+</div>
+<!-- Staff 4: Scout & Videoanálisis -->
+<div class="bg-surface-container p-space-lg flex flex-col gap-space-md shadow-md">
+<div class="relative w-full h-56 bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Sports performance data analyst with laptop displaying volleyball analytics software and match video feeds in dark stadium press box, cinematic lighting with bright screens and red club ambient light." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5OnNw1X8CrVfoHlUWm18PenBc5ki4AWb58cJNowcvxW5AtqyGhIjHS0AnoOAqGmrUgHgLewR_TZqyz2LyaRE5P9m5p1wy9LWtBythRVej4QGJGFScnp_a0Z-9heVj59nbV6jav-hRXNtCRb_9_w2jMfA6j6NTQVFm6H2G_aU6xa44tLWv0il6asXBQ9Wrk-iMFX9iMVoirhSIx1YLeKNOoGjmdulSKN9epySXDncOLif3DQABz21i"/>
+<div class="absolute bottom-2 left-2 bg-surface-container-highest text-on-surface px-space-xs py-0.5 font-label-sm text-label-sm font-bold uppercase">
+            DATA VOLLEY 4 PRO
+          </div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-widest">SCOUT &amp; ANALISTA TÁCTICO</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface uppercase">ÁLVARO MONTERO</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant pt-1">Generación de informes de tendencias de colocación y patrones de saque del rival en directo a pie de pista.</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Exclusive Plantilla Sponsor Banner -->
+<section class="w-full bg-surface-container px-margin-desktop py-space-xl">
+<div class="bg-surface-container-lowest p-space-xl flex flex-col lg:flex-row items-center justify-between gap-space-xl">
+<div class="flex flex-col gap-space-xs max-w-xl">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">handshake</span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">PATROCINADOR EXCLUSIVO DEL EQUIPO SUPERLIGA 2</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface uppercase">CONSTRUCCIONES &amp; PROYECTOS COSTA DEL SOL</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Empresa líder en desarrollo urbano sostenible y edificación de alto estándar en la provincia de Málaga. Comprometidos con el deporte de élite y el impulso de la juventud en San Pedro Alcántara.
+        </p>
+</div>
+<div class="flex items-center gap-space-lg shrink-0">
+<div class="px-space-xl py-space-md bg-surface-container flex items-center justify-center">
+<span class="font-headline-md text-headline-md uppercase text-on-surface tracking-widest">GRUPO CONSTRUCSUR</span>
+</div>
+<a class="px-space-md py-space-sm bg-primary-container hover:bg-secondary-container text-on-primary font-label-md text-label-md uppercase tracking-wider transition-colors inline-flex items-center gap-space-xs" data-path="patrocinio" href="#">
+<span>Únete como Patrocinador</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</section>
+<!-- Interactive Player Modal (Vanilla JS Controlled) -->
+<div class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-space-md" id="playerModal">
+<div class="relative w-full max-w-2xl bg-surface-container-lowest shadow-2xl overflow-hidden p-space-lg flex flex-col gap-space-md">
+<!-- Modal Close Button -->
+<button class="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors" onclick="closePlayerModal()" type="button">
+<span class="material-symbols-outlined text-[28px]">close</span>
+</button>
+<div class="flex items-start gap-space-md">
+<span class="font-display-xl text-primary text-headline-lg leading-none" id="modalDorsal">#00</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-outline" id="modalRole">POSICIÓN</span>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface" id="modalName">NOMBRE JUGADOR</h2>
+<span class="font-body-sm text-body-sm text-on-surface-variant" id="modalOrigin">Ciudad • Experiencia</span>
+</div>
+</div>
+<!-- Athletic Biometrics Table -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs bg-surface-container p-space-sm">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline">ALTURA</span>
+<span class="font-headline-sm text-headline-sm text-on-surface" id="modalHeight">--</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline">PESO</span>
+<span class="font-headline-sm text-headline-sm text-on-surface" id="modalWeight">--</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline">ALCANCE ATAQUE</span>
+<span class="font-headline-sm text-headline-sm text-primary" id="modalAttackReach">--</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline">ALCANCE BLOQUEO</span>
+<span class="font-headline-sm text-headline-sm text-on-surface" id="modalBlockReach">--</span>
+</div>
+</div>
+<!-- Bio Notes -->
+<div class="flex flex-col gap-space-xs">
+<h4 class="font-label-md text-label-md uppercase tracking-wider text-on-surface">Perfil Táctico &amp; Historial</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Formado en las categorías de base del club y consolidado en la plantilla de Superliga 2. Destaca por su lectura en situaciones de alta presión, tempo defensivo y contribución continua en la rotación de bloqueo y transición.
+        </p>
+</div>
+<div class="flex items-center justify-between pt-space-sm">
+<span class="font-label-sm text-label-sm uppercase text-outline" id="modalTenure">TEMPORADA VINCULADA</span>
+<button class="px-space-md py-space-xs bg-primary-container text-on-primary font-label-md text-label-md uppercase tracking-wider" onclick="closePlayerModal()" type="button">
+          Cerrar Ficha
+        </button>
+</div>
+</div>
+</div>
+<!-- Inline Micro-interactions Script -->
+<script>
+    function openPlayerModal(name, dorsal, role, height, weight, attackReach, blockReach, origin, tenure) {
+      document.getElementById('modalName').textContent = name;
+      document.getElementById('modalDorsal').textContent = dorsal;
+      document.getElementById('modalRole').textContent = role;
+      document.getElementById('modalHeight').textContent = height;
+      document.getElementById('modalWeight').textContent = weight;
+      document.getElementById('modalAttackReach').textContent = attackReach;
+      document.getElementById('modalBlockReach').textContent = blockReach;
+      document.getElementById('modalOrigin').textContent = origin + ' • ' + tenure;
+      document.getElementById('modalTenure').textContent = tenure;
+
+      const modal = document.getElementById('playerModal');
+      modal.classList.remove('hidden');
+    }
+
+    function closePlayerModal() {
+      const modal = document.getElementById('playerModal');
+      modal.classList.add('hidden');
+    }
+
+    // Modal background close on outside click
+    document.getElementById('playerModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closePlayerModal();
+      }
+    });
+
+    // Tactical Position Quick Filters
+    document.querySelectorAll('.pos-filter').forEach(button => {
+      button.addEventListener('click', function() {
+        document.querySelectorAll('.pos-filter').forEach(btn => {
+          btn.classList.remove('bg-primary-container', 'text-on-primary', 'active');
+          btn.classList.add('bg-surface-container', 'text-on-surface-variant');
+        });
+        this.classList.add('bg-primary-container', 'text-on-primary', 'active');
+        this.classList.remove('bg-surface-container', 'text-on-surface-variant');
+
+        const filterText = this.textContent.toLowerCase();
+        const sections = document.querySelectorAll('[data-position]');
+
+        sections.forEach(sec => {
+          const pos = sec.getAttribute('data-position');
+          if (filterText.includes('todos')) {
+            sec.style.display = 'flex';
+          } else if (filterText.includes('colocador') && pos === 'colocador') {
+            sec.style.display = 'flex';
+          } else if (filterText.includes('opuesto') && pos === 'opuesto') {
+            sec.style.display = 'flex';
+          } else if (filterText.includes('receptor') && pos === 'receptor') {
+            sec.style.display = 'flex';
+          } else if (filterText.includes('central') && pos === 'central') {
+            sec.style.display = 'flex';
+          } else if (filterText.includes('líbero') && pos === 'libero') {
+            sec.style.display = 'flex';
+          } else {
+            sec.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    // Category Tabs UI state
+    document.querySelectorAll('.category-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.category-btn').forEach(b => {
+          b.classList.remove('bg-primary-container', 'text-on-primary', 'shadow-md');
+          b.classList.add('bg-surface-container', 'text-on-surface');
+        });
+        this.classList.remove('bg-surface-container', 'text-on-surface');
+        this.classList.add('bg-primary-container', 'text-on-primary', 'shadow-md');
+      });
+    });
+
+    // Subteam UI state
+    document.querySelectorAll('.team-sub-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.team-sub-btn').forEach(b => {
+          b.classList.remove('bg-surface-container-high', 'text-primary');
+          b.classList.add('bg-surface-container', 'text-on-surface-variant');
+        });
+        this.classList.remove('bg-surface-container', 'text-on-surface-variant');
+        this.classList.add('bg-surface-container-high', 'text-primary');
+      });
+    });
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest text-on-surface"><div class="w-full px-margin-desktop py-space-2xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop"><div class="flex flex-col gap-space-md"><div class="flex items-center gap-space-sm"><img alt="C.D. Voleibol San Pedro" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><span class="font-headline-md text-headline-md text-on-surface tracking-wider uppercase">C.D.V. SAN PEDRO</span></div><p class="font-body-sm text-body-sm text-on-surface-variant max-w-sm">Pasión, disciplina y garra deportiva en la Costa del Sol. Formando atletas y compitiendo al máximo nivel en el voleibol andaluz y nacional.</p><div class="flex items-center gap-space-sm pt-space-xs"><span class="material-symbols-outlined text-primary text-[20px]">sports_volleyball</span><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">Temporada 2024 / 2025</span></div></div><div class="flex flex-col gap-space-md"><h4 class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wide">SEDE Y PABELLÓN</h4><div class="flex flex-col gap-space-xs text-on-surface-variant"><div class="flex items-start gap-space-xs"><span class="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">location_on</span><span class="font-body-sm text-body-sm">Pabellón Polideportivo Elena Benítez<br/>Calle Fuentenueva, s/n<br/>29670 San Pedro Alcántara, Málaga</span></div><div class="flex items-center gap-space-xs pt-space-xs"><span class="material-symbols-outlined text-outline text-[18px] shrink-0">mail</span><span class="font-body-sm text-body-sm">info@voleibolsanpedro.es</span></div><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-outline text-[18px] shrink-0">call</span><span class="font-body-sm text-body-sm">+34 952 78 00 00</span></div></div></div><div class="flex flex-col gap-space-md"><h4 class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wide">COMPETICIÓN</h4><ul class="flex flex-col gap-space-xs font-body-sm text-body-sm text-on-surface-variant"><li><a class="hover:text-primary transition-colors" data-path="partidos" href="#">Primera División Nacional Masculina</a></li><li><a class="hover:text-primary transition-colors" data-path="partidos" href="#">Primera Andaluza Femenina</a></li><li><a class="hover:text-primary transition-colors" data-path="plantillas" href="#">Cantera y Voley Base</a></li><li><a class="hover:text-primary transition-colors" data-path="calendario" href="#">Jornadas y Resultados</a></li><li><a class="hover:text-primary transition-colors" data-path="clasificacion" href="#">Tablas Clasificatorias</a></li></ul></div><div class="flex flex-col gap-space-md"><h4 class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wide">LEGAL Y CLUB</h4><ul class="flex flex-col gap-space-xs font-body-sm text-body-sm text-on-surface-variant"><li><a class="hover:text-primary transition-colors" href="#">Aviso Legal</a></li><li><a class="hover:text-primary transition-colors" href="#">Política de Privacidad</a></li><li><a class="hover:text-primary transition-colors" href="#">Política de Cookies</a></li><li><a class="hover:text-primary transition-colors" href="#">Estatutos del Club</a></li><li><a class="hover:text-primary transition-colors" href="#">Transparencia y Normativa RFEVB</a></li></ul></div></div><div class="w-full bg-surface-container-low py-space-lg px-margin-desktop"><div class="flex flex-col lg:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><span class="font-label-sm text-label-sm uppercase tracking-widest text-outline">PATROCINADORES OFICIALES:</span></div><div class="flex flex-wrap items-center justify-center gap-space-xl text-on-surface-variant font-headline-sm text-headline-sm tracking-wider uppercase opacity-80"><span>AYUNTAMIENTO DE MARBELLA</span><span>TENENCIA SAN PEDRO</span><span>DIPUTACIÓN DE MÁLAGA</span><span>ANDALUCÍA REGION</span><span>GSPORT APPAREL</span></div></div></div><div class="w-full bg-surface px-margin-desktop py-space-md flex flex-col md:flex-row items-center justify-between gap-space-sm text-on-surface-variant"><span class="font-label-sm text-label-sm tracking-wide">© 2025 C.D. VOLEIBOL SAN PEDRO. TODOS LOS DERECHOS RESERVADOS.</span><span class="font-label-sm text-label-sm tracking-wide text-outline">HECHO CON PASIÓN POR EL VOLEIBOL</span></div></footer></body></html>

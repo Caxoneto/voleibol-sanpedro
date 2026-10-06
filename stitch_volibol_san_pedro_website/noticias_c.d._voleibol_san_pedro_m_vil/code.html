@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Space+Grotesk:wght@400;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#131313;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-tertiary-container": "#e8efff", "error": "#ffb4ab", "background": "#131313", "tertiary": "#bbc7dd", "surface-container-low": "#1c1b1b", "on-secondary-fixed": "#410007", "secondary": "#ffb3b1", "tertiary-fixed-dim": "#bbc7dd", "primary-container": "#d90429", "surface-bright": "#3a3939", "surface-dim": "#131313", "surface": "#131313", "on-secondary": "#680011", "outline-variant": "#5d3f3d", "secondary-container": "#d6022e", "on-primary-fixed": "#410005", "on-surface": "#e5e2e1", "on-error": "#690005", "surface-container": "#201f1f", "tertiary-container": "#616d81", "outline": "#ae8885", "on-tertiary-fixed": "#101c2c", "surface-container-high": "#2a2a2a", "primary-fixed": "#ffdad7", "on-secondary-fixed-variant": "#92001c", "inverse-primary": "#bf0022", "surface-variant": "#353534", "on-secondary-container": "#ffe7e5", "surface-container-lowest": "#0e0e0e", "secondary-fixed": "#ffdad8", "on-tertiary-fixed-variant": "#3c475a", "on-tertiary": "#253142", "surface-tint": "#ffb3af", "on-primary-fixed-variant": "#930018", "inverse-surface": "#e5e2e1", "error-container": "#93000a", "on-primary-container": "#ffeae8", "surface-container-highest": "#353534", "on-error-container": "#ffdad6", "primary-fixed-dim": "#ffb3af", "tertiary-fixed": "#d7e3fa", "on-background": "#e5e2e1", "inverse-on-surface": "#313030", "primary": "#ffb3af", "on-surface-variant": "#e7bcba", "on-primary": "#68000e", "secondary-fixed-dim": "#ffb3b1" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-sm": "0.5rem", "gutter": "1.25rem", "space-lg": "1.5rem", "margin": "1rem", "space-xl": "2.5rem", "margin-desktop": "3rem", "space-2xl": "4rem", "gutter-desktop": "2rem", "space-xs": "0.25rem", "space-md": "1rem" }, fontFamily: { "headline-md": ["Anton"], "display-xl": ["Anton"], "display-xl-mobile": ["Anton"], "body-lg": ["Space Grotesk"], "body-sm": ["Space Grotesk"], "label-lg": ["Space Grotesk"], "label-sm": ["Space Grotesk"], "body-md": ["Space Grotesk"], "headline-lg": ["Anton"], "headline-sm": ["Space Grotesk"], "headline-lg-mobile": ["Anton"], "score-display": ["Anton"], "label-md": ["Space Grotesk"] }, fontSize: { "headline-md": ["28px", { "lineHeight": "32px", "letterSpacing": "0.04em", "fontWeight": "400" }], "display-xl": ["72px", { "lineHeight": "76px", "letterSpacing": "0.02em", "fontWeight": "400" }], "display-xl-mobile": ["44px", { "lineHeight": "48px", "letterSpacing": "0.02em", "fontWeight": "400" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.08em", "fontWeight": "700" }], "label-sm": ["10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" }], "body-md": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "headline-lg": ["40px", { "lineHeight": "44px", "letterSpacing": "0.03em", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "26px", "letterSpacing": "0.01em", "fontWeight": "700" }], "headline-lg-mobile": ["28px", { "lineHeight": "32px", "letterSpacing": "0.03em", "fontWeight": "400" }], "score-display": ["56px", { "lineHeight": "56px", "letterSpacing": "0.01em", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.5)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0 flex-1"><button aria-label="Abrir menú de navegación" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary transition-colors shrink-0" onclick="document.getElementById('mobile-drawer').classList.toggle('hidden')" type="button"><span class="material-symbols-outlined text-[24px]">menu</span></button><img alt="LOGO.jpg" class="h-8 w-auto object-contain shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><div class="flex flex-col min-w-0 flex-1"><span class="font-headline-sm text-headline-sm uppercase text-on-surface truncate tracking-wider leading-none">C.D. VOLEIBOL SAN PEDRO</span><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary truncate mt-0.5">Noticias</span></div></div><div class="flex items-center gap-space-xs shrink-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><div class="hidden fixed inset-0 z-50 bg-surface/95 backdrop-blur-2xl flex flex-col pt-safe pb-safe overflow-y-auto" id="mobile-drawer"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="LOGO.jpg" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X3QkIikRR4ugssDD32fvVKSxsfBWVN9qLd9k7ZVRw1g7YGWe12F_2DeCslNluWdkYpbJvivJ_hqrWGQUEwWyoIZBs2Tldi402-el9qpPrdCtY4PV6tpkH31eDleY87h5x349xtN3s2jezNLmP1W85nt-EwSc-xBf_ZNhpnxtD6oE7U6py3vqLoQsTN5-JGcf1Y98ByA1MPDDxHleHxhY42w5lEWFmKxzlAdGRklVjb0hfG9fTaoXqTgunR0W0kpZtZI3-Rn6JlCw"/><span class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wider">C.D. VOLEIBOL SAN PEDRO</span></div><button aria-label="Cerrar menú" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary" onclick="document.getElementById('mobile-drawer').classList.add('hidden')" type="button"><span class="material-symbols-outlined text-[28px]">close</span></button></div><div class="px-margin py-space-md flex flex-col gap-space-xs"><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="inicio" href="#"><span>INICIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="plantillas" href="#"><span>PLANTILLAS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="calendario" href="#"><span>CALENDARIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="partidos" href="#"><span>PARTIDOS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="clasificacion" href="#"><span>CLASIFICACIÓN</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="noticias" href="#"><span>NOTICIAS</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="fan-zone" href="#"><span>FAN-ZONE</span><span class="material-symbols-outlined text-outline">chevron_right</span></a><a class="flex items-center justify-between px-space-md py-space-sm font-headline-md text-headline-md uppercase text-on-surface hover:text-primary transition-colors" data-path="patrocinio" href="#"><span>PATROCINIO</span><span class="material-symbols-outlined text-outline">chevron_right</span></a></div><div class="mt-auto px-margin py-space-md bg-surface-container-low flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-outline">PATROCINADORES OFICIALES</span><p class="font-body-sm text-body-sm text-tertiary">Ayuntamiento de Marbella • Tenencia de Alcaldía San Pedro • Diputación de Málaga</p></div></div><main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-surface"><div class="flex flex-col w-full">
+<div class="px-margin pt-space-md pb-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 bg-primary-container inline-block"></span>
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wider">Actualidad &amp; Prensa</span>
+</div>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary px-space-xs py-0.5 bg-surface-container-high">Temporada 24/25</span>
+</div>
+<section class="w-full overflow-x-auto scrollbar-none py-space-xs px-margin">
+<div class="flex items-center gap-space-xs whitespace-nowrap" id="news-filter-bar">
+<button class="news-filter-btn px-space-md py-space-xs bg-primary-container text-on-primary-container font-label-md text-label-md uppercase tracking-wider transition-colors shadow-sm" data-category="todas" type="button">
+        Todas las noticias
+      </button>
+<button class="news-filter-btn px-space-md py-space-xs bg-surface-container text-on-surface-variant font-label-md text-label-md uppercase tracking-wider transition-colors hover:text-on-surface" data-category="masculino" type="button">
+        Primer Equipo Masc.
+      </button>
+<button class="news-filter-btn px-space-md py-space-xs bg-surface-container text-on-surface-variant font-label-md text-label-md uppercase tracking-wider transition-colors hover:text-on-surface" data-category="femenino" type="button">
+        Senior Fem.
+      </button>
+<button class="news-filter-btn px-space-md py-space-xs bg-surface-container text-on-surface-variant font-label-md text-label-md uppercase tracking-wider transition-colors hover:text-on-surface" data-category="cantera" type="button">
+        Cantera &amp; Juvenil
+      </button>
+<button class="news-filter-btn px-space-md py-space-xs bg-surface-container text-on-surface-variant font-label-md text-label-md uppercase tracking-wider transition-colors hover:text-on-surface" data-category="club" type="button">
+        Club e Institucional
+      </button>
+</div>
+</section>
+<section class="px-margin mt-space-md">
+<article class="relative bg-surface-container-low shadow-xl overflow-hidden flex flex-col group">
+<div class="relative w-full h-64 overflow-hidden bg-surface-container-high">
+<img class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" data-alt="Intense high-velocity volleyball spike moment during an arena match, athletic male player in red and black San Pedro kit soaring high above the net, dynamic motion blur, powerful dramatic floodlight backlighting casting crimson rim light, hyper-sharp stadium ambiance, professional sports photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAutad7kch3bQNCk0ed6NSBARX-hpagngFbr8ZWlcv0MKcTmKiY7JN-9Ghvsu1OrHL8AiphYJ-WV50A9ak9s4fHeoFY-ZTo4bNnLlNT1pyDO9Wgs69e5a5mhBBrUsYREhKRFQ3IOA47QVUHPnPbPzi1CujR2VEYe9CBflcbass0dqwhb7oVDeg0AWcgPQRCF7hYyV8aP9A3S1k-8H-AwHF-qH63faov-t7r2ctOLhXyCNFq4GHU-74J"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low via-surface-container-low/40 to-transparent"></div>
+<div class="absolute top-space-sm left-space-sm flex items-center gap-space-xs">
+<span class="bg-primary-container text-on-primary-container font-label-sm text-label-sm uppercase px-space-sm py-1 tracking-widest font-bold">
+            Destacado
+          </span>
+<span class="bg-surface/85 backdrop-blur-md text-on-surface font-label-sm text-label-sm uppercase px-space-sm py-1">
+            Superliga 2
+          </span>
+</div>
+<div class="absolute bottom-space-xs right-space-sm flex items-center gap-1 text-on-surface-variant bg-surface-container-lowest/80 px-2 py-0.5">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span class="font-label-sm text-label-sm">4 min de lectura</span>
+</div>
+</div>
+<div class="p-space-md flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-sm text-outline font-label-sm text-label-sm uppercase tracking-wider">
+<span>Hace 2 horas</span>
+<span>•</span>
+<span class="text-primary font-bold">Crónica de Partido</span>
+</div>
+<h2 class="font-headline-md text-headline-md uppercase text-on-surface leading-none tracking-tight mt-1">
+          Remontada heroica en Málaga: San Pedro asegura el liderato invicto de Superliga 2
+        </h2>
+<p class="font-body-sm text-body-sm text-tertiary line-clamp-2 mt-1">
+          El conjunto rojinegro superó dos sets de desventaja en el pabellón de Carranque con una exhibición magistral de bloqueo y saque directo en el tie-break decisivo (15-13).
+        </p>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<button class="w-full flex items-center justify-center gap-space-xs bg-primary-container text-on-primary-container px-space-md py-space-sm font-label-lg text-label-lg uppercase tracking-wider hover:bg-secondary-container transition-all active:translate-y-0.5" type="button">
+<span>Leer noticia completa</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</article>
+</section>
+<section class="px-margin mt-space-lg flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface tracking-wider">Últimos Artículos</span>
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">6 Publicaciones</span>
+</div>
+<div class="flex flex-col gap-space-sm" id="news-grid-container">
+<article class="news-card bg-surface-container-low p-space-sm flex gap-space-sm items-center shadow-md hover:bg-surface-container transition-colors" data-category="femenino">
+<div class="w-24 h-24 shrink-0 bg-surface-container-high relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Celebration moment of San Pedro female volleyball team hugging passionately inside an indoor sports arena after a game point, vivid red jerseys, sharp contrast, dynamic motion, dramatic overhead sports lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBV4nUtKVZldcXxir2kJnz9DfFAskrZr3cAxwWI_TF-gxDGOlVm4gSlqFsdUJk35j8jzBYGOyPLUHd6J6i8fHhbrImgYfDr8HkAVGxPbgVT54LmkOcVDr6_1pfcYieeJPtoZjPtvmEV-s1fn0gHgTO8WJX8L3XjWosW7ovX-6_JjpE_LhvQR2zQXMBG2RDYdsmnHj0HIOz2jVWXvRGUyUjkG9TJfZF9Tfl_AyG9jIMUNG69QpsAkes-"/>
+<span class="absolute bottom-0 left-0 bg-primary-container text-on-primary-container font-label-sm text-label-sm px-1 leading-tight uppercase font-bold">1ª Nac</span>
+</div>
+<div class="flex flex-col justify-between flex-1 min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="bg-surface-container-high text-primary font-label-sm text-label-sm px-1.5 py-0.5 uppercase tracking-wider">Senior Fem.</span>
+<span class="text-tertiary-container font-label-sm text-label-sm">• Ayer</span>
+</div>
+<h3 class="font-label-lg text-label-lg uppercase text-on-surface line-clamp-2 mt-1">
+            Triunfo categórico del Senior Femenino ante CV Utrera en tres sets
+          </h3>
+<div class="flex items-center justify-between text-outline font-label-sm text-label-sm mt-1.5">
+<span>2 min lectura</span>
+<span class="material-symbols-outlined text-primary text-[18px]">chevron_right</span>
+</div>
+</div>
+</article>
+<article class="news-card bg-surface-container-low p-space-sm flex gap-space-sm items-center shadow-md hover:bg-surface-container transition-colors" data-category="cantera">
+<div class="w-24 h-24 shrink-0 bg-surface-container-high relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Young cadet male volleyball player jumping near the net to set a red and white volleyball with precision, clean technical indoor gym court background, focus on player expression and hand placement" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsi6m8o_dEK64juS6oG0n6Uv7yqr1t9aSElUx5mEktUPJdnkr2muuIxfDQBSdJkEadeVrw1IQLsAMGiSiRfPi-zMCVZMzTIgvc-8RaAfLW2Nwx2FTOsGV_Ykry-4WrkmSz535o1c_fbPAk51goPQgvwh8NITJG81nkcVf1S_cBhoZUvLU6xvRwb3KtZ-tAFM3aKfBL5t3siCYezAQWdTqiTR4fNqIJkRRs4p320YRAdCxJrWlUx3Gv"/>
+<span class="absolute bottom-0 left-0 bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm px-1 leading-tight uppercase font-bold">CADEBA</span>
+</div>
+<div class="flex flex-col justify-between flex-1 min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="bg-surface-container-high text-tertiary font-label-sm text-label-sm px-1.5 py-0.5 uppercase tracking-wider">Cantera</span>
+<span class="text-tertiary-container font-label-sm text-label-sm">• 22 Oct</span>
+</div>
+<h3 class="font-label-lg text-label-lg uppercase text-on-surface line-clamp-2 mt-1">
+            Los equipos Cadete y Juvenil sellan su billete al sector andaluz
+          </h3>
+<div class="flex items-center justify-between text-outline font-label-sm text-label-sm mt-1.5">
+<span>3 min lectura</span>
+<span class="material-symbols-outlined text-primary text-[18px]">chevron_right</span>
+</div>
+</div>
+</article>
+<article class="news-card bg-surface-container-low p-space-sm flex gap-space-sm items-center shadow-md hover:bg-surface-container transition-colors" data-category="club">
+<div class="w-24 h-24 shrink-0 bg-surface-container-high relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Modern indoor athletic arena in San Pedro Alcántara Marbella, brand new synthetic Taraflex floor, red boundary lines, volleyball posts installed, bright modern spotlights shining downward" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9mZRt5J0eDa8seFVzlaIdgiDMaecfa5NASPUGsBGmrR70MLYC26PYX5mF47-Hxl7Lo3elUY41wEXGFugiwHsxOYjV-_A85zvJclwfqHsWGSRMrPJwpxytBav1Ue3K6ybBzLJO9Bz3f1p-C1aU3F0uDmYJmN-x28JdNLUpR3-Qe-ytqgn0wqqykIJlqYnQeY1e1L73D48_eI79b9gJXD4AtgmXvjqm9FalwETABDeUGyszVrviVBky"/>
+<span class="absolute bottom-0 left-0 bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-1 leading-tight uppercase font-bold">Sede</span>
+</div>
+<div class="flex flex-col justify-between flex-1 min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="bg-surface-container-high text-outline font-label-sm text-label-sm px-1.5 py-0.5 uppercase tracking-wider">Institucional</span>
+<span class="text-tertiary-container font-label-sm text-label-sm">• 20 Oct</span>
+</div>
+<h3 class="font-label-lg text-label-lg uppercase text-on-surface line-clamp-2 mt-1">
+            Concluyen las mejoras del nuevo pavimento en el Pabellón Elena Benítez
+          </h3>
+<div class="flex items-center justify-between text-outline font-label-sm text-label-sm mt-1.5">
+<span>2 min lectura</span>
+<span class="material-symbols-outlined text-primary text-[18px]">chevron_right</span>
+</div>
+</div>
+</article>
+<article class="news-card bg-surface-container-low p-space-sm flex gap-space-sm items-center shadow-md hover:bg-surface-container transition-colors" data-category="masculino">
+<div class="w-24 h-24 shrink-0 bg-surface-container-high relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Volleyball coach giving tactical instructions on a whiteboard clipboard to players during an official time out, passionate team atmosphere, locker room arena lighting, dark tones with red accents" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARN_SLGTOmqiFPIh9ZE7wRiqBPQka79S7vnqpUoOmP_e8e1K73CvkSobJrlPgoV5udV3lizHIOnT6q_P1ZixZctKtPIbkAWod1gUcWHyNoLOrxWiOzgxueYK78KrbjIPpsxAlt-NCH4YeyvbzQ758QLGMeTCHgmibPoa0YjYsmN9FhtmPMDqfKpIlU-l8RQCEEox8LW8T21HFXSw3f0-ehlb_FQ-l99H8iWku2dZ-LOnRdWYSdgmMU"/>
+<span class="absolute bottom-0 left-0 bg-primary-container text-on-primary-container font-label-sm text-label-sm px-1 leading-tight uppercase font-bold">Previa</span>
+</div>
+<div class="flex flex-col justify-between flex-1 min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="bg-surface-container-high text-primary font-label-sm text-label-sm px-1.5 py-0.5 uppercase tracking-wider">Primer Equipo</span>
+<span class="text-tertiary-container font-label-sm text-label-sm">• 18 Oct</span>
+</div>
+<h3 class="font-label-lg text-label-lg uppercase text-on-surface line-clamp-2 mt-1">
+            El entrenador analiza las claves del próximo duelo frente a CV Melilla
+          </h3>
+<div class="flex items-center justify-between text-outline font-label-sm text-label-sm mt-1.5">
+<span>4 min lectura</span>
+<span class="material-symbols-outlined text-primary text-[18px]">chevron_right</span>
+</div>
+</div>
+</article>
+</div>
+</section>
+<section class="px-margin mt-space-xl">
+<div class="bg-surface-container p-space-md shadow-lg flex flex-col gap-space-md relative overflow-hidden">
+<div class="absolute -right-8 -top-8 w-32 h-32 bg-primary-container/10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[24px]">newspaper</span>
+</div>
+<div class="flex flex-col min-w-0">
+<h3 class="font-headline-sm text-headline-sm uppercase text-on-surface leading-none">Sala de Prensa</h3>
+<span class="font-label-sm text-label-sm text-tertiary uppercase tracking-wider mt-1">Recursos para medios de comunicación</span>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-space-sm">
+<div class="bg-surface-container-low p-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-8 h-8 bg-surface-container-highest flex items-center justify-center text-error shrink-0">
+<span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md uppercase text-on-surface truncate">Dossier de Prensa Oficial 24/25</span>
+<span class="font-body-sm text-body-sm text-outline">PDF • 14.8 MB • Guía de medios</span>
+</div>
+</div>
+<button aria-label="Descargar Dossier de prensa" class="w-9 h-9 bg-primary-container text-on-primary-container flex items-center justify-center shrink-0 hover:bg-secondary-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</div>
+<div class="bg-surface-container-low p-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-8 h-8 bg-surface-container-highest flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[20px]">badge</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md uppercase text-on-surface truncate">Acreditaciones de Jornada</span>
+<span class="font-body-sm text-body-sm text-outline">Prensa, radio y fotógrafos</span>
+</div>
+</div>
+<button class="px-space-sm py-1.5 bg-surface-container-high text-on-surface font-label-sm text-label-sm uppercase tracking-wider hover:bg-primary-container hover:text-on-primary-container transition-colors shrink-0" onclick="document.getElementById('modal-acreditacion').classList.remove('hidden')" type="button">
+            Solicitar
+          </button>
+</div>
+</div>
+</div>
+</section>
+<section class="px-margin mt-space-lg">
+<div class="bg-gradient-to-br from-surface-container-high to-surface-container-low p-space-md shadow-xl flex flex-col gap-space-sm relative">
+<div class="flex items-center gap-space-xs text-primary">
+<span class="material-symbols-outlined text-[22px]">mark_email_unread</span>
+<span class="font-label-lg text-label-lg uppercase tracking-wider font-bold">Boletín Rojinegro</span>
+</div>
+<h3 class="font-headline-md text-headline-md uppercase text-on-surface leading-tight">
+        No te pierdas ningún punto
+      </h3>
+<p class="font-body-sm text-body-sm text-tertiary">
+        Recibe cada viernes en tu bandeja de entrada la previa de los partidos, resultados de cantera y entrevistas exclusivas.
+      </p>
+<form class="flex flex-col gap-space-xs mt-space-xs" id="newsletter-form" onsubmit="handleNewsletter(event)">
+<div class="flex flex-col">
+<label class="sr-only" for="newsletter-email">Correo electrónico</label>
+<input class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-md text-body-md px-space-md py-space-sm outline-none focus:ring-0" id="newsletter-email" placeholder="ejemplo@correo.com" required="" type="email"/>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container font-label-lg text-label-lg uppercase tracking-wider py-space-sm flex items-center justify-center gap-space-xs hover:bg-secondary-container transition-colors shadow-sm" type="submit">
+<span>Suscribirme gratis</span>
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</form>
+<div class="hidden bg-surface-container-highest p-space-sm flex items-center gap-space-sm text-on-surface font-body-sm text-body-sm mt-space-xs" id="newsletter-success">
+<span class="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+<span>¡Gracias por sumarte a la marea rojinegra! Te hemos enviado un correo de bienvenida.</span>
+</div>
+<span class="font-label-sm text-label-sm text-outline">Sin spam. Podrás darte de baja en cualquier momento con un solo clic.</span>
+</div>
+</section>
+<div class="hidden fixed inset-0 z-50 bg-surface/90 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-space-md" id="modal-acreditacion">
+<div class="w-full sm:max-w-md bg-surface-container-low p-space-lg shadow-2xl flex flex-col gap-space-md max-h-[795px] overflow-y-auto">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 bg-primary-container"></span>
+<span class="font-headline-sm text-headline-sm uppercase text-on-surface">Pase de Prensa</span>
+</div>
+<button aria-label="Cerrar modal" class="w-8 h-8 flex items-center justify-center text-outline hover:text-on-surface" onclick="document.getElementById('modal-acreditacion').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[24px]">close</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-tertiary">
+        Las solicitudes deben remitirse con un mínimo de 48 horas de antelación al inicio del encuentro oficial en el Pabellón Elena Benítez.
+      </p>
+<form class="flex flex-col gap-space-sm" onsubmit="handleAcreditacion(event)">
+<div>
+<label class="block font-label-sm text-label-sm uppercase text-on-surface-variant mb-1">Nombre y Apellidos</label>
+<input class="w-full bg-surface-container-lowest text-on-surface px-space-md py-space-sm font-body-sm text-body-sm outline-none" required="" type="text"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm uppercase text-on-surface-variant mb-1">Medio de Comunicación</label>
+<input class="w-full bg-surface-container-lowest text-on-surface px-space-md py-space-sm font-body-sm text-body-sm outline-none" placeholder="Diario, Radio, TV, Web..." required="" type="text"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm uppercase text-on-surface-variant mb-1">Tipo de Pase</label>
+<select class="w-full bg-surface-container-lowest text-on-surface px-space-md py-space-sm font-body-sm text-body-sm outline-none">
+<option>Redactor / Cronista</option>
+<option>Fotógrafo a pie de pista</option>
+<option>Operador de Cámara</option>
+<option>Radio / Retransmisión en directo</option>
+</select>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm uppercase text-on-surface-variant mb-1">Encuentro solicitado</label>
+<input class="w-full bg-surface-container-high text-tertiary px-space-md py-space-sm font-body-sm text-body-sm outline-none cursor-not-allowed" readonly="" type="text" value="Jor. 5: San Pedro vs CV Melilla (Sáb 19:00)"/>
+</div>
+<button class="w-full mt-space-xs bg-primary-container text-on-primary-container font-label-lg text-label-lg uppercase tracking-wider py-space-sm hover:bg-secondary-container transition-colors" type="submit">
+          Enviar Solicitud Oficial
+        </button>
+</form>
+</div>
+</div>
+<script>
+    document.querySelectorAll('.news-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.news-filter-btn').forEach(b => {
+          b.classList.remove('bg-primary-container', 'text-on-primary-container');
+          b.classList.add('bg-surface-container', 'text-on-surface-variant');
+        });
+        btn.classList.add('bg-primary-container', 'text-on-primary-container');
+        btn.classList.remove('bg-surface-container', 'text-on-surface-variant');
+
+        const cat = btn.getAttribute('data-category');
+        const cards = document.querySelectorAll('.news-card');
+        cards.forEach(card => {
+          if (cat === 'todas' || card.getAttribute('data-category') === cat) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    function handleNewsletter(e) {
+      e.preventDefault();
+      document.getElementById('newsletter-form').classList.add('hidden');
+      document.getElementById('newsletter-success').classList.remove('hidden');
+    }
+
+    function handleAcreditacion(e) {
+      e.preventDefault();
+      alert('Solicitud enviada correctamente. El departamento de prensa contactará en menos de 24 horas.');
+      document.getElementById('modal-acreditacion').classList.add('hidden');
+    }
+  </script>
+</div><footer class="w-full px-margin py-space-lg bg-surface-container-lowest mt-space-xl flex flex-col gap-space-md"><div class="flex flex-col gap-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">PATROCINADORES INSTITUCIONALES</span><div class="flex flex-wrap items-center gap-space-sm text-on-surface-variant font-label-md text-label-md uppercase"><span class="bg-surface-container px-space-sm py-space-xs">Ayuntamiento de Marbella</span><span class="bg-surface-container px-space-sm py-space-xs">Tenencia San Pedro</span><span class="bg-surface-container px-space-sm py-space-xs">Diputación de Málaga</span></div></div><div class="flex flex-wrap gap-space-md font-body-sm text-body-sm text-tertiary"><a class="hover:text-primary" href="#">Aviso Legal</a><a class="hover:text-primary" href="#">Privacidad</a><a class="hover:text-primary" href="#">Contacto</a></div><div class="font-label-sm text-label-sm text-outline uppercase tracking-wider">© C.D. VOLEIBOL SAN PEDRO • TODOS LOS DERECHOS RESERVADOS</div></footer></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/95 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.6)]" data-active-classes="text-primary-container font-bold"><div class="h-16 px-space-xs flex items-center justify-around"><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="inicio" href="#"><span class="material-symbols-outlined text-[22px]">sports_volleyball</span><span class="font-label-sm text-label-sm mt-0.5">Inicio</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="partidos" href="#"><span class="material-symbols-outlined text-[22px]">scoreboard</span><span class="font-label-sm text-label-sm mt-0.5">Partidos</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="calendario" href="#"><span class="material-symbols-outlined text-[22px]">calendar_today</span><span class="font-label-sm text-label-sm mt-0.5">Fechas</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="clasificacion" href="#"><span class="material-symbols-outlined text-[22px]">leaderboard</span><span class="font-label-sm text-label-sm mt-0.5">Tabla</span></a><a class="flex flex-col items-center justify-center w-14 h-14 text-on-surface-variant transition-colors" data-path="fan-zone" href="#"><span class="material-symbols-outlined text-[22px]">stadium</span><span class="font-label-sm text-label-sm mt-0.5">FanZone</span></a></div></nav></body></html>
