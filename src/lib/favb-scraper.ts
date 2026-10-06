@@ -157,6 +157,7 @@ export interface FavbMatch {
   favbId?: string;
   competitionCode: string;
   competitionName: string;
+  categoryId?: string;
   categoryName: string;
   round: number;
   homeTeam: string;
@@ -252,6 +253,7 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
       favbId: m.id.startsWith('favb-') ? m.id.replace('favb-', '') : m.id,
       competitionCode: team?.division || 'FAVB',
       competitionName: team?.division || 'Federación Andaluza de Voleibol',
+      categoryId: category?.id,
       categoryName: category?.name || 'Categoría FAVB',
       round: m.round,
       homeTeam: m.homeTeamName,

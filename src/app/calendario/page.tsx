@@ -353,15 +353,18 @@ export default function CalendarioPage() {
                           </span>
                         </div>
 
-                        {match.isClubHome ? (
-                          <span className="inline-flex self-start sm:self-auto px-2 py-0.5 bg-primary-container/20 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary-container/30">
-                            En Casa
+                        <span
+                          className={`inline-flex items-center justify-center p-1 self-start sm:self-auto border ${
+                            match.isClubHome
+                              ? 'bg-primary-container/20 text-primary border-primary-container/30'
+                              : 'bg-white/5 text-tertiary border-white/10'
+                          }`}
+                          title={match.isClubHome ? 'Partido en casa (Pabellón Sergio Scariolo)' : 'Partido fuera / a domicilio'}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">
+                            {match.isClubHome ? 'home' : 'flight'}
                           </span>
-                        ) : (
-                          <span className="inline-flex self-start sm:self-auto px-2 py-0.5 bg-surface-container-high text-tertiary text-[10px] uppercase font-bold">
-                            A Domicilio
-                          </span>
-                        )}
+                        </span>
                       </div>
 
                       {/* Venue */}

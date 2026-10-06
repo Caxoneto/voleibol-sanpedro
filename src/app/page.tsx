@@ -12,10 +12,36 @@ export default function HomePage() {
   const recentMatches = store.getRecentMatches().slice(0, 3);
   const articles = store.getArticles().slice(0, 3);
 
+  const categories = store.getCategories();
+  const teams = store.getTeams();
+  const matches = store.getMatches();
+
+  // Próximo partido programado de cada categoría oficial
+  const upcomingMatchesByCategory = categories
+    .map((cat) => {
+      const catTeams = teams.filter((t) => t.categoryId === cat.id);
+      const catTeamIds = new Set(catTeams.map((t) => t.id));
+      const nextMatch = matches.find(
+        (m) => catTeamIds.has(m.teamId) && m.status === 'SCHEDULED'
+      );
+      return {
+        category: cat,
+        match: nextMatch,
+      };
+    })
+    .filter(
+      (
+        item
+      ): item is {
+        category: (typeof categories)[0];
+        match: NonNullable<typeof item.match>;
+      } => item.match !== undefined
+    );
+
   return (
     <div className="w-full flex flex-col">
       {/* Hero Section */}
-      <section className="relative w-full overflow-hidden bg-surface-container-lowest min-h-[600px] lg:min-h-[720px] flex items-center">
+      <section className="relative w-full overflow-hidden bg-surface-container-lowest pt-2 pb-6 sm:pt-4 sm:pb-8 flex flex-col justify-start">
         {/* Background Image with Ambient Zoom */}
         <div
           className="absolute inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-40 animate-hero-bg transition-transform duration-1000"
@@ -27,9 +53,9 @@ export default function HomePage() {
         {/* Stadium Crimson Aura */}
         <div className="absolute -top-32 left-1/4 w-96 h-96 bg-primary-container/25 rounded-full blur-[140px] pointer-events-none animate-pulse-aura" />
 
-        <div className="relative max-w-7xl mx-auto px-4 lg:px-8 py-12 lg:py-20 flex flex-col justify-end w-full">
+        <div className="relative max-w-7xl mx-auto px-4 lg:px-8 pt-2 pb-2 sm:pt-3 sm:pb-4 flex flex-col justify-start w-full">
           {/* Status Badge */}
-          <div className="inline-flex items-center gap-2 self-start px-3 py-1 bg-surface-container-high/90 backdrop-blur-sm text-on-surface shadow-[4px_4px_0px_0px_#d90429] mb-4">
+          <div className="inline-flex items-center gap-2 self-start px-3 py-1 bg-surface-container-high/90 backdrop-blur-sm text-on-surface shadow-[4px_4px_0px_0px_#d90429] mb-3">
             <span className="w-2.5 h-2.5 rounded-full bg-primary-container animate-pulse" />
             <span className="font-label-sm text-[11px] uppercase tracking-widest text-primary font-bold">
               DEPORTE BASE • ADSCRITO A LA FEDERACIÓN ANDALUZA DE VOLEIBOL (FAVB)
@@ -37,63 +63,122 @@ export default function HomePage() {
           </div>
 
           {/* Main Headline */}
-          <h1 className="font-display-xl text-5xl sm:text-6xl lg:text-7xl tracking-tight text-on-surface uppercase max-w-4xl leading-[0.95]">
+          <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl xl:text-7xl tracking-tight text-on-surface uppercase max-w-3xl leading-[0.95]">
             PASIÓN, CANTERA <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
               Y ORGULLO SAMPEDREÑO.
             </span>
           </h1>
 
-          <p className="font-body-lg text-base sm:text-lg text-tertiary-fixed max-w-2xl mt-4 mb-8">
+          <p className="font-body-lg text-sm sm:text-base lg:text-lg text-tertiary-fixed max-w-2xl mt-2.5 mb-5 sm:mb-6">
             Club deportivo formativo volcado en el deporte base, los jóvenes y las familias de San Pedro Alcántara.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
             <Link
               href="/partidos"
-              className="group inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-primary-container hover:bg-secondary-container text-white font-label-lg uppercase tracking-wider transition-all duration-300 shadow-[4px_4px_0px_0px_#0e0e0e] hover:shadow-[0_0_25px_rgba(217,4,41,0.6)] hover:-translate-y-0.5 font-bold"
+              className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 bg-primary-container hover:bg-secondary-container text-white font-label-lg uppercase tracking-wider transition-all duration-300 shadow-[4px_4px_0px_0px_#0e0e0e] hover:shadow-[0_0_25px_rgba(217,4,41,0.6)] hover:-translate-y-0.5 font-bold text-xs sm:text-sm"
             >
               <span>Próximo Partido</span>
-              <span className="material-symbols-outlined text-[20px] transition-transform duration-300 group-hover:rotate-45">
+              <span className="material-symbols-outlined text-[18px] sm:text-[20px] transition-transform duration-300 group-hover:rotate-45">
                 sports_volleyball
               </span>
             </Link>
 
             <Link
               href="/plantillas"
-              className="group inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-lg uppercase tracking-wider transition-all duration-300 hover:border-l-2 hover:border-primary-container font-bold"
+              className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-lg uppercase tracking-wider transition-all duration-300 hover:border-l-2 hover:border-primary-container font-bold text-xs sm:text-sm"
             >
               <span>Ver Plantillas y Cantera</span>
-              <span className="material-symbols-outlined text-[20px] transition-transform duration-300 group-hover:scale-110">
+              <span className="material-symbols-outlined text-[18px] sm:text-[20px] transition-transform duration-300 group-hover:scale-110">
                 groups
               </span>
             </Link>
           </div>
 
-          {/* Next Match Highlight Bar */}
-          {featuredMatch && (
-            <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-surface-container-low/95 backdrop-blur-md p-4 max-w-3xl border border-white/5 shadow-2xl">
-              <div className="flex flex-col">
-                <span className="font-label-sm text-[11px] text-tertiary uppercase">Jornada {featuredMatch.round}</span>
-                <span className="font-headline-sm text-sm sm:text-base text-on-surface uppercase mt-1 truncate">
-                  1ª Andaluza Senior
+          {/* Próximos Partidos por Categoría (Tira simplificada e interactiva) */}
+          <div className="mt-6 sm:mt-8 pt-4 border-t border-white/10 w-full">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse" />
+                <span className="font-label-sm text-[11px] sm:text-xs uppercase tracking-widest text-primary font-bold">
+                  Próximos Partidos por Categoría
+                </span>
+                <span className="text-[10px] text-tertiary hidden md:inline">
+                  · Pulsa en un partido para ver detalles completos
                 </span>
               </div>
-              <div className="flex flex-col">
-                <span className="font-label-sm text-[11px] text-tertiary uppercase">Fecha & Hora</span>
-                <span className="font-headline-sm text-sm sm:text-base text-primary uppercase mt-1 font-bold">
-                  {formatMadridDate(featuredMatch.matchDate, { weekday: 'short', day: 'numeric', month: 'short' })} • {formatMadridTime(featuredMatch.matchDate)}h
+              <Link
+                href="/partidos"
+                className="text-[11px] sm:text-xs text-tertiary hover:text-white uppercase font-bold flex items-center gap-1 group transition-colors"
+              >
+                <span>Ver todos</span>
+                <span className="material-symbols-outlined text-[15px] group-hover:translate-x-0.5 transition-transform">
+                  arrow_forward
                 </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-label-sm text-[11px] text-tertiary uppercase">Pabellón</span>
-                <span className="font-headline-sm text-sm sm:text-base text-on-surface uppercase mt-1 truncate">
-                  {featuredMatch.venueName}
-                </span>
-              </div>
+              </Link>
             </div>
-          )}
+
+            {/* Carrusel horizontal suave de tarjetas */}
+            <div className="flex gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
+              {upcomingMatchesByCategory.map(({ category, match }) => (
+                <Link
+                  key={category.id}
+                  href={`/partidos?categoria=${category.id}&match=${match.id}#match-${match.id}`}
+                  className="group shrink-0 w-[215px] sm:w-[235px] bg-surface-container-low/95 hover:bg-surface-container-high border border-white/10 hover:border-primary-container p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5"
+                  title={`Ver detalles: ${category.name} en partidos`}
+                >
+                  {/* Cabecera: Jornada, Categoría y Casa/Avión */}
+                  <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-white/5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[9px] sm:text-[10px] font-bold">
+                        J{match.round}
+                      </span>
+                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-white truncate">
+                        {category.name}
+                      </span>
+                    </div>
+                    <span
+                      className={`w-5 h-5 flex items-center justify-center shrink-0 border ${
+                        match.isClubHome
+                          ? 'text-primary bg-primary-container/15 border-primary-container/30'
+                          : 'text-tertiary bg-white/5 border-white/10'
+                      }`}
+                      title={match.isClubHome ? 'En casa (Pabellón Sergio Scariolo)' : 'Fuera / A domicilio'}
+                    >
+                      <span className="material-symbols-outlined text-[13px] sm:text-[14px]">
+                        {match.isClubHome ? 'home' : 'flight'}
+                      </span>
+                    </span>
+                  </div>
+
+                  {/* Enfrentamiento simplificado */}
+                  <div className="py-2">
+                    <p className="text-[10px] sm:text-[11px] font-semibold truncate text-on-surface">
+                      <span className={match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'}>
+                        {match.homeTeamName}
+                      </span>
+                      <span className="text-tertiary mx-1 font-normal">vs</span>
+                      <span className={!match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'}>
+                        {match.awayTeamName}
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* Fecha & Hora (Sin dirección de pabellón) */}
+                  <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[10px] sm:text-[11px]">
+                    <span className="text-tertiary capitalize">
+                      {formatMadridDate(match.matchDate, { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </span>
+                    <span className="font-bold text-primary font-mono">
+                      {formatMadridTime(match.matchDate)}h
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
