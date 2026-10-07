@@ -198,35 +198,6 @@ Todos los calendarios, actas electrónicas y clasificaciones se actualizan en ti
     isFeatured: false,
     readingTimeMinutes: 3,
   },
-  {
-    id: 'art-senior-derbi',
-    title: 'El Senior Masculino ruge en el Sergio Scariolo ante más de 400 sampedreños',
-    slug: 'senior-masculino-vence-derbi-sergio-scariolo',
-    excerpt: 'Con un pabellón volcado animando al equipo, el conjunto sampedreño firmó una actuación soberbia en 1ª División Andaluza superando con solvencia al CV Marbella (3-0).',
-    contentMarkdown: `El ambiente vivido este fin de semana en el Pabellón Polideportivo Sergio Scariolo fue de los que quedan grabados en la memoria colectiva del voleibol sampedreño. Con las gradas completamente abarrotadas por más de 400 personas, el primer equipo del C.D. Voleibol San Pedro firmó una actuación soberbia ante el CV Marbella, adjudicándose el derbi provincial por un contundente 3-0 (25-20, 25-23, 25-19).
-
-### Dominio táctico y bloqueo asfixiante
-
-Desde el primer punto del partido, el colocador y capitán Alejandro García impuso un ritmo veloz y variado en la distribución del juego sampedreño. Los remates contundentes por zona cuatro y la efectividad por el centro desarticularon la defensa rival en los tramos decisivos.
-
-En la red, el bloqueo sampedreño se mostró infranqueable:
-
-- **Efectividad en recepción:** 68% de balones perfectos en el primer toque.
-- **Puntos de bloqueo directo:** 14 bloqueos ganadores frente al ataque rival.
-- **Acierto en remate:** 58% de efectividad en balones de contrataque.
-
-### Un pabellón volcado con el orgullo local
-
-Ver a los niños y niñas de todas las categorías de cantera animando detrás del banquillo con tambores, banderas rojinegras y bufandas es el verdadero triunfo y la mayor recompensa para este proyecto deportivo.
-
-El club agradece a la afición su entrega incondicional e invita a mantener este ambiente en el próximo compromiso de liga en casa.`,
-    categoryId: 'cat-senior-masc-a',
-    categoryName: 'Senior Masculino',
-    coverImageUrl: 'https://images.unsplash.com/photo-1728971124745-423b12df446d?w=1200&auto=format&fit=crop&q=80',
-    publishedAt: '2026-10-04T18:00:00.000Z',
-    isFeatured: false,
-    readingTimeMinutes: 3,
-  },
 ];
 
 export const INITIAL_SPONSOR_TIERS: SponsorTier[] = [
@@ -346,9 +317,9 @@ class DataStore {
   private sponsorTiers: SponsorTier[] = [...INITIAL_SPONSOR_TIERS];
   private sponsorInquiries: SponsorInquiry[] = [];
   private fanVotes: FanVote[] = [
-    { id: 'fv-1', matchId: 'm-past-1', playerId: 'p-sma-2', ipHash: 'mock-1', createdAt: new Date().toISOString() },
-    { id: 'fv-2', matchId: 'm-past-1', playerId: 'p-sma-2', ipHash: 'mock-2', createdAt: new Date().toISOString() },
-    { id: 'fv-3', matchId: 'm-past-1', playerId: 'p-sma-1', ipHash: 'mock-3', createdAt: new Date().toISOString() },
+    { id: 'fv-1', matchId: 'favb-1055', playerId: 'p-team-sf-2', ipHash: 'mock-1', createdAt: new Date().toISOString() },
+    { id: 'fv-2', matchId: 'favb-1055', playerId: 'p-team-sf-2', ipHash: 'mock-2', createdAt: new Date().toISOString() },
+    { id: 'fv-3', matchId: 'favb-1055', playerId: 'p-team-sf-1', ipHash: 'mock-3', createdAt: new Date().toISOString() },
   ];
   private pressAccreditations: PressAccreditation[] = [];
   private newsletterSubscribers: NewsletterSubscriber[] = [];

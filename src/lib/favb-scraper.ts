@@ -18,17 +18,6 @@ export interface FavbCompetitionMeta {
 }
 
 export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
-  // 1ª División Andaluza Senior Masculina
-  {
-    code: 'AN1AM26-1',
-    favbId: 1,
-    grupo: 1,
-    fase: 1,
-    name: '1ª DIVISIÓN ANDALUZA SENIOR MASCULINA',
-    category: 'Senior Masculino A',
-    gender: 'MASCULINO',
-    season: '2026/2027',
-  },
   // 1ª División Andaluza Senior Femenina
   {
     code: 'AN1AF26-1',

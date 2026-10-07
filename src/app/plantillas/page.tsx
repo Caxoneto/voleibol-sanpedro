@@ -13,7 +13,7 @@ import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS } from '@/lib/types'
 import SponsorBanner from '@/components/SponsorBanner';
 
 export default function PlantillasPage() {
-  const [selectedCategorySlug, setSelectedCategorySlug] = useState('senior-masculino-a');
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState('senior-femenino');
   const [selectedPosition, setSelectedPosition] = useState<Position | 'ALL'>('ALL');
 
   // Encontrar la categoría seleccionada

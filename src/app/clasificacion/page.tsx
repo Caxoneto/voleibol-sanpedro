@@ -5,7 +5,7 @@ import { INITIAL_CATEGORIES, INITIAL_STANDINGS, CLUB_INFO } from '@/lib/data-sto
 import SponsorBanner from '@/components/SponsorBanner';
 
 export default function ClasificacionPage() {
-  const [selectedCatId, setSelectedCatId] = useState<string>('cat-senior-masc-a');
+  const [selectedCatId, setSelectedCatId] = useState<string>('cat-senior-fem');
   const [showRulesDropdown, setShowRulesDropdown] = useState<boolean>(false);
 
   // Filtrar categorías que tengan clasificación activa

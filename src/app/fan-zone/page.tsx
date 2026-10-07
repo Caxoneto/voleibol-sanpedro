@@ -18,8 +18,8 @@ export default function FanZonePage() {
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
   const [votingFeedback, setVotingFeedback] = useState<string | null>(null);
 
-  // Candidatos para el MVP (plantilla del Senior Masculino A que jugó el último derbi)
-  const mvpCandidates = INITIAL_PLAYERS.filter((p) => p.teamId === 'team-sma').slice(0, 4);
+  // Candidatos para el MVP (plantilla del Senior Femenino que disputó el último encuentro oficial)
+  const mvpCandidates = INITIAL_PLAYERS.filter((p) => p.teamId === 'team-sf').slice(0, 4);
 
   // Estado del himno del club / audio
   const [isPlayingAnthem, setIsPlayingAnthem] = useState<boolean>(false);

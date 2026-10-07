@@ -2,7 +2,7 @@
 
 export default function TopMarquee() {
   const marqueeItems = [
-    'PRÓXIMO PARTIDO: C.D. Voleibol San Pedro vs. CV Costa del Sol — Sábado 18:30h en Pabellón Polideportivo Sergio Scariolo',
+    'PRÓXIMO PARTIDO: VOLEIBOL SAN PEDRO vs. CDU ATARFE — Sábado 18:00h en Pabellón Polideportivo Sergio Scariolo (1ª Andaluza)',
     '¡VEN A ANIMAR A NUESTRA CANTERA Y PRIMER EQUIPO!',
     'CLUB ADSCRITO A LA FEDERACIÓN ANDALUZA DE VOLEIBOL (FAVB)',
     'PASIÓN, CANTERA Y ORGULLO SAMPEDREÑO',

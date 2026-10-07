@@ -28,7 +28,7 @@ export default function NoticiasPage() {
     { label: 'Todas las noticias', value: 'ALL' },
     { label: 'Institucional y FAVB', value: 'cat-inst' },
     { label: 'Cantera FAVB', value: 'cat-cantera' },
-    { label: 'Senior Masculino', value: 'cat-senior-masc-a' },
+    { label: 'Senior Femenino', value: 'cat-senior-fem' },
   ];
 
   const allArticles = store.getArticles();

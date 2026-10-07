@@ -23,7 +23,7 @@ import SponsorBanner from '@/components/SponsorBanner';
 
 function PartidosContent() {
   const searchParams = useSearchParams();
-  const initialCategoryParam = searchParams.get('categoria') || searchParams.get('cat') || 'cat-senior-masc-a';
+  const initialCategoryParam = searchParams.get('categoria') || searchParams.get('cat') || 'cat-senior-fem';
   const initialMatchParam = searchParams.get('match') || searchParams.get('partido');
 
   const [matches, setMatches] = useState<FavbMatch[]>([]);

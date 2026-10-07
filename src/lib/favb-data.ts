@@ -2,99 +2,85 @@ import { Category, Team, Player, Staff, Match, Standings } from './types';
 
 export const FAVB_CATEGORIES: Category[] = [
   {
-    "id": "cat-senior-masc-a",
-    "name": "Senior Masculino A",
-    "slug": "senior-masculino-a",
-    "order": 1,
-    "description": "1ª División Andaluza Senior Masculina"
-  },
-  {
     "id": "cat-senior-fem",
     "name": "Senior Femenino (1ª Andaluza)",
     "slug": "senior-femenino",
-    "order": 2,
+    "order": 1,
     "description": "1ª División Andaluza Femenina (FAVB)"
   },
   {
     "id": "cat-juvenil-masc",
     "name": "Juvenil Masculino",
     "slug": "juvenil-masculino",
-    "order": 3,
+    "order": 2,
     "description": "Liga Provincial Málaga - Juvenil Masc (FAVB)"
   },
   {
     "id": "cat-juvenil-fem-rojo",
     "name": "Juvenil Femenino Rojo",
     "slug": "juvenil-femenino-rojo",
-    "order": 4,
+    "order": 3,
     "description": "Liga Provincial Málaga - Grupo Oro (FAVB)"
   },
   {
     "id": "cat-juvenil-fem-negro",
     "name": "Juvenil Femenino Negro",
     "slug": "juvenil-femenino-negro",
-    "order": 5,
+    "order": 4,
     "description": "Liga Provincial Málaga - Grupo Plata (FAVB)"
   },
   {
     "id": "cat-cadete-masc",
     "name": "Cadete Masculino",
     "slug": "cadete-masculino",
-    "order": 6,
+    "order": 5,
     "description": "Liga Provincial Málaga - Cadete Masc (FAVB)"
   },
   {
     "id": "cat-cadete-fem-rojo",
     "name": "Cadete Femenino Rojo",
     "slug": "cadete-femenino-rojo",
-    "order": 7,
+    "order": 6,
     "description": "Liga Provincial Málaga - Grupo Oro (FAVB)"
   },
   {
     "id": "cat-cadete-fem-negro",
     "name": "Cadete Femenino Negro",
     "slug": "cadete-femenino-negro",
-    "order": 8,
+    "order": 7,
     "description": "Liga Provincial Málaga - Grupo Plata (FAVB)"
   },
   {
     "id": "cat-infantil-masc",
     "name": "Infantil Masculino",
     "slug": "infantil-masculino",
-    "order": 9,
+    "order": 8,
     "description": "Liga Provincial Málaga - Infantil Masc (FAVB)"
   },
   {
     "id": "cat-infantil-fem-rojo",
     "name": "Infantil Femenino Rojo",
     "slug": "infantil-femenino-rojo",
-    "order": 10,
+    "order": 9,
     "description": "Liga Provincial Málaga - Grupo Oro (FAVB)"
   },
   {
     "id": "cat-infantil-fem-negro",
     "name": "Infantil Femenino Negro",
     "slug": "infantil-femenino-negro",
-    "order": 11,
+    "order": 10,
     "description": "Liga Provincial Málaga - Grupo Plata (FAVB)"
   },
   {
     "id": "cat-infantil-fem-blanco",
     "name": "Infantil Femenino Blanco",
     "slug": "infantil-femenino-blanco",
-    "order": 12,
+    "order": 11,
     "description": "Liga Provincial Málaga - Grupo Promoción (FAVB)"
   }
 ];
 
 export const FAVB_TEAMS: Team[] = [
-  {
-    "id": "team-sma",
-    "categoryId": "cat-senior-masc-a",
-    "name": "Senior Masculino A",
-    "division": "1ª División Andaluza",
-    "season": "2026/2027"
-  },
   {
     "id": "team-sf",
     "categoryId": "cat-senior-fem",
@@ -175,136 +161,6 @@ export const FAVB_TEAMS: Team[] = [
 ];
 
 export const FAVB_PLAYERS: Player[] = [
-  {
-    "id": "p-team-sma-1",
-    "teamId": "team-sma",
-    "number": 7,
-    "firstName": "Alejandro",
-    "lastName": "Sánchez Gil",
-    "position": "SETTER",
-    "birthYear": 2000,
-    "heightCm": 188,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": true,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sma-2",
-    "teamId": "team-sma",
-    "number": 11,
-    "firstName": "Mateo",
-    "lastName": "Romero Domínguez",
-    "position": "OPPOSITE",
-    "birthYear": 2001,
-    "heightCm": 191,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sma-3",
-    "teamId": "team-sma",
-    "number": 4,
-    "firstName": "David",
-    "lastName": "Navarro Muñoz",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2002,
-    "heightCm": 194,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sma-4",
-    "teamId": "team-sma",
-    "number": 9,
-    "firstName": "Javier",
-    "lastName": "Castillo Vega",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2000,
-    "heightCm": 188,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sma-5",
-    "teamId": "team-sma",
-    "number": 13,
-    "firstName": "Pablo",
-    "lastName": "Benítez Sampedro",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2001,
-    "heightCm": 191,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sma-6",
-    "teamId": "team-sma",
-    "number": 5,
-    "firstName": "Álvaro",
-    "lastName": "Ortiz Gallego",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2002,
-    "heightCm": 194,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sma-7",
-    "teamId": "team-sma",
-    "number": 1,
-    "firstName": "Hugo",
-    "lastName": "Carrasco Blanco",
-    "position": "LIBERO",
-    "birthYear": 2000,
-    "heightCm": 188,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sma-8",
-    "teamId": "team-sma",
-    "number": 14,
-    "firstName": "Marcos",
-    "lastName": "Mellado Díaz",
-    "position": "SETTER",
-    "birthYear": 2001,
-    "heightCm": 191,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sma-9",
-    "teamId": "team-sma",
-    "number": 8,
-    "firstName": "Rubén",
-    "lastName": "Prieto Ramos",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2002,
-    "heightCm": 194,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sma-10",
-    "teamId": "team-sma",
-    "number": 16,
-    "firstName": "Sergio",
-    "lastName": "Díaz Morales",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2000,
-    "heightCm": 188,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
   {
     "id": "p-team-sf-1",
     "teamId": "team-sf",
@@ -1739,30 +1595,9 @@ export const FAVB_PLAYERS: Player[] = [
 
 export const FAVB_STAFF: Staff[] = [
   {
-    "id": "st-sma-1",
-    "teamId": "team-sma",
-    "name": "Carlos Alberto Alcántara González",
-    "role": "HEAD_COACH",
-    "photoUrl": "/images/staff-placeholder.svg"
-  },
-  {
-    "id": "st-sma-2",
-    "teamId": "team-sma",
-    "name": "Carlos Alarcón Vega",
-    "role": "ASSISTANT",
-    "photoUrl": "/images/staff-placeholder.svg"
-  },
-  {
-    "id": "st-sma-3",
-    "teamId": "team-sma",
-    "name": "Marta Lozano Pino",
-    "role": "PHYSIO",
-    "photoUrl": "/images/staff-placeholder.svg"
-  },
-  {
     "id": "st-sf-1",
     "teamId": "team-sf",
-    "name": "Irene Morales Delgado",
+    "name": "Carlos Alberto Alcántara González",
     "role": "HEAD_COACH",
     "photoUrl": "/images/staff-placeholder.svg"
   },
@@ -1847,73 +1682,6 @@ export const FAVB_STAFF: Staff[] = [
 
 export const FAVB_MATCHES: Match[] = [
   {
-    "id": "m-sma-past-1",
-    "teamId": "team-sma",
-    "round": 1,
-    "homeTeamName": "C.D. Voleibol San Pedro",
-    "awayTeamName": "CV Marbella Costa",
-    "isClubHome": true,
-    "venueName": "Pabellón Polideportivo Sergio Scariolo",
-    "matchDate": "2026-10-03T16:30:00.000Z",
-    "status": "FINISHED",
-    "setScores": [
-      {
-        "home": 25,
-        "away": 20
-      },
-      {
-        "home": 25,
-        "away": 23
-      },
-      {
-        "home": 25,
-        "away": 19
-      }
-    ],
-    "favbMatchUrl": "https://favoley.net/publico/index.php",
-    "mvpPlayerId": "p-sma-2"
-  },
-  {
-    "id": "m-sma-next-1",
-    "teamId": "team-sma",
-    "round": 2,
-    "homeTeamName": "C.D. Voleibol San Pedro",
-    "awayTeamName": "CV Costa del Sol",
-    "isClubHome": true,
-    "venueName": "Pabellón Polideportivo Sergio Scariolo",
-    "matchDate": "2026-10-10T16:30:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/index.php",
-    "isFeatured": true
-  },
-  {
-    "id": "m-sma-fut-2",
-    "teamId": "team-sma",
-    "round": 3,
-    "homeTeamName": "CV Fuengirola B",
-    "awayTeamName": "C.D. Voleibol San Pedro",
-    "isClubHome": false,
-    "venueName": "Pabellón Juan Gómez Juanito (Fuengirola)",
-    "matchDate": "2026-10-17T15:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/index.php"
-  },
-  {
-    "id": "m-sma-fut-3",
-    "teamId": "team-sma",
-    "round": 4,
-    "homeTeamName": "C.D. Voleibol San Pedro",
-    "awayTeamName": "Universidad de Málaga Voley",
-    "isClubHome": true,
-    "venueName": "Pabellón Polideportivo Sergio Scariolo",
-    "matchDate": "2026-10-24T16:30:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/index.php"
-  },
-  {
     "id": "favb-1055",
     "teamId": "team-sf",
     "round": 1,
@@ -1937,7 +1705,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-10T16:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1061"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1061",
+    "isFeatured": true
   },
   {
     "id": "favb-1067",
@@ -3684,66 +3453,6 @@ export const FAVB_MATCHES: Match[] = [
 ];
 
 export const FAVB_STANDINGS: Standings[] = [
-  {
-    "id": "std-sma-1",
-    "categoryId": "cat-senior-masc-a",
-    "teamName": "C.D. Voleibol San Pedro",
-    "isCurrentClub": true,
-    "played": 1,
-    "won": 1,
-    "lost": 0,
-    "setsFor": 3,
-    "setsAgainst": 0,
-    "points": 3
-  },
-  {
-    "id": "std-sma-2",
-    "categoryId": "cat-senior-masc-a",
-    "teamName": "CV Costa del Sol",
-    "isCurrentClub": false,
-    "played": 1,
-    "won": 1,
-    "lost": 0,
-    "setsFor": 3,
-    "setsAgainst": 1,
-    "points": 3
-  },
-  {
-    "id": "std-sma-3",
-    "categoryId": "cat-senior-masc-a",
-    "teamName": "Universidad de Málaga Voley",
-    "isCurrentClub": false,
-    "played": 1,
-    "won": 1,
-    "lost": 0,
-    "setsFor": 3,
-    "setsAgainst": 2,
-    "points": 2
-  },
-  {
-    "id": "std-sma-4",
-    "categoryId": "cat-senior-masc-a",
-    "teamName": "CV Fuengirola B",
-    "isCurrentClub": false,
-    "played": 1,
-    "won": 0,
-    "lost": 1,
-    "setsFor": 2,
-    "setsAgainst": 3,
-    "points": 1
-  },
-  {
-    "id": "std-sma-5",
-    "categoryId": "cat-senior-masc-a",
-    "teamName": "CV Marbella Costa",
-    "isCurrentClub": false,
-    "played": 1,
-    "won": 0,
-    "lost": 1,
-    "setsFor": 0,
-    "setsAgainst": 3,
-    "points": 0
-  },
   {
     "id": "std-cat-senior-fem-1",
     "categoryId": "cat-senior-fem",

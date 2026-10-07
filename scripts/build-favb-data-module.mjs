@@ -47,97 +47,89 @@ function parseDateToUtc(dateStr, timeStr) {
 
 const rawData = JSON.parse(fs.readFileSync('scripts/favb-data-scraped.json', 'utf8'));
 
-// 12 Categorías Oficiales
+// 11 Categorías Oficiales con representación real del C.D. Voleibol San Pedro
 export const CATEGORIES = [
-  {
-    id: 'cat-senior-masc-a',
-    name: 'Senior Masculino A',
-    slug: 'senior-masculino-a',
-    order: 1,
-    description: '1ª División Andaluza Senior Masculina',
-  },
   {
     id: 'cat-senior-fem',
     name: 'Senior Femenino (1ª Andaluza)',
     slug: 'senior-femenino',
-    order: 2,
+    order: 1,
     description: '1ª División Andaluza Femenina (FAVB)',
   },
   {
     id: 'cat-juvenil-masc',
     name: 'Juvenil Masculino',
     slug: 'juvenil-masculino',
-    order: 3,
+    order: 2,
     description: 'Liga Provincial Málaga - Juvenil Masc (FAVB)',
   },
   {
     id: 'cat-juvenil-fem-rojo',
     name: 'Juvenil Femenino Rojo',
     slug: 'juvenil-femenino-rojo',
-    order: 4,
+    order: 3,
     description: 'Liga Provincial Málaga - Grupo Oro (FAVB)',
   },
   {
     id: 'cat-juvenil-fem-negro',
     name: 'Juvenil Femenino Negro',
     slug: 'juvenil-femenino-negro',
-    order: 5,
+    order: 4,
     description: 'Liga Provincial Málaga - Grupo Plata (FAVB)',
   },
   {
     id: 'cat-cadete-masc',
     name: 'Cadete Masculino',
     slug: 'cadete-masculino',
-    order: 6,
+    order: 5,
     description: 'Liga Provincial Málaga - Cadete Masc (FAVB)',
   },
   {
     id: 'cat-cadete-fem-rojo',
     name: 'Cadete Femenino Rojo',
     slug: 'cadete-femenino-rojo',
-    order: 7,
+    order: 6,
     description: 'Liga Provincial Málaga - Grupo Oro (FAVB)',
   },
   {
     id: 'cat-cadete-fem-negro',
     name: 'Cadete Femenino Negro',
     slug: 'cadete-femenino-negro',
-    order: 8,
+    order: 7,
     description: 'Liga Provincial Málaga - Grupo Plata (FAVB)',
   },
   {
     id: 'cat-infantil-masc',
     name: 'Infantil Masculino',
     slug: 'infantil-masculino',
-    order: 9,
+    order: 8,
     description: 'Liga Provincial Málaga - Infantil Masc (FAVB)',
   },
   {
     id: 'cat-infantil-fem-rojo',
     name: 'Infantil Femenino Rojo',
     slug: 'infantil-femenino-rojo',
-    order: 10,
+    order: 9,
     description: 'Liga Provincial Málaga - Grupo Oro (FAVB)',
   },
   {
     id: 'cat-infantil-fem-negro',
     name: 'Infantil Femenino Negro',
     slug: 'infantil-femenino-negro',
-    order: 11,
+    order: 10,
     description: 'Liga Provincial Málaga - Grupo Plata (FAVB)',
   },
   {
     id: 'cat-infantil-fem-blanco',
     name: 'Infantil Femenino Blanco',
     slug: 'infantil-femenino-blanco',
-    order: 12,
+    order: 11,
     description: 'Liga Provincial Málaga - Grupo Promoción (FAVB)',
   },
 ];
 
-// 12 Equipos Oficiales
+// 11 Equipos Oficiales federados con representación real
 export const TEAMS = [
-  { id: 'team-sma', categoryId: 'cat-senior-masc-a', name: 'Senior Masculino A', division: '1ª División Andaluza', season: '2026/2027' },
   { id: 'team-sf', categoryId: 'cat-senior-fem', name: 'Senior Femenino', division: '1ª División Andaluza Femenina (FAVB)', season: '2026/2027' },
   { id: 'team-jm', categoryId: 'cat-juvenil-masc', name: 'Juvenil Masculino', division: 'Liga Provincial Málaga (FAVB)', season: '2026/2027' },
   { id: 'team-jf-rojo', categoryId: 'cat-juvenil-fem-rojo', name: 'Juvenil Femenino Rojo', division: 'Liga Provincial - Grupo Oro (FAVB)', season: '2026/2027' },
@@ -151,71 +143,8 @@ export const TEAMS = [
   { id: 'team-if-blanco', categoryId: 'cat-infantil-fem-blanco', name: 'Infantil Femenino Blanco', division: 'Liga Provincial - Grupo Promoción (FAVB)', season: '2026/2027' },
 ];
 
-// Senior Masc A partidos
-const seniorMascMatches = [
-  {
-    id: 'm-sma-past-1',
-    teamId: 'team-sma',
-    round: 1,
-    homeTeamName: 'C.D. Voleibol San Pedro',
-    awayTeamName: 'CV Marbella Costa',
-    isClubHome: true,
-    venueName: 'Pabellón Polideportivo Sergio Scariolo',
-    matchDate: parseDateToUtc('03-10-2026', '18:30'),
-    status: 'FINISHED',
-    setScores: [
-      { home: 25, away: 20 },
-      { home: 25, away: 23 },
-      { home: 25, away: 19 },
-    ],
-    favbMatchUrl: 'https://favoley.net/publico/index.php',
-    mvpPlayerId: 'p-sma-2',
-  },
-  {
-    id: 'm-sma-next-1',
-    teamId: 'team-sma',
-    round: 2,
-    homeTeamName: 'C.D. Voleibol San Pedro',
-    awayTeamName: 'CV Costa del Sol',
-    isClubHome: true,
-    venueName: 'Pabellón Polideportivo Sergio Scariolo',
-    matchDate: parseDateToUtc('10-10-2026', '18:30'),
-    status: 'SCHEDULED',
-    setScores: [],
-    favbMatchUrl: 'https://favoley.net/publico/index.php',
-    isFeatured: true,
-  },
-  {
-    id: 'm-sma-fut-2',
-    teamId: 'team-sma',
-    round: 3,
-    homeTeamName: 'CV Fuengirola B',
-    awayTeamName: 'C.D. Voleibol San Pedro',
-    isClubHome: false,
-    venueName: 'Pabellón Juan Gómez Juanito (Fuengirola)',
-    matchDate: parseDateToUtc('17-10-2026', '17:00'),
-    status: 'SCHEDULED',
-    setScores: [],
-    favbMatchUrl: 'https://favoley.net/publico/index.php',
-  },
-  {
-    id: 'm-sma-fut-3',
-    teamId: 'team-sma',
-    round: 4,
-    homeTeamName: 'C.D. Voleibol San Pedro',
-    awayTeamName: 'Universidad de Málaga Voley',
-    isClubHome: true,
-    venueName: 'Pabellón Polideportivo Sergio Scariolo',
-    matchDate: parseDateToUtc('24-10-2026', '18:30'),
-    status: 'SCHEDULED',
-    setScores: [],
-    favbMatchUrl: 'https://favoley.net/publico/index.php',
-  },
-];
-
-// Mapear partidos oficiales de favoley.net
+// Mapear partidos oficiales de favoley.net (136 partidos de las 11 categorías reales)
 const mappedMatches = rawData.matches.map(m => {
-  // Extraer fecha y hora si existen
   const dateMatch = m.matchDate ? m.matchDate.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/) : null;
   let utcIso;
   if (dateMatch) {
@@ -224,6 +153,9 @@ const mappedMatches = rawData.matches.map(m => {
   } else {
     utcIso = parseDateToUtc('10-10-2026', '12:00');
   }
+
+  // Destacar el próximo gran partido del primer equipo femenino en casa
+  const isFeatured = m.id === 'favb-1061';
 
   return {
     id: m.id,
@@ -237,20 +169,13 @@ const mappedMatches = rawData.matches.map(m => {
     status: m.status,
     setScores: m.setScores || [],
     favbMatchUrl: m.favbMatchUrl,
+    isFeatured: isFeatured || undefined,
   };
 });
 
-const ALL_MATCHES = [...seniorMascMatches, ...mappedMatches];
+const ALL_MATCHES = mappedMatches;
 
-// Clasificaciones
-const seniorMascStandings = [
-  { id: 'std-sma-1', categoryId: 'cat-senior-masc-a', teamName: 'C.D. Voleibol San Pedro', isCurrentClub: true, played: 1, won: 1, lost: 0, setsFor: 3, setsAgainst: 0, points: 3 },
-  { id: 'std-sma-2', categoryId: 'cat-senior-masc-a', teamName: 'CV Costa del Sol', isCurrentClub: false, played: 1, won: 1, lost: 0, setsFor: 3, setsAgainst: 1, points: 3 },
-  { id: 'std-sma-3', categoryId: 'cat-senior-masc-a', teamName: 'Universidad de Málaga Voley', isCurrentClub: false, played: 1, won: 1, lost: 0, setsFor: 3, setsAgainst: 2, points: 2 },
-  { id: 'std-sma-4', categoryId: 'cat-senior-masc-a', teamName: 'CV Fuengirola B', isCurrentClub: false, played: 1, won: 0, lost: 1, setsFor: 2, setsAgainst: 3, points: 1 },
-  { id: 'std-sma-5', categoryId: 'cat-senior-masc-a', teamName: 'CV Marbella Costa', isCurrentClub: false, played: 1, won: 0, lost: 1, setsFor: 0, setsAgainst: 3, points: 0 },
-];
-
+// Clasificaciones oficiales 100% FAVB
 const mappedStandings = rawData.standings.map(s => ({
   id: s.id,
   categoryId: s.categoryId,
@@ -264,9 +189,9 @@ const mappedStandings = rawData.standings.map(s => ({
   points: s.points,
 }));
 
-const ALL_STANDINGS = [...seniorMascStandings, ...mappedStandings];
+const ALL_STANDINGS = mappedStandings;
 
-// Jugadores (10 por equipo = 120 jugadores)
+// Jugadores (10 por equipo para los 11 equipos federados = 110 jugadores)
 const PLAYER_SILHOUETTE = '/images/player-placeholder.svg';
 const STAFF_SILHOUETTE = '/images/staff-placeholder.svg';
 
@@ -280,13 +205,10 @@ const ALL_PLAYERS = [];
 TEAMS.forEach(team => {
   const isFemale = team.id.includes('f');
   const firstNames = isFemale ? FIRST_NAMES_FEM : FIRST_NAMES_MASC;
-  let birthYearBase = 2000;
-  let heightBase = 185;
+  let birthYearBase = 2002;
+  let heightBase = 175;
 
-  if (team.id === 'team-sma') {
-    birthYearBase = 2000;
-    heightBase = 192;
-  } else if (team.id === 'team-sf') {
+  if (team.id === 'team-sf') {
     birthYearBase = 2002;
     heightBase = 177;
   } else if (team.id.includes('j')) {
@@ -324,13 +246,10 @@ TEAMS.forEach(team => {
   }
 });
 
-// Cuerpos Técnicos para los 12 equipos
+// Cuerpos Técnicos para los 11 equipos federados
+// El presidente Carlos Alberto Alcántara González es el primer entrenador del Senior Femenino (1ª Andaluza)
 const ALL_STAFF = [
-  { id: 'st-sma-1', teamId: 'team-sma', name: 'Manuel "Manolo" Rivas Cortés', role: 'HEAD_COACH', photoUrl: STAFF_SILHOUETTE },
-  { id: 'st-sma-2', teamId: 'team-sma', name: 'Carlos Alarcón Vega', role: 'ASSISTANT', photoUrl: STAFF_SILHOUETTE },
-  { id: 'st-sma-3', teamId: 'team-sma', name: 'Marta Lozano Pino', role: 'PHYSIO', photoUrl: STAFF_SILHOUETTE },
-  
-  { id: 'st-sf-1', teamId: 'team-sf', name: 'Irene Morales Delgado', role: 'HEAD_COACH', photoUrl: STAFF_SILHOUETTE },
+  { id: 'st-sf-1', teamId: 'team-sf', name: 'Carlos Alberto Alcántara González', role: 'HEAD_COACH', photoUrl: STAFF_SILHOUETTE },
   { id: 'st-sf-2', teamId: 'team-sf', name: 'Laura Castillo Peña', role: 'ASSISTANT', photoUrl: STAFF_SILHOUETTE },
 
   { id: 'st-jm-1', teamId: 'team-jm', name: 'Juan Carlos Romero Gil', role: 'HEAD_COACH', photoUrl: STAFF_SILHOUETTE },
