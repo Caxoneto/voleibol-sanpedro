@@ -268,7 +268,7 @@ export default function HomePage() {
                         <p className="font-body-sm text-sm font-semibold text-white">
                           {featuredMatch.venueName}
                         </p>
-                        <p className="text-xs text-tertiary">San Pedro Alcántara (Málaga)</p>
+                        <p className="text-xs text-tertiary">Diseminado Ensanche Sur I, 16S, Marbella (Málaga)</p>
                       </div>
                     </div>
                     <span className="px-3 py-1 bg-white/10 text-white text-xs font-bold uppercase tracking-wider border border-white/10">

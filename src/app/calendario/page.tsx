@@ -455,7 +455,7 @@ export default function CalendarioPage() {
                 <strong className="text-white">Instalaciones:</strong> Gradas abiertas para aficionados y familias sampedreñas.
               </p>
               <p>
-                <strong className="text-white">Aparcamiento:</strong> Amplia explanada exterior en la zona deportiva de Fuente Nueva.
+                <strong className="text-white">Aparcamiento:</strong> Amplia explanada exterior en la zona deportiva del Ensanche Sur.
               </p>
 
               <div className="p-3 bg-surface-container-high border-l-4 border-emerald-500 text-white font-semibold text-xs">
