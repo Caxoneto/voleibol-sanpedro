@@ -31,7 +31,7 @@ export default function NoticiasPage() {
     { label: 'Institucional', value: 'cat-inst' },
   ];
 
-  const filteredArticles = INITIAL_ARTICLES.filter((art) => {
+  const filteredArticles = store.getArticles().filter((art) => {
     if (selectedCat === 'ALL') return true;
     return art.categoryId === selectedCat;
   });
@@ -118,9 +118,10 @@ export default function NoticiasPage() {
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredArticles.map((art) => (
-            <article
+            <Link
               key={art.id}
-              className="group bg-surface-container-low border border-white/5 hover:border-primary-container transition-all flex flex-col justify-between overflow-hidden shadow-lg hover:-translate-y-1"
+              href={`/noticias/${art.slug}`}
+              className="group bg-surface-container-low border border-white/5 hover:border-primary-container transition-all flex flex-col justify-between overflow-hidden shadow-lg hover:-translate-y-1 block cursor-pointer"
             >
               <div>
                 <div className="relative h-56 w-full overflow-hidden bg-surface-container-lowest">
@@ -130,7 +131,7 @@ export default function NoticiasPage() {
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
-                  <div className="absolute top-3 left-3 px-2.5 py-1 bg-primary-container text-white text-[10px] font-bold uppercase tracking-wider">
+                  <div className="absolute top-3 left-3 px-2.5 py-1 bg-primary-container text-white text-[10px] font-bold uppercase tracking-wider shadow">
                     {art.categoryName}
                   </div>
                 </div>
@@ -159,17 +160,16 @@ export default function NoticiasPage() {
               </div>
 
               <div className="p-6 pt-0">
-                <Link
-                  href={`/noticias/${art.slug}`}
+                <span
                   className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary group-hover:text-white transition-colors"
                 >
-                  <span>Leer Crónica Completa</span>
+                  <span>Leer Noticia Completa</span>
                   <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">
                     arrow_forward
                   </span>
-                </Link>
+                </span>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
       </div>

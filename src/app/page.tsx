@@ -400,19 +400,20 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {articles.map((art) => (
-              <article
+              <Link
                 key={art.id}
-                className="group bg-surface-container-lowest border border-white/5 hover:border-primary-container transition-all flex flex-col justify-between"
+                href={`/noticias/${art.slug}`}
+                className="group bg-surface-container-lowest border border-white/5 hover:border-primary-container transition-all flex flex-col justify-between block cursor-pointer overflow-hidden shadow-lg hover:-translate-y-1"
               >
                 <div>
-                  <div className="relative h-48 w-full overflow-hidden">
+                  <div className="relative h-48 w-full overflow-hidden bg-surface-container-low">
                     <Image
                       src={art.coverImageUrl}
                       alt={art.title}
                       fill
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <div className="absolute top-3 left-3 px-2 py-1 bg-primary-container text-white text-[10px] font-bold uppercase tracking-wider">
+                    <div className="absolute top-3 left-3 px-2 py-1 bg-primary-container text-white text-[10px] font-bold uppercase tracking-wider shadow">
                       {art.categoryName}
                     </div>
                   </div>
@@ -432,17 +433,16 @@ export default function HomePage() {
                 </div>
 
                 <div className="p-5 pt-0">
-                  <Link
-                    href={`/noticias/${art.slug}`}
+                  <span
                     className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary group-hover:text-white transition-colors"
                   >
-                    <span>Leer Crónica Completa</span>
+                    <span>Leer Noticia Completa</span>
                     <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">
                       arrow_forward
                     </span>
-                  </Link>
+                  </span>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         </div>

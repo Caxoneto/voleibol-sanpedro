@@ -106,7 +106,7 @@ Asimismo, los clubes, jugadores y técnicos pueden descargar la copia íntegra d
     categoryId: 'cat-inst',
     categoryName: 'Institucional y FAVB',
     coverImageUrl: '/images/noticias/nuevas-reglas-2026.png',
-    publishedAt: '2026-09-28T18:00:00.000Z',
+    publishedAt: '2026-10-06T18:00:00.000Z',
     isFeatured: true,
     readingTimeMinutes: 4,
   },
@@ -145,7 +145,7 @@ Puedes hacerte con tus décimos del **15.586** de varias formas sencillas:
     categoryId: 'cat-inst',
     categoryName: 'Institucional y Club',
     coverImageUrl: '/images/noticias/loteria-navidad-2026.png',
-    publishedAt: '2026-10-06T10:00:00.000Z',
+    publishedAt: '2026-10-06T19:00:00.000Z',
     isFeatured: true,
     readingTimeMinutes: 2,
   },
@@ -376,9 +376,11 @@ class DataStore {
   }
 
   getArticles(): Article[] {
-    return [...this.articles].sort(
-      (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-    );
+    return [...this.articles].sort((a, b) => {
+      if (a.isFeatured && !b.isFeatured) return -1;
+      if (!a.isFeatured && b.isFeatured) return 1;
+      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+    });
   }
 
   getArticleBySlug(slug: string): Article | undefined {
