@@ -4,6 +4,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import TopMarquee from '@/components/TopMarquee';
+import CookieConsent from '@/components/CookieConsent';
 
 const anton = Anton({
   weight: '400',
@@ -63,6 +64,7 @@ export default function RootLayout({
         </main>
         
         <Footer />
+        <CookieConsent />
       </body>
     </html>
   );

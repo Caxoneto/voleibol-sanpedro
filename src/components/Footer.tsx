@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { CLUB_INFO } from '@/lib/data-store';
+import CookieSettingsButton from '@/components/CookieSettingsButton';
 
 export default function Footer() {
   return (
@@ -144,20 +145,45 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-tertiary">
-          <p>© {new Date().getFullYear()} {CLUB_INFO.federationRegisteredName} (CIF: {CLUB_INFO.cif}). Todos los derechos reservados.</p>
-          <div className="flex items-center gap-6">
-            <span>«{CLUB_INFO.motto}»</span>
-            <a
-              href="https://feelsports.es/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-primary transition-colors flex items-center gap-1 font-semibold"
-            >
-              <span>FeelSports</span>
-              <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-            </a>
+        {/* Bottom Bar: Enlaces Legales y Copyright */}
+        <div className="pt-8 border-t border-white/5 space-y-4 text-xs text-tertiary">
+          <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-6">
+            {/* Enlaces Legales Oficiales */}
+            <nav aria-label="Enlaces legales" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <Link href="/aviso-legal" className="hover:text-primary transition-colors">
+                Aviso Legal
+              </Link>
+              <span className="text-white/20 select-none">•</span>
+              <Link href="/privacidad" className="hover:text-primary transition-colors">
+                Política de Privacidad
+              </Link>
+              <span className="text-white/20 select-none">•</span>
+              <Link href="/cookies" className="hover:text-primary transition-colors">
+                Política de Cookies
+              </Link>
+              <span className="text-white/20 select-none">•</span>
+              <CookieSettingsButton />
+            </nav>
+
+            {/* Lema y Colaborador */}
+            <div className="flex items-center gap-4">
+              <span className="italic">«{CLUB_INFO.motto}»</span>
+              <span className="text-white/20 select-none">•</span>
+              <a
+                href="https://feelsports.es/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-primary transition-colors flex items-center gap-1 font-semibold"
+              >
+                <span>FeelSports</span>
+                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+              </a>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-tertiary/70">
+            <p>© {new Date().getFullYear()} {CLUB_INFO.federationRegisteredName} (CIF: {CLUB_INFO.cif}). Todos los derechos reservados.</p>
+            <p className="text-center sm:text-right">Portal Oficial del C.D. Voleibol San Pedro | San Pedro Alcántara (Málaga)</p>
           </div>
         </div>
       </div>
