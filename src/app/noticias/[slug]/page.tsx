@@ -4,9 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { INITIAL_ARTICLES } from '@/lib/data-store';
+import { INITIAL_ARTICLES, CLUB_INFO } from '@/lib/data-store';
 import { formatMadridDate } from '@/lib/date-utils';
 import SponsorBanner from '@/components/SponsorBanner';
+import { InstagramIcon, FacebookIcon, WhatsAppIcon } from '@/components/SocialIcons';
 
 function renderInline(text: string): React.ReactNode {
   // Regex para emparejar enlaces [label](url) y negritas **bold**
@@ -420,7 +421,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[20px]">share</span>
             <span className="font-label-sm text-label-sm uppercase font-bold text-on-surface tracking-wider">
-              Compartir esta noticia:
+              Difundir y seguir al club:
             </span>
           </div>
 
@@ -429,23 +430,35 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
               href={`https://wa.me/?text=${encodeURIComponent(`${article.title} - ${shareUrl}`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 bg-[#25D366] text-black font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 transition-transform hover:scale-105"
+              className="px-3.5 py-1.5 bg-[#25D366] text-black font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 transition-transform hover:scale-105 shadow-[2px_2px_0px_0px_#0e0e0e]"
             >
+              <WhatsAppIcon className="w-4 h-4" />
               <span>WhatsApp</span>
             </a>
 
             <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(shareUrl)}`}
+              href={CLUB_INFO.instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 bg-black border border-white/20 text-on-surface font-label-md text-label-md uppercase flex items-center gap-1.5 hover:border-white/50 transition-colors"
+              className="px-3.5 py-1.5 bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] text-white font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-[2px_2px_0px_0px_#0e0e0e]"
             >
-              <span>X / Twitter</span>
+              <InstagramIcon className="w-4 h-4 text-white" />
+              <span>Instagram</span>
+            </a>
+
+            <a
+              href={CLUB_INFO.facebookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-1.5 bg-[#1877F2] hover:bg-[#166fe5] text-white font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 transition-colors shadow-[2px_2px_0px_0px_#0e0e0e]"
+            >
+              <FacebookIcon className="w-4 h-4 text-white" />
+              <span>Facebook</span>
             </a>
 
             <button
               onClick={handleCopyLink}
-              className="px-3.5 py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md uppercase flex items-center gap-1.5 transition-colors"
+              className="px-3.5 py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md uppercase flex items-center gap-1.5 transition-colors border border-white/10"
             >
               <span className="material-symbols-outlined text-[14px]">link</span>
               <span>{copied ? '¡Copiado!' : 'Copiar Enlace'}</span>

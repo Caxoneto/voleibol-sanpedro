@@ -6,10 +6,12 @@ import {
   INITIAL_PLAYERS,
   INITIAL_CHANTS,
   INITIAL_WALLPAPERS,
+  CLUB_INFO,
   store,
 } from '@/lib/data-store';
 import confetti from 'canvas-confetti';
 import SponsorBanner from '@/components/SponsorBanner';
+import { InstagramIcon, FacebookIcon } from '@/components/SocialIcons';
 
 export default function FanZonePage() {
   // Estado de votación MVP
@@ -438,13 +440,33 @@ export default function FanZonePage() {
                 Muro Social #VoleibolSanPedro
               </h2>
             </div>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="px-4 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs uppercase font-bold tracking-wider flex items-center gap-1.5 transition-all self-start sm:self-auto shadow"
-            >
-              <span className="material-symbols-outlined text-[16px]">add_a_photo</span>
-              <span>Subir Mi Foto de la Grada</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <a
+                href={CLUB_INFO.instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-90 text-white text-xs uppercase font-bold tracking-wider flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_0px_#0e0e0e]"
+              >
+                <InstagramIcon className="w-4 h-4 text-white" />
+                <span>Instagram Oficial</span>
+              </a>
+              <a
+                href={CLUB_INFO.facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white text-xs uppercase font-bold tracking-wider flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_0px_#0e0e0e]"
+              >
+                <FacebookIcon className="w-4 h-4 text-white" />
+                <span>Facebook Oficial</span>
+              </a>
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="px-4 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs uppercase font-bold tracking-wider flex items-center gap-1.5 transition-all self-start sm:self-auto shadow"
+              >
+                <span className="material-symbols-outlined text-[16px]">add_a_photo</span>
+                <span>Subir Mi Foto</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -35,6 +35,8 @@ export const CLUB_INFO: ClubInfo = {
   contactEmail: 'voleibolsanpedro@hotmail.es',
   contactPhone: '+34 952 78 50 12',
   whatsappUrl: 'https://wa.me/34622112233?text=Hola%2C%20me%20gustar%C3%ADa%20informaci%C3%B3n%20sobre%20el%20C.D.%20Voleibol%20San%20Pedro',
+  instagramUrl: 'https://www.instagram.com/voleibolsanpedro/',
+  facebookUrl: 'https://www.facebook.com/CDVoleibolSanPedro/',
   socialHashtag: '#VoleibolSanPedro',
   motto: 'Pasión, cantera y orgullo sampedreño',
 };

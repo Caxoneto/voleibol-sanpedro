@@ -196,6 +196,8 @@ export interface ClubInfo {
   contactEmail: string;
   contactPhone: string;
   whatsappUrl: string;
+  instagramUrl: string;
+  facebookUrl: string;
   socialHashtag: string;
   motto: string;
 }

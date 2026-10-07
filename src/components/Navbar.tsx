@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { CLUB_INFO } from '@/lib/data-store';
+import { InstagramIcon, FacebookIcon } from '@/components/SocialIcons';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -69,7 +71,31 @@ export default function Navbar() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Redes Sociales Oficiales Desktop */}
+          <div className="hidden lg:flex items-center gap-1.5 mr-1">
+            <a
+              href={CLUB_INFO.instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram Oficial del Club"
+              title="Instagram @voleibolsanpedro"
+              className="w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-gradient-to-r hover:from-[#833ab4] hover:via-[#fd1d1d] hover:to-[#fcb045] text-white transition-all border border-white/10 shadow-[2px_2px_0px_0px_#0e0e0e]"
+            >
+              <InstagramIcon className="w-4 h-4 text-white" />
+            </a>
+            <a
+              href={CLUB_INFO.facebookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook Oficial del Club"
+              title="Facebook C.D. Voleibol San Pedro"
+              className="w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-[#1877F2] text-white transition-all border border-white/10 shadow-[2px_2px_0px_0px_#0e0e0e]"
+            >
+              <FacebookIcon className="w-4 h-4 text-white" />
+            </a>
+          </div>
+
           {/* Botón Jugador@s hacia FeelSports */}
           <a
             href="https://feelsports.es/"
@@ -119,6 +145,28 @@ export default function Navbar() {
               );
             })}
             <div className="pt-2 flex flex-col gap-3">
+              {/* Redes Sociales en Menú Móvil */}
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={CLUB_INFO.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] text-white py-2.5 font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[2px_2px_0px_0px_#0e0e0e]"
+                >
+                  <InstagramIcon className="w-4 h-4 text-white" />
+                  <span>Instagram</span>
+                </a>
+                <a
+                  href={CLUB_INFO.facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[#1877F2] text-white py-2.5 font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[2px_2px_0px_0px_#0e0e0e]"
+                >
+                  <FacebookIcon className="w-4 h-4 text-white" />
+                  <span>Facebook</span>
+                </a>
+              </div>
+
               <a
                 href="https://feelsports.es/"
                 target="_blank"

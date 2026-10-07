@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { CLUB_INFO } from '@/lib/data-store';
 import CookieSettingsButton from '@/components/CookieSettingsButton';
+import { InstagramIcon, FacebookIcon, WhatsAppIcon } from '@/components/SocialIcons';
 
 export default function Footer() {
   return (
@@ -133,15 +134,44 @@ export default function Footer() {
                 href={CLUB_INFO.whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#25D366] hover:bg-[#20ba59] text-black text-xs uppercase tracking-wider font-bold transition-all"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#25D366] hover:bg-[#20ba59] text-black text-xs uppercase tracking-wider font-bold transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
               >
-                <span className="material-symbols-outlined text-[16px]">chat</span>
-                WhatsApp Directo
+                <WhatsAppIcon className="w-4 h-4" />
+                <span>WhatsApp Directo</span>
               </a>
             </div>
-            <p className="text-[11px] text-tertiary pt-2">
-              Etiquétanos: <span className="text-primary font-bold">{CLUB_INFO.socialHashtag}</span>
-            </p>
+
+            {/* Redes Sociales Oficiales */}
+            <div className="pt-2 border-t border-white/5 space-y-2">
+              <span className="text-[11px] text-tertiary block font-semibold uppercase tracking-wider">
+                Redes Oficiales del Club:
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={CLUB_INFO.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram Oficial del C.D. Voleibol San Pedro"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-90 text-white text-[11px] uppercase tracking-wider font-bold transition-all shadow-[3px_3px_0px_0px_#0e0e0e]"
+                >
+                  <InstagramIcon className="w-4 h-4 text-white shrink-0" />
+                  <span>Instagram</span>
+                </a>
+                <a
+                  href={CLUB_INFO.facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook Oficial del C.D. Voleibol San Pedro"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white text-[11px] uppercase tracking-wider font-bold transition-all shadow-[3px_3px_0px_0px_#0e0e0e]"
+                >
+                  <FacebookIcon className="w-4 h-4 text-white shrink-0" />
+                  <span>Facebook</span>
+                </a>
+              </div>
+              <p className="text-[11px] text-tertiary pt-0.5">
+                Etiquétanos: <span className="text-primary font-bold">{CLUB_INFO.socialHashtag}</span>
+              </p>
+            </div>
           </div>
         </div>
 
@@ -165,9 +195,32 @@ export default function Footer() {
               <CookieSettingsButton />
             </nav>
 
-            {/* Lema y Colaborador */}
+            {/* Lema, Redes y Colaborador */}
             <div className="flex items-center gap-4">
-              <span className="italic">«{CLUB_INFO.motto}»</span>
+              <span className="italic hidden md:inline">«{CLUB_INFO.motto}»</span>
+              <span className="text-white/20 select-none hidden md:inline">•</span>
+              <div className="flex items-center gap-3">
+                <a
+                  href={CLUB_INFO.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram del Club"
+                  title="Instagram @voleibolsanpedro"
+                  className="text-tertiary hover:text-[#E1306C] transition-colors flex items-center gap-1"
+                >
+                  <InstagramIcon className="w-4 h-4" />
+                </a>
+                <a
+                  href={CLUB_INFO.facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook del Club"
+                  title="Facebook C.D. Voleibol San Pedro"
+                  className="text-tertiary hover:text-[#1877F2] transition-colors flex items-center gap-1"
+                >
+                  <FacebookIcon className="w-4 h-4" />
+                </a>
+              </div>
               <span className="text-white/20 select-none">•</span>
               <a
                 href="https://feelsports.es/"
