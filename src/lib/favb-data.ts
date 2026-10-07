@@ -1741,7 +1741,7 @@ export const FAVB_STAFF: Staff[] = [
   {
     "id": "st-sma-1",
     "teamId": "team-sma",
-    "name": "Manuel \"Manolo\" Rivas Cortés",
+    "name": "Carlos Alberto Alcántara González",
     "role": "HEAD_COACH",
     "photoUrl": "/images/staff-placeholder.svg"
   },

@@ -19,22 +19,27 @@ export default function Footer() {
                 />
               </div>
               <div>
-                <span className="font-display-xl text-xl uppercase tracking-wider text-on-surface block">
-                  C.D.V. SAN PEDRO
+                <span className="font-headline-sm text-lg uppercase tracking-wider text-on-surface block font-bold">
+                  {CLUB_INFO.name}
                 </span>
                 <span className="font-label-sm text-[10px] uppercase tracking-widest text-primary font-bold">
-                  San Pedro Alcántara
+                  {CLUB_INFO.city}
                 </span>
               </div>
             </div>
             <p className="font-body-sm text-xs text-tertiary leading-relaxed">
               Club deportivo formativo volcado en el deporte base, los jóvenes y las familias de San Pedro Alcántara.
             </p>
+            <div className="text-[11px] text-tertiary space-y-1 pt-2 border-t border-white/5 font-body-sm">
+              <p><span className="text-on-surface font-semibold">Club Federado:</span> {CLUB_INFO.federationRegisteredName}</p>
+              <p><span className="text-on-surface font-semibold">CIF:</span> {CLUB_INFO.cif}</p>
+              <p><span className="text-on-surface font-semibold">Presidente:</span> {CLUB_INFO.president}</p>
+            </div>
           </div>
 
           {/* Col 2: Sede y Ubicación */}
           <div className="flex flex-col gap-3">
-            <h3 className="font-display-xl text-lg uppercase tracking-wider text-primary">
+            <h3 className="font-headline-sm text-base uppercase tracking-wider text-primary font-bold">
               Sede y Entrenamientos
             </h3>
             <p className="font-body-sm text-sm text-on-surface-variant font-medium">
@@ -47,14 +52,18 @@ export default function Footer() {
               href={CLUB_INFO.venueMapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-white transition-colors uppercase font-bold tracking-wider mt-1"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-white transition-colors uppercase font-bold tracking-wider mt-1 font-label-sm"
             >
               <span className="material-symbols-outlined text-[16px]">pin_drop</span>
               Abrir en Google Maps
             </a>
-            <div className="text-xs text-tertiary mt-2">
-              <p className="font-semibold text-on-surface">Horario de Cantera:</p>
-              <p>Lunes a Jueves: 16:30h - 20:30h</p>
+            <div className="text-xs text-tertiary mt-2 space-y-1 font-body-sm">
+              <p className="font-semibold text-on-surface">Domicilio Social:</p>
+              <p>{CLUB_INFO.officialAddress}</p>
+              <p className="font-semibold text-on-surface pt-1">Email Oficial:</p>
+              <a href={`mailto:${CLUB_INFO.contactEmail}`} className="text-primary hover:underline block">
+                {CLUB_INFO.contactEmail}
+              </a>
             </div>
           </div>
 
@@ -137,9 +146,9 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-tertiary">
-          <p>© {new Date().getFullYear()} C.D. Voleibol San Pedro. Todos los derechos reservados.</p>
+          <p>© {new Date().getFullYear()} {CLUB_INFO.federationRegisteredName} (CIF: {CLUB_INFO.cif}). Todos los derechos reservados.</p>
           <div className="flex items-center gap-6">
-            <span>«Pasión, cantera y orgullo sampedreño»</span>
+            <span>«{CLUB_INFO.motto}»</span>
             <a
               href="https://feelsports.es/"
               target="_blank"

@@ -7,6 +7,7 @@ import {
   INITIAL_TEAMS,
   INITIAL_PLAYERS,
   INITIAL_STAFF,
+  CLUB_INFO,
 } from '@/lib/data-store';
 import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS } from '@/lib/types';
 import SponsorBanner from '@/components/SponsorBanner';
@@ -262,32 +263,42 @@ export default function PlantillasPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {staffMembers.map((staff) => (
-                <div
-                  key={staff.id}
-                  className="bg-surface-container-low border border-white/5 p-4 flex items-center gap-4"
-                >
-                  <div className="relative w-16 h-16 shrink-0 overflow-hidden border border-white/10 bg-[#18181b]">
-                    <Image
-                      src={staff.photoUrl || '/images/staff-placeholder.svg'}
-                      alt={staff.name}
-                      fill
-                      className="object-cover"
-                    />
+              {staffMembers.map((staff) => {
+                const isPresident = Boolean(CLUB_INFO.president && staff.name.toLowerCase() === CLUB_INFO.president.toLowerCase());
+                return (
+                  <div
+                    key={staff.id}
+                    className={`bg-surface-container-low border ${isPresident ? 'border-primary/40 bg-gradient-to-r from-surface-container-low to-primary/5' : 'border-white/5'} p-4 flex items-center gap-4`}
+                  >
+                    <div className="relative w-16 h-16 shrink-0 overflow-hidden border border-white/10 bg-[#18181b]">
+                      <Image
+                        src={staff.photoUrl || '/images/staff-placeholder.svg'}
+                        alt={staff.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] uppercase tracking-wider text-primary font-bold block">
+                          {isPresident ? 'Presidente y Primer Entrenador' : STAFF_ROLE_LABELS[staff.role]}
+                        </span>
+                        {isPresident && (
+                          <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[9px] font-bold uppercase tracking-wider border border-primary/30">
+                            Dirección
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-headline-sm text-sm uppercase text-white font-bold mt-0.5">
+                        {staff.name}
+                      </h4>
+                      <span className="text-[11px] text-tertiary">
+                        {CLUB_INFO.name}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-primary font-bold block">
-                      {STAFF_ROLE_LABELS[staff.role]}
-                    </span>
-                    <h4 className="font-headline-sm text-sm uppercase text-white font-bold mt-0.5">
-                      {staff.name}
-                    </h4>
-                    <span className="text-[11px] text-tertiary">
-                      C.D. Voleibol San Pedro
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

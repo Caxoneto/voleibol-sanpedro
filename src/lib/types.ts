@@ -180,6 +180,12 @@ export interface NewsletterSubscriber {
 export interface ClubInfo {
   name: string;
   shortName: string;
+  federationRegisteredName?: string;
+  cif?: string;
+  president?: string;
+  officialAddress?: string;
+  postalCode?: string;
+  province?: string;
   city: string;
   region: string;
   venueName: string;

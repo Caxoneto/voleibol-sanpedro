@@ -19,14 +19,20 @@ import {
 export const CLUB_INFO: ClubInfo = {
   name: 'C.D. Voleibol San Pedro',
   shortName: 'CDV San Pedro',
-  city: 'San Pedro Alcántara, Marbella',
+  federationRegisteredName: 'SAN PEDRO C.D VOLEIBOL',
+  cif: 'G93147924',
+  president: 'Carlos Alberto Alcántara González',
+  officialAddress: 'C/ Diego Piña Macias Nº 21, 29670 San Pedro Alcántara (Málaga)',
+  postalCode: '29670',
+  city: 'San Pedro Alcántara',
+  province: 'Málaga',
   region: 'Málaga, Andalucía',
   venueName: 'Pabellón Polideportivo Sergio Scariolo',
   venueAddress: 'C/ Fuente Nueva, s/n, 29670 San Pedro Alcántara (Málaga)',
   venueMapsUrl: 'https://maps.google.com/?q=Pabellon+Polideportivo+Sergio+Scariolo+San+Pedro+Alcantara',
   federationName: 'Federación Andaluza de Voleibol (FAVB)',
   federationUrl: 'https://favoley.net/publico/index.php',
-  contactEmail: 'info@cdvoleibolsanpedro.es',
+  contactEmail: 'voleibolsanpedro@hotmail.es',
   contactPhone: '+34 952 78 50 12',
   whatsappUrl: 'https://wa.me/34622112233?text=Hola%2C%20me%20gustar%C3%ADa%20informaci%C3%B3n%20sobre%20el%20C.D.%20Voleibol%20San%20Pedro',
   socialHashtag: '#VoleibolSanPedro',
@@ -126,10 +132,10 @@ Asimismo, los clubes, jugadores y técnicos pueden descargar la copia íntegra d
     id: 'art-loteria-2026',
     title: 'Lotería de Navidad 2026: Juega con el C.D. Voleibol San Pedro al número 15.586 y apoya al club',
     slug: 'loteria-navidad-2026-voleibol-san-pedro-15586',
-    excerpt: 'Desde el club se ponen a la venta los décimos de la tradicional Lotería Nacional de Navidad (22 de diciembre de 2026). El número de este año es el 15.586 y el precio de venta es de 23 €, incluyendo un donativo de apoyo a nuestra cantera.',
+    excerpt: 'Desde el club se ponen a la venta los décimos de la tradicional Lotería Nacional de Navidad (22 de diciembre de 2026) al número 15.586 por 23 €, con donativo de apoyo a nuestra cantera.',
     contentMarkdown: `El C.D. Voleibol San Pedro pone a la venta los décimos de la tradicional Lotería Nacional de Navidad para el sorteo extraordinario del próximo **22 de diciembre de 2026**.
 
-Compartir este número es una de las tradiciones más queridas por nuestras familias, socios, jugadores y aficionados. Con cada décimo adquirido, además de jugar por los grandes premios de la Lotería de Navidad, estás colaborando de forma directa y decisiva con el proyecto formativo de nuestro club en San Pedro Alcántara.
+Compartir este número es una de las tradiciones de nuestras familias, socios, jugadores y aficionados. Con cada décimo adquirido estás colaborando de forma directa y decisiva con el club y el proyecto formativo de nuestra cantera en San Pedro Alcántara.
 
 ### 15.586
 
@@ -137,30 +143,18 @@ Compartir este número es una de las tradiciones más queridas por nuestras fami
 
 - **Número jugado:** **15.586**
 - **Fecha del sorteo:** 22 de diciembre de 2026 (S.E. Loterías y Apuestas del Estado).
-- **Precio por décimo:** **23 €** (20 € de jugada reglamentaria de Loterías del Estado + 3 € de donativo solidario destinado íntegramente a apoyar al club y a su cantera).
-- **Viñeta conmemorativa:** Ilustrado con la obra «La Natividad en el Templo» (tabla central del Tríptico realizado por el Maestro de las Medias Figuras, cedida por el Museo Nacional del Prado) y con el distintivo oficial del **VOLEIBOL SAN PEDRO**.
+- **Precio por décimo:** **23 €** (incluye donativo de apoyo al club).
 
-### ¿A qué se destina el apoyo de tu décimo?
+### ¿Cómo adquirir tu décimo?
 
-El importe íntegro del donativo (3 € por décimo) se reinvierte en las necesidades reales del día a día de nuestros equipos de cantera en el Pabellón Sergio Scariolo:
+Puedes hacerte con tus décimos del **15.586** de varias formas:
 
-- Renovación y reposición de balones oficiales homologados de competición (Mikasa V200W).
-- Equipamiento de entrenamiento, redes, carros porta-balones y material de preparación física.
-- Gastos de desplazamientos en autobús para los partidos de ligas provinciales y autonómicas de la FAVB.
-- Cobertura de arbitrajes y licencias federativas para las categorías inferiores.
-
-### ¿Cómo y dónde adquirir tu décimo?
-
-Puedes hacerte con tus décimos del **15.586** de varias formas sencillas:
-
-1. **En el Pabellón Polideportivo Sergio Scariolo:** Pregunta directamente a cualquiera de los entrenadores o delegados de equipo durante los entrenamientos semanales de cantera y del primer equipo.
+1. **En el Pabellón Polideportivo Sergio Scariolo:** Preguntando directamente a los entrenadores o delegados durante los entrenamientos semanales de cantera y del primer equipo.
 2. **Reserva directa por WhatsApp:** Si prefieres coordinar tu reserva previamente con los responsables del club, puedes escribirnos directamente:
 
-[Reservar décimos por WhatsApp (+34 952 78 50 12)](https://wa.me/34622112233?text=Hola%2C%20estoy%20interesado%20en%20comprar%20decimos%20de%20Loteria%20de%20Navidad%20del%20Voleibol%20San%20Pedro%20(15.586))
+[Reservar décimos por WhatsApp](https://wa.me/34622112233?text=Hola%2C%20estoy%20interesado%20en%20comprar%20decimos%20de%20Loteria%20de%20Navidad%20del%20Voleibol%20San%20Pedro%20(15.586))
 
-3. **Comercios colaboradores:** Diversos establecimientos y comercios amigos de San Pedro Alcántara contarán con décimos disponibles para clientes y simpatizantes en sus mostradores.
-
-¡No te quedes sin tu décimo del **15.586**! Muchísima suerte a toda la gran familia sampedreña y gracias de corazón por respaldar el voleibol formativo de nuestro pueblo.`,
+¡Muchas gracias por apoyar al club y mucha suerte a todos con el **15.586**!`,
     categoryId: 'cat-inst',
     categoryName: 'Club e Institucional',
     coverImageUrl: '/images/noticias/loteria-navidad-2026.png',
