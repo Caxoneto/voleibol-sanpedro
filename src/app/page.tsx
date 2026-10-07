@@ -423,10 +423,10 @@ export default function HomePage() {
                       <span>•</span>
                       <span>{art.readingTimeMinutes} min de lectura</span>
                     </div>
-                    <h3 className="font-headline-sm text-base uppercase text-white font-bold leading-snug group-hover:text-primary transition-colors line-clamp-2">
+                    <h3 className="font-headline-sm text-headline-sm uppercase text-on-surface font-bold leading-snug group-hover:text-primary transition-colors line-clamp-2">
                       {art.title}
                     </h3>
-                    <p className="font-body-sm text-xs text-tertiary mt-2 line-clamp-3">
+                    <p className="font-body-sm text-body-sm text-on-surface-variant mt-2 line-clamp-3">
                       {art.excerpt}
                     </p>
                   </div>
