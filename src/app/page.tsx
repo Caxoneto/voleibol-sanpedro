@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { store, CLUB_INFO } from '@/lib/data-store';
 import { formatMadridDate, formatMadridTime } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
+import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 
 export const revalidate = 0;
@@ -16,14 +17,17 @@ export default function HomePage() {
   const teams = store.getTeams();
   const matches = store.getMatches();
 
-  // Próximo partido programado de cada categoría oficial
+  // Próximo partido programado de cada categoría oficial ordenados por:
+  // 1. Proximidad temporal (de izquierda a derecha, el más cercano primero)
+  // 2. A la misma fecha y hora, primero el de mayor categoría (menor category.order)
   const upcomingMatchesByCategory = categories
     .map((cat) => {
       const catTeams = teams.filter((t) => t.categoryId === cat.id);
       const catTeamIds = new Set(catTeams.map((t) => t.id));
-      const nextMatch = matches.find(
-        (m) => catTeamIds.has(m.teamId) && m.status === 'SCHEDULED'
-      );
+      const catMatches = matches
+        .filter((m) => catTeamIds.has(m.teamId) && (m.status === 'SCHEDULED' || m.status === 'LIVE'))
+        .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
+      const nextMatch = catMatches[0];
       return {
         category: cat,
         match: nextMatch,
@@ -36,7 +40,17 @@ export default function HomePage() {
         category: (typeof categories)[0];
         match: NonNullable<typeof item.match>;
       } => item.match !== undefined
-    );
+    )
+    .sort((a, b) => {
+      const timeA = new Date(a.match.matchDate).getTime();
+      const timeB = new Date(b.match.matchDate).getTime();
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      const orderA = a.category.order ?? 99;
+      const orderB = b.category.order ?? 99;
+      return orderA - orderB;
+    });
 
   return (
     <div className="w-full flex flex-col">
@@ -70,35 +84,12 @@ export default function HomePage() {
             </span>
           </h1>
 
-          <p className="font-body-lg text-sm sm:text-base lg:text-lg text-tertiary-fixed max-w-2xl mt-2.5 mb-5 sm:mb-6">
+          <p className="font-body-lg text-sm sm:text-base lg:text-lg text-tertiary-fixed max-w-2xl mt-2.5 mb-2">
             Club deportivo formativo volcado en el deporte base, los jóvenes y las familias de San Pedro Alcántara.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-            <Link
-              href="/partidos"
-              className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 bg-primary-container hover:bg-secondary-container text-white font-label-lg uppercase tracking-wider transition-all duration-300 shadow-[4px_4px_0px_0px_#0e0e0e] hover:shadow-[0_0_25px_rgba(217,4,41,0.6)] hover:-translate-y-0.5 font-bold text-xs sm:text-sm"
-            >
-              <span>Próximo Partido</span>
-              <span className="material-symbols-outlined text-[18px] sm:text-[20px] transition-transform duration-300 group-hover:rotate-45">
-                sports_volleyball
-              </span>
-            </Link>
-
-            <Link
-              href="/plantillas"
-              className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-lg uppercase tracking-wider transition-all duration-300 hover:border-l-2 hover:border-primary-container font-bold text-xs sm:text-sm"
-            >
-              <span>Ver Plantillas y Cantera</span>
-              <span className="material-symbols-outlined text-[18px] sm:text-[20px] transition-transform duration-300 group-hover:scale-110">
-                groups
-              </span>
-            </Link>
-          </div>
-
           {/* Próximos Partidos por Categoría (Tira simplificada e interactiva) */}
-          <div className="mt-6 sm:mt-8 pt-4 border-t border-white/10 w-full">
+          <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-white/10 w-full">
             <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse" />
@@ -129,7 +120,7 @@ export default function HomePage() {
                   className="group shrink-0 w-[215px] sm:w-[235px] bg-surface-container-low/95 hover:bg-surface-container-high border border-white/10 hover:border-primary-container p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5"
                   title={`Ver detalles: ${category.name} en partidos`}
                 >
-                  {/* Cabecera: Jornada, Categoría y Casa/Avión */}
+                  {/* Cabecera: Jornada, Categoría, Estado y Casa/Avión */}
                   <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-white/5">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[9px] sm:text-[10px] font-bold">
@@ -138,6 +129,12 @@ export default function HomePage() {
                       <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-white truncate">
                         {category.name}
                       </span>
+                      {match.status === 'LIVE' && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-950 text-red-400 border border-red-500/50 text-[9px] font-bold uppercase tracking-wider animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                          DIRECTO
+                        </span>
+                      )}
                     </div>
                     <span
                       className={`w-5 h-5 flex items-center justify-center shrink-0 border ${
@@ -166,15 +163,27 @@ export default function HomePage() {
                     </p>
                   </div>
 
-                  {/* Fecha & Hora (Sin dirección de pabellón) */}
-                  <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[10px] sm:text-[11px]">
-                    <span className="text-tertiary capitalize">
-                      {formatMadridDate(match.matchDate, { weekday: 'short', day: 'numeric', month: 'short' })}
-                    </span>
-                    <span className="font-bold text-primary font-mono">
-                      {formatMadridTime(match.matchDate)}h
-                    </span>
-                  </div>
+                  {/* Fecha & Hora o Marcador en Vivo */}
+                  {match.status === 'LIVE' ? (
+                    <div className="pt-1.5 border-t border-red-500/30 flex items-center justify-between text-[10px] sm:text-[11px]">
+                      <span className="text-red-400 font-bold uppercase flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                        En Juego
+                      </span>
+                      <span className="font-bold text-white font-mono">
+                        {match.homeScore ?? 0} : {match.awayScore ?? 0} Sets
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[10px] sm:text-[11px]">
+                      <span className="text-tertiary capitalize">
+                        {formatMadridDate(match.matchDate, { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </span>
+                      <span className="font-bold text-primary font-mono">
+                        {formatMadridTime(match.matchDate)}h
+                      </span>
+                    </div>
+                  )}
                 </Link>
               ))}
             </div>
@@ -229,11 +238,11 @@ export default function HomePage() {
                     <div className="col-span-2 flex flex-col items-center">
                       <div className="w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high border-2 border-primary-container flex items-center justify-center p-2 mb-3 shadow-md">
                         <Image
-                          src="/images/logo.jpg"
-                          alt="C.D. Voleibol San Pedro"
+                          src={getTeamLogo(featuredMatch.homeTeamName)}
+                          alt={featuredMatch.homeTeamName}
                           width={60}
                           height={60}
-                          className="object-contain"
+                          className="object-contain max-h-full max-w-full"
                         />
                       </div>
                       <h4 className="font-display-xl text-lg sm:text-xl uppercase text-white leading-tight">
@@ -251,7 +260,13 @@ export default function HomePage() {
                     {/* Away Team */}
                     <div className="col-span-2 flex flex-col items-center">
                       <div className="w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high border border-white/10 flex items-center justify-center p-2 mb-3 shadow-md">
-                        <span className="font-display-xl text-2xl text-tertiary">RIV</span>
+                        <Image
+                          src={getTeamLogo(featuredMatch.awayTeamName)}
+                          alt={featuredMatch.awayTeamName}
+                          width={60}
+                          height={60}
+                          className="object-contain max-h-full max-w-full"
+                        />
                       </div>
                       <h4 className="font-display-xl text-lg sm:text-xl uppercase text-on-surface leading-tight">
                         {featuredMatch.awayTeamName}
@@ -327,19 +342,41 @@ export default function HomePage() {
                     </div>
 
                     <div className="py-3 flex items-center justify-between gap-4">
-                      <div className="flex-1 flex flex-col gap-1.5">
+                      <div className="flex-1 flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                          <span className={`text-sm font-semibold truncate ${match.isClubHome ? 'text-primary' : 'text-on-surface'}`}>
-                            {match.homeTeamName}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                              <Image
+                                src={getTeamLogo(match.homeTeamName)}
+                                alt={match.homeTeamName}
+                                width={18}
+                                height={18}
+                                className="object-contain max-h-full max-w-full"
+                              />
+                            </div>
+                            <span className={`text-sm font-semibold truncate ${match.isClubHome ? 'text-primary' : 'text-on-surface'}`}>
+                              {match.homeTeamName}
+                            </span>
+                          </div>
                           <span className="font-display-xl text-xl text-white">
                             {scoreResult.homeSetsWon}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className={`text-sm font-semibold truncate ${!match.isClubHome ? 'text-primary' : 'text-on-surface'}`}>
-                            {match.awayTeamName}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                              <Image
+                                src={getTeamLogo(match.awayTeamName)}
+                                alt={match.awayTeamName}
+                                width={18}
+                                height={18}
+                                className="object-contain max-h-full max-w-full"
+                              />
+                            </div>
+                            <span className={`text-sm font-semibold truncate ${!match.isClubHome ? 'text-primary' : 'text-on-surface'}`}>
+                              {match.awayTeamName}
+                            </span>
+                          </div>
                           <span className="font-display-xl text-xl text-white">
                             {scoreResult.awaySetsWon}
                           </span>

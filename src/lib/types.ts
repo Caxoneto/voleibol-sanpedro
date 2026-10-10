@@ -81,6 +81,8 @@ export interface Match {
   matchDate: string; // ISO string in UTC
   status: MatchStatus;
   setScores: SetScore[];
+  homeScore?: number;
+  awayScore?: number;
   favbMatchUrl?: string;
   mvpPlayerId?: string;
   isFeatured?: boolean;

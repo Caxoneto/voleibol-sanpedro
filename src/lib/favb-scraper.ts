@@ -160,6 +160,8 @@ export interface FavbMatch {
   setScores?: { home: number; away: number }[];
   isClubHome: boolean;
   favbUrl: string;
+  statusText?: string;
+  lastChecked?: string;
 }
 
 export interface FavbStanding {
@@ -172,6 +174,16 @@ export interface FavbStanding {
   sf: number;
   sc: number;
   isCurrentClub: boolean;
+}
+
+export interface ScrapedMatchScore {
+  favbId: string;
+  status: 'SCHEDULED' | 'FINISHED' | 'LIVE';
+  statusText: string;
+  homeScore?: number;
+  awayScore?: number;
+  setScores: { home: number; away: number }[];
+  lastChecked: string;
 }
 
 interface CacheState {
@@ -187,6 +199,151 @@ let cache: CacheState = {
   matches: [],
   standings: {},
 };
+
+/**
+ * Consulta y extrae el marcador en vivo oficial de un partido desde favoley.net
+ */
+export async function fetchLiveMatchScore(favbId: string): Promise<ScrapedMatchScore | null> {
+  const url = `https://favoley.net/publico/seccion.php?seccion=marcador&id=${favbId}`;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9',
+      },
+      cache: 'no-store',
+      // Timeout de 7 segundos para que no bloquee la interfaz
+      signal: AbortSignal.timeout ? AbortSignal.timeout(7000) : undefined,
+    });
+
+    if (!res.ok) {
+      console.warn(`[FAVB Scraper] Error HTTP ${res.status} al consultar ${url}`);
+      return null;
+    }
+
+    const html = await res.text();
+
+    // 1. Extraer estado
+    const statusMatch = html.match(/class=\"portal-marcador-estado[^\"]*\">([^<]+)<\/span>/i);
+    const rawStatus = statusMatch ? statusMatch[1].trim() : '';
+
+    let status: 'SCHEDULED' | 'FINISHED' | 'LIVE' = 'SCHEDULED';
+    const statusLower = rawStatus.toLowerCase();
+
+    if (statusLower.includes('finaliz')) {
+      status = 'FINISHED';
+    } else if (
+      statusLower.includes('juego') ||
+      statusLower.includes('directo') ||
+      statusLower.includes('vivo') ||
+      statusLower.includes('curso')
+    ) {
+      status = 'LIVE';
+    }
+
+    // 2. Extraer sets globales
+    let homeScore: number | undefined;
+    let awayScore: number | undefined;
+    const setsMatch = html.match(
+      /portal-marcador-resultado-sets[\s\S]*?<strong>(\d+)<\/strong>[\s\S]*?<strong>(\d+)<\/strong>/i
+    );
+    if (setsMatch) {
+      homeScore = parseInt(setsMatch[1], 10);
+      awayScore = parseInt(setsMatch[2], 10);
+    }
+
+    // 3. Extraer parciales set a set
+    const setScores: { home: number; away: number }[] = [];
+    const setRegex = /<b>Set\s*(\d+)<\/b>[\s\S]*?<strong[^>]*>(\d+)<\/strong>[\s\S]*?<strong[^>]*>(\d+)<\/strong>/gi;
+    let sm;
+    while ((sm = setRegex.exec(html)) !== null) {
+      setScores.push({
+        home: parseInt(sm[2], 10),
+        away: parseInt(sm[3], 10),
+      });
+    }
+
+    // Si hay parciales anotados y aún no está marcado como Finalizado, el partido está En Vivo
+    if (status === 'SCHEDULED' && setScores.length > 0) {
+      status = 'LIVE';
+    }
+
+    return {
+      favbId,
+      status,
+      statusText: rawStatus || (status === 'FINISHED' ? 'Finalizado' : status === 'LIVE' ? 'En juego' : 'Próximo'),
+      homeScore,
+      awayScore,
+      setScores,
+      lastChecked: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error(`[FAVB Scraper] Fallo al raspar marcador en vivo de ${url}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Actualiza el estado y marcador de un partido en la memoria consolidada
+ */
+export async function updateMatchLiveScore(
+  matchId: string,
+  simulateLive = false
+): Promise<{ success: boolean; match?: FavbMatch; error?: string; rawScraped?: ScrapedMatchScore }> {
+  // Asegurar que el caché esté inicializado
+  if (cache.matches.length === 0) {
+    cache.matches = getConsolidatedOfficialMatches();
+    cache.lastSync = Date.now();
+  }
+
+  // Buscar el partido en el catálogo consolidado
+  const cleanId = matchId.startsWith('favb-') ? matchId : `favb-${matchId}`;
+  const numId = matchId.replace(/^favb-/, '');
+
+  const match = cache.matches.find((m) => m.id === cleanId || m.id === matchId || m.favbId === numId);
+  if (!match) {
+    return { success: false, error: `Partido ${matchId} no encontrado en el calendario oficial.` };
+  }
+
+  // Si se solicita simulación (modo test/demo)
+  if (simulateLive) {
+    match.status = 'LIVE';
+    match.statusText = 'En juego';
+    match.homeScore = 1;
+    match.awayScore = 1;
+    match.setScores = [
+      { home: 25, away: 21 },
+      { home: 22, away: 25 },
+      { home: 16, away: 14 },
+    ];
+    match.lastChecked = new Date().toISOString();
+    return { success: true, match };
+  }
+
+  const favbId = match.favbId || numId;
+  const scraped = await fetchLiveMatchScore(favbId);
+
+  if (scraped) {
+    match.status = scraped.status;
+    match.statusText = scraped.statusText;
+    match.homeScore = scraped.homeScore;
+    match.awayScore = scraped.awayScore;
+    if (scraped.setScores.length > 0) {
+      match.setScores = scraped.setScores;
+    }
+    match.lastChecked = scraped.lastChecked;
+    return { success: true, match, rawScraped: scraped };
+  }
+
+  // Si falló el scrapeo en vivo de favoley.net, devolvemos el estado que ya teníamos con advertencia
+  return {
+    success: true,
+    match,
+    error: 'No se pudo conectar en tiempo real con favoley.net; mostrando última versión en caché.',
+  };
+}
 
 /**
  * Obtiene y sincroniza datos de la FAVB desde favoley.net

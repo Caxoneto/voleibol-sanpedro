@@ -19,6 +19,7 @@ import {
   generateIcsContent,
 } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
+import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 
 function PartidosContent() {
@@ -31,6 +32,10 @@ function PartidosContent() {
   const [syncing, setSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
 
+  // IDs de partidos con refresco individual en curso
+  const [refreshingMatchIds, setRefreshingMatchIds] = useState<Set<string>>(new Set());
+  const [refreshFeedback, setRefreshFeedback] = useState<{ matchId: string; message: string } | null>(null);
+
   // Estado del acordeón: solo una categoría expandida a la vez. Al abrir una, se contraen las demás.
   const [expandedCatId, setExpandedCatId] = useState<string | null>(initialCategoryParam);
 
@@ -42,6 +47,22 @@ function PartidosContent() {
   useEffect(() => {
     fetchFavbMatches(false);
   }, []);
+
+  // Polling automático cada 45 segundos para partidos EN VIVO o activos
+  useEffect(() => {
+    const liveMatches = matches.filter((m) => m.status === 'LIVE');
+    if (liveMatches.length === 0) return;
+
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        liveMatches.forEach((m) => {
+          handleRefreshSingleMatch(m.id, false, true);
+        });
+      }
+    }, 45000);
+
+    return () => clearInterval(timer);
+  }, [matches]);
 
   // Control de scroll y expansión si viene por URL
   useEffect(() => {
@@ -77,6 +98,42 @@ function PartidosContent() {
     } finally {
       setLoading(false);
       setSyncing(false);
+    }
+  };
+
+  // Actualizar un partido individual consultando favoley.net en tiempo real
+  const handleRefreshSingleMatch = async (matchId: string, simulate = false, silent = false) => {
+    if (!silent) {
+      setRefreshingMatchIds((prev) => new Set(prev).add(matchId));
+    }
+    try {
+      const res = await fetch(`/api/favb/match/${matchId}?force=true${simulate ? '&simulate=true' : ''}`);
+      const data = await res.json();
+      if (data.success && data.match) {
+        setMatches((prev) =>
+          prev.map((m) => (m.id === data.match.id || m.favbId === data.match.favbId ? data.match : m))
+        );
+        if (!silent) {
+          const statusMsg =
+            data.match.status === 'LIVE'
+              ? '🔴 ¡EN DIRECTO! Marcador actualizado'
+              : data.match.status === 'FINISHED'
+              ? '✅ Partido finalizado. Acta cerrada.'
+              : 'Marcador al día con favoley.net';
+          setRefreshFeedback({ matchId, message: statusMsg });
+          setTimeout(() => setRefreshFeedback(null), 3500);
+        }
+      }
+    } catch (err) {
+      console.error(`Error al actualizar marcador del partido ${matchId}`, err);
+    } finally {
+      if (!silent) {
+        setRefreshingMatchIds((prev) => {
+          const next = new Set(prev);
+          next.delete(matchId);
+          return next;
+        });
+      }
     }
   };
 
@@ -117,11 +174,10 @@ function PartidosContent() {
     );
   };
 
-  // Agrupar los partidos oficiales por las 12 categorías
+  // Agrupar los partidos oficiales por las 12 categorías (incluyendo en directo, programados y finalizados)
   const categoriesData = useMemo(() => {
     return INITIAL_CATEGORIES.map((cat) => {
       const catTeams = INITIAL_TEAMS.filter((t) => t.categoryId === cat.id);
-      const catTeamIds = new Set(catTeams.map((t) => t.id));
 
       // Partidos de esta categoría
       const catMatches = matches.filter((m) => {
@@ -132,6 +188,10 @@ function PartidosContent() {
         );
       });
 
+      const live = catMatches
+        .filter((m) => m.status === 'LIVE')
+        .sort((a, b) => a.round - b.round);
+
       const scheduled = catMatches
         .filter((m) => m.status === 'SCHEDULED')
         .sort((a, b) => a.round - b.round);
@@ -140,17 +200,23 @@ function PartidosContent() {
         .filter((m) => m.status === 'FINISHED')
         .sort((a, b) => b.round - a.round);
 
-      const nextMatch = scheduled[0];
+      const nextMatch = live[0] || scheduled[0];
 
       return {
         category: cat,
         team: catTeams[0],
         totalCount: catMatches.length,
+        live,
         scheduled,
         finished,
         nextMatch,
       };
     });
+  }, [matches]);
+
+  // Todos los partidos actualmente en directo
+  const allLiveMatches = useMemo(() => {
+    return matches.filter((m) => m.status === 'LIVE');
   }, [matches]);
 
   return (
@@ -178,7 +244,7 @@ function PartidosContent() {
           </div>
 
           {/* Botones de acción FAVB */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
             <button
               onClick={() => fetchFavbMatches(true)}
               disabled={syncing}
@@ -195,6 +261,19 @@ function PartidosContent() {
               <span>{syncing ? 'Sincronizando...' : 'Actualizar Resultados'}</span>
             </button>
 
+            {/* Botón de test para simular en directo el partido de este fin de semana */}
+            <button
+              onClick={() => handleRefreshSingleMatch('favb-1061', true)}
+              className="px-3 py-2.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 font-label-md text-xs uppercase tracking-wider font-bold transition-all border border-red-500/40 flex items-center gap-1.5 shadow"
+              title="Demostración: Simular el partido de este sábado en vivo con punto rojo parpadeante"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              <span>Demo Directo</span>
+            </button>
+
             <a
               href="https://favoley.net/publico/seccion.php?seccion=competiciones"
               target="_blank"
@@ -206,6 +285,14 @@ function PartidosContent() {
           </div>
         </div>
       </section>
+
+      {/* Notificación flotante de feedback al actualizar marcador */}
+      {refreshFeedback && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#161616] border-2 border-primary-container text-white px-4 py-3 shadow-2xl flex items-center gap-3 animate-bounce">
+          <span className="material-symbols-outlined text-primary text-[22px]">check_circle</span>
+          <span className="text-xs font-bold uppercase tracking-wider">{refreshFeedback.message}</span>
+        </div>
+      )}
 
       {/* Selector Rápido Horizontal de Categorías (Píldoras) */}
       <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
@@ -260,76 +347,286 @@ function PartidosContent() {
           </div>
         </div>
 
-        {/* Partido Estelar Destacado */}
-        <section className="bg-surface-container-low border border-primary-container/40 p-6 sm:p-8 shadow-2xl relative">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-6 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-primary-container text-white text-xs uppercase font-bold tracking-widest">
-                PARTIDO ESTELAR DE LA JORNADA {featuredMatch.round}
-              </span>
-              <span className="text-xs text-tertiary uppercase font-semibold">
-                1ª División Andaluza
-              </span>
-            </div>
-            {/* Icono de Casa en Partido Destacado */}
-            <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-container/20 text-primary border border-primary-container/40 text-xs font-bold uppercase tracking-wider"
-              title="En Casa (Pabellón Polideportivo Sergio Scariolo)"
-            >
-              <span className="material-symbols-outlined text-[16px]">home</span>
-              <span>Pabellón Sergio Scariolo</span>
-            </span>
-          </div>
-
-          {/* Versus Central */}
-          <div className="py-6 grid grid-cols-1 md:grid-cols-7 items-center gap-6 text-center">
-            {/* Equipo Local */}
-            <div className="md:col-span-3 flex flex-col items-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high border-2 border-primary-container flex items-center justify-center p-2.5 mb-2 shadow-lg">
-                <Image
-                  src="/images/logo.jpg"
-                  alt="C.D. Voleibol San Pedro"
-                  width={64}
-                  height={64}
-                  className="object-contain"
-                />
+        {/* MÓDULO DESTACADO: PARTIDOS EN DIRECTO AHORA (Aparece si hay partidos en juego) */}
+        {allLiveMatches.length > 0 && (
+          <section className="bg-red-950/20 border-2 border-red-500/60 p-5 sm:p-7 shadow-2xl relative animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-5 border-b border-red-500/30">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </span>
+                <h2 className="font-display-xl text-xl sm:text-2xl uppercase text-white font-bold tracking-wide">
+                  PARTIDOS EN DIRECTO AHORA ({allLiveMatches.length})
+                </h2>
               </div>
-              <h2 className="font-display-xl text-xl sm:text-2xl uppercase text-white">
-                {featuredMatch.homeTeamName}
-              </h2>
-              <span className="text-xs uppercase font-bold text-primary mt-0.5">Local</span>
+              <span className="text-xs text-red-300 font-mono">
+                Sincronización en vivo cada 45s con favoley.net
+              </span>
             </div>
 
-            {/* VS */}
-            <div className="md:col-span-1 flex flex-col items-center justify-center">
-              <div className="px-3 py-1.5 bg-surface-container-lowest border border-white/10 mb-1.5">
-                <span className="font-display-xl text-2xl sm:text-3xl text-primary leading-none">
-                  VS
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {allLiveMatches.map((m) => (
+                <div
+                  key={m.id}
+                  className="bg-surface-container-high/90 border border-red-500/50 p-4 flex flex-col justify-between shadow-xl"
+                >
+                  <div>
+                    <div className="flex items-center justify-between pb-2 border-b border-white/10 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-primary">J{m.round}</span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-950 text-red-400 border border-red-500/40 text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                          EN JUEGO
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-tertiary">{m.categoryName}</span>
+                    </div>
+
+                    <div className="py-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-surface-container-low border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                          <Image
+                            src={getTeamLogo(m.homeTeam)}
+                            alt={m.homeTeam}
+                            width={22}
+                            height={22}
+                            className="object-contain max-h-full max-w-full"
+                          />
+                        </div>
+                        <p className={`font-headline-sm text-sm uppercase font-bold truncate ${m.isClubHome ? 'text-primary' : 'text-white'}`}>
+                          {m.homeTeam}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-surface-container-low border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                          <Image
+                            src={getTeamLogo(m.awayTeam)}
+                            alt={m.awayTeam}
+                            width={22}
+                            height={22}
+                            className="object-contain max-h-full max-w-full"
+                          />
+                        </div>
+                        <p className={`font-headline-sm text-sm uppercase font-bold truncate ${!m.isClubHome ? 'text-primary' : 'text-white'}`}>
+                          {m.awayTeam}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Marcador de sets en vivo */}
+                    <div className="my-2 p-2.5 bg-surface-container-lowest border border-red-500/40 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display-xl text-2xl text-white font-bold leading-none">
+                          {m.homeScore ?? 0} : {m.awayScore ?? 0}
+                        </span>
+                        <span className="text-[10px] uppercase font-bold text-red-400">Sets</span>
+                      </div>
+                      {m.setScores && m.setScores.length > 0 && (
+                        <div className="flex items-center gap-1 font-mono text-[11px]">
+                          {m.setScores.map((s, idx) => (
+                            <span key={idx} className="px-1.5 py-0.5 bg-white/5 border border-white/10 text-white font-bold">
+                              {s.home}-{s.away}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-tertiary truncate">📍 {m.venue}</span>
+                    <button
+                      onClick={() => handleRefreshSingleMatch(m.id)}
+                      disabled={refreshingMatchIds.has(m.id)}
+                      className="px-2.5 py-1.5 bg-red-900/40 hover:bg-red-800/60 text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-red-500/50 transition-all shrink-0 shadow"
+                      title="Actualizar marcador en directo desde favoley.net"
+                    >
+                      <span className={`material-symbols-outlined text-[15px] text-red-400 ${refreshingMatchIds.has(m.id) ? 'animate-spin' : ''}`}>
+                        sync
+                      </span>
+                      <span>{refreshingMatchIds.has(m.id) ? 'Actualizando...' : 'Actualizar'}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Partido Estelar Destacado */}
+        {(() => {
+          const liveFeatured = matches.find((m) => m.id === featuredMatch.id);
+          const featuredHomeTeam = liveFeatured ? liveFeatured.homeTeam : featuredMatch.homeTeamName;
+          const featuredAwayTeam = liveFeatured ? liveFeatured.awayTeam : featuredMatch.awayTeamName;
+          const featuredStatus = liveFeatured ? liveFeatured.status : featuredMatch.status;
+          const isFeaturedLive = featuredStatus === 'LIVE';
+          const isFeaturedFinished = featuredStatus === 'FINISHED';
+          const featuredHomeScore = liveFeatured ? liveFeatured.homeScore : undefined;
+          const featuredAwayScore = liveFeatured ? liveFeatured.awayScore : undefined;
+          const featuredSetScores = liveFeatured ? liveFeatured.setScores : featuredMatch.setScores;
+
+          return (
+            <section className={`border p-6 sm:p-8 shadow-2xl relative transition-all ${
+              isFeaturedLive
+                ? 'bg-red-950/20 border-red-500/60'
+                : 'bg-surface-container-low border-primary-container/40'
+            }`}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-6 border-b border-white/10">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 bg-primary-container text-white text-xs uppercase font-bold tracking-widest">
+                    PARTIDO ESTELAR DE LA JORNADA {featuredMatch.round}
+                  </span>
+                  <span className="text-xs text-tertiary uppercase font-semibold">
+                    1ª División Andaluza
+                  </span>
+
+                  {/* Estado en vivo con punto rojo parpadeante o finalizado */}
+                  {isFeaturedLive && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-500/60 text-xs font-bold uppercase tracking-wider animate-pulse">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                      </span>
+                      EN DIRECTO
+                    </span>
+                  )}
+
+                  {isFeaturedFinished && (
+                    <span className="px-2.5 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-500/40 text-xs font-bold uppercase tracking-wider">
+                      FINALIZADO
+                    </span>
+                  )}
+                </div>
+
+                {/* Icono de Casa en Partido Destacado */}
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-container/20 text-primary border border-primary-container/40 text-xs font-bold uppercase tracking-wider"
+                  title="En Casa (Pabellón Polideportivo Sergio Scariolo)"
+                >
+                  <span className="material-symbols-outlined text-[16px]">home</span>
+                  <span>Pabellón Sergio Scariolo</span>
                 </span>
               </div>
-              <span className="text-xs text-tertiary uppercase font-bold">
-                {formatMadridTime(featuredMatch.matchDate)}h
-              </span>
-              <span className="text-[11px] text-tertiary">
-                {formatMadridDate(featuredMatch.matchDate, {
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </span>
-            </div>
 
-            {/* Equipo Visitante */}
-            <div className="md:col-span-3 flex flex-col items-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high border border-white/10 flex items-center justify-center p-2.5 mb-2 shadow-lg">
-                <span className="font-display-xl text-2xl sm:text-3xl text-tertiary">RIV</span>
+              {/* Versus Central */}
+              <div className="py-6 grid grid-cols-1 md:grid-cols-7 items-center gap-6 text-center">
+                {/* Equipo Local */}
+                <div className="md:col-span-3 flex flex-col items-center">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high border-2 border-primary-container flex items-center justify-center p-2 mb-2 shadow-lg">
+                    <Image
+                      src={getTeamLogo(featuredHomeTeam)}
+                      alt={featuredHomeTeam}
+                      width={64}
+                      height={64}
+                      className="object-contain max-h-full max-w-full"
+                    />
+                  </div>
+                  <h2 className="font-display-xl text-xl sm:text-2xl uppercase text-white">
+                    {featuredHomeTeam}
+                  </h2>
+                  <span className="text-xs uppercase font-bold text-primary mt-0.5">Local</span>
+                </div>
+
+                {/* VS o Marcador en Directo */}
+                <div className="md:col-span-1 flex flex-col items-center justify-center">
+                  {isFeaturedLive || isFeaturedFinished ? (
+                    <div className="flex flex-col items-center">
+                      <div className={`px-4 py-2 border mb-1.5 shadow-lg ${
+                        isFeaturedLive
+                          ? 'bg-red-950/90 border-red-500/60 text-white'
+                          : 'bg-surface-container-lowest border-white/10 text-white'
+                      }`}>
+                        <span className="font-display-xl text-3xl sm:text-4xl leading-none font-bold">
+                          {featuredHomeScore ?? 0} : {featuredAwayScore ?? 0}
+                        </span>
+                      </div>
+                      <span className={`text-[10px] uppercase font-bold tracking-wider ${
+                        isFeaturedLive ? 'text-red-400' : 'text-emerald-400'
+                      }`}>
+                        {isFeaturedLive ? 'SETS EN JUEGO' : 'RESULTADO FINAL'}
+                      </span>
+
+                      {/* Parciales si existen */}
+                      {featuredSetScores && featuredSetScores.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1 justify-center max-w-[140px]">
+                          {featuredSetScores.map((s, idx) => (
+                            <span key={idx} className="text-[10px] font-mono text-tertiary">
+                              ({s.home}-{s.away})
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Botón de actualizar: SOLO si está en juego (si finalizó no se muestra) */}
+                      {isFeaturedLive && (
+                        <button
+                          onClick={() => handleRefreshSingleMatch(featuredMatch.id)}
+                          disabled={refreshingMatchIds.has(featuredMatch.id)}
+                          className="mt-2.5 px-3 py-1 bg-red-900/40 hover:bg-red-800/60 text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-red-500/40 transition-all shadow"
+                          title="Actualizar marcador en tiempo real desde favoley.net"
+                        >
+                          <span className={`material-symbols-outlined text-[15px] text-red-400 ${refreshingMatchIds.has(featuredMatch.id) ? 'animate-spin' : ''}`}>
+                            sync
+                          </span>
+                          <span>{refreshingMatchIds.has(featuredMatch.id) ? '...' : 'Actualizar'}</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <div className="px-3 py-1.5 bg-surface-container-lowest border border-white/10 mb-1.5">
+                        <span className="font-display-xl text-2xl sm:text-3xl text-primary leading-none">
+                          VS
+                        </span>
+                      </div>
+                      <span className="text-xs text-tertiary uppercase font-bold">
+                        {formatMadridTime(featuredMatch.matchDate)}h
+                      </span>
+                      <span className="text-[11px] text-tertiary">
+                        {formatMadridDate(featuredMatch.matchDate, {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </span>
+
+                      {/* Botón de comprobar marcador en partido programado */}
+                      <button
+                        onClick={() => handleRefreshSingleMatch(featuredMatch.id)}
+                        disabled={refreshingMatchIds.has(featuredMatch.id)}
+                        className="mt-2.5 px-2.5 py-1 bg-surface-container-high hover:bg-surface-bright text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-white/10 transition-all shadow"
+                        title="Comprobar en favoley.net si ha comenzado"
+                      >
+                        <span className={`material-symbols-outlined text-[15px] text-primary ${refreshingMatchIds.has(featuredMatch.id) ? 'animate-spin' : ''}`}>
+                          sync
+                        </span>
+                        <span>{refreshingMatchIds.has(featuredMatch.id) ? '...' : 'Actualizar'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Equipo Visitante */}
+                <div className="md:col-span-3 flex flex-col items-center">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high border border-white/10 flex items-center justify-center p-2 mb-2 shadow-lg">
+                    <Image
+                      src={getTeamLogo(featuredAwayTeam)}
+                      alt={featuredAwayTeam}
+                      width={64}
+                      height={64}
+                      className="object-contain max-h-full max-w-full"
+                    />
+                  </div>
+                  <h2 className="font-display-xl text-xl sm:text-2xl uppercase text-on-surface">
+                    {featuredAwayTeam}
+                  </h2>
+                  <span className="text-xs uppercase font-bold text-tertiary mt-0.5">Visitante</span>
+                </div>
               </div>
-              <h2 className="font-display-xl text-xl sm:text-2xl uppercase text-on-surface">
-                {featuredMatch.awayTeamName}
-              </h2>
-              <span className="text-xs uppercase font-bold text-tertiary mt-0.5">Visitante</span>
-            </div>
-          </div>
-        </section>
+            </section>
+          );
+        })()}
+
 
         {/* NÚCLEO: LISTADO CLASIFICADO POR CATEGORÍAS (ACORDEÓN ESTRICTO) */}
         <section className="space-y-4">
@@ -349,7 +646,7 @@ function PartidosContent() {
 
           {/* Acordeón de las 12 categorías */}
           <div className="space-y-3">
-            {categoriesData.map(({ category, team, totalCount, scheduled, finished, nextMatch }) => {
+            {categoriesData.map(({ category, team, totalCount, live, scheduled, finished, nextMatch }) => {
               const isExpanded = expandedCatId === category.id;
 
               return (
@@ -397,8 +694,16 @@ function PartidosContent() {
 
                     {/* Resumen & Icono de Despliegue */}
                     <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
-                      {/* Próximo partido en píldora compacta */}
-                      {nextMatch && (
+                      {/* Píldora de EN DIRECTO o Próximo partido */}
+                      {live.length > 0 ? (
+                        <div className="flex items-center gap-2 bg-red-950/80 border border-red-500/60 px-3 py-1.5 text-xs text-red-300 font-bold uppercase tracking-wider animate-pulse">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          </span>
+                          <span>EN JUEGO: J{live[0].round} ({live[0].homeScore ?? 0}-{live[0].awayScore ?? 0})</span>
+                        </div>
+                      ) : nextMatch ? (
                         <div className="flex items-center gap-2 bg-surface-container-highest/60 px-3 py-1.5 text-xs border border-white/5">
                           <span className="font-bold text-white">
                             J{nextMatch.round} · {nextMatch.dateStr}
@@ -412,7 +717,7 @@ function PartidosContent() {
                             </span>
                           </span>
                         </div>
-                      )}
+                      ) : null}
 
                       <span className="text-xs font-mono text-tertiary bg-white/5 px-2 py-1">
                         {totalCount} partidos
@@ -432,6 +737,126 @@ function PartidosContent() {
                   {/* Panel Desplegable con todos los partidos de la categoría */}
                   {isExpanded && (
                     <div className="px-4 sm:px-6 pb-6 pt-2 border-t border-white/5 space-y-8 animate-fadeIn">
+                      {/* Bloque 0: Partidos EN JUEGO (Si existen en esta categoría) */}
+                      {live.length > 0 && (
+                        <div className="p-4 sm:p-5 bg-red-950/20 border-2 border-red-500/50 space-y-4">
+                          <div className="flex items-center justify-between pb-2 border-b border-red-500/30">
+                            <h4 className="font-headline-sm text-sm uppercase text-white font-bold flex items-center gap-2">
+                              <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                              </span>
+                              <span>Partidos en Juego ({live.length})</span>
+                            </h4>
+                            <span className="text-[11px] text-red-300 font-mono">
+                              Marcador en vivo desde favoley.net
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {live.map((m) => (
+                              <div
+                                key={m.id}
+                                id={`match-${m.id}`}
+                                className="bg-surface-container-high/90 border border-red-500/50 p-4 flex flex-col justify-between shadow-lg"
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between pb-2 border-b border-white/10 text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono font-bold text-primary">JORNADA {m.round}</span>
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-950 text-red-400 border border-red-500/40 text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                        EN DIRECTO
+                                      </span>
+                                    </div>
+                                    <span
+                                      className={`p-1 flex items-center justify-center border ${
+                                        m.isClubHome
+                                          ? 'text-primary bg-primary-container/20 border-primary-container/40'
+                                          : 'text-tertiary bg-white/5 border-white/10'
+                                      }`}
+                                      title={m.isClubHome ? 'En casa (Sergio Scariolo)' : 'Fuera / A domicilio'}
+                                    >
+                                      <span className="material-symbols-outlined text-[17px]">
+                                        {m.isClubHome ? 'home' : 'flight'}
+                                      </span>
+                                    </span>
+                                  </div>
+
+                                  <div className="py-2.5 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-5 h-5 bg-surface-container-low border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                                        <Image
+                                          src={getTeamLogo(m.homeTeam)}
+                                          alt={m.homeTeam}
+                                          width={18}
+                                          height={18}
+                                          className="object-contain max-h-full max-w-full"
+                                        />
+                                      </div>
+                                      <p className={`font-headline-sm text-sm uppercase font-bold truncate ${m.isClubHome ? 'text-primary' : 'text-white'}`}>
+                                        {m.homeTeam}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-5 h-5 bg-surface-container-low border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                                        <Image
+                                          src={getTeamLogo(m.awayTeam)}
+                                          alt={m.awayTeam}
+                                          width={18}
+                                          height={18}
+                                          className="object-contain max-h-full max-w-full"
+                                        />
+                                      </div>
+                                      <p className={`font-headline-sm text-sm uppercase font-bold truncate ${!m.isClubHome ? 'text-primary' : 'text-white'}`}>
+                                        {m.awayTeam}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Marcador de Sets en Directo */}
+                                  <div className="my-2 p-2.5 bg-surface-container-lowest border border-red-500/30 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-display-xl text-2xl text-white font-bold leading-none">
+                                        {m.homeScore ?? 0} : {m.awayScore ?? 0}
+                                      </span>
+                                      <span className="text-[10px] uppercase font-bold text-red-400">Sets</span>
+                                    </div>
+                                    {m.setScores && m.setScores.length > 0 && (
+                                      <div className="flex items-center gap-1 font-mono text-[11px]">
+                                        {m.setScores.map((s, idx) => (
+                                          <span key={idx} className="px-1.5 py-0.5 bg-white/5 border border-white/10 text-white font-bold">
+                                            {s.home}-{s.away}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+                                  <span className="text-[11px] text-tertiary truncate">📍 {m.venue}</span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRefreshSingleMatch(m.id);
+                                    }}
+                                    disabled={refreshingMatchIds.has(m.id)}
+                                    className="px-2.5 py-1.5 bg-red-900/40 hover:bg-red-800/60 text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-red-500/50 transition-all shrink-0 shadow"
+                                    title="Actualizar tanteo desde favoley.net"
+                                  >
+                                    <span className={`material-symbols-outlined text-[15px] text-red-400 ${refreshingMatchIds.has(m.id) ? 'animate-spin' : ''}`}>
+                                      sync
+                                    </span>
+                                    <span>{refreshingMatchIds.has(m.id) ? 'Actualizando...' : 'Actualizar'}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Bloque 1: Próximos Partidos */}
                       <div>
                         <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/5">
@@ -482,27 +907,48 @@ function PartidosContent() {
                                     </span>
                                   </div>
 
-                                  {/* Enfrentamiento */}
-                                  <div className="py-3 space-y-1">
-                                    <p
-                                      className={`font-headline-sm text-sm uppercase font-bold truncate ${
-                                        m.isClubHome ? 'text-primary' : 'text-white'
-                                      }`}
-                                    >
-                                      {m.homeTeam}
-                                    </p>
-                                    <p className="text-[11px] text-tertiary">vs</p>
-                                    <p
-                                      className={`font-headline-sm text-sm uppercase font-bold truncate ${
-                                        !m.isClubHome ? 'text-primary' : 'text-white'
-                                      }`}
-                                    >
-                                      {m.awayTeam}
-                                    </p>
+                                  {/* Enfrentamiento con escudos */}
+                                  <div className="py-3 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-5 h-5 bg-surface-container-low border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                                        <Image
+                                          src={getTeamLogo(m.homeTeam)}
+                                          alt={m.homeTeam}
+                                          width={18}
+                                          height={18}
+                                          className="object-contain max-h-full max-w-full"
+                                        />
+                                      </div>
+                                      <p
+                                        className={`font-headline-sm text-sm uppercase font-bold truncate ${
+                                          m.isClubHome ? 'text-primary' : 'text-white'
+                                        }`}
+                                      >
+                                        {m.homeTeam}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-5 h-5 bg-surface-container-low border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                                        <Image
+                                          src={getTeamLogo(m.awayTeam)}
+                                          alt={m.awayTeam}
+                                          width={18}
+                                          height={18}
+                                          className="object-contain max-h-full max-w-full"
+                                        />
+                                      </div>
+                                      <p
+                                        className={`font-headline-sm text-sm uppercase font-bold truncate ${
+                                          !m.isClubHome ? 'text-primary' : 'text-white'
+                                        }`}
+                                      >
+                                        {m.awayTeam}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
 
-                                {/* Fecha, Sede y Acciones */}
+                                {/* Fecha, Sede y Acciones con BOTÓN DE ACTUALIZAR */}
                                 <div className="pt-3 border-t border-white/5 space-y-3 text-xs">
                                   <div className="flex items-center justify-between text-tertiary">
                                     <span>{m.dateStr}</span>
@@ -517,6 +963,26 @@ function PartidosContent() {
                                   </div>
 
                                   <div className="flex items-center gap-2 pt-1 flex-wrap">
+                                    {/* BOTÓN DE ACTUALIZAR MARCADOR EN VIVO (favoley.net) */}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRefreshSingleMatch(m.id);
+                                      }}
+                                      disabled={refreshingMatchIds.has(m.id)}
+                                      className="px-2.5 py-1.5 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all border border-primary-container/40"
+                                      title="Comprobar en favoley.net si ha comenzado o actualizar marcador"
+                                    >
+                                      <span
+                                        className={`material-symbols-outlined text-[15px] ${
+                                          refreshingMatchIds.has(m.id) ? 'animate-spin' : ''
+                                        }`}
+                                      >
+                                        sync
+                                      </span>
+                                      <span>{refreshingMatchIds.has(m.id) ? '...' : 'Actualizar'}</span>
+                                    </button>
+
                                     <a
                                       href={getGoogleCalendarLink(m)}
                                       target="_blank"
@@ -544,7 +1010,7 @@ function PartidosContent() {
                         )}
                       </div>
 
-                      {/* Bloque 2: Partidos Finalizados y Actas Oficiales Set a Set */}
+                      {/* Bloque 2: Partidos Finalizados y Actas Oficiales Set a Set (SIN BOTÓN DE ACTUALIZAR) */}
                       <div>
                         <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/5">
                           <h4 className="font-headline-sm text-sm uppercase text-white font-bold flex items-center gap-2">
@@ -583,6 +1049,11 @@ function PartidosContent() {
                                         {m.dateStr} • {m.timeStr}h
                                       </span>
 
+                                      {/* Badge de Partido Finalizado */}
+                                      <span className="px-2 py-0.5 bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                                        FINALIZADO
+                                      </span>
+
                                       {/* Icono de Casa o Avión en partido finalizado */}
                                       <span
                                         className={`p-1 flex items-center justify-center border ${
@@ -607,6 +1078,7 @@ function PartidosContent() {
                                     </span>
                                   </div>
 
+
                                   {/* Marcador Set a Set */}
                                   <div className="py-4 overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[500px]">
@@ -627,14 +1099,25 @@ function PartidosContent() {
                                       <tbody>
                                         <tr className="border-b border-white/5">
                                           <td className="py-2.5 pr-4 font-headline-sm text-sm uppercase font-bold text-white">
-                                            <span className={m.isClubHome ? 'text-primary' : 'text-white'}>
-                                              {m.homeTeam}
-                                            </span>
-                                            {m.isClubHome && (
-                                              <span className="ml-2 text-[9px] text-primary uppercase font-bold tracking-wider">
-                                                (Club)
+                                            <div className="flex items-center gap-2">
+                                              <div className="w-5 h-5 bg-surface-container-low border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                                                <Image
+                                                  src={getTeamLogo(m.homeTeam)}
+                                                  alt={m.homeTeam}
+                                                  width={18}
+                                                  height={18}
+                                                  className="object-contain max-h-full max-w-full"
+                                                />
+                                              </div>
+                                              <span className={m.isClubHome ? 'text-primary' : 'text-white'}>
+                                                {m.homeTeam}
                                               </span>
-                                            )}
+                                              {m.isClubHome && (
+                                                <span className="ml-1 text-[9px] text-primary uppercase font-bold tracking-wider">
+                                                  (Club)
+                                                </span>
+                                              )}
+                                            </div>
                                           </td>
                                           <td className="py-2.5 px-3 text-center font-display-xl text-xl text-white bg-primary-container/20 font-bold">
                                             {score ? score.homeSetsWon : m.homeScore ?? '–'}
@@ -655,14 +1138,25 @@ function PartidosContent() {
 
                                         <tr>
                                           <td className="py-2.5 pr-4 font-headline-sm text-sm uppercase font-bold text-white">
-                                            <span className={!m.isClubHome ? 'text-primary' : 'text-white'}>
-                                              {m.awayTeam}
-                                            </span>
-                                            {!m.isClubHome && (
-                                              <span className="ml-2 text-[9px] text-primary uppercase font-bold tracking-wider">
-                                                (Club)
+                                            <div className="flex items-center gap-2">
+                                              <div className="w-5 h-5 bg-surface-container-low border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                                                <Image
+                                                  src={getTeamLogo(m.awayTeam)}
+                                                  alt={m.awayTeam}
+                                                  width={18}
+                                                  height={18}
+                                                  className="object-contain max-h-full max-w-full"
+                                                />
+                                              </div>
+                                              <span className={!m.isClubHome ? 'text-primary' : 'text-white'}>
+                                                {m.awayTeam}
                                               </span>
-                                            )}
+                                              {!m.isClubHome && (
+                                                <span className="ml-1 text-[9px] text-primary uppercase font-bold tracking-wider">
+                                                  (Club)
+                                                </span>
+                                              )}
+                                            </div>
                                           </td>
                                           <td className="py-2.5 px-3 text-center font-display-xl text-xl text-white bg-primary-container/20 font-bold">
                                             {score ? score.awaySetsWon : m.awayScore ?? '–'}
