@@ -13,6 +13,11 @@ import confetti from 'canvas-confetti';
 import SponsorBanner from '@/components/SponsorBanner';
 import { InstagramIcon, FacebookIcon } from '@/components/SocialIcons';
 
+import { POSITION_SHORT_LABELS } from '@/lib/types';
+
+// Dorsales con licencia oficial SENIOR (+18, mayores de edad) en el primer equipo Senior Femenino (excluyendo convocadas menores de edad de cantera)
+const SENIOR_ADULT_NUMBERS = new Set([3, 4, 5, 8, 14, 15, 18]);
+
 export default function FanZonePage() {
   // Estado de votación MVP
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
@@ -20,8 +25,10 @@ export default function FanZonePage() {
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
   const [votingFeedback, setVotingFeedback] = useState<string | null>(null);
 
-  // Candidatos para el MVP (plantilla del Senior Femenino que disputó el último encuentro oficial)
-  const mvpCandidates = INITIAL_PLAYERS.filter((p) => p.teamId === 'team-sf').slice(0, 4);
+  // Candidatas para el MVP: exclusivamente equipo mayor de edad (Senior Femenino - 1ª División Andaluza, licencia Senior)
+  const mvpCandidates = INITIAL_PLAYERS.filter(
+    (p) => p.teamId === 'team-sf' && SENIOR_ADULT_NUMBERS.has(p.number)
+  );
 
   // Estado del himno del club / audio
   const [isPlayingAnthem, setIsPlayingAnthem] = useState<boolean>(false);
@@ -223,15 +230,20 @@ export default function FanZonePage() {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-10 space-y-16">
-        {/* BLOQUE 1: Votación Popular de MVP */}
+        {/* BLOQUE 1: Votación Popular de MVP (Exclusivo Categoría Senior +18) */}
         <section className="bg-surface-container-low border border-primary-container/30 p-6 sm:p-8 shadow-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
             <div>
-              <span className="text-xs text-primary font-bold uppercase tracking-wider block">
-                Votación de la Afición
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-primary font-bold uppercase tracking-wider">
+                  Votación de la Afición
+                </span>
+                <span className="px-2 py-0.5 bg-primary-container text-white text-[10px] font-bold uppercase tracking-wider">
+                  Exclusivo Categoría Senior (+18)
+                </span>
+              </div>
               <h2 className="font-display-xl text-2xl sm:text-3xl uppercase text-white mt-1">
-                Elige al MVP de la Jornada
+                Elige al MVP de la Jornada (Senior Femenino)
               </h2>
             </div>
             <div className="flex items-center gap-2 text-xs text-tertiary">
@@ -240,12 +252,17 @@ export default function FanZonePage() {
             </div>
           </div>
 
-          <p className="text-xs sm:text-sm text-tertiary mt-4 mb-6">
-            Valora el esfuerzo de nuestros jugadores en el último choque de 1ª División Andaluza ante CV Pizarra. Selecciona a tu candidato preferido y envía tu voto.
-          </p>
+          <div className="mt-4 mb-6 space-y-2">
+            <p className="text-xs sm:text-sm text-tertiary">
+              Valora el esfuerzo de nuestras jugadoras del primer equipo Senior Femenino en 1ª División Andaluza. Selecciona a tu candidata preferida y envía tu voto.
+            </p>
+            <p className="text-[11px] text-tertiary/80 bg-surface-container-lowest border-l-2 border-primary-container px-3 py-2">
+              <strong className="text-white">Deporte formativo sin presión para menores:</strong> La votación de MVP se habilita exclusivamente para equipos y jugadoras mayores de edad (Categoría Senior), fomentando el compañerismo y el aprendizaje libre de clasificaciones individuales en todas nuestras categorías de cantera.
+            </p>
+          </div>
 
           {/* Candidatos Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
             {mvpCandidates.map((candidate) => {
               const count = voteCounts[candidate.id] || 0;
               const percent = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
@@ -277,7 +294,7 @@ export default function FanZonePage() {
                     {candidate.firstName} {candidate.lastName}
                   </h3>
                   <span className="text-[10px] text-tertiary uppercase block mb-3">
-                    {candidate.position}
+                    {POSITION_SHORT_LABELS[candidate.position] || candidate.position}
                   </span>
 
                   {/* Resultados / Porcentaje */}

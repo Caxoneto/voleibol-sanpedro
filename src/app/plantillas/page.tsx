@@ -194,77 +194,105 @@ export default function PlantillasPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {filteredPlayers.map((player) => (
-                <div
-                  key={player.id}
-                  className="group bg-surface-container-low border border-white/5 hover:border-primary-container/80 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-md hover:-translate-y-1"
-                >
-                  {/* Athletic Silhouette Placeholder & Badges */}
-                  <div className="relative h-72 w-full bg-[#18181b] overflow-hidden">
-                    <Image
-                      src={player.photoUrl || '/images/player-placeholder.svg'}
-                      alt={`${player.firstName} ${player.lastName}`}
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-transparent to-black/20" />
+              {filteredPlayers.map((player) => {
+                const isPlaceholderSlot =
+                  player.firstName === 'Jugador' || player.firstName === 'Jugadora';
 
-                    {/* Big Dorsal Number */}
-                    <div className="absolute top-3 left-3">
-                      <span className="font-display-xl text-5xl sm:text-6xl text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
-                        {player.number}
-                      </span>
-                    </div>
+                return (
+                  <div
+                    key={player.id}
+                    className="group bg-surface-container-low border border-white/5 hover:border-primary-container/80 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-md hover:-translate-y-1"
+                  >
+                    {/* Athletic Silhouette Placeholder & Badges */}
+                    <div className="relative h-72 w-full bg-[#18181b] overflow-hidden">
+                      <Image
+                        src={player.photoUrl || '/images/player-placeholder.svg'}
+                        alt={`${player.firstName} ${player.lastName}`}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-transparent to-black/20" />
 
-                    {/* Roles Badges */}
-                    <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
-                      {player.isCaptain && (
-                        <span className="px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] uppercase tracking-wider shadow">
-                          Capitán
-                        </span>
-                      )}
-                      {player.isHomegrown && (
-                        <span className="px-2 py-0.5 bg-primary-container text-white font-bold text-[10px] uppercase tracking-wider shadow">
-                          Cantera
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Position Overlay */}
-                    <div className="absolute bottom-3 left-3 right-3">
-                      <span className="px-2.5 py-1 bg-surface-container-highest/90 backdrop-blur-sm text-primary font-label-sm text-[11px] uppercase tracking-widest font-bold">
-                        {POSITION_SHORT_LABELS[player.position]}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Player Details */}
-                  <div className="p-4 flex flex-col justify-between flex-1">
-                    <div>
-                      <h3 className="font-display-xl text-xl uppercase text-white leading-tight group-hover:text-primary transition-colors">
-                        {player.firstName} <br />
-                        <span className="text-on-surface">{player.lastName}</span>
-                      </h3>
-                    </div>
-
-                    {/* Physical Stats */}
-                    <div className="mt-4 pt-3 border-t border-white/5 grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className="text-tertiary block text-[10px] uppercase">Altura</span>
-                        <span className="font-headline-sm text-sm text-white font-bold">
-                          {player.heightCm} cm
+                      {/* Big Dorsal Number */}
+                      <div className="absolute top-3 left-3">
+                        <span className="font-display-xl text-5xl sm:text-6xl text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
+                          {player.number}
                         </span>
                       </div>
-                      <div>
-                        <span className="text-tertiary block text-[10px] uppercase">Año Nac.</span>
-                        <span className="font-headline-sm text-sm text-white font-bold">
-                          {player.birthYear}
+
+                      {/* Roles Badges */}
+                      <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+                        {player.isCaptain && !isPlaceholderSlot && (
+                          <span className="px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] uppercase tracking-wider shadow">
+                            Capitán
+                          </span>
+                        )}
+                        {isPlaceholderSlot ? (
+                          <span className="px-2 py-0.5 bg-surface-container-highest text-tertiary font-bold text-[10px] uppercase tracking-wider border border-white/10 shadow">
+                            Pendiente Acta FAVB
+                          </span>
+                        ) : (
+                          player.isHomegrown && (
+                            <span className="px-2 py-0.5 bg-primary-container text-white font-bold text-[10px] uppercase tracking-wider shadow">
+                              Federado FAVB
+                            </span>
+                          )
+                        )}
+                      </div>
+
+                      {/* Position Overlay */}
+                      <div className="absolute bottom-3 left-3 right-3">
+                        <span className="px-2.5 py-1 bg-surface-container-highest/90 backdrop-blur-sm text-primary font-label-sm text-[11px] uppercase tracking-widest font-bold">
+                          {POSITION_SHORT_LABELS[player.position]}
                         </span>
                       </div>
                     </div>
+
+                    {/* Player Details */}
+                    <div className="p-4 flex flex-col justify-between flex-1">
+                      <div>
+                        <h3 className="font-display-xl text-xl uppercase text-white leading-tight group-hover:text-primary transition-colors">
+                          {isPlaceholderSlot ? (
+                            <span>
+                              {player.firstName} {player.lastName}
+                            </span>
+                          ) : (
+                            <>
+                              {player.firstName} <br />
+                              <span className="text-on-surface">{player.lastName}</span>
+                            </>
+                          )}
+                        </h3>
+                        {isPlaceholderSlot && (
+                          <span className="text-[11px] text-tertiary block mt-1">
+                            Se actualizará automáticamente al publicarse el acta oficial en favoley.net
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Physical Stats */}
+                      <div className="mt-4 pt-3 border-t border-white/5 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-tertiary block text-[10px] uppercase">Dorsal</span>
+                          <span className="font-headline-sm text-sm text-white font-bold">
+                            #{player.number}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-tertiary block text-[10px] uppercase">Estado FAVB</span>
+                          <span
+                            className={`font-headline-sm text-sm font-bold ${
+                              isPlaceholderSlot ? 'text-tertiary' : 'text-emerald-400'
+                            }`}
+                          >
+                            {isPlaceholderSlot ? 'En inscripción' : 'Inscrito'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

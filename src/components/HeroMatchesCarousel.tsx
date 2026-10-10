@@ -346,7 +346,7 @@ export default function HeroMatchesCarousel({
             return (
               <Link
                 key={`${activeTab}-${match.id}`}
-                href={`/partidos?categoria=${match.categoryId}&match=${match.id}#match-${match.id}`}
+                href={`/partidos?categoria=${match.categoryId}&match=${match.id}`}
                 className={`group snap-start shrink-0 w-[250px] sm:w-[275px] bg-surface-container-low/95 hover:bg-surface-container-high border p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5 ${
                   isLive
                     ? 'border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.22)]'

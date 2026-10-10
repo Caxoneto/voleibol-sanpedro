@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -11,7 +11,7 @@ import {
   INITIAL_PLAYERS,
   CLUB_INFO,
 } from '@/lib/data-store';
-import { FavbMatch } from '@/lib/favb-scraper';
+import { FavbMatch, getConsolidatedOfficialMatches } from '@/lib/favb-scraper';
 import {
   formatMadridDate,
   formatMadridDateString,
@@ -20,7 +20,7 @@ import {
   generateIcsContent,
 } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
-import { getTeamLogo } from '@/lib/team-logos';
+import { getTeamLogo, getTeamInitials } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 
 interface DisplaySetColumn {
@@ -30,16 +30,44 @@ interface DisplaySetColumn {
   isCurrent: boolean;
 }
 
+type CategorySubTab = 'pending' | 'finished';
+
 function PartidosContent() {
   const searchParams = useSearchParams();
-  const initialCategoryParam =
-    searchParams.get('categoria') || searchParams.get('cat') || 'cat-senior-fem';
   const initialMatchParam = searchParams.get('match') || searchParams.get('partido');
+  const rawCategoryParam = searchParams.get('categoria') || searchParams.get('cat');
 
-  const [matches, setMatches] = useState<FavbMatch[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  // Inicializar sincrónicamente con los partidos consolidados para que el DOM exista desde el instante 0
+  const initialConsolidated = useMemo(() => getConsolidatedOfficialMatches(), []);
+
+  // Determinar categoría inicial (por parámetro o deducida del partido pulsado)
+  const resolvedInitialCategory = useMemo(() => {
+    if (rawCategoryParam) return rawCategoryParam;
+    if (initialMatchParam) {
+      const found = initialConsolidated.find((m) => m.id === initialMatchParam);
+      if (found?.categoryId) return found.categoryId;
+    }
+    return 'cat-senior-fem';
+  }, [rawCategoryParam, initialMatchParam, initialConsolidated]);
+
+  const [matches, setMatches] = useState<FavbMatch[]>(initialConsolidated);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
+
+  // Sub-pestaña activa por categoría ('pending' | 'finished')
+  const [subTabByCategory, setSubTabByCategory] = useState<Record<string, CategorySubTab>>(() => {
+    const map: Record<string, CategorySubTab> = {};
+    if (initialMatchParam) {
+      const found = initialConsolidated.find((m) => m.id === initialMatchParam);
+      if (found && found.categoryId) {
+        map[found.categoryId] = found.status === 'FINISHED' ? 'finished' : 'pending';
+      }
+    }
+    return map;
+  });
+
+  // ID del partido enfocado al navegar desde el carrusel de Inicio
+  const [highlightedMatchId, setHighlightedMatchId] = useState<string | null>(initialMatchParam);
 
   // IDs de partidos con refresco individual en curso
   const [refreshingMatchIds, setRefreshingMatchIds] = useState<Set<string>>(new Set());
@@ -48,15 +76,18 @@ function PartidosContent() {
     message: string;
   } | null>(null);
 
-  // Estado del acordeón: solo una categoría expandida a la vez
-  const [expandedCatId, setExpandedCatId] = useState<string | null>(initialCategoryParam);
+  // Estado del acordeón: categoría expandida
+  const [expandedCatId, setExpandedCatId] = useState<string | null>(resolvedInitialCategory);
+
+  // Referencia al contenedor de scroll horizontal de categorías
+  const catScrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Jugadora destacada real de la plantilla oficial (Capitana Senior Femenino: María López Quevedo #8)
   const mvpPlayer =
     INITIAL_PLAYERS.find((p) => p.teamId === 'team-sf' && p.isCaptain) || INITIAL_PLAYERS[0];
   const featuredMatch = INITIAL_MATCHES.find((m) => m.isFeatured) || INITIAL_MATCHES[0];
 
-  // Sincronización al montar el componente
+  // Sincronización en segundo plano al montar el componente
   useEffect(() => {
     fetchFavbMatches(false);
   }, []);
@@ -80,20 +111,56 @@ function PartidosContent() {
     return () => clearInterval(timer);
   }, [matches]);
 
-  // Control de scroll y expansión si viene por URL
+  // Centrar siempre la píldora de la categoría activa en la barra horizontal (sin cancelar el scroll vertical)
+  const centerCategoryPill = (catId: string | null) => {
+    if (!catId) return;
+    const container = catScrollContainerRef.current;
+    const pill = document.getElementById(`cat-pill-${catId}`);
+    if (container && pill) {
+      const targetLeft = pill.offsetLeft - container.clientWidth / 2 + pill.clientWidth / 2;
+      container.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+    }
+  };
+
   useEffect(() => {
-    if (initialCategoryParam) {
-      setExpandedCatId(initialCategoryParam);
+    if (expandedCatId) {
+      centerCategoryPill(expandedCatId);
     }
+  }, [expandedCatId]);
+
+  // Control de navegación desde el carrusel de Inicio (?categoria=...&match=...)
+  useEffect(() => {
+    if (!resolvedInitialCategory) return;
+    setExpandedCatId(resolvedInitialCategory);
+
     if (initialMatchParam) {
-      setTimeout(() => {
-        const el = document.getElementById(`match-${initialMatchParam}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMatchId(initialMatchParam);
+      const targetMatch = matches.find((m) => m.id === initialMatchParam);
+      const targetCatId = targetMatch?.categoryId || resolvedInitialCategory;
+      if (targetMatch) {
+        const desiredTab: CategorySubTab =
+          targetMatch.status === 'FINISHED' ? 'finished' : 'pending';
+        setSubTabByCategory((prev) =>
+          prev[targetCatId] === desiredTab ? prev : { ...prev, [targetCatId]: desiredTab }
+        );
+      }
+
+      const scrollBoth = () => {
+        centerCategoryPill(targetCatId);
+        const matchEl = document.getElementById(`match-${initialMatchParam}`);
+        if (matchEl) {
+          matchEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 400);
+      };
+
+      const t1 = setTimeout(scrollBoth, 120);
+      const t2 = setTimeout(scrollBoth, 450);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
-  }, [initialCategoryParam, initialMatchParam]);
+  }, [resolvedInitialCategory, initialMatchParam]);
 
   const fetchFavbMatches = async (force: boolean) => {
     if (force) setSyncing(true);
@@ -108,11 +175,24 @@ function PartidosContent() {
             minute: '2-digit',
           })
         );
+        // Si veníamos con un partido en la URL y su estado cambió tras sincronizar, asegurar pestaña correcta
+        if (initialMatchParam) {
+          const updatedTarget = (data.matches as FavbMatch[]).find(
+            (m) => m.id === initialMatchParam
+          );
+          if (updatedTarget && updatedTarget.categoryId) {
+            const desiredTab: CategorySubTab =
+              updatedTarget.status === 'FINISHED' ? 'finished' : 'pending';
+            setSubTabByCategory((prev) => ({
+              ...prev,
+              [updatedTarget.categoryId!]: desiredTab,
+            }));
+          }
+        }
       }
     } catch (err) {
       console.error('Error al sincronizar con favoley.net', err);
     } finally {
-      setLoading(false);
       setSyncing(false);
     }
   };
@@ -162,10 +242,22 @@ function PartidosContent() {
     setExpandedCatId((current) => (current === catId ? null : catId));
   };
 
+  // Seleccionar categoría desde la barra superior (expande y hace scroll suave a la categoría)
+  const handleSelectCategoryFromBar = (catId: string) => {
+    setExpandedCatId(catId);
+    centerCategoryPill(catId);
+    setTimeout(() => {
+      const catEl = document.getElementById(catId);
+      if (catEl) {
+        catEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 80);
+  };
+
   // Descarga de archivo .ics para el móvil
   const handleDownloadIcs = (m: FavbMatch) => {
     const matchObj = INITIAL_MATCHES.find((im) => im.id === m.id);
-    const dateIso = matchObj ? matchObj.matchDate : new Date().toISOString();
+    const dateIso = m.matchDate || (matchObj ? matchObj.matchDate : new Date().toISOString());
     const icsString = generateIcsContent(
       `${m.homeTeam} vs ${m.awayTeam}`,
       m.venue,
@@ -186,12 +278,18 @@ function PartidosContent() {
   // Enlace directo de Google Calendar
   const getGoogleCalendarLink = (m: FavbMatch) => {
     const matchObj = INITIAL_MATCHES.find((im) => im.id === m.id);
-    const dateIso = matchObj ? matchObj.matchDate : new Date().toISOString();
+    const dateIso = m.matchDate || (matchObj ? matchObj.matchDate : new Date().toISOString());
     return generateGoogleCalendarUrl(
       `Voleibol: ${m.homeTeam} vs ${m.awayTeam}`,
       m.venue,
       dateIso
     );
+  };
+
+  // Enlace directo de Google Maps para el pabellón del partido
+  const getVenueMapsLink = (m: FavbMatch) => {
+    if (m.isClubHome) return CLUB_INFO.venueMapsUrl;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.venue)}`;
   };
 
   // Regla de colores unificada con la página de inicio: verde ganando, blanco perdiendo, amarillo empate
@@ -263,7 +361,7 @@ function PartidosContent() {
     return { home: 0, away: 0 };
   };
 
-  // Agrupar los partidos oficiales por las categorías
+  // Agrupar los partidos oficiales por categorías y ordenarlos estrictamente por proximidad temporal
   const categoriesData = useMemo(() => {
     return INITIAL_CATEGORIES.map((cat) => {
       const catTeams = INITIAL_TEAMS.filter((t) => t.categoryId === cat.id);
@@ -276,19 +374,23 @@ function PartidosContent() {
         );
       });
 
+      // En vivo: ordenados por proximidad temporal ascendente
       const live = catMatches
         .filter((m) => m.status === 'LIVE')
-        .sort((a, b) => a.round - b.round);
+        .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
+      // Próximos / Pendientes: ordenados por proximidad temporal ascendente (el más cercano primero)
       const scheduled = catMatches
         .filter((m) => m.status === 'SCHEDULED')
-        .sort((a, b) => a.round - b.round);
+        .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
+      // Finalizados: ordenados por proximidad temporal descendente (el más reciente primero)
       const finished = catMatches
         .filter((m) => m.status === 'FINISHED')
-        .sort((a, b) => b.round - a.round);
+        .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
 
-      const nextMatch = live[0] || scheduled[0];
+      // Partido destacado en rojo de la categoría: el partido en vivo, o si no hay ninguno en vivo, el próximo más cercano
+      const nextOrLiveMatch = live[0] || scheduled[0];
 
       return {
         category: cat,
@@ -297,7 +399,8 @@ function PartidosContent() {
         live,
         scheduled,
         finished,
-        nextMatch,
+        nextMatch: nextOrLiveMatch,
+        redHighlightedMatchId: nextOrLiveMatch?.id || null,
       };
     });
   }, [matches]);
@@ -307,10 +410,15 @@ function PartidosContent() {
     return matches.filter((m) => m.status === 'LIVE');
   }, [matches]);
 
-  // Renderizador reutilizable de tarjeta de resultado (en vivo o finalizado) con el mismo formato tenis que Inicio
-  const renderScoreboardCard = (m: FavbMatch, showCategoryName = false) => {
+  // Renderizador reutilizable de tarjeta de resultado (en vivo o finalizado) con formato tenis + botones solo icono
+  const renderScoreboardCard = (
+    m: FavbMatch,
+    showCategoryName = false,
+    forceRedBorder = false
+  ) => {
     const isLive = m.status === 'LIVE';
     const isFinished = m.status === 'FINISHED';
+    const isRedBorder = isLive || forceRedBorder || highlightedMatchId === m.id;
     const setColumns = getTennisSetColumns(m);
     const totalSets = getTotalSetsDisplay(m);
     const isRefreshing = refreshingMatchIds.has(m.id);
@@ -320,10 +428,10 @@ function PartidosContent() {
       <div
         key={m.id}
         id={`match-${m.id}`}
-        className={`bg-surface-container-high/80 border p-3.5 sm:p-4 flex flex-col justify-between transition-all shadow-lg ${
-          isLive
-            ? 'border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.18)]'
-            : 'border-white/10 hover:border-primary-container/50'
+        className={`bg-surface-container-high/80 p-3.5 sm:p-4 flex flex-col justify-between transition-all shadow-lg ${
+          isRedBorder
+            ? 'border-2 border-red-500 shadow-[0_0_18px_rgba(239,68,68,0.28)]'
+            : 'border border-white/10 hover:border-primary-container/50'
         }`}
       >
         <div>
@@ -379,7 +487,11 @@ function PartidosContent() {
                     ? 'text-primary bg-primary-container/20 border-primary-container/40'
                     : 'text-tertiary bg-white/5 border-white/10'
                 }`}
-                title={m.isClubHome ? 'En casa (Pabellón Sergio Scariolo)' : 'Fuera / A domicilio'}
+                title={
+                  m.isClubHome
+                    ? 'En casa (Pabellón Sergio Scariolo)'
+                    : `Fuera (${m.venue})`
+                }
               >
                 <span className="material-symbols-outlined text-[15px]">
                   {m.isClubHome ? 'home' : 'flight'}
@@ -442,7 +554,10 @@ function PartidosContent() {
                     m.isClubHome ? 'text-primary font-bold' : 'text-white font-semibold'
                   }`}
                 >
-                  {m.homeTeam}
+                  <span className="sm:hidden font-display-xl text-base tracking-wider">
+                    {getTeamInitials(m.homeTeam)}
+                  </span>
+                  <span className="hidden sm:inline">{m.homeTeam}</span>
                 </span>
               </div>
 
@@ -487,7 +602,10 @@ function PartidosContent() {
                     !m.isClubHome ? 'text-primary font-bold' : 'text-white font-semibold'
                   }`}
                 >
-                  {m.awayTeam}
+                  <span className="sm:hidden font-display-xl text-base tracking-wider">
+                    {getTeamInitials(m.awayTeam)}
+                  </span>
+                  <span className="hidden sm:inline">{m.awayTeam}</span>
                 </span>
               </div>
 
@@ -519,19 +637,40 @@ function PartidosContent() {
           </div>
         </div>
 
-        {/* Pie de tarjeta con sede y enlace al acta */}
+        {/* Pie de tarjeta con sede y botones de SOLO icono (Ubicación Maps + Acta FAVB) */}
         <div className="pt-2.5 mt-2 border-t border-white/5 flex items-center justify-between gap-2 text-[11px] text-tertiary">
-          <span className="truncate">📍 {m.venue}</span>
-          <a
-            href={m.favbUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-primary hover:underline flex items-center gap-1 font-semibold shrink-0"
-          >
-            <span>Acta FAVB</span>
-            <span className="material-symbols-outlined text-[13px]">open_in_new</span>
-          </a>
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="material-symbols-outlined text-[14px] text-primary shrink-0">
+              pin_drop
+            </span>
+            <span className="truncate">{m.venue}</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <a
+              href={getVenueMapsLink(m)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="w-6 h-6 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white flex items-center justify-center border border-white/10 transition-colors"
+              title={`Cómo llegar a ${m.venue}`}
+              aria-label="Cómo llegar al pabellón"
+            >
+              <span className="material-symbols-outlined text-[14px]">directions</span>
+            </a>
+
+            <a
+              href={m.favbUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="w-6 h-6 bg-surface-container-highest hover:bg-primary-container text-primary hover:text-white flex items-center justify-center border border-white/10 transition-colors"
+              title="Ver acta oficial en favoley.net"
+              aria-label="Ver acta oficial en favoley.net"
+            >
+              <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -557,7 +696,7 @@ function PartidosContent() {
               PARTIDOS Y RESULTADOS
             </h1>
             <p className="font-body-md text-sm sm:text-base text-tertiary max-w-2xl mt-2">
-              Partidos federados y marcadores oficiales de la Federación Andaluza de Voleibol (favoley.net). Selecciona una categoría para desplegar su calendario y actas oficiales.
+              Partidos federados y marcadores oficiales de la Federación Andaluza de Voleibol (favoley.net). Selecciona una categoría para consultar sus encuentros pendientes o finalizados.
             </p>
           </div>
 
@@ -587,7 +726,10 @@ function PartidosContent() {
       {/* Selector Rápido Horizontal de Categorías (Sticky) + Botón Icono Actualizar integrado en Desktop */}
       <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-1">
+          <div
+            ref={catScrollContainerRef}
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-1"
+          >
             <span className="text-[11px] font-bold uppercase tracking-wider text-tertiary shrink-0 mr-1 hidden sm:inline">
               Categoría:
             </span>
@@ -596,7 +738,8 @@ function PartidosContent() {
               return (
                 <button
                   key={category.id}
-                  onClick={() => handleToggleCategory(category.id)}
+                  id={`cat-pill-${category.id}`}
+                  onClick={() => handleSelectCategoryFromBar(category.id)}
                   className={`px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e] -translate-y-0.5'
@@ -639,7 +782,7 @@ function PartidosContent() {
         </span>
       </button>
 
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 space-y-10">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 sm:py-8 space-y-8">
         {/* Banner Informativo y Leyenda de Iconos */}
         <div className="p-3 bg-surface-container-low border border-white/10 flex flex-col md:flex-row items-center justify-between text-xs text-tertiary gap-3">
           <div className="flex items-center gap-3">
@@ -652,7 +795,7 @@ function PartidosContent() {
             </span>
           </div>
 
-          {/* Leyenda de Iconos: Casa y Avión */}
+          {/* Leyenda de Iconos */}
           <div className="flex items-center gap-4 text-xs font-semibold text-white">
             <span
               className="flex items-center gap-1.5"
@@ -677,7 +820,7 @@ function PartidosContent() {
 
         {/* MÓDULO DESTACADO: PARTIDOS EN DIRECTO AHORA */}
         {allLiveMatches.length > 0 && (
-          <section className="bg-red-950/20 border-2 border-red-500/60 p-4 sm:p-6 shadow-2xl relative animate-fadeIn">
+          <section className="bg-red-950/20 border-2 border-red-500 p-4 sm:p-6 shadow-2xl relative animate-fadeIn">
             <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-red-500/30">
               <span className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -689,152 +832,12 @@ function PartidosContent() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allLiveMatches.map((m) => renderScoreboardCard(m, true))}
+              {allLiveMatches.map((m) => renderScoreboardCard(m, true, true))}
             </div>
           </section>
         )}
 
-        {/* Partido Estelar Destacado */}
-        {(() => {
-          const liveFeatured = matches.find((m) => m.id === featuredMatch.id);
-          const featuredHomeTeam = liveFeatured
-            ? liveFeatured.homeTeam
-            : featuredMatch.homeTeamName;
-          const featuredAwayTeam = liveFeatured
-            ? liveFeatured.awayTeam
-            : featuredMatch.awayTeamName;
-          const featuredStatus = liveFeatured ? liveFeatured.status : featuredMatch.status;
-          const isFeaturedLive = featuredStatus === 'LIVE';
-          const isFeaturedFinished = featuredStatus === 'FINISHED';
-          const isFeaturedRefreshing = refreshingMatchIds.has(featuredMatch.id);
-
-          return (
-            <section
-              className={`border p-5 sm:p-8 shadow-2xl relative transition-all ${
-                isFeaturedLive
-                  ? 'bg-red-950/20 border-red-500/60'
-                  : 'bg-surface-container-low border-primary-container/40'
-              }`}
-            >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-5 border-b border-white/10">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-3 py-1 bg-primary-container text-white text-xs uppercase font-bold tracking-widest">
-                    PARTIDO ESTELAR DE LA JORNADA {featuredMatch.round}
-                  </span>
-                  <span className="text-xs text-tertiary uppercase font-semibold">
-                    1ª División Andaluza
-                  </span>
-
-                  {isFeaturedLive && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-950 text-red-400 border border-red-500/60 text-xs font-bold uppercase tracking-wider animate-pulse">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                      </span>
-                      EN DIRECTO
-                    </span>
-                  )}
-
-                  {isFeaturedFinished && (
-                    <span className="px-2.5 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-500/40 text-xs font-bold uppercase tracking-wider">
-                      FINALIZADO
-                    </span>
-                  )}
-                </div>
-
-                {/* Botón actualizar solo icono + Icono de Casa */}
-                <div className="flex items-center gap-2">
-                  {!isFeaturedFinished && (
-                    <button
-                      type="button"
-                      onClick={() => handleRefreshSingleMatch(featuredMatch.id)}
-                      disabled={isFeaturedRefreshing}
-                      className="w-7 h-7 flex items-center justify-center bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/15 transition-colors"
-                      title="Actualizar marcador desde favoley.net"
-                      aria-label="Actualizar marcador"
-                    >
-                      <span
-                        className={`material-symbols-outlined text-[16px] ${
-                          isFeaturedRefreshing ? 'animate-spin text-white' : ''
-                        }`}
-                      >
-                        sync
-                      </span>
-                    </button>
-                  )}
-
-                  <span
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-container/20 text-primary border border-primary-container/40 text-xs font-bold uppercase tracking-wider"
-                    title="En Casa (Pabellón Polideportivo Sergio Scariolo)"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">home</span>
-                    <span>Pabellón Sergio Scariolo</span>
-                  </span>
-                </div>
-              </div>
-
-              {liveFeatured && (isFeaturedLive || isFeaturedFinished) ? (
-                <div className="pt-5 max-w-xl mx-auto">
-                  {renderScoreboardCard(liveFeatured, false)}
-                </div>
-              ) : (
-                <div className="py-6 grid grid-cols-1 md:grid-cols-7 items-center gap-6 text-center">
-                  {/* Equipo Local */}
-                  <div className="md:col-span-3 flex flex-col items-center">
-                    <Image
-                      src={getTeamLogo(featuredHomeTeam)}
-                      alt={featuredHomeTeam}
-                      width={72}
-                      height={72}
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain mb-2"
-                    />
-                    <h2 className="font-display-xl text-xl sm:text-2xl uppercase text-white">
-                      {featuredHomeTeam}
-                    </h2>
-                    <span className="text-xs uppercase font-bold text-primary mt-0.5">Local</span>
-                  </div>
-
-                  {/* VS Central */}
-                  <div className="md:col-span-1 flex flex-col items-center justify-center">
-                    <div className="px-3 py-1.5 bg-surface-container-lowest border border-white/10 mb-1.5">
-                      <span className="font-display-xl text-2xl sm:text-3xl text-primary leading-none">
-                        VS
-                      </span>
-                    </div>
-                    <span className="text-xs text-tertiary uppercase font-bold">
-                      {formatMadridTime(featuredMatch.matchDate)}h
-                    </span>
-                    <span className="text-[11px] text-tertiary">
-                      {formatMadridDate(featuredMatch.matchDate, {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </span>
-                  </div>
-
-                  {/* Equipo Visitante */}
-                  <div className="md:col-span-3 flex flex-col items-center">
-                    <Image
-                      src={getTeamLogo(featuredAwayTeam)}
-                      alt={featuredAwayTeam}
-                      width={72}
-                      height={72}
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-contain mb-2"
-                    />
-                    <h2 className="font-display-xl text-xl sm:text-2xl uppercase text-on-surface">
-                      {featuredAwayTeam}
-                    </h2>
-                    <span className="text-xs uppercase font-bold text-tertiary mt-0.5">
-                      Visitante
-                    </span>
-                  </div>
-                </div>
-              )}
-            </section>
-          );
-        })()}
-
-        {/* NÚCLEO: LISTADO CLASIFICADO POR CATEGORÍAS (ACORDEÓN ESTRICTO) */}
+        {/* NÚCLEO: LISTADO CLASIFICADO POR CATEGORÍAS (ACORDEÓN CON PESTAÑAS PENDIENTES / FINALIZADOS) */}
         <section className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/10">
             <div>
@@ -846,21 +849,34 @@ function PartidosContent() {
               </h2>
             </div>
             <p className="text-xs text-tertiary">
-              Haz clic en cualquier categoría para desplegar sus partidos (las demás se contraerán).
+              Rodeado en <span className="text-red-400 font-bold">rojo</span> el partido en juego o el próximo más cercano.
             </p>
           </div>
 
           {/* Acordeón de las categorías */}
           <div className="space-y-3">
             {categoriesData.map(
-              ({ category, team, totalCount, live, scheduled, finished, nextMatch }) => {
+              ({
+                category,
+                team,
+                totalCount,
+                live,
+                scheduled,
+                finished,
+                nextMatch,
+                redHighlightedMatchId,
+              }) => {
                 const isExpanded = expandedCatId === category.id;
+                const pendingCount = live.length + scheduled.length;
+                const activeSubTab: CategorySubTab =
+                  subTabByCategory[category.id] ||
+                  (pendingCount > 0 ? 'pending' : 'finished');
 
                 return (
                   <div
                     key={category.id}
                     id={category.id}
-                    className={`border transition-all duration-300 ${
+                    className={`border transition-all duration-300 scroll-mt-44 ${
                       isExpanded
                         ? 'bg-surface-container-low border-primary-container/80 shadow-xl'
                         : 'bg-surface-container-lowest/80 border-white/10 hover:border-white/20'
@@ -870,7 +886,7 @@ function PartidosContent() {
                     <button
                       type="button"
                       onClick={() => handleToggleCategory(category.id)}
-                      className="w-full p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 text-left transition-colors cursor-pointer group"
+                      className="w-full p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-left transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div
@@ -898,9 +914,9 @@ function PartidosContent() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
+                      <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
                         {live.length > 0 ? (
-                          <div className="flex items-center gap-2 bg-red-950/80 border border-red-500/60 px-3 py-1.5 text-xs text-red-300 font-bold uppercase tracking-wider animate-pulse">
+                          <div className="flex items-center gap-2 bg-red-950/80 border border-red-500/60 px-3 py-1 text-xs text-red-300 font-bold uppercase tracking-wider animate-pulse">
                             <span className="relative flex h-2 w-2">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                               <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -911,23 +927,28 @@ function PartidosContent() {
                             </span>
                           </div>
                         ) : nextMatch ? (
-                          <div className="flex items-center gap-2 bg-surface-container-highest/60 px-3 py-1.5 text-xs border border-white/5">
+                          <div className="flex items-center gap-2 bg-surface-container-highest/60 px-2.5 py-1 text-xs border border-red-500/40">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                             <span className="font-bold text-white">
-                              J{nextMatch.round} · {nextMatch.dateStr}
+                              Próx: J{nextMatch.round} · {nextMatch.dateStr}
                             </span>
                             <span
                               className="p-0.5 text-primary flex items-center justify-center"
-                              title={nextMatch.isClubHome ? 'En casa (Sergio Scariolo)' : 'Fuera'}
+                              title={
+                                nextMatch.isClubHome
+                                  ? 'En casa (Sergio Scariolo)'
+                                  : `Fuera (${nextMatch.venue})`
+                              }
                             >
-                              <span className="material-symbols-outlined text-[16px]">
+                              <span className="material-symbols-outlined text-[15px]">
                                 {nextMatch.isClubHome ? 'home' : 'flight'}
                               </span>
                             </span>
                           </div>
                         ) : null}
 
-                        <span className="text-xs font-mono text-tertiary bg-white/5 px-2 py-1">
-                          {totalCount} partidos
+                        <span className="text-xs font-mono text-tertiary bg-white/5 px-2 py-1 hidden sm:inline">
+                          {totalCount} part.
                         </span>
 
                         <span
@@ -942,207 +963,309 @@ function PartidosContent() {
                       </div>
                     </button>
 
-                    {/* Panel Desplegable */}
+                    {/* Panel Desplegable Separado por Pestañas: PENDIENTES vs FINALIZADOS */}
                     {isExpanded && (
-                      <div className="px-4 sm:px-6 pb-6 pt-2 border-t border-white/5 space-y-8 animate-fadeIn">
-                        {/* Bloque 0: Partidos EN JUEGO (mismo formato tenis que Inicio) */}
-                        {live.length > 0 && (
-                          <div className="p-4 sm:p-5 bg-red-950/20 border-2 border-red-500/50 space-y-4">
-                            <div className="flex items-center gap-2 pb-2 border-b border-red-500/30">
-                              <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                      <div className="px-3.5 sm:px-6 pb-6 pt-3 border-t border-white/10 space-y-5 animate-fadeIn">
+                        {/* Barra de Sub-Pestañas: Pendientes vs Finalizados */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSubTabByCategory((prev) => ({
+                                  ...prev,
+                                  [category.id]: 'pending',
+                                }))
+                              }
+                              className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border ${
+                                activeSubTab === 'pending'
+                                  ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
+                                  : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
+                              }`}
+                            >
+                              {live.length > 0 && (
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-300"></span>
+                                </span>
+                              )}
+                              <span>Pendientes</span>
+                              <span
+                                className={`px-1.5 py-0.5 text-[10px] font-mono ${
+                                  activeSubTab === 'pending'
+                                    ? 'bg-black/30 text-white'
+                                    : 'bg-white/10 text-tertiary'
+                                }`}
+                              >
+                                {pendingCount}
                               </span>
-                              <h4 className="font-headline-sm text-sm uppercase text-white font-bold">
-                                Partidos en Juego ({live.length})
-                              </h4>
-                            </div>
+                            </button>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {live.map((m) => renderScoreboardCard(m, false))}
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSubTabByCategory((prev) => ({
+                                  ...prev,
+                                  [category.id]: 'finished',
+                                }))
+                              }
+                              className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border ${
+                                activeSubTab === 'finished'
+                                  ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
+                                  : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
+                              }`}
+                            >
+                              <span>Finalizados</span>
+                              <span
+                                className={`px-1.5 py-0.5 text-[10px] font-mono ${
+                                  activeSubTab === 'finished'
+                                    ? 'bg-black/30 text-white'
+                                    : 'bg-white/10 text-tertiary'
+                                }`}
+                              >
+                                {finished.length}
+                              </span>
+                            </button>
+                          </div>
+
+                          <span className="text-[11px] text-tertiary">
+                            {activeSubTab === 'pending'
+                              ? 'Ordenados por proximidad (más cercano primero)'
+                              : 'Ordenados por fecha (más reciente primero)'}
+                          </span>
+                        </div>
+
+                        {/* PESTAÑA 1: PARTIDOS PENDIENTES (EN JUEGO + PRÓXIMOS) */}
+                        {activeSubTab === 'pending' && (
+                          <div className="space-y-5">
+                            {/* Si hay partido EN JUEGO, mostrarlo arriba con su marcador en directo rodeado en rojo */}
+                            {live.length > 0 && (
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="relative flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                  </span>
+                                  <h4 className="font-headline-sm text-xs sm:text-sm uppercase text-red-400 font-bold">
+                                    En Juego Ahora ({live.length})
+                                  </h4>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  {live.map((m) => renderScoreboardCard(m, false, true))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Listado de próximos partidos programados ordenados por proximidad */}
+                            {scheduled.length === 0 && live.length === 0 ? (
+                              <div className="p-6 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
+                                No hay partidos pendientes en esta categoría. Consulta la pestaña de Finalizados.
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {scheduled.map((m) => {
+                                  const isRefreshing = refreshingMatchIds.has(m.id);
+                                  // Rodear en rojo si es el próximo partido más cercano (y no hay ninguno en vivo) o si fue pulsado desde Inicio
+                                  const isClosestRed =
+                                    m.id === redHighlightedMatchId || m.id === highlightedMatchId;
+
+                                  return (
+                                    <div
+                                      key={m.id}
+                                      id={`match-${m.id}`}
+                                      className={`bg-surface-container-high/70 p-3.5 sm:p-4 flex flex-col justify-between transition-all relative shadow-md ${
+                                        isClosestRed
+                                          ? 'border-2 border-red-500 shadow-[0_0_18px_rgba(239,68,68,0.25)]'
+                                          : 'border border-white/10 hover:border-primary-container/60'
+                                      }`}
+                                    >
+                                      <div>
+                                        {/* Cabecera: Jornada, etiqueta Próximo si es el primero, y [Botón Actualizar Icono] + [Icono Casa/Avión] */}
+                                        <div className="flex items-center justify-between pb-2 border-b border-white/10 text-xs">
+                                          <div className="flex items-center gap-2">
+                                            <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold">
+                                              J{m.round}
+                                            </span>
+                                            {m.id === redHighlightedMatchId && (
+                                              <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] font-bold uppercase tracking-wider">
+                                                Próximo Partido
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleRefreshSingleMatch(m.id);
+                                              }}
+                                              disabled={isRefreshing}
+                                              className="w-6 h-6 flex items-center justify-center bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/15 transition-colors"
+                                              title="Comprobar en favoley.net si ha comenzado o actualizar marcador"
+                                              aria-label="Actualizar marcador"
+                                            >
+                                              <span
+                                                className={`material-symbols-outlined text-[15px] ${
+                                                  isRefreshing ? 'animate-spin text-white' : ''
+                                                }`}
+                                              >
+                                                sync
+                                              </span>
+                                            </button>
+
+                                            <span
+                                              className={`w-6 h-6 flex items-center justify-center border ${
+                                                m.isClubHome
+                                                  ? 'text-primary bg-primary-container/20 border-primary-container/40'
+                                                  : 'text-tertiary bg-white/5 border-white/10'
+                                              }`}
+                                              title={
+                                                m.isClubHome
+                                                  ? 'Partido en casa (Pabellón Sergio Scariolo)'
+                                                  : `Partido fuera (${m.venue})`
+                                              }
+                                            >
+                                              <span className="material-symbols-outlined text-[15px]">
+                                                {m.isClubHome ? 'home' : 'flight'}
+                                              </span>
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* Enfrentamiento con escudos sin recuadro */}
+                                        <div className="py-3 space-y-2.5">
+                                          <div className="flex items-center gap-2.5" title={m.homeTeam}>
+                                            <Image
+                                              src={getTeamLogo(m.homeTeam)}
+                                              alt={m.homeTeam}
+                                              width={30}
+                                              height={30}
+                                              className="w-7 h-7 object-contain shrink-0"
+                                            />
+                                            <p
+                                              className={`font-headline-sm text-xs sm:text-sm uppercase font-bold truncate ${
+                                                m.isClubHome ? 'text-primary' : 'text-white'
+                                              }`}
+                                            >
+                                              {m.homeTeam}
+                                            </p>
+                                          </div>
+                                          <div className="flex items-center gap-2.5" title={m.awayTeam}>
+                                            <Image
+                                              src={getTeamLogo(m.awayTeam)}
+                                              alt={m.awayTeam}
+                                              width={30}
+                                              height={30}
+                                              className="w-7 h-7 object-contain shrink-0"
+                                            />
+                                            <p
+                                              className={`font-headline-sm text-xs sm:text-sm uppercase font-bold truncate ${
+                                                !m.isClubHome ? 'text-primary' : 'text-white'
+                                              }`}
+                                            >
+                                              {m.awayTeam}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Fecha, Sede y Acciones de SOLO Icono */}
+                                      <div className="pt-2.5 border-t border-white/10 space-y-2 text-xs">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-tertiary font-semibold">
+                                            {formatMadridDate(m.matchDate, {
+                                              weekday: 'short',
+                                              day: 'numeric',
+                                              month: 'short',
+                                            })}
+                                          </span>
+                                          <span className="font-bold text-primary font-mono">
+                                            {m.timeStr}h
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-2 pt-1">
+                                          <div className="flex items-center gap-1 text-[11px] text-tertiary min-w-0">
+                                            <span className="material-symbols-outlined text-[14px] text-primary shrink-0">
+                                              pin_drop
+                                            </span>
+                                            <span className="truncate" title={m.venue}>
+                                              {m.venue}
+                                            </span>
+                                          </div>
+
+                                          {/* Botones de acción: SOLO ICONOS */}
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <a
+                                              href={getGoogleCalendarLink(m)}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
+                                              title="Añadir a Google Calendar"
+                                              aria-label="Añadir a Google Calendar"
+                                            >
+                                              <span className="material-symbols-outlined text-[15px] text-primary">
+                                                event
+                                              </span>
+                                            </a>
+
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDownloadIcs(m)}
+                                              className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
+                                              title="Añadir a la agenda del móvil (.ics)"
+                                              aria-label="Añadir al móvil"
+                                            >
+                                              <span className="material-symbols-outlined text-[15px] text-primary">
+                                                smartphone
+                                              </span>
+                                            </button>
+
+                                            <a
+                                              href={getVenueMapsLink(m)}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="w-7 h-7 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white flex items-center justify-center transition-all border border-white/10"
+                                              title={`Cómo llegar a ${m.venue}`}
+                                              aria-label="Cómo llegar al pabellón"
+                                            >
+                                              <span className="material-symbols-outlined text-[15px]">
+                                                directions
+                                              </span>
+                                            </a>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         )}
 
-                        {/* Bloque 1: Próximos Partidos */}
-                        <div>
-                          <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/5">
-                            <h4 className="font-headline-sm text-sm uppercase text-white font-bold flex items-center gap-2">
-                              <span className="w-2 h-2 bg-primary-container" />
-                              Próximos Partidos ({scheduled.length})
-                            </h4>
-                            <span className="text-[11px] text-tertiary">
-                              Horarios oficiales FAVB
-                            </span>
+                        {/* PESTAÑA 2: PARTIDOS FINALIZADOS (Ordenados por proximidad: más reciente primero) */}
+                        {activeSubTab === 'finished' && (
+                          <div>
+                            {finished.length === 0 ? (
+                              <div className="p-6 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
+                                Aún no se han disputado partidos con acta oficial cerrada en esta categoría.
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {finished.map((m, idx) =>
+                                  // Rodear en rojo el más reciente si fue pulsado desde Inicio o es el primero de la lista de finalizados cuando no hay pendientes
+                                  renderScoreboardCard(
+                                    m,
+                                    false,
+                                    m.id === highlightedMatchId || (pendingCount === 0 && idx === 0)
+                                  )
+                                )}
+                              </div>
+                            )}
                           </div>
-
-                          {scheduled.length === 0 ? (
-                            <div className="p-6 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
-                              No hay partidos programados pendientes para esta categoría.
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {scheduled.map((m) => {
-                                const isRefreshing = refreshingMatchIds.has(m.id);
-                                return (
-                                  <div
-                                    key={m.id}
-                                    id={`match-${m.id}`}
-                                    className="bg-surface-container-high/60 border border-white/5 hover:border-primary-container/60 p-4 flex flex-col justify-between transition-all relative shadow-md"
-                                  >
-                                    <div>
-                                      {/* Cabecera: Jornada y [Botón Actualizar Icono] + [Icono Casa/Avión] */}
-                                      <div className="flex items-center justify-between pb-2 border-b border-white/5 text-xs">
-                                        <span className="font-mono font-bold text-primary">
-                                          JORNADA {m.round}
-                                        </span>
-
-                                        <div className="flex items-center gap-1.5">
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleRefreshSingleMatch(m.id);
-                                            }}
-                                            disabled={isRefreshing}
-                                            className="w-6 h-6 flex items-center justify-center bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/15 transition-colors"
-                                            title="Comprobar en favoley.net si ha comenzado o actualizar marcador"
-                                            aria-label="Actualizar marcador"
-                                          >
-                                            <span
-                                              className={`material-symbols-outlined text-[15px] ${
-                                                isRefreshing ? 'animate-spin text-white' : ''
-                                              }`}
-                                            >
-                                              sync
-                                            </span>
-                                          </button>
-
-                                          <span
-                                            className={`w-6 h-6 flex items-center justify-center border ${
-                                              m.isClubHome
-                                                ? 'text-primary bg-primary-container/20 border-primary-container/40'
-                                                : 'text-tertiary bg-white/5 border-white/10'
-                                            }`}
-                                            title={
-                                              m.isClubHome
-                                                ? 'Partido en casa (Pabellón Sergio Scariolo)'
-                                                : 'Partido fuera / a domicilio'
-                                            }
-                                          >
-                                            <span className="material-symbols-outlined text-[15px]">
-                                              {m.isClubHome ? 'home' : 'flight'}
-                                            </span>
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      {/* Enfrentamiento con escudos sin recuadro */}
-                                      <div className="py-3 space-y-2.5">
-                                        <div className="flex items-center gap-2.5">
-                                          <Image
-                                            src={getTeamLogo(m.homeTeam)}
-                                            alt={m.homeTeam}
-                                            width={28}
-                                            height={28}
-                                            className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
-                                          />
-                                          <p
-                                            className={`font-headline-sm text-sm uppercase font-bold truncate ${
-                                              m.isClubHome ? 'text-primary' : 'text-white'
-                                            }`}
-                                          >
-                                            {m.homeTeam}
-                                          </p>
-                                        </div>
-                                        <div className="flex items-center gap-2.5">
-                                          <Image
-                                            src={getTeamLogo(m.awayTeam)}
-                                            alt={m.awayTeam}
-                                            width={28}
-                                            height={28}
-                                            className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
-                                          />
-                                          <p
-                                            className={`font-headline-sm text-sm uppercase font-bold truncate ${
-                                              !m.isClubHome ? 'text-primary' : 'text-white'
-                                            }`}
-                                          >
-                                            {m.awayTeam}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* Fecha, Sede y Acciones de Calendario */}
-                                    <div className="pt-3 border-t border-white/5 space-y-2.5 text-xs">
-                                      <div className="flex items-center justify-between text-tertiary">
-                                        <span>{m.dateStr}</span>
-                                        <span className="font-bold text-primary font-mono">
-                                          {m.timeStr}h
-                                        </span>
-                                      </div>
-
-                                      <div className="flex items-start gap-1.5 text-[11px] text-tertiary">
-                                        <span className="material-symbols-outlined text-[15px] text-primary shrink-0 mt-0.5">
-                                          pin_drop
-                                        </span>
-                                        <span className="line-clamp-2">{m.venue}</span>
-                                      </div>
-
-                                      <div className="flex items-center gap-2 pt-1 flex-wrap">
-                                        <a
-                                          href={getGoogleCalendarLink(m)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="px-2.5 py-1.5 bg-surface-container-highest hover:bg-surface-bright text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all border border-white/10"
-                                          title="Añadir a Google Calendar"
-                                        >
-                                          <span className="material-symbols-outlined text-[15px] text-primary">
-                                            event
-                                          </span>
-                                          <span>Google Cal</span>
-                                        </a>
-
-                                        <button
-                                          onClick={() => handleDownloadIcs(m)}
-                                          className="px-2.5 py-1.5 bg-surface-container-highest hover:bg-surface-bright text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all border border-white/10"
-                                          title="Añadir a la agenda de tu móvil (Apple Calendar, etc.)"
-                                        >
-                                          <span className="material-symbols-outlined text-[15px] text-primary">
-                                            smartphone
-                                          </span>
-                                          <span>Móvil</span>
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Bloque 2: Resultados Oficiales y Parciales Set a Set (mismo formato tenis y colores que Inicio) */}
-                        <div>
-                          <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/5">
-                            <h4 className="font-headline-sm text-sm uppercase text-white font-bold flex items-center gap-2">
-                              <span className="w-2 h-2 bg-emerald-400" />
-                              Resultados Oficiales y Parciales Set a Set ({finished.length})
-                            </h4>
-                            <span className="text-[11px] text-tertiary">Actas cerradas FAVB</span>
-                          </div>
-
-                          {finished.length === 0 ? (
-                            <div className="p-6 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
-                              Aún no se han disputado partidos con acta oficial cerrada en esta categoría.
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {finished.map((m) => renderScoreboardCard(m, false))}
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1152,14 +1275,14 @@ function PartidosContent() {
           </div>
         </section>
 
-        {/* Sección MVP de la Afición con Jugadora Oficial */}
+        {/* Sección MVP de la Afición con Jugadora Oficial (Exclusivo Senior Femenino +18) */}
         {mvpPlayer && (
           <section className="bg-surface-container-high border border-primary-container/30 p-6 sm:p-8">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
               <div className="md:col-span-8 space-y-3">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-500 text-black text-[10px] uppercase font-bold tracking-wider">
                   <span className="material-symbols-outlined text-[14px]">military_tech</span>
-                  CAPITANA Y REFERENTE • PLANTILLA OFICIAL FAVB
+                  CAPITANA Y REFERENTE • SENIOR FEMENINO (+18)
                 </div>
                 <h3 className="font-display-xl text-3xl sm:text-4xl uppercase text-white">
                   {mvpPlayer.firstName} {mvpPlayer.lastName}
@@ -1177,7 +1300,7 @@ function PartidosContent() {
                   <div>
                     <span className="text-tertiary uppercase text-[10px] block">Categoría</span>
                     <span className="font-headline-sm text-sm text-white font-bold">
-                      1ª División Andaluza
+                      1ª División Andaluza (Senior)
                     </span>
                   </div>
                 </div>
@@ -1187,7 +1310,7 @@ function PartidosContent() {
                     href="/fan-zone"
                     className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary hover:text-white"
                   >
-                    <span>Votar en la Fan-Zone para la jornada actual</span>
+                    <span>Votar MVP Senior en la Fan-Zone</span>
                     <span className="material-symbols-outlined text-[16px]">how_to_vote</span>
                   </Link>
                 </div>

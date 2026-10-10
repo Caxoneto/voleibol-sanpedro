@@ -3,11 +3,13 @@
  * Los datos extraídos de la FAVB son oficiales y no pueden ser modificados.
  */
 
-import { FAVB_CATEGORIES, FAVB_TEAMS, FAVB_MATCHES } from './favb-data';
+import { FAVB_CATEGORIES, FAVB_TEAMS, FAVB_MATCHES, FAVB_STANDINGS } from './favb-data';
+import { Standings } from './types';
 import { formatMadridDateString, formatMadridTime } from './date-utils';
 
 export interface FavbCompetitionMeta {
   code: string;
+  categoryId: string;
   favbId: number;
   grupo: number;
   fase: number;
@@ -21,6 +23,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // 1ª División Andaluza Senior Femenina
   {
     code: 'AN1AF26-1',
+    categoryId: 'cat-senior-fem',
     favbId: 1,
     grupo: 13,
     fase: 14,
@@ -32,6 +35,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Juvenil Masculino
   {
     code: 'MAJM26-1321',
+    categoryId: 'cat-juvenil-masc',
     favbId: 1321,
     grupo: 35,
     fase: 36,
@@ -43,6 +47,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Juvenil Femenino Rojo
   {
     code: 'MAJF26-1330-ORO',
+    categoryId: 'cat-juvenil-fem-rojo',
     favbId: 1330,
     grupo: 43,
     fase: 44,
@@ -54,6 +59,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Juvenil Femenino Negro
   {
     code: 'MAJF26-1330-PLATA',
+    categoryId: 'cat-juvenil-fem-negro',
     favbId: 1330,
     grupo: 99,
     fase: 128,
@@ -65,6 +71,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Cadete Masculino
   {
     code: 'MACM26-1313',
+    categoryId: 'cat-cadete-masc',
     favbId: 1313,
     grupo: 72,
     fase: 94,
@@ -76,6 +83,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Cadete Femenino Rojo
   {
     code: 'MACF26-1304-ORO',
+    categoryId: 'cat-cadete-fem-rojo',
     favbId: 1304,
     grupo: 76,
     fase: 100,
@@ -87,6 +95,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Cadete Femenino Negro
   {
     code: 'MACF26-1304-PLATA',
+    categoryId: 'cat-cadete-fem-negro',
     favbId: 1304,
     grupo: 100,
     fase: 132,
@@ -98,6 +107,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Infantil Masculino
   {
     code: 'MAIM26-1288',
+    categoryId: 'cat-infantil-masc',
     favbId: 1288,
     grupo: 71,
     fase: 92,
@@ -109,6 +119,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Infantil Femenino Rojo
   {
     code: 'MAIF26-1299-ORO',
+    categoryId: 'cat-infantil-fem-rojo',
     favbId: 1299,
     grupo: 75,
     fase: 97,
@@ -120,6 +131,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Infantil Femenino Negro
   {
     code: 'MAIF26-1299-PLATA',
+    categoryId: 'cat-infantil-fem-negro',
     favbId: 1299,
     grupo: 75,
     fase: 98,
@@ -131,6 +143,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   // Infantil Femenino Blanco
   {
     code: 'MAIF26-1299-PROM',
+    categoryId: 'cat-infantil-fem-blanco',
     favbId: 1299,
     grupo: 101,
     fase: 134,
@@ -151,6 +164,7 @@ export interface FavbMatch {
   round: number;
   homeTeam: string;
   awayTeam: string;
+  matchDate: string;
   dateStr: string;
   timeStr: string;
   venue: string;
@@ -458,6 +472,7 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
       round: m.round,
       homeTeam: m.homeTeamName,
       awayTeam: m.awayTeamName,
+      matchDate: m.matchDate,
       dateStr: formatMadridDateString(m.matchDate),
       timeStr: formatMadridTime(m.matchDate),
       venue: m.venueName,
@@ -470,3 +485,130 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
     };
   });
 }
+
+let standingsCache: {
+  lastSync: number;
+  standings: Standings[];
+} = {
+  lastSync: 0,
+  standings: [],
+};
+
+function cleanHtmlText(str: string): string {
+  return str
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&ndash;/g, '–')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseFavbStandingsHtml(html: string, catId: string): Standings[] {
+  const tbodyMatch = html.match(
+    /<table class="portal-clasificacion-tabla">[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i
+  );
+  if (!tbodyMatch) return [];
+  const tbody = tbodyMatch[1];
+  const rows: Standings[] = [];
+  const trRegex = /<tr>([\s\S]*?)<\/tr>/gi;
+  let trMatch;
+  let idx = 1;
+  while ((trMatch = trRegex.exec(tbody)) !== null) {
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    const cells: string[] = [];
+    let tdMatch;
+    while ((tdMatch = tdRegex.exec(trMatch[1])) !== null) {
+      cells.push(cleanHtmlText(tdMatch[1]));
+    }
+    if (cells.length >= 12) {
+      const teamName = cells[1];
+      const isCurrentClub = teamName.toUpperCase().includes('SAN PEDRO');
+      rows.push({
+        id: `st-${catId}-${idx}`,
+        categoryId: catId,
+        teamName,
+        points: parseInt(cells[2], 10) || 0,
+        played: parseInt(cells[3], 10) || 0,
+        won: parseInt(cells[4], 10) || 0,
+        lost: parseInt(cells[5], 10) || 0,
+        setsFor: parseInt(cells[10], 10) || 0,
+        setsAgainst: parseInt(cells[11], 10) || 0,
+        isCurrentClub,
+      });
+      idx++;
+    }
+  }
+  return rows;
+}
+
+/**
+ * Sincroniza en tiempo real las tablas de clasificación de las 11 competiciones desde favoley.net
+ */
+export async function syncFavbStandings(forceRefresh = false): Promise<{
+  success: boolean;
+  standings: Standings[];
+  lastSync: Date;
+  fromCache: boolean;
+}> {
+  const now = Date.now();
+  if (
+    !forceRefresh &&
+    standingsCache.lastSync > 0 &&
+    now - standingsCache.lastSync < CACHE_TTL_MS &&
+    standingsCache.standings.length > 0
+  ) {
+    return {
+      success: true,
+      standings: standingsCache.standings,
+      lastSync: new Date(standingsCache.lastSync),
+      fromCache: true,
+    };
+  }
+
+  const byCategory = new Map<string, Standings[]>();
+  // Pre-poblar con la base consolidada por si alguna petición puntual sufre timeout
+  for (const comp of FAVB_COMPETITIONS) {
+    byCategory.set(
+      comp.categoryId,
+      FAVB_STANDINGS.filter((s) => s.categoryId === comp.categoryId)
+    );
+  }
+
+  await Promise.allSettled(
+    FAVB_COMPETITIONS.map(async (comp) => {
+      const url = `https://favoley.net/publico/seccion.php?seccion=competicion&id=${comp.favbId}&vista=clasificacion&grupo=${comp.grupo}&fase=${comp.fase}`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'es-ES,es;q=0.9',
+        },
+        cache: 'no-store',
+        signal: AbortSignal.timeout ? AbortSignal.timeout(6500) : undefined,
+      });
+      if (!res.ok) return;
+      const html = await res.text();
+      const parsed = parseFavbStandingsHtml(html, comp.categoryId);
+      if (parsed.length > 0) {
+        byCategory.set(comp.categoryId, parsed);
+      }
+    })
+  );
+
+  const consolidated = Array.from(byCategory.values()).flat();
+  standingsCache = {
+    lastSync: Date.now(),
+    standings: consolidated.length > 0 ? consolidated : FAVB_STANDINGS,
+  };
+
+  return {
+    success: true,
+    standings: standingsCache.standings,
+    lastSync: new Date(standingsCache.lastSync),
+    fromCache: false,
+  };
+}
+
