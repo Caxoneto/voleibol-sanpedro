@@ -34,6 +34,7 @@ export default function Footer() {
             </p>
             <div className="text-[11px] text-tertiary space-y-1 pt-2 border-t border-white/5 font-body-sm">
               <p><span className="text-on-surface font-semibold">Club Federado:</span> {CLUB_INFO.federationRegisteredName}</p>
+              <p><span className="text-on-surface font-semibold">Adscripción:</span> Deporte Base • Federación Andaluza de Voleibol (FAVB)</p>
               <p><span className="text-on-surface font-semibold">CIF:</span> {CLUB_INFO.cif}</p>
               <p><span className="text-on-surface font-semibold">Presidente:</span> {CLUB_INFO.president}</p>
             </div>

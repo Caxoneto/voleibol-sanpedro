@@ -2,10 +2,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { store, CLUB_INFO } from '@/lib/data-store';
 import { syncFavbData } from '@/lib/favb-scraper';
-import { formatMadridDate, formatMadridTime } from '@/lib/date-utils';
+import { formatMadridDate, formatMadridDateString, formatMadridTime } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
+import HeroMatchesCarousel, { HeroCarouselMatchItem } from '@/components/HeroMatchesCarousel';
 
 export const revalidate = 0;
 
@@ -32,6 +33,10 @@ export default async function HomePage() {
   const categories = store.getCategories();
   const teams = store.getTeams();
 
+  const teamMap = new Map(teams.map((t) => [t.id, t]));
+  const catMap = new Map(categories.map((c) => [c.id, c]));
+  const todayStr = formatMadridDateString(new Date());
+
   const matches = store.getMatches().map((m) => {
     const live = liveMap.get(m.id);
     if (!live) return m;
@@ -50,40 +55,30 @@ export default async function HomePage() {
     .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime())
     .slice(0, 3);
 
-  // Próximo partido programado o en juego de cada categoría oficial ordenados por:
-  // 1. Proximidad temporal (de izquierda a derecha, el más cercano primero)
-  // 2. A la misma fecha y hora, primero el de mayor categoría (menor category.order)
-  const upcomingMatchesByCategory = categories
-    .map((cat) => {
-      const catTeams = teams.filter((t) => t.categoryId === cat.id);
-      const catTeamIds = new Set(catTeams.map((t) => t.id));
-      const catMatches = matches
-        .filter((m) => catTeamIds.has(m.teamId) && (m.status === 'SCHEDULED' || m.status === 'LIVE'))
-        .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
-      const nextMatch = catMatches[0];
-      return {
-        category: cat,
-        match: nextMatch,
-      };
-    })
-    .filter(
-      (
-        item
-      ): item is {
-        category: (typeof categories)[0];
-        match: NonNullable<typeof item.match>;
-      } => item.match !== undefined
-    )
-    .sort((a, b) => {
-      const timeA = new Date(a.match.matchDate).getTime();
-      const timeB = new Date(b.match.matchDate).getTime();
-      if (timeA !== timeB) {
-        return timeA - timeB;
-      }
-      const orderA = a.category.order ?? 99;
-      const orderB = b.category.order ?? 99;
-      return orderA - orderB;
-    });
+  const carouselMatches: HeroCarouselMatchItem[] = matches.map((m) => {
+    const team = teamMap.get(m.teamId);
+    const cat = team ? catMap.get(team.categoryId) : undefined;
+    return {
+      id: m.id,
+      round: m.round,
+      categoryId: cat?.id || 'cat-senior-fem',
+      categoryName: cat?.name || 'Categoría FAVB',
+      categoryOrder: cat?.order ?? 99,
+      homeTeamName: m.homeTeamName,
+      awayTeamName: m.awayTeamName,
+      isClubHome: m.isClubHome,
+      matchDate: m.matchDate,
+      dateStr: formatMadridDateString(m.matchDate),
+      status: m.status,
+      homeScore: 'homeScore' in m ? (m.homeScore as number | undefined) : undefined,
+      awayScore: 'awayScore' in m ? (m.awayScore as number | undefined) : undefined,
+      setScores: m.setScores,
+      currentSetScore:
+        'currentSetScore' in m
+          ? (m.currentSetScore as { set: string; home: number; away: number } | undefined)
+          : undefined,
+    };
+  });
 
   return (
     <div className="w-full flex flex-col">
@@ -101,14 +96,6 @@ export default async function HomePage() {
         <div className="absolute -top-32 left-1/4 w-96 h-96 bg-primary-container/25 rounded-full blur-[140px] pointer-events-none animate-pulse-aura" />
 
         <div className="relative max-w-7xl mx-auto px-4 lg:px-8 pt-2 pb-2 sm:pt-3 sm:pb-4 flex flex-col justify-start w-full">
-          {/* Status Badge */}
-          <div className="inline-flex items-center gap-2 self-start px-3 py-1 bg-surface-container-high/90 backdrop-blur-sm text-on-surface shadow-[4px_4px_0px_0px_#d90429] mb-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-primary-container animate-pulse" />
-            <span className="font-label-sm text-[11px] uppercase tracking-widest text-primary font-bold">
-              DEPORTE BASE • ADSCRITO A LA FEDERACIÓN ANDALUZA DE VOLEIBOL (FAVB)
-            </span>
-          </div>
-
           {/* Main Headline */}
           <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl xl:text-7xl tracking-tight text-on-surface uppercase max-w-3xl leading-[0.95]">
             PASIÓN, CANTERA <br />
@@ -117,113 +104,12 @@ export default async function HomePage() {
             </span>
           </h1>
 
-          <p className="font-body-lg text-sm sm:text-base lg:text-lg text-tertiary-fixed max-w-2xl mt-2.5 mb-2">
+          <p className="font-body-lg text-sm sm:text-base lg:text-lg text-tertiary-fixed max-w-2xl mt-2.5 mb-1">
             Club deportivo formativo volcado en el deporte base, los jóvenes y las familias de San Pedro Alcántara.
           </p>
 
-          {/* Próximos Partidos por Categoría (Tira simplificada e interactiva) */}
-          <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-white/10 w-full">
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse" />
-                <span className="font-label-sm text-[11px] sm:text-xs uppercase tracking-widest text-primary font-bold">
-                  Próximos Partidos por Categoría
-                </span>
-                <span className="text-[10px] text-tertiary hidden md:inline">
-                  · Pulsa en un partido para ver detalles completos
-                </span>
-              </div>
-              <Link
-                href="/partidos"
-                className="text-[11px] sm:text-xs text-tertiary hover:text-white uppercase font-bold flex items-center gap-1 group transition-colors"
-              >
-                <span>Ver todos</span>
-                <span className="material-symbols-outlined text-[15px] group-hover:translate-x-0.5 transition-transform">
-                  arrow_forward
-                </span>
-              </Link>
-            </div>
-
-            {/* Carrusel horizontal suave de tarjetas */}
-            <div className="flex gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
-              {upcomingMatchesByCategory.map(({ category, match }) => (
-                <Link
-                  key={category.id}
-                  href={`/partidos?categoria=${category.id}&match=${match.id}#match-${match.id}`}
-                  className="group shrink-0 w-[215px] sm:w-[235px] bg-surface-container-low/95 hover:bg-surface-container-high border border-white/10 hover:border-primary-container p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5"
-                  title={`Ver detalles: ${category.name} en partidos`}
-                >
-                  {/* Cabecera: Jornada, Categoría, Estado y Casa/Avión */}
-                  <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-white/5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[9px] sm:text-[10px] font-bold">
-                        J{match.round}
-                      </span>
-                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-white truncate">
-                        {category.name}
-                      </span>
-                      {match.status === 'LIVE' && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-950 text-red-400 border border-red-500/50 text-[9px] font-bold uppercase tracking-wider animate-pulse">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                          DIRECTO
-                        </span>
-                      )}
-                    </div>
-                    <span
-                      className={`w-5 h-5 flex items-center justify-center shrink-0 border ${
-                        match.isClubHome
-                          ? 'text-primary bg-primary-container/15 border-primary-container/30'
-                          : 'text-tertiary bg-white/5 border-white/10'
-                      }`}
-                      title={match.isClubHome ? 'En casa (Pabellón Sergio Scariolo)' : 'Fuera / A domicilio'}
-                    >
-                      <span className="material-symbols-outlined text-[13px] sm:text-[14px]">
-                        {match.isClubHome ? 'home' : 'flight'}
-                      </span>
-                    </span>
-                  </div>
-
-                  {/* Enfrentamiento simplificado */}
-                  <div className="py-2">
-                    <p className="text-[10px] sm:text-[11px] font-semibold truncate text-on-surface">
-                      <span className={match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'}>
-                        {match.homeTeamName}
-                      </span>
-                      <span className="text-tertiary mx-1 font-normal">vs</span>
-                      <span className={!match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'}>
-                        {match.awayTeamName}
-                      </span>
-                    </p>
-                  </div>
-
-                  {/* Fecha & Hora o Marcador en Vivo */}
-                  {match.status === 'LIVE' ? (
-                    <div className="pt-1.5 border-t border-red-500/30 flex items-center justify-between text-[10px] sm:text-[11px]">
-                      <span className="text-red-400 font-bold uppercase flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
-                        En Juego
-                      </span>
-                      <span className="font-bold text-white font-mono">
-                        {match.homeScore ?? 0}:{match.awayScore ?? 0} Sets
-                        {'currentSetScore' in match && match.currentSetScore
-                          ? ` (${match.currentSetScore.home}-${match.currentSetScore.away})`
-                          : ''}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[10px] sm:text-[11px]">
-                      <span className="text-tertiary capitalize">
-                        {formatMadridDate(match.matchDate, { weekday: 'short', day: 'numeric', month: 'short' })}
-                      </span>
-                      <span className="font-bold text-primary font-mono">
-                        {formatMadridTime(match.matchDate)}h
-                      </span>
-                    </div>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </div>
+          {/* Carrusel Interactivo: Finalizados | Hoy (predeterminado) | Próximos */}
+          <HeroMatchesCarousel initialMatches={carouselMatches} todayStr={todayStr} />
         </div>
       </section>
 

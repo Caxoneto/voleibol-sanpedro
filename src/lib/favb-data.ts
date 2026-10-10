@@ -2484,8 +2484,12 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": true,
     "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
     "matchDate": "2026-10-10T08:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
+    "status": "FINISHED",
+    "setScores": [
+      { "home": 20, "away": 25 },
+      { "home": 23, "away": 25 },
+      { "home": 21, "away": 25 }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4162"
   },
   {
