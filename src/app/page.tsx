@@ -251,83 +251,128 @@ export default async function HomePage() {
 
               {recentMatches.map((match) => {
                 const scoreResult = calculateMatchScore(match.setScores);
+                const getScoreColor = (myVal: number, oppVal: number) => {
+                  if (myVal > oppVal) return 'text-emerald-400';
+                  if (myVal < oppVal) return 'text-white';
+                  return 'text-amber-300';
+                };
                 return (
                   <div
                     key={match.id}
-                    className="bg-surface-container-low border border-white/5 hover:border-primary-container/40 p-4 transition-all"
+                    className="bg-surface-container-low border border-white/5 hover:border-primary-container/40 p-3.5 sm:p-4 transition-all"
                   >
-                    <div className="flex items-center justify-between text-[11px] text-tertiary uppercase pb-2 border-b border-white/5">
-                      <span>Jornada {match.round} • {formatMadridDate(match.matchDate, { day: 'numeric', month: 'short' })}</span>
-                      <span className="px-1.5 py-0.5 bg-surface-container-high text-white font-bold">
-                        Finalizado
+                    {/* Cabecera con Jornada, Fecha y Encabezados de Sets formato tenis */}
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-tertiary uppercase pb-2 border-b border-white/5">
+                      <span className="truncate">
+                        Jornada {match.round} •{' '}
+                        {formatMadridDate(match.matchDate, { day: 'numeric', month: 'short' })}
                       </span>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {match.setScores.map((_, sIdx) => (
+                          <span
+                            key={`recent-hdr-${sIdx}`}
+                            className="w-6 sm:w-7 text-center font-mono text-[10px] font-extrabold text-tertiary"
+                          >
+                            S{sIdx + 1}
+                          </span>
+                        ))}
+                        <span className="w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 text-center font-mono text-[10px] font-extrabold text-primary">
+                          SETS
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="py-3 flex items-center justify-between gap-4">
-                      <div className="flex-1 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
-                              <Image
-                                src={getTeamLogo(match.homeTeamName)}
-                                alt={match.homeTeamName}
-                                width={18}
-                                height={18}
-                                className="object-contain max-h-full max-w-full"
-                              />
-                            </div>
-                            <span className={`text-sm font-semibold truncate ${match.isClubHome ? 'text-primary' : 'text-on-surface'}`}>
-                              {match.homeTeamName}
-                            </span>
+                    {/* Filas de Equipos + Puntos de cada Set + Total de Sets */}
+                    <div className="pt-2.5 space-y-2">
+                      {/* Equipo Local */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="w-5 h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                            <Image
+                              src={getTeamLogo(match.homeTeamName)}
+                              alt={match.homeTeamName}
+                              width={18}
+                              height={18}
+                              className="object-contain max-h-full max-w-full"
+                            />
                           </div>
-                          <span className="font-display-xl text-xl text-white">
+                          <span
+                            className={`text-xs sm:text-sm font-semibold truncate ${
+                              match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'
+                            }`}
+                          >
+                            {match.homeTeamName}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {match.setScores.map((set, sIdx) => (
+                            <span
+                              key={`recent-home-${sIdx}`}
+                              className={`w-6 sm:w-7 py-0.5 text-center font-mono text-xs sm:text-sm font-extrabold leading-none bg-white/[0.04] rounded-[2px] ${getScoreColor(
+                                set.home,
+                                set.away
+                              )}`}
+                            >
+                              {set.home}
+                            </span>
+                          ))}
+                          <span
+                            className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 py-0.5 text-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.07] ${getScoreColor(
+                              scoreResult.homeSetsWon,
+                              scoreResult.awaySetsWon
+                            )}`}
+                          >
                             {scoreResult.homeSetsWon}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
-                              <Image
-                                src={getTeamLogo(match.awayTeamName)}
-                                alt={match.awayTeamName}
-                                width={18}
-                                height={18}
-                                className="object-contain max-h-full max-w-full"
-                              />
-                            </div>
-                            <span className={`text-sm font-semibold truncate ${!match.isClubHome ? 'text-primary' : 'text-on-surface'}`}>
-                              {match.awayTeamName}
-                            </span>
+                      </div>
+
+                      {/* Equipo Visitante */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="w-5 h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                            <Image
+                              src={getTeamLogo(match.awayTeamName)}
+                              alt={match.awayTeamName}
+                              width={18}
+                              height={18}
+                              className="object-contain max-h-full max-w-full"
+                            />
                           </div>
-                          <span className="font-display-xl text-xl text-white">
+                          <span
+                            className={`text-xs sm:text-sm font-semibold truncate ${
+                              !match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'
+                            }`}
+                          >
+                            {match.awayTeamName}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {match.setScores.map((set, sIdx) => (
+                            <span
+                              key={`recent-away-${sIdx}`}
+                              className={`w-6 sm:w-7 py-0.5 text-center font-mono text-xs sm:text-sm font-extrabold leading-none bg-white/[0.04] rounded-[2px] ${getScoreColor(
+                                set.away,
+                                set.home
+                              )}`}
+                            >
+                              {set.away}
+                            </span>
+                          ))}
+                          <span
+                            className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 py-0.5 text-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.07] ${getScoreColor(
+                              scoreResult.awaySetsWon,
+                              scoreResult.homeSetsWon
+                            )}`}
+                          >
                             {scoreResult.awaySetsWon}
                           </span>
                         </div>
                       </div>
                     </div>
-
-                    {match.setScores.length > 0 && (
-                      <div className="pt-2 border-t border-white/5 flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] text-tertiary uppercase mr-1">Sets:</span>
-                        {match.setScores.map((set, sIdx) => {
-                          const isHomeWinner = set.home > set.away;
-                          return (
-                            <span
-                              key={sIdx}
-                              className="px-2 py-0.5 bg-surface-container-lowest text-[11px] font-mono text-tertiary border border-white/5"
-                            >
-                              <strong className={isHomeWinner ? 'text-primary' : 'text-on-surface'}>
-                                {set.home}
-                              </strong>
-                              -
-                              <strong className={!isHomeWinner ? 'text-primary' : 'text-on-surface'}>
-                                {set.away}
-                              </strong>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 );
               })}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { formatMadridDate, formatMadridDateString, formatMadridTime } from '@/lib/date-utils';
+import { formatMadridDate } from '@/lib/date-utils';
 import { getTeamLogo } from '@/lib/team-logos';
 
 export interface HeroCarouselMatchItem {
@@ -30,6 +30,13 @@ interface HeroMatchesCarouselProps {
 }
 
 type FilterTab = 'finished' | 'today' | 'upcoming';
+
+interface DisplaySetColumn {
+  label: string;
+  home: number;
+  away: number;
+  isCurrent: boolean;
+}
 
 export default function HeroMatchesCarousel({
   initialMatches,
@@ -132,7 +139,7 @@ export default function HeroMatchesCarousel({
       });
   }, [matches, todayStr]);
 
-  // 3. Pestaña "Próximos": próximo partido programado por categoría (posteriores a hoy o pendientes)
+  // 3. Pestaña "Próximos": próximo partido programado por categoría
   // Ordenados de izquierda a derecha por proximidad temporal y desempate por mayor categoría
   const upcomingMatches = useMemo(() => {
     const byCategory = new Map<string, HeroCarouselMatchItem>();
@@ -147,7 +154,6 @@ export default function HeroMatchesCarousel({
       }
     }
 
-    // Si alguna categoría aún tiene partido pendiente hoy y no se incluyó, o para mostrar todos los próximos:
     const allScheduledByCat = matches
       .filter((m) => m.status === 'SCHEDULED')
       .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
@@ -175,13 +181,67 @@ export default function HeroMatchesCarousel({
 
   const hasLiveToday = todayMatches.some((m) => m.status === 'LIVE');
 
-  const getScoreDisplay = (m: HeroCarouselMatchItem) => {
+  // Regla de colores solicitada: verde ganando, blanco perdiendo, amarillo empate
+  const getPointColorClass = (myVal: number, oppVal: number) => {
+    if (myVal > oppVal) return 'text-emerald-400';
+    if (myVal < oppVal) return 'text-white';
+    return 'text-amber-300';
+  };
+
+  // Construye las columnas de sets estilo tenis (S1, S2, S3...)
+  const getTennisSetColumns = (m: HeroCarouselMatchItem): DisplaySetColumn[] => {
+    const isLive = m.status === 'LIVE';
+    const cols: DisplaySetColumn[] = (m.setScores || []).map((s, idx) => ({
+      label: `S${idx + 1}`,
+      home: s.home,
+      away: s.away,
+      isCurrent: false,
+    }));
+
+    if (isLive) {
+      if (m.currentSetScore) {
+        const numMatch = m.currentSetScore.set.match(/(\d+)/);
+        const setNumber = numMatch ? parseInt(numMatch[1], 10) : cols.length || 1;
+        if (cols.length >= setNumber && setNumber >= 1) {
+          cols[setNumber - 1] = {
+            label: `S${setNumber}`,
+            home: m.currentSetScore.home,
+            away: m.currentSetScore.away,
+            isCurrent: true,
+          };
+        } else {
+          cols.push({
+            label: `S${setNumber}`,
+            home: m.currentSetScore.home,
+            away: m.currentSetScore.away,
+            isCurrent: true,
+          });
+        }
+      } else if (cols.length > 0) {
+        cols[cols.length - 1].isCurrent = true;
+      } else {
+        cols.push({
+          label: 'S1',
+          home: 0,
+          away: 0,
+          isCurrent: true,
+        });
+      }
+    }
+
+    return cols;
+  };
+
+  // Obtiene el marcador global de sets ganados
+  const getTotalSetsDisplay = (m: HeroCarouselMatchItem) => {
     if (m.homeScore !== undefined && m.awayScore !== undefined) {
       return { home: m.homeScore, away: m.awayScore };
     }
     if (m.setScores && m.setScores.length > 0) {
-      const home = m.setScores.filter((s) => s.home > s.away).length;
-      const away = m.setScores.filter((s) => s.away > s.home).length;
+      const completedSets =
+        m.status === 'LIVE' ? m.setScores.slice(0, Math.max(0, m.setScores.length - 1)) : m.setScores;
+      const home = completedSets.filter((s) => s.home > s.away).length;
+      const away = completedSets.filter((s) => s.away > s.home).length;
       return { home, away };
     }
     return { home: 0, away: 0 };
@@ -258,7 +318,7 @@ export default function HeroMatchesCarousel({
         </Link>
       </div>
 
-      {/* Carrusel horizontal de tarjetas */}
+      {/* Carrusel horizontal de tarjetas (Mobile-First, formato tenis) */}
       {currentList.length === 0 ? (
         <div className="bg-surface-container-low/80 border border-white/10 p-4 text-center flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-tertiary">
@@ -273,26 +333,29 @@ export default function HeroMatchesCarousel({
           </button>
         </div>
       ) : (
-        <div className="flex gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
+        <div className="flex gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory">
           {currentList.map((match) => {
             const isLive = match.status === 'LIVE';
             const isFinished = match.status === 'FINISHED';
-            const score = getScoreDisplay(match);
+            const hasScoreboard = isLive || isFinished;
+            const totalSets = getTotalSetsDisplay(match);
+            const setColumns = hasScoreboard ? getTennisSetColumns(match) : [];
             const isRefreshing = refreshingIds.has(match.id);
+            const compactCols = setColumns.length >= 4;
 
             return (
               <Link
                 key={`${activeTab}-${match.id}`}
                 href={`/partidos?categoria=${match.categoryId}&match=${match.id}#match-${match.id}`}
-                className={`group shrink-0 w-[235px] sm:w-[255px] bg-surface-container-low/95 hover:bg-surface-container-high border p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5 ${
+                className={`group snap-start shrink-0 w-[275px] sm:w-[300px] bg-surface-container-low/95 hover:bg-surface-container-high border p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5 ${
                   isLive
-                    ? 'border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                    ? 'border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.22)]'
                     : 'border-white/10 hover:border-primary-container'
                 }`}
                 title={`Ver detalles: ${match.categoryName} en partidos`}
               >
-                {/* Cabecera: Jornada, Categoría, Estado y Casa/Avión */}
-                <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-white/5">
+                {/* 1. Cabecera: Jornada, Categoría y a la derecha [Botón Actualizar Icono] + [Icono Casa/Fuera] */}
+                <div className="flex items-center justify-between gap-1.5 pb-1.5 border-b border-white/10">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[9px] sm:text-[10px] font-bold shrink-0">
                       J{match.round}
@@ -303,12 +366,35 @@ export default function HeroMatchesCarousel({
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
-                    {isLive && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-950 text-red-400 border border-red-500/50 text-[9px] font-bold uppercase tracking-wider animate-pulse">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                        VIVO
-                      </span>
+                    {/* Botón actualizar: SOLO icono, a la izquierda del icono de casa/fuera, solo si NO ha finalizado */}
+                    {!isFinished && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          refreshSingleMatch(match.id, false);
+                        }}
+                        disabled={isRefreshing}
+                        className={`w-5 h-5 flex items-center justify-center shrink-0 border transition-colors ${
+                          isLive
+                            ? 'bg-red-950/90 hover:bg-red-800 text-red-300 border-red-500/50'
+                            : 'bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border-white/15'
+                        }`}
+                        title="Actualizar marcador desde favoley.net"
+                        aria-label="Actualizar marcador"
+                      >
+                        <span
+                          className={`material-symbols-outlined text-[13px] ${
+                            isRefreshing ? 'animate-spin text-white' : ''
+                          }`}
+                        >
+                          sync
+                        </span>
+                      </button>
                     )}
+
+                    {/* Icono de En Casa o Fuera */}
                     <span
                       className={`w-5 h-5 flex items-center justify-center shrink-0 border ${
                         match.isClubHome
@@ -317,165 +403,174 @@ export default function HeroMatchesCarousel({
                       }`}
                       title={match.isClubHome ? 'En casa (Pabellón Sergio Scariolo)' : 'Fuera / A domicilio'}
                     >
-                      <span className="material-symbols-outlined text-[13px] sm:text-[14px]">
+                      <span className="material-symbols-outlined text-[13px]">
                         {match.isClubHome ? 'home' : 'flight'}
                       </span>
                     </span>
                   </div>
                 </div>
 
-                {/* Equipos con escudos y resultado */}
-                <div className="py-2 space-y-1.5">
-                  {/* Equipo Local */}
+                {/* 2. Subcabecera: Estado/Fecha a la izquierda + Encabezados de Sets (S1, S2... | SETS) encima de los puntos */}
+                <div className="flex items-center justify-between gap-1 pt-1.5 pb-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {isLive ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-red-400">
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                        <span>En Juego</span>
+                      </span>
+                    ) : isFinished ? (
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                        Final ·{' '}
+                        {match.dateStr === todayStr
+                          ? 'Hoy'
+                          : formatMadridDate(match.matchDate, { day: 'numeric', month: 'short' })}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-tertiary capitalize">
+                        {match.dateStr === todayStr
+                          ? 'Hoy'
+                          : formatMadridDate(match.matchDate, {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                      </span>
+                    )}
+                  </div>
+
+                  {hasScoreboard ? (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {setColumns.map((col, idx) => (
+                        <span
+                          key={`hdr-${idx}`}
+                          className={`${
+                            compactCols ? 'w-5 sm:w-6' : 'w-6 sm:w-7'
+                          } text-center font-mono text-[9px] sm:text-[10px] font-extrabold uppercase ${
+                            col.isCurrent ? 'text-red-400' : 'text-tertiary'
+                          }`}
+                        >
+                          {col.label}
+                        </span>
+                      ))}
+                      <span className="w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 text-center font-mono text-[9px] sm:text-[10px] font-extrabold uppercase text-primary">
+                        SETS
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-mono text-xs font-extrabold text-primary">
+                      {new Date(match.matchDate).toLocaleTimeString('en-GB', {
+                        timeZone: 'Europe/Madrid',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                      h
+                    </span>
+                  )}
+                </div>
+
+                {/* 3. Filas de Equipos + Marcador Formato Tenis (Puntos por Set + Total de Sets) */}
+                <div className="space-y-1.5 pt-0.5">
+                  {/* Fila Equipo Local */}
                   <div className="flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <div className="w-4 h-4 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <div className="w-4 h-4 sm:w-5 sm:h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
                         <Image
                           src={getTeamLogo(match.homeTeamName)}
                           alt={match.homeTeamName}
-                          width={14}
-                          height={14}
+                          width={16}
+                          height={16}
                           className="object-contain max-h-full max-w-full"
                         />
                       </div>
                       <span
-                        className={`text-[10px] sm:text-[11px] font-semibold truncate ${
-                          match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'
+                        className={`text-[11px] sm:text-xs truncate ${
+                          match.isClubHome ? 'text-primary font-bold' : 'text-on-surface font-semibold'
                         }`}
                       >
                         {match.homeTeamName}
                       </span>
                     </div>
-                    {(isLive || isFinished) && (
-                      <span
-                        className={`font-display-xl text-sm font-bold leading-none ${
-                          isFinished && score.home > score.away ? 'text-primary' : 'text-white'
-                        }`}
-                      >
-                        {score.home}
-                      </span>
+
+                    {hasScoreboard && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {setColumns.map((col, idx) => (
+                          <span
+                            key={`home-set-${idx}`}
+                            className={`${
+                              compactCols ? 'w-5 sm:w-6 text-xs' : 'w-6 sm:w-7 text-xs sm:text-sm'
+                            } py-0.5 text-center font-mono font-extrabold leading-none rounded-[2px] ${
+                              col.isCurrent
+                                ? 'bg-red-950/60 border border-red-500/40'
+                                : 'bg-white/[0.04]'
+                            } ${getPointColorClass(col.home, col.away)}`}
+                          >
+                            {col.home}
+                          </span>
+                        ))}
+                        <span
+                          className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 py-0.5 text-center font-display-xl text-sm sm:text-base font-bold leading-none bg-white/[0.07] ${getPointColorClass(
+                            totalSets.home,
+                            totalSets.away
+                          )}`}
+                        >
+                          {totalSets.home}
+                        </span>
+                      </div>
                     )}
                   </div>
 
-                  {/* Equipo Visitante */}
+                  {/* Fila Equipo Visitante */}
                   <div className="flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <div className="w-4 h-4 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <div className="w-4 h-4 sm:w-5 sm:h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
                         <Image
                           src={getTeamLogo(match.awayTeamName)}
                           alt={match.awayTeamName}
-                          width={14}
-                          height={14}
+                          width={16}
+                          height={16}
                           className="object-contain max-h-full max-w-full"
                         />
                       </div>
                       <span
-                        className={`text-[10px] sm:text-[11px] font-semibold truncate ${
-                          !match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'
+                        className={`text-[11px] sm:text-xs truncate ${
+                          !match.isClubHome ? 'text-primary font-bold' : 'text-on-surface font-semibold'
                         }`}
                       >
                         {match.awayTeamName}
                       </span>
                     </div>
-                    {(isLive || isFinished) && (
-                      <span
-                        className={`font-display-xl text-sm font-bold leading-none ${
-                          isFinished && score.away > score.home ? 'text-primary' : 'text-white'
-                        }`}
-                      >
-                        {score.away}
-                      </span>
+
+                    {hasScoreboard && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {setColumns.map((col, idx) => (
+                          <span
+                            key={`away-set-${idx}`}
+                            className={`${
+                              compactCols ? 'w-5 sm:w-6 text-xs' : 'w-6 sm:w-7 text-xs sm:text-sm'
+                            } py-0.5 text-center font-mono font-extrabold leading-none rounded-[2px] ${
+                              col.isCurrent
+                                ? 'bg-red-950/60 border border-red-500/40'
+                                : 'bg-white/[0.04]'
+                            } ${getPointColorClass(col.away, col.home)}`}
+                          >
+                            {col.away}
+                          </span>
+                        ))}
+                        <span
+                          className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 py-0.5 text-center font-display-xl text-sm sm:text-base font-bold leading-none bg-white/[0.07] ${getPointColorClass(
+                            totalSets.away,
+                            totalSets.home
+                          )}`}
+                        >
+                          {totalSets.away}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
-
-                {/* Pie de tarjeta según estado: LIVE, FINISHED o SCHEDULED */}
-                {isLive ? (
-                  <div className="pt-1.5 border-t border-red-500/30 flex items-center justify-between gap-1 text-[10px] sm:text-[11px]">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="relative flex h-2 w-2 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                      </span>
-                      <span className="text-red-400 font-bold uppercase truncate">
-                        {match.currentSetScore
-                          ? `${match.currentSetScore.set.replace(/en juego/i, '').trim()}: ${match.currentSetScore.home}-${match.currentSetScore.away}`
-                          : 'En Juego'}
-                      </span>
-                    </div>
-
-                    {/* Botón de actualizar marcador en vivo */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        refreshSingleMatch(match.id, false);
-                      }}
-                      disabled={isRefreshing}
-                      className="px-1.5 py-0.5 bg-red-900/50 hover:bg-red-800 text-white text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 border border-red-500/40 shrink-0"
-                      title="Actualizar marcador desde favoley.net"
-                    >
-                      <span
-                        className={`material-symbols-outlined text-[12px] text-red-300 ${
-                          isRefreshing ? 'animate-spin' : ''
-                        }`}
-                      >
-                        sync
-                      </span>
-                      <span>{isRefreshing ? '...' : 'Actualizar'}</span>
-                    </button>
-                  </div>
-                ) : isFinished ? (
-                  <div className="pt-1.5 border-t border-white/5 flex items-center justify-between gap-1 text-[10px]">
-                    <span className="text-emerald-400 font-bold uppercase">
-                      Final · {match.dateStr === todayStr ? 'Hoy' : formatMadridDate(match.matchDate, { day: 'numeric', month: 'short' })}
-                    </span>
-                    {match.setScores && match.setScores.length > 0 && (
-                      <span className="text-tertiary font-mono text-[9px] truncate">
-                        ({match.setScores.map((s) => `${s.home}-${s.away}`).join(', ')})
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="pt-1.5 border-t border-white/5 flex items-center justify-between gap-1 text-[10px] sm:text-[11px]">
-                    <span className="text-tertiary capitalize">
-                      {match.dateStr === todayStr
-                        ? 'Hoy'
-                        : formatMadridDate(match.matchDate, {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-primary font-mono">
-                        {formatMadridTime(match.matchDate)}h
-                      </span>
-                      {match.dateStr === todayStr && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            refreshSingleMatch(match.id, false);
-                          }}
-                          disabled={isRefreshing}
-                          className="p-0.5 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/10 transition-colors flex items-center justify-center"
-                          title="Comprobar si ha comenzado en favoley.net"
-                        >
-                          <span
-                            className={`material-symbols-outlined text-[12px] ${
-                              isRefreshing ? 'animate-spin text-primary' : ''
-                            }`}
-                          >
-                            sync
-                          </span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
               </Link>
             );
           })}

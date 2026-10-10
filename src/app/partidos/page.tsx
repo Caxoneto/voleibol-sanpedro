@@ -265,19 +265,6 @@ function PartidosContent() {
               <span>{syncing ? 'Sincronizando...' : 'Actualizar Resultados'}</span>
             </button>
 
-            {/* Botón de test para simular en directo el partido de este fin de semana */}
-            <button
-              onClick={() => handleRefreshSingleMatch('favb-1061', true)}
-              className="px-3 py-2.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 font-label-md text-xs uppercase tracking-wider font-bold transition-all border border-red-500/40 flex items-center gap-1.5 shadow"
-              title="Demostración: Simular el partido de este sábado en vivo con punto rojo parpadeante"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-              </span>
-              <span>Demo Directo</span>
-            </button>
-
             <a
               href="https://favoley.net/publico/seccion.php?seccion=competiciones"
               target="_blank"
