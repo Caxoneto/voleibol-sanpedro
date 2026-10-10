@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatMadridDate } from '@/lib/date-utils';
-import { getTeamLogo } from '@/lib/team-logos';
+import { getTeamLogo, getTeamInitials } from '@/lib/team-logos';
 
 export interface HeroCarouselMatchItem {
   id: string;
@@ -318,7 +318,7 @@ export default function HeroMatchesCarousel({
         </Link>
       </div>
 
-      {/* Carrusel horizontal de tarjetas (Mobile-First, formato tenis) */}
+      {/* Carrusel horizontal de tarjetas (Mobile-First, formato tenis con logos grandes y 3 iniciales) */}
       {currentList.length === 0 ? (
         <div className="bg-surface-container-low/80 border border-white/10 p-4 text-center flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-tertiary">
@@ -347,12 +347,12 @@ export default function HeroMatchesCarousel({
               <Link
                 key={`${activeTab}-${match.id}`}
                 href={`/partidos?categoria=${match.categoryId}&match=${match.id}#match-${match.id}`}
-                className={`group snap-start shrink-0 w-[275px] sm:w-[300px] bg-surface-container-low/95 hover:bg-surface-container-high border p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5 ${
+                className={`group snap-start shrink-0 w-[250px] sm:w-[275px] bg-surface-container-low/95 hover:bg-surface-container-high border p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5 ${
                   isLive
                     ? 'border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.22)]'
                     : 'border-white/10 hover:border-primary-container'
                 }`}
-                title={`Ver detalles: ${match.categoryName} en partidos`}
+                title={`${match.categoryName}: ${match.homeTeamName} vs ${match.awayTeamName}`}
               >
                 {/* 1. Cabecera: Jornada, Categoría y a la derecha [Botón Actualizar Icono] + [Icono Casa/Fuera] */}
                 <div className="flex items-center justify-between gap-1.5 pb-1.5 border-b border-white/10">
@@ -447,15 +447,15 @@ export default function HeroMatchesCarousel({
                         <span
                           key={`hdr-${idx}`}
                           className={`${
-                            compactCols ? 'w-5 sm:w-6' : 'w-6 sm:w-7'
-                          } text-center font-mono text-[9px] sm:text-[10px] font-extrabold uppercase ${
+                            compactCols ? 'w-6 sm:w-6.5' : 'w-7 sm:w-7.5'
+                          } text-center font-mono text-[10px] font-extrabold uppercase ${
                             col.isCurrent ? 'text-red-400' : 'text-tertiary'
                           }`}
                         >
                           {col.label}
                         </span>
                       ))}
-                      <span className="w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 text-center font-mono text-[9px] sm:text-[10px] font-extrabold uppercase text-primary">
+                      <span className="w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 text-center font-mono text-[10px] font-extrabold uppercase text-primary">
                         SETS
                       </span>
                     </div>
@@ -471,26 +471,27 @@ export default function HeroMatchesCarousel({
                   )}
                 </div>
 
-                {/* 3. Filas de Equipos + Marcador Formato Tenis (Puntos por Set + Total de Sets) */}
-                <div className="space-y-1.5 pt-0.5">
+                {/* 3. Filas de Equipos (Logo Grande SIN recuadro + 3 Iniciales) + Columnas de Sets + Total de Sets */}
+                <div className="space-y-2 pt-0.5">
                   {/* Fila Equipo Local */}
-                  <div className="flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <div className="w-4 h-4 sm:w-5 sm:h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
-                        <Image
-                          src={getTeamLogo(match.homeTeamName)}
-                          alt={match.homeTeamName}
-                          width={16}
-                          height={16}
-                          className="object-contain max-h-full max-w-full"
-                        />
-                      </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div
+                      className="flex items-center gap-2 min-w-0"
+                      title={match.homeTeamName}
+                    >
+                      <Image
+                        src={getTeamLogo(match.homeTeamName)}
+                        alt={match.homeTeamName}
+                        width={32}
+                        height={32}
+                        className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                      />
                       <span
-                        className={`text-[11px] sm:text-xs truncate ${
-                          match.isClubHome ? 'text-primary font-bold' : 'text-on-surface font-semibold'
+                        className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none ${
+                          match.isClubHome ? 'text-primary' : 'text-white'
                         }`}
                       >
-                        {match.homeTeamName}
+                        {getTeamInitials(match.homeTeamName)}
                       </span>
                     </div>
 
@@ -500,8 +501,8 @@ export default function HeroMatchesCarousel({
                           <span
                             key={`home-set-${idx}`}
                             className={`${
-                              compactCols ? 'w-5 sm:w-6 text-xs' : 'w-6 sm:w-7 text-xs sm:text-sm'
-                            } py-0.5 text-center font-mono font-extrabold leading-none rounded-[2px] ${
+                              compactCols ? 'w-6 sm:w-6.5 text-xs sm:text-sm' : 'w-7 sm:w-7.5 text-sm sm:text-base'
+                            } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
                               col.isCurrent
                                 ? 'bg-red-950/60 border border-red-500/40'
                                 : 'bg-white/[0.04]'
@@ -511,7 +512,7 @@ export default function HeroMatchesCarousel({
                           </span>
                         ))}
                         <span
-                          className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 py-0.5 text-center font-display-xl text-sm sm:text-base font-bold leading-none bg-white/[0.07] ${getPointColorClass(
+                          className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
                             totalSets.home,
                             totalSets.away
                           )}`}
@@ -523,23 +524,24 @@ export default function HeroMatchesCarousel({
                   </div>
 
                   {/* Fila Equipo Visitante */}
-                  <div className="flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <div className="w-4 h-4 sm:w-5 sm:h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
-                        <Image
-                          src={getTeamLogo(match.awayTeamName)}
-                          alt={match.awayTeamName}
-                          width={16}
-                          height={16}
-                          className="object-contain max-h-full max-w-full"
-                        />
-                      </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div
+                      className="flex items-center gap-2 min-w-0"
+                      title={match.awayTeamName}
+                    >
+                      <Image
+                        src={getTeamLogo(match.awayTeamName)}
+                        alt={match.awayTeamName}
+                        width={32}
+                        height={32}
+                        className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                      />
                       <span
-                        className={`text-[11px] sm:text-xs truncate ${
-                          !match.isClubHome ? 'text-primary font-bold' : 'text-on-surface font-semibold'
+                        className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none ${
+                          !match.isClubHome ? 'text-primary' : 'text-white'
                         }`}
                       >
-                        {match.awayTeamName}
+                        {getTeamInitials(match.awayTeamName)}
                       </span>
                     </div>
 
@@ -549,8 +551,8 @@ export default function HeroMatchesCarousel({
                           <span
                             key={`away-set-${idx}`}
                             className={`${
-                              compactCols ? 'w-5 sm:w-6 text-xs' : 'w-6 sm:w-7 text-xs sm:text-sm'
-                            } py-0.5 text-center font-mono font-extrabold leading-none rounded-[2px] ${
+                              compactCols ? 'w-6 sm:w-6.5 text-xs sm:text-sm' : 'w-7 sm:w-7.5 text-sm sm:text-base'
+                            } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
                               col.isCurrent
                                 ? 'bg-red-950/60 border border-red-500/40'
                                 : 'bg-white/[0.04]'
@@ -560,7 +562,7 @@ export default function HeroMatchesCarousel({
                           </span>
                         ))}
                         <span
-                          className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 py-0.5 text-center font-display-xl text-sm sm:text-base font-bold leading-none bg-white/[0.07] ${getPointColorClass(
+                          className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
                             totalSets.away,
                             totalSets.home
                           )}`}

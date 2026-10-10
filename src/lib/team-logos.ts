@@ -1,5 +1,5 @@
 /**
- * Mapeo oficial y resolución de escudos de clubes federados (FAVB)
+ * Mapeo oficial y resolución de escudos e iniciales de clubes federados (FAVB)
  */
 
 export const TEAM_LOGOS_MAP: Record<string, string> = {
@@ -62,6 +62,122 @@ export const TEAM_LOGOS_MAP: Record<string, string> = {
   'AD ASUNCIÓN': '/images/teams/ad-asuncion.png',
   'CLUB NERJA ATLETISMO': '/images/teams/club-nerja.png',
 };
+
+export const TEAM_INITIALS_MAP: Record<string, string> = {
+  // San Pedro
+  'VOLEIBOL SAN PEDRO': 'VSP',
+  'VOLEIBOL SAN PEDRO ROJO': 'SPR',
+  'VOLEIBOL SAN PEDRO NEGRO': 'SPN',
+  'VOLEIBOL SAN PEDRO BLANCO': 'SPB',
+
+  // Rivales oficiales FAVB
+  'ACADEMIA VC ISONDA': 'AVI',
+  'CDU ATARFE': 'ATA',
+  'CV CIUDAD DE MÁLAGA': 'CCM',
+  'C.V. CIUDAD DE MÁLAGA': 'CCM',
+  'SIERRA ELVIRA': 'SEL',
+  'FUNDACIÓN CAJASOL ANDALUCÍA': 'FCA',
+  'LAS FLORES SEVILLA': 'LFS',
+  'AL-BAYYANA ROQUETAS': 'ABR',
+  'CORPORE SANO CVSA': 'CSC',
+  'GRANAVOLEY ESPAGRUAS': 'GVE',
+  '3STEVOLEY': '3ST',
+  '3STEVOLEY A': '3SA',
+  '3STEVOLEY AIRZONE': '3ST',
+  '3STEVOLEY B': '3SB',
+  '3STEVOLEY C': '3SC',
+  'FUENGIROLA CV': 'FCV',
+  'FUENGIROLA CV A': 'FCA',
+  'FUENGIROLA CV B': 'FCB',
+  'FUENGIROLA CV D': 'FCD',
+  'UDA BENALMADENA': 'UDB',
+  'UDA BENALMADENA A': 'UDB',
+  'CARTAMA': 'CAR',
+  'CARTAMA AZUL': 'CAZ',
+  'CARTAMA BLANCO': 'CBL',
+  'INTER PLAYAS': 'IPL',
+  'INTER PLAYAS A': 'IPA',
+  'INTER PLAYAS B': 'IPB',
+  'INTER PLAYAS C': 'IPC',
+  'LA VEGA': 'LVG',
+  'LA VEGA VOLEY': 'LVV',
+  'NUEVA OLA': 'NOL',
+  'NUEVA OLA A': 'NOA',
+  'ALHAURÍN DE LA TORRE': 'ALT',
+  'ALHAURÍN DE LA TORRE A': 'ALT',
+  'LA CORACHA': 'COR',
+  'CEV JUVENIL': 'CEV',
+  'CV PIZARRA LA FUENSANTA': 'PIZ',
+  'CV PIZARRA LA FUENSANTA AZUL': 'PZA',
+  'CV PIZARRA LA FUENSANTA BLANCO': 'PZB',
+  'UNION MALAGUEÑA': 'UMA',
+  'CADETE BLANCO': 'CBL',
+  'INFANTIL BLANCO': 'IBL',
+  'SOHO MALAGA': 'SOH',
+  'FORVOLEY TORREMOLINOS': 'FVT',
+  'EMV ALH.GRANDE': 'EAG',
+  'COSTA DEL VOLEY': 'CDV',
+  'COSTA DEL VOLEY ROSA': 'CDV',
+  'COSTA DEL VOLEY ROSA (ORO)': 'CDV',
+  'MIJAS VOLEY AZUL': 'MVA',
+  'AD ASUNCIÓN': 'ADA',
+  'CLUB NERJA ATLETISMO': 'CNA',
+};
+
+/**
+ * Devuelve las 3 iniciales identificativas del club
+ */
+export function getTeamInitials(teamName?: string | null): string {
+  if (!teamName) return 'CLB';
+  const cleanName = teamName.trim().toUpperCase();
+
+  if (TEAM_INITIALS_MAP[cleanName]) {
+    return TEAM_INITIALS_MAP[cleanName];
+  }
+
+  const norm = cleanName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  for (const [key, code] of Object.entries(TEAM_INITIALS_MAP)) {
+    const normKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (norm === normKey) {
+      return code;
+    }
+  }
+
+  if (norm.includes('SAN PEDRO')) {
+    if (norm.includes('ROJO')) return 'SPR';
+    if (norm.includes('NEGRO')) return 'SPN';
+    if (norm.includes('BLANCO')) return 'SPB';
+    return 'VSP';
+  }
+  if (norm.includes('COSTA DEL VOLEY')) return 'CDV';
+  if (norm.includes('PIZARRA')) return 'PIZ';
+  if (norm.includes('FUENGIROLA')) return 'FCV';
+  if (norm.includes('BENALMADENA')) return 'UDB';
+  if (norm.includes('CARTAMA')) return 'CAR';
+  if (norm.includes('3STEVOLEY')) return '3ST';
+  if (norm.includes('CIUDAD DE MALAGA')) return 'CCM';
+  if (norm.includes('ATARFE')) return 'ATA';
+  if (norm.includes('ALHAURIN')) return 'ALT';
+  if (norm.includes('INTER PLAYAS')) return 'IPL';
+  if (norm.includes('MIJAS')) return 'MVA';
+
+  // Fallback automático a 3 letras significativas
+  const words = norm
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && !['DE', 'DEL', 'LA', 'LAS', 'LOS', 'EL'].includes(w));
+
+  if (words.length >= 3) {
+    return `${words[0][0]}${words[1][0]}${words[2][0]}`;
+  }
+  if (words.length === 2) {
+    return `${words[0].slice(0, 2)}${words[1][0]}`.slice(0, 3);
+  }
+  if (words.length === 1) {
+    return words[0].slice(0, 3).padEnd(3, 'X');
+  }
+  return 'CLB';
+}
 
 /**
  * Devuelve la ruta relativa al escudo oficial del club
