@@ -56,16 +56,6 @@ const POS_CYCLE: Position[] = [
   'OPPOSITE',
 ];
 
-function cleanHtml(str: string): string {
-  return str
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 export async function GET() {
   const now = Date.now();
   if (rosterCache.players.length > 0 && now - rosterCache.lastSync < ROSTER_CACHE_TTL) {
@@ -106,45 +96,58 @@ export async function GET() {
           });
           if (!res.ok) return;
           const html = await res.text();
-          if (html.includes('Sin jugadores convocados') || !html.includes('portal-convocatoria-card')) {
-            return;
+
+          const sides: { nombre: string; personasJson: string }[] = [];
+          const localMatch = html.match(/local:\s*\{\s*nombre:\s*"([^"]*)",\s*personas:\s*(\[[\s\S]*?\])\s*\}/);
+          if (localMatch) {
+            sides.push({ nombre: localMatch[1], personasJson: localMatch[2] });
+          }
+          const visitMatch = html.match(/visitante:\s*\{\s*nombre:\s*"([^"]*)",\s*personas:\s*(\[[\s\S]*?\])\s*\}/);
+          if (visitMatch) {
+            sides.push({ nombre: visitMatch[1], personasJson: visitMatch[2] });
           }
 
-          const cardRegex = /<article class="portal-convocatoria-card">([\s\S]*?)<\/article>/gi;
-          let cm;
-          while ((cm = cardRegex.exec(html)) !== null) {
-            const cardHtml = cm[1];
-            const h3Match = cardHtml.match(/<h3>([\s\S]*?)<\/h3>/i);
-            const teamTitle = h3Match ? cleanHtml(h3Match[1]).toUpperCase() : '';
-            if (!teamTitle.includes('SAN PEDRO')) continue;
+          for (const side of sides) {
+            if (!side.nombre.toUpperCase().includes('SAN PEDRO')) continue;
+            const personas = JSON.parse(side.personasJson) as Array<{
+              nombre?: string;
+              tipo?: string;
+              dorsal?: string | number;
+              capitan?: number;
+              libero?: number;
+            }>;
 
-            const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-            let trm;
-            while ((trm = trRegex.exec(cardHtml)) !== null) {
-              const tds = Array.from(trm[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)).map((t) =>
-                cleanHtml(t[1])
-              );
-              if (tds.length >= 3) {
-                const dorsal = tds[0];
-                const nombre = tds[1];
-                const rol = tds[2];
-                const rolUpper = rol.toUpperCase();
-                if (
-                  rolUpper.includes('ENTRENADOR') ||
-                  rolUpper.includes('DELEGAD') ||
-                  rolUpper === 'E1' ||
-                  rolUpper === 'E2'
-                ) {
-                  continue;
-                }
-                if (!scrapedTeamPersonas.has(m.teamId)) {
-                  scrapedTeamPersonas.set(m.teamId, new Map());
-                }
-                const tMap = scrapedTeamPersonas.get(m.teamId)!;
-                const key = nombre.toUpperCase();
-                if (key && !tMap.has(key)) {
-                  tMap.set(key, { nombre, rol, dorsal });
-                }
+            for (const p of personas) {
+              const nombre = String(p.nombre || '').trim();
+              const dorsal = String(p.dorsal ?? '').trim();
+              const tipo = String(p.tipo || '').trim();
+              const tipoUpper = tipo.toUpperCase();
+
+              // Descartar entrenadores/asistentes (C, AC1, AC2 o sin dorsal)
+              if (
+                !nombre ||
+                !dorsal ||
+                tipoUpper === 'C' ||
+                tipoUpper === 'AC1' ||
+                tipoUpper === 'AC2' ||
+                tipoUpper.includes('ENTRENADOR') ||
+                tipoUpper.includes('DELEGAD')
+              ) {
+                continue;
+              }
+
+              if (!scrapedTeamPersonas.has(m.teamId)) {
+                scrapedTeamPersonas.set(m.teamId, new Map());
+              }
+              const tMap = scrapedTeamPersonas.get(m.teamId)!;
+              const key = nombre.toUpperCase();
+              const rolParts = [tipo];
+              if (Number(p.capitan) === 1) rolParts.push('Capitán');
+              if (Number(p.libero) === 1) rolParts.push('Líbero');
+              const rol = rolParts.filter(Boolean).join(' · ');
+
+              if (!tMap.has(key)) {
+                tMap.set(key, { nombre, rol, dorsal });
               }
             }
           }

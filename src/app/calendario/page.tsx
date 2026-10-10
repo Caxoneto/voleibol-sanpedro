@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import {
   INITIAL_CATEGORIES,
@@ -15,15 +15,28 @@ import {
   generateGoogleCalendarUrl,
   generateIcsContent,
 } from '@/lib/date-utils';
+import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
 import jsPDF from 'jspdf';
+
+interface RoundSummary {
+  round: number;
+  matches: Match[];
+  dateLabel: string;
+  hasPending: boolean;
+  allFinished: boolean;
+  earliestPendingTime: number;
+}
 
 export default function CalendarioPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [conditionFilter, setConditionFilter] = useState<'ALL' | 'LOCAL' | 'VISITANTE'>('ALL');
+  const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [showVenueModal, setShowVenueModal] = useState(false);
 
-  // Filtrado de partidos
+  const roundsScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // 1. Partidos filtrados por categoría y condición (Local / Visitante)
   const filteredMatches = useMemo(() => {
     return INITIAL_MATCHES.filter((match) => {
       if (selectedCategory !== 'ALL') {
@@ -36,6 +49,106 @@ export default function CalendarioPage() {
       return true;
     }).sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
   }, [selectedCategory, conditionFilter]);
+
+  // 2. Agrupación por Jornadas (J1, J2, J3...) para no sobrecargar el DOM en móvil
+  const roundsData = useMemo<RoundSummary[]>(() => {
+    const byRound = new Map<number, Match[]>();
+    for (const m of filteredMatches) {
+      const list = byRound.get(m.round) || [];
+      list.push(m);
+      byRound.set(m.round, list);
+    }
+
+    const summaries: RoundSummary[] = [];
+    const sortedRoundNums = Array.from(byRound.keys()).sort((a, b) => a - b);
+
+    for (const roundNum of sortedRoundNums) {
+      const roundMatches = (byRound.get(roundNum) || []).sort(
+        (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
+      );
+      const pending = roundMatches.filter((m) => m.status !== 'FINISHED');
+      const firstMatch = roundMatches[0];
+      const dateLabel = firstMatch
+        ? formatMadridDate(firstMatch.matchDate, { day: 'numeric', month: 'short' })
+        : '';
+
+      summaries.push({
+        round: roundNum,
+        matches: roundMatches,
+        dateLabel,
+        hasPending: pending.length > 0,
+        allFinished: pending.length === 0 && roundMatches.length > 0,
+        earliestPendingTime:
+          pending.length > 0
+            ? new Date(pending[0].matchDate).getTime()
+            : Number.POSITIVE_INFINITY,
+      });
+    }
+
+    return summaries;
+  }, [filteredMatches]);
+
+  // 3. Jornada recomendada por defecto: la jornada del próximo partido pendiente más cercano
+  const recommendedRound = useMemo<number | null>(() => {
+    if (roundsData.length === 0) return null;
+    const withPending = roundsData
+      .filter((r) => r.hasPending)
+      .sort((a, b) => a.earliestPendingTime - b.earliestPendingTime);
+
+    if (withPending.length > 0) {
+      return withPending[0].round;
+    }
+    return roundsData[roundsData.length - 1].round;
+  }, [roundsData]);
+
+  // Actualizar jornada activa cuando cambia la categoría o si la jornada seleccionada no existe en el filtro actual
+  useEffect(() => {
+    if (roundsData.length === 0) {
+      setSelectedRound(null);
+      return;
+    }
+    const exists = selectedRound !== null && roundsData.some((r) => r.round === selectedRound);
+    if (!exists) {
+      setSelectedRound(recommendedRound);
+    }
+  }, [roundsData, recommendedRound, selectedRound]);
+
+  // Al cambiar de categoría, ir directamente a la próxima jornada pendiente de esa categoría
+  const handleSelectCategory = (catId: string) => {
+    setSelectedCategory(catId);
+    setSelectedRound(null); // Fuerza recalcular la próxima jornada pendiente para la nueva categoría
+  };
+
+  const activeRound = selectedRound ?? recommendedRound;
+
+  // Centrar automáticamente el botón de la jornada activa en la barra horizontal
+  useEffect(() => {
+    if (activeRound === null) return;
+    const container = roundsScrollRef.current;
+    const pill = document.getElementById(`round-pill-${activeRound}`);
+    if (container && pill) {
+      const targetLeft = pill.offsetLeft - container.clientWidth / 2 + pill.clientWidth / 2;
+      container.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+    }
+  }, [activeRound, selectedCategory, conditionFilter]);
+
+  const currentRoundObj = useMemo(
+    () => roundsData.find((r) => r.round === activeRound) || roundsData[0] || null,
+    [roundsData, activeRound]
+  );
+
+  const currentRoundIndex = useMemo(
+    () => (currentRoundObj ? roundsData.findIndex((r) => r.round === currentRoundObj.round) : -1),
+    [roundsData, currentRoundObj]
+  );
+
+  const prevRoundObj = currentRoundIndex > 0 ? roundsData[currentRoundIndex - 1] : null;
+  const nextRoundObj =
+    currentRoundIndex >= 0 && currentRoundIndex < roundsData.length - 1
+      ? roundsData[currentRoundIndex + 1]
+      : null;
+
+  const displayedMatches = currentRoundObj ? currentRoundObj.matches : [];
 
   // Descargar archivo compatible con móviles (iCal)
   const handleDownloadIcs = (match: Match) => {
@@ -168,10 +281,10 @@ export default function CalendarioPage() {
   return (
     <div className="w-full min-h-screen bg-background">
       {/* Top Strip */}
-      <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-8 sm:py-10 border-b border-white/5 overflow-hidden">
+      <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-5 sm:py-8 border-b border-white/5 overflow-hidden">
         <div className="absolute -right-20 -top-24 w-96 h-96 rounded-full bg-primary-container/10 blur-3xl pointer-events-none" />
         <div className="max-w-7xl mx-auto relative z-10 flex items-end justify-between gap-4">
-          <div className="flex flex-col gap-1.5 max-w-3xl min-w-0">
+          <div className="flex flex-col gap-1 max-w-3xl min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[10px] sm:text-[11px] uppercase font-bold tracking-widest">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
@@ -184,9 +297,6 @@ export default function CalendarioPage() {
             <h1 className="font-display-xl text-3xl sm:text-5xl lg:text-6xl uppercase text-white tracking-tight leading-none mt-1">
               CALENDARIO DE COMPETICIÓN
             </h1>
-            <p className="font-body-md text-xs sm:text-base text-tertiary">
-              Planificación de partidos oficiales de la FAVB en el Pabellón Sergio Scariolo y pabellones visitantes.
-            </p>
           </div>
 
           {/* Quick Action Utilities: Compact Icon-Only Buttons */}
@@ -228,13 +338,13 @@ export default function CalendarioPage() {
         </div>
       </section>
 
-      {/* Filter Toolbar */}
+      {/* Filter Toolbar (Categorías + Condición) */}
       <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
           {/* Categorías */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             <button
-              onClick={() => setSelectedCategory('ALL')}
+              onClick={() => handleSelectCategory('ALL')}
               className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
                 selectedCategory === 'ALL'
                   ? 'bg-primary-container text-white'
@@ -246,7 +356,7 @@ export default function CalendarioPage() {
             {INITIAL_CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
+                onClick={() => handleSelectCategory(cat.id)}
                 className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
                   selectedCategory === cat.id
                     ? 'bg-primary-container text-white'
@@ -296,25 +406,145 @@ export default function CalendarioPage() {
         </div>
       </section>
 
-      {/* Listado de Partidos */}
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 sm:py-8">
-        <div className="mb-4 flex items-center justify-between text-xs text-tertiary">
-          <span>Mostrando {filteredMatches.length} partidos oficiales programados</span>
-          <span className="text-primary font-bold hidden sm:inline">
-            Pabellón Polideportivo Sergio Scariolo y sedes FAVB
-          </span>
-        </div>
+      {/* Selector de Jornadas (J1, J2, J3...) + Listado de Partidos de la Jornada */}
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-4 sm:py-6 space-y-4">
+        {/* Barra / Calendario de Jornadas (J1, J2, J3...) */}
+        {roundsData.length > 0 && (
+          <div className="bg-surface-container-lowest border border-white/10 p-3 sm:p-4 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-primary text-[18px] shrink-0">
+                  calendar_view_week
+                </span>
+                <span className="text-xs font-bold uppercase tracking-wider text-white truncate">
+                  Seleccionar Jornada
+                </span>
+                {recommendedRound !== null && activeRound !== recommendedRound && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRound(recommendedRound)}
+                    className="ml-1 px-2 py-0.5 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
+                  >
+                    Ir a J{recommendedRound} (Próxima)
+                  </button>
+                )}
+              </div>
 
+              {/* Flechas de navegación rápida entre jornadas */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  disabled={!prevRoundObj}
+                  onClick={() => prevRoundObj && setSelectedRound(prevRoundObj.round)}
+                  className="w-7 h-7 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
+                  title={prevRoundObj ? `Jornada anterior (J${prevRoundObj.round})` : 'Primera jornada'}
+                  aria-label="Jornada anterior"
+                >
+                  <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!nextRoundObj}
+                  onClick={() => nextRoundObj && setSelectedRound(nextRoundObj.round)}
+                  className="w-7 h-7 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
+                  title={nextRoundObj ? `Siguiente jornada (J${nextRoundObj.round})` : 'Última jornada'}
+                  aria-label="Siguiente jornada"
+                >
+                  <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Píldoras horizontales J1, J2, J3... */}
+            <div
+              ref={roundsScrollRef}
+              className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pt-0.5 pb-1"
+            >
+              {roundsData.map((r) => {
+                const isSelected = r.round === currentRoundObj?.round;
+                const isRecommended = r.round === recommendedRound;
+                return (
+                  <button
+                    key={r.round}
+                    id={`round-pill-${r.round}`}
+                    type="button"
+                    onClick={() => setSelectedRound(r.round)}
+                    className={`relative px-3 py-1.5 min-w-[58px] sm:min-w-[64px] flex flex-col items-center justify-center border transition-all shrink-0 ${
+                      isSelected
+                        ? 'bg-primary-container text-white border-white/40 shadow-[2px_2px_0px_0px_#0e0e0e] -translate-y-0.5'
+                        : isRecommended
+                        ? 'bg-surface-container-high text-white border-red-500/60 hover:border-red-500'
+                        : r.allFinished
+                        ? 'bg-surface-container-low/70 text-tertiary/70 border-white/5 hover:text-white hover:border-white/20'
+                        : 'bg-surface-container-high text-tertiary border-white/10 hover:text-white hover:border-white/25'
+                    }`}
+                  >
+                    {isRecommended && (
+                      <span
+                        className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${
+                          isSelected ? 'bg-white' : 'bg-red-500 animate-pulse'
+                        }`}
+                        title="Jornada en curso / próxima"
+                      />
+                    )}
+                    <span className="font-display-xl text-base sm:text-lg leading-none">
+                      J{r.round}
+                    </span>
+                    <span
+                      className={`text-[9px] uppercase tracking-tighter mt-0.5 whitespace-nowrap ${
+                        isSelected ? 'text-white/90 font-semibold' : 'text-tertiary'
+                      }`}
+                    >
+                      {r.dateLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Cabecera de la Jornada seleccionada */}
+        {currentRoundObj && (
+          <div className="flex items-center justify-between gap-2 px-1">
+            <div className="flex items-center gap-2.5">
+              <span className="px-2 py-0.5 bg-primary-container text-white font-display-xl text-sm uppercase tracking-wider">
+                Jornada {currentRoundObj.round}
+              </span>
+              {currentRoundObj.round === recommendedRound && (
+                <span className="px-2 py-0.5 bg-red-500/15 text-red-400 border border-red-500/30 text-[10px] font-bold uppercase tracking-wider">
+                  Siguiente / Activa
+                </span>
+              )}
+              {currentRoundObj.allFinished && (
+                <span className="px-2 py-0.5 bg-white/5 text-tertiary border border-white/10 text-[10px] font-bold uppercase tracking-wider">
+                  Finalizada
+                </span>
+              )}
+            </div>
+            <span className="text-xs text-tertiary font-mono">
+              {displayedMatches.length}{' '}
+              {displayedMatches.length === 1 ? 'partido' : 'partidos'}
+            </span>
+          </div>
+        )}
+
+        {/* Tarjetas de Partidos de la Jornada Seleccionada */}
         <div className="flex flex-col gap-3">
-          {filteredMatches.length === 0 ? (
-            <div className="bg-surface-container-low border border-white/5 p-12 text-center">
+          {displayedMatches.length === 0 ? (
+            <div className="bg-surface-container-low border border-white/5 p-10 text-center">
               <p className="text-sm text-tertiary">
                 No hay partidos con los filtros seleccionados.
               </p>
             </div>
           ) : (
-            filteredMatches.map((match) => {
+            displayedMatches.map((match) => {
               const team = INITIAL_TEAMS.find((t) => t.id === match.teamId);
+              const isFinished = match.status === 'FINISHED';
+              const scoreResult =
+                isFinished && match.setScores && match.setScores.length > 0
+                  ? calculateMatchScore(match.setScores)
+                  : null;
               const googleCalUrl = generateGoogleCalendarUrl(
                 `Voleibol: ${match.homeTeamName} vs ${match.awayTeamName}`,
                 match.venueName,
@@ -339,7 +569,7 @@ export default function CalendarioPage() {
                     {/* Top/Left: Round, Date & Mobile Quick Icons */}
                     <div className="flex items-center justify-between lg:justify-start gap-3 lg:w-64 shrink-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-surface-container-high flex flex-col items-center justify-center border border-white/5 shrink-0">
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 bg-surface-container-high flex flex-col items-center justify-center border border-white/5 shrink-0">
                           <span className="font-display-xl text-lg text-primary leading-none">
                             J{match.round}
                           </span>
@@ -458,7 +688,13 @@ export default function CalendarioPage() {
                           </span>
                         </div>
 
-                        <span className="text-xs text-tertiary font-mono">vs</span>
+                        {scoreResult ? (
+                          <span className="px-2 py-0.5 bg-white/10 border border-white/15 font-display-xl text-sm text-white tracking-wider">
+                            {scoreResult.homeSetsWon} - {scoreResult.awaySetsWon}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-tertiary font-mono">vs</span>
+                        )}
 
                         <div className="flex items-center gap-2 min-w-0">
                           <Image
@@ -564,6 +800,37 @@ export default function CalendarioPage() {
             })
           )}
         </div>
+
+        {/* Navegación inferior rápida entre Jornadas */}
+        {roundsData.length > 1 && (
+          <div className="pt-2 flex items-center justify-between gap-3">
+            {prevRoundObj ? (
+              <button
+                type="button"
+                onClick={() => setSelectedRound(prevRoundObj.round)}
+                className="px-3.5 py-2 bg-surface-container-high hover:bg-primary-container text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 border border-white/10 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+                <span>Jornada {prevRoundObj.round}</span>
+              </button>
+            ) : (
+              <div />
+            )}
+
+            {nextRoundObj ? (
+              <button
+                type="button"
+                onClick={() => setSelectedRound(nextRoundObj.round)}
+                className="px-3.5 py-2 bg-surface-container-high hover:bg-primary-container text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 border border-white/10 transition-colors"
+              >
+                <span>Jornada {nextRoundObj.round}</span>
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </button>
+            ) : (
+              <div />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modal: Cómo llegar al Pabellón Sergio Scariolo */}

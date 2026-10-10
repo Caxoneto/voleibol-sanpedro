@@ -16,7 +16,7 @@ import { InstagramIcon, FacebookIcon } from '@/components/SocialIcons';
 import { POSITION_SHORT_LABELS } from '@/lib/types';
 
 // Dorsales con licencia oficial SENIOR (+18, mayores de edad) en el primer equipo Senior Femenino (excluyendo convocadas menores de edad de cantera)
-const SENIOR_ADULT_NUMBERS = new Set([3, 4, 5, 8, 14, 15, 18]);
+const SENIOR_ADULT_NUMBERS = new Set([3, 4, 5, 8, 12, 14, 15, 18]);
 
 export default function FanZonePage() {
   // Estado de votación MVP
@@ -27,7 +27,7 @@ export default function FanZonePage() {
 
   // Candidatas para el MVP: exclusivamente equipo mayor de edad (Senior Femenino - 1ª División Andaluza, licencia Senior)
   const mvpCandidates = INITIAL_PLAYERS.filter(
-    (p) => p.teamId === 'team-sf' && SENIOR_ADULT_NUMBERS.has(p.number)
+    (p) => p.teamId === 'team-sf' && SENIOR_ADULT_NUMBERS.has(p.number) && p.birthYear <= 2006
   );
 
   // Estado del himno del club / audio

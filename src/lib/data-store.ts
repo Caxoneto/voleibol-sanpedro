@@ -362,7 +362,9 @@ class DataStore {
   }
 
   getFeaturedMatch(): Match | undefined {
-    const featured = this.matches.find((m) => m.isFeatured);
+    const live = this.matches.find((m) => m.status === 'LIVE');
+    if (live) return live;
+    const featured = this.matches.find((m) => m.isFeatured && m.status === 'SCHEDULED');
     if (featured) return featured;
     return this.matches.find((m) => m.status === 'SCHEDULED');
   }

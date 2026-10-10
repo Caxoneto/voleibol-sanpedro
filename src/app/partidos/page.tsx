@@ -678,36 +678,33 @@ function PartidosContent() {
 
   return (
     <div className="w-full min-h-screen bg-background relative">
-      {/* Top Hero Banner */}
-      <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-8 sm:py-10 border-b border-white/5 overflow-hidden">
+      {/* Top Hero Banner Compacto */}
+      <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-4 sm:py-6 border-b border-white/5 overflow-hidden">
         <div className="absolute -right-20 -top-24 w-96 h-96 rounded-full bg-primary-container/10 blur-3xl pointer-events-none" />
-        <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="max-w-7xl mx-auto relative z-10 flex flex-row items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[11px] uppercase font-bold tracking-widest">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-primary-container text-white text-[10px] uppercase font-bold tracking-widest">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 ACTAS OFICIALES FAVB
               </span>
-              <span className="text-xs text-tertiary uppercase tracking-wider">
-                TEMPORADA 2026 / 2027
+              <span className="text-[11px] text-tertiary uppercase tracking-wider">
+                2026 / 2027
               </span>
             </div>
-            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase text-white tracking-tight leading-none">
+            <h1 className="font-display-xl text-3xl sm:text-4xl lg:text-5xl uppercase text-white tracking-tight leading-none">
               PARTIDOS Y RESULTADOS
             </h1>
-            <p className="font-body-md text-sm sm:text-base text-tertiary max-w-2xl mt-2">
-              Partidos federados y marcadores oficiales de la Federación Andaluza de Voleibol (favoley.net). Selecciona una categoría para consultar sus encuentros pendientes o finalizados.
-            </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <a
               href="https://favoley.net/publico/seccion.php?seccion=competiciones"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2.5 bg-primary-container hover:bg-secondary-container text-white font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow"
+              className="px-3 py-2 bg-primary-container hover:bg-secondary-container text-white font-label-md text-[11px] uppercase tracking-wider font-bold transition-all shadow"
             >
-              Ver en favoley.net
+              favoley.net
             </a>
           </div>
         </div>
@@ -725,7 +722,7 @@ function PartidosContent() {
 
       {/* Selector Rápido Horizontal de Categorías (Sticky) + Botón Icono Actualizar integrado en Desktop */}
       <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex items-center justify-between gap-3">
           <div
             ref={catScrollContainerRef}
             className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-1"
@@ -773,88 +770,39 @@ function PartidosContent() {
         type="button"
         onClick={() => fetchFavbMatches(true)}
         disabled={syncing}
-        className="md:hidden fixed top-[170px] right-3 z-40 w-10 h-10 bg-primary-container/95 hover:bg-primary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/25 shadow-[0_4px_16px_rgba(0,0,0,0.85)] backdrop-blur-sm active:scale-95 transition-all"
+        className="md:hidden fixed top-[166px] right-3 z-40 w-9 h-9 bg-primary-container/95 hover:bg-primary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/25 shadow-[0_4px_16px_rgba(0,0,0,0.85)] backdrop-blur-sm active:scale-95 transition-all"
         title="Actualizar resultados desde favoley.net"
         aria-label="Actualizar resultados"
       >
-        <span className={`material-symbols-outlined text-[20px] ${syncing ? 'animate-spin' : ''}`}>
+        <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`}>
           sync
         </span>
       </button>
 
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 sm:py-8 space-y-8">
-        {/* Banner Informativo y Leyenda de Iconos */}
-        <div className="p-3 bg-surface-container-low border border-white/10 flex flex-col md:flex-row items-center justify-between text-xs text-tertiary gap-3">
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>
-              Fuente oficial: <strong>Federación Andaluza de Voleibol (favoley.net)</strong>
-            </span>
-            <span className="font-mono text-[11px] text-tertiary/70 hidden sm:inline">
-              · Actualizado: {lastSyncTime}
-            </span>
-          </div>
-
-          {/* Leyenda de Iconos */}
-          <div className="flex items-center gap-4 text-xs font-semibold text-white">
-            <span
-              className="flex items-center gap-1.5"
-              title="Partido jugado en el Pabellón Polideportivo Sergio Scariolo"
-            >
-              <span className="w-6 h-6 flex items-center justify-center bg-primary-container/20 text-primary border border-primary-container/30">
-                <span className="material-symbols-outlined text-[15px]">home</span>
-              </span>
-              <span>En Casa</span>
-            </span>
-            <span
-              className="flex items-center gap-1.5"
-              title="Partido jugado fuera de casa (a domicilio)"
-            >
-              <span className="w-6 h-6 flex items-center justify-center bg-white/5 text-tertiary border border-white/10">
-                <span className="material-symbols-outlined text-[15px]">flight</span>
-              </span>
-              <span>Fuera</span>
-            </span>
-          </div>
-        </div>
-
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 sm:py-5 space-y-5">
         {/* MÓDULO DESTACADO: PARTIDOS EN DIRECTO AHORA */}
         {allLiveMatches.length > 0 && (
-          <section className="bg-red-950/20 border-2 border-red-500 p-4 sm:p-6 shadow-2xl relative animate-fadeIn">
-            <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-red-500/30">
+          <section className="bg-red-950/20 border-2 border-red-500 p-3.5 sm:p-5 shadow-2xl relative animate-fadeIn">
+            <div className="flex items-center gap-2.5 pb-2.5 mb-3 border-b border-red-500/30">
               <span className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
               </span>
-              <h2 className="font-display-xl text-xl sm:text-2xl uppercase text-white font-bold tracking-wide">
-                PARTIDOS EN DIRECTO AHORA ({allLiveMatches.length})
+              <h2 className="font-display-xl text-lg sm:text-xl uppercase text-white font-bold tracking-wide">
+                EN DIRECTO ({allLiveMatches.length})
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {allLiveMatches.map((m) => renderScoreboardCard(m, true, true))}
             </div>
           </section>
         )}
 
         {/* NÚCLEO: LISTADO CLASIFICADO POR CATEGORÍAS (ACORDEÓN CON PESTAÑAS PENDIENTES / FINALIZADOS) */}
-        <section className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/10">
-            <div>
-              <span className="text-xs text-primary font-bold uppercase tracking-wider block">
-                Competiciones FAVB 2026 / 2027
-              </span>
-              <h2 className="font-display-xl text-2xl sm:text-3xl uppercase text-white">
-                Partidos Oficiales por Categoría
-              </h2>
-            </div>
-            <p className="text-xs text-tertiary">
-              Rodeado en <span className="text-red-400 font-bold">rojo</span> el partido en juego o el próximo más cercano.
-            </p>
-          </div>
-
+        <section className="space-y-2.5">
           {/* Acordeón de las categorías */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {categoriesData.map(
               ({
                 category,
@@ -886,11 +834,11 @@ function PartidosContent() {
                     <button
                       type="button"
                       onClick={() => handleToggleCategory(category.id)}
-                      className="w-full p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-left transition-colors cursor-pointer group"
+                      className="w-full p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-left transition-colors cursor-pointer group"
                     >
-                      <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div
-                          className={`w-9 h-9 shrink-0 flex items-center justify-center font-display-xl text-base transition-colors ${
+                          className={`w-8 h-8 shrink-0 flex items-center justify-center font-display-xl text-sm transition-colors ${
                             isExpanded
                               ? 'bg-primary-container text-white shadow-md'
                               : 'bg-surface-container-high text-tertiary group-hover:text-white'
@@ -899,24 +847,19 @@ function PartidosContent() {
                           {category.order}
                         </div>
 
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-display-xl text-lg sm:text-xl uppercase text-white group-hover:text-primary transition-colors truncate">
-                              {category.name}
-                            </h3>
-                            <span className="px-2 py-0.5 bg-surface-container-high text-tertiary text-[10px] font-bold uppercase tracking-wider border border-white/5">
-                              {team?.division || 'FAVB'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-tertiary mt-0.5 truncate">
-                            {category.description}
-                          </p>
+                        <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                          <h3 className="font-display-xl text-base sm:text-lg uppercase text-white group-hover:text-primary transition-colors truncate">
+                            {category.name}
+                          </h3>
+                          <span className="px-2 py-0.5 bg-surface-container-high text-tertiary text-[10px] font-bold uppercase tracking-wider border border-white/5">
+                            {team?.division || 'FAVB'}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
+                      <div className="flex items-center justify-between md:justify-end gap-2.5 shrink-0">
                         {live.length > 0 ? (
-                          <div className="flex items-center gap-2 bg-red-950/80 border border-red-500/60 px-3 py-1 text-xs text-red-300 font-bold uppercase tracking-wider animate-pulse">
+                          <div className="flex items-center gap-2 bg-red-950/80 border border-red-500/60 px-2.5 py-1 text-xs text-red-300 font-bold uppercase tracking-wider animate-pulse">
                             <span className="relative flex h-2 w-2">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                               <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -947,12 +890,12 @@ function PartidosContent() {
                           </div>
                         ) : null}
 
-                        <span className="text-xs font-mono text-tertiary bg-white/5 px-2 py-1 hidden sm:inline">
+                        <span className="text-xs font-mono text-tertiary bg-white/5 px-2 py-0.5 hidden sm:inline">
                           {totalCount} part.
                         </span>
 
                         <span
-                          className={`material-symbols-outlined text-2xl transition-transform duration-300 ${
+                          className={`material-symbols-outlined text-xl transition-transform duration-300 ${
                             isExpanded
                               ? 'rotate-180 text-primary'
                               : 'text-tertiary group-hover:text-white'
@@ -965,107 +908,96 @@ function PartidosContent() {
 
                     {/* Panel Desplegable Separado por Pestañas: PENDIENTES vs FINALIZADOS */}
                     {isExpanded && (
-                      <div className="px-3.5 sm:px-6 pb-6 pt-3 border-t border-white/10 space-y-5 animate-fadeIn">
+                      <div className="px-3.5 sm:px-5 pb-5 pt-3 border-t border-white/10 space-y-4 animate-fadeIn">
                         {/* Barra de Sub-Pestañas: Pendientes vs Finalizados */}
-                        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setSubTabByCategory((prev) => ({
-                                  ...prev,
-                                  [category.id]: 'pending',
-                                }))
-                              }
-                              className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border ${
+                        <div className="flex items-center gap-2 pb-2.5 border-b border-white/10">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSubTabByCategory((prev) => ({
+                                ...prev,
+                                [category.id]: 'pending',
+                              }))
+                            }
+                            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border ${
+                              activeSubTab === 'pending'
+                                ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
+                                : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
+                            }`}
+                          >
+                            {live.length > 0 && (
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-300"></span>
+                              </span>
+                            )}
+                            <span>Pendientes</span>
+                            <span
+                              className={`px-1.5 py-0.5 text-[10px] font-mono ${
                                 activeSubTab === 'pending'
-                                  ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
-                                  : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
+                                  ? 'bg-black/30 text-white'
+                                  : 'bg-white/10 text-tertiary'
                               }`}
                             >
-                              {live.length > 0 && (
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-300"></span>
-                                </span>
-                              )}
-                              <span>Pendientes</span>
-                              <span
-                                className={`px-1.5 py-0.5 text-[10px] font-mono ${
-                                  activeSubTab === 'pending'
-                                    ? 'bg-black/30 text-white'
-                                    : 'bg-white/10 text-tertiary'
-                                }`}
-                              >
-                                {pendingCount}
-                              </span>
-                            </button>
+                              {pendingCount}
+                            </span>
+                          </button>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setSubTabByCategory((prev) => ({
-                                  ...prev,
-                                  [category.id]: 'finished',
-                                }))
-                              }
-                              className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border ${
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSubTabByCategory((prev) => ({
+                                ...prev,
+                                [category.id]: 'finished',
+                              }))
+                            }
+                            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border ${
+                              activeSubTab === 'finished'
+                                ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
+                                : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
+                            }`}
+                          >
+                            <span>Finalizados</span>
+                            <span
+                              className={`px-1.5 py-0.5 text-[10px] font-mono ${
                                 activeSubTab === 'finished'
-                                  ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
-                                  : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
+                                  ? 'bg-black/30 text-white'
+                                  : 'bg-white/10 text-tertiary'
                               }`}
                             >
-                              <span>Finalizados</span>
-                              <span
-                                className={`px-1.5 py-0.5 text-[10px] font-mono ${
-                                  activeSubTab === 'finished'
-                                    ? 'bg-black/30 text-white'
-                                    : 'bg-white/10 text-tertiary'
-                                }`}
-                              >
-                                {finished.length}
-                              </span>
-                            </button>
-                          </div>
-
-                          <span className="text-[11px] text-tertiary">
-                            {activeSubTab === 'pending'
-                              ? 'Ordenados por proximidad (más cercano primero)'
-                              : 'Ordenados por fecha (más reciente primero)'}
-                          </span>
+                              {finished.length}
+                            </span>
+                          </button>
                         </div>
 
                         {/* PESTAÑA 1: PARTIDOS PENDIENTES (EN JUEGO + PRÓXIMOS) */}
                         {activeSubTab === 'pending' && (
-                          <div className="space-y-5">
-                            {/* Si hay partido EN JUEGO, mostrarlo arriba con su marcador en directo rodeado en rojo */}
+                          <div className="space-y-4">
                             {live.length > 0 && (
-                              <div className="space-y-3">
+                              <div className="space-y-2.5">
                                 <div className="flex items-center gap-2">
                                   <span className="relative flex h-2.5 w-2.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                                   </span>
-                                  <h4 className="font-headline-sm text-xs sm:text-sm uppercase text-red-400 font-bold">
+                                  <h4 className="font-headline-sm text-xs uppercase text-red-400 font-bold">
                                     En Juego Ahora ({live.length})
                                   </h4>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                                   {live.map((m) => renderScoreboardCard(m, false, true))}
                                 </div>
                               </div>
                             )}
 
-                            {/* Listado de próximos partidos programados ordenados por proximidad */}
                             {scheduled.length === 0 && live.length === 0 ? (
-                              <div className="p-6 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
-                                No hay partidos pendientes en esta categoría. Consulta la pestaña de Finalizados.
+                              <div className="p-5 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
+                                No hay partidos pendientes en esta categoría.
                               </div>
                             ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                                 {scheduled.map((m) => {
                                   const isRefreshing = refreshingMatchIds.has(m.id);
-                                  // Rodear en rojo si es el próximo partido más cercano (y no hay ninguno en vivo) o si fue pulsado desde Inicio
                                   const isClosestRed =
                                     m.id === redHighlightedMatchId || m.id === highlightedMatchId;
 
@@ -1080,7 +1012,6 @@ function PartidosContent() {
                                       }`}
                                     >
                                       <div>
-                                        {/* Cabecera: Jornada, etiqueta Próximo si es el primero, y [Botón Actualizar Icono] + [Icono Casa/Avión] */}
                                         <div className="flex items-center justify-between pb-2 border-b border-white/10 text-xs">
                                           <div className="flex items-center gap-2">
                                             <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold">
@@ -1133,7 +1064,6 @@ function PartidosContent() {
                                           </div>
                                         </div>
 
-                                        {/* Enfrentamiento con escudos sin recuadro */}
                                         <div className="py-3 space-y-2.5">
                                           <div className="flex items-center gap-2.5" title={m.homeTeam}>
                                             <Image
@@ -1170,7 +1100,6 @@ function PartidosContent() {
                                         </div>
                                       </div>
 
-                                      {/* Fecha, Sede y Acciones de SOLO Icono */}
                                       <div className="pt-2.5 border-t border-white/10 space-y-2 text-xs">
                                         <div className="flex items-center justify-between">
                                           <span className="text-tertiary font-semibold">
@@ -1195,7 +1124,6 @@ function PartidosContent() {
                                             </span>
                                           </div>
 
-                                          {/* Botones de acción: SOLO ICONOS */}
                                           <div className="flex items-center gap-1.5 shrink-0">
                                             <a
                                               href={getGoogleCalendarLink(m)}
@@ -1245,17 +1173,16 @@ function PartidosContent() {
                           </div>
                         )}
 
-                        {/* PESTAÑA 2: PARTIDOS FINALIZADOS (Ordenados por proximidad: más reciente primero) */}
+                        {/* PESTAÑA 2: PARTIDOS FINALIZADOS */}
                         {activeSubTab === 'finished' && (
                           <div>
                             {finished.length === 0 ? (
-                              <div className="p-6 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
-                                Aún no se han disputado partidos con acta oficial cerrada en esta categoría.
+                              <div className="p-5 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
+                                Aún no hay partidos finalizados en esta categoría.
                               </div>
                             ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                                 {finished.map((m, idx) =>
-                                  // Rodear en rojo el más reciente si fue pulsado desde Inicio o es el primero de la lista de finalizados cuando no hay pendientes
                                   renderScoreboardCard(
                                     m,
                                     false,
@@ -1272,6 +1199,40 @@ function PartidosContent() {
                 );
               }
             )}
+          </div>
+
+          {/* Fuente Oficial y Leyenda de Iconos (Compacto al final tras el último div de categorías) */}
+          <div className="mt-2 py-2 px-3 bg-surface-container-low/70 border border-white/5 flex flex-wrap items-center justify-between text-[11px] text-tertiary gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+              <span>
+                Fuente oficial: <strong className="text-white/80">FAVB (favoley.net)</strong>
+              </span>
+              <span className="font-mono text-[10px] text-tertiary/60">
+                · {lastSyncTime}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3 text-[11px] font-semibold text-white/90">
+              <span
+                className="flex items-center gap-1"
+                title="Partido jugado en el Pabellón Polideportivo Sergio Scariolo"
+              >
+                <span className="w-5 h-5 flex items-center justify-center bg-primary-container/20 text-primary border border-primary-container/30">
+                  <span className="material-symbols-outlined text-[13px]">home</span>
+                </span>
+                <span>En Casa</span>
+              </span>
+              <span
+                className="flex items-center gap-1"
+                title="Partido jugado fuera de casa (a domicilio)"
+              >
+                <span className="w-5 h-5 flex items-center justify-center bg-white/5 text-tertiary border border-white/10">
+                  <span className="material-symbols-outlined text-[13px]">flight</span>
+                </span>
+                <span>Fuera</span>
+              </span>
+            </div>
           </div>
         </section>
 

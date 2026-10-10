@@ -8,26 +8,12 @@ import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 import HeroMatchesCarousel, { HeroCarouselMatchItem } from '@/components/HeroMatchesCarousel';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function HomePage() {
   const syncedData = await syncFavbData();
   const liveMap = new Map(syncedData.matches.map((m) => [m.id, m]));
-
-  const rawFeatured = store.getFeaturedMatch();
-  const featuredLive = rawFeatured ? liveMap.get(rawFeatured.id) : undefined;
-  const featuredMatch = rawFeatured
-    ? {
-        ...rawFeatured,
-        status: featuredLive?.status ?? rawFeatured.status,
-        homeScore: featuredLive?.homeScore ?? rawFeatured.homeScore,
-        awayScore: featuredLive?.awayScore ?? rawFeatured.awayScore,
-        setScores:
-          featuredLive?.setScores && featuredLive.setScores.length > 0
-            ? featuredLive.setScores
-            : rawFeatured.setScores,
-      }
-    : undefined;
 
   const articles = store.getArticles().slice(0, 3);
   const categories = store.getCategories();
@@ -49,6 +35,23 @@ export default async function HomePage() {
       currentSetScore: live.currentSetScore,
     };
   });
+
+  // Seleccionar el partido destacado entre los partidos EN JUEGO (LIVE) o el PRÓXIMO pendiente (SCHEDULED) más cercano
+  const pendingMatches = matches
+    .filter((m) => m.status === 'LIVE' || m.status === 'SCHEDULED')
+    .sort((a, b) => {
+      if (a.status === 'LIVE' && b.status !== 'LIVE') return -1;
+      if (b.status === 'LIVE' && a.status !== 'LIVE') return 1;
+      const diff = new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime();
+      if (diff !== 0) return diff;
+      const catA = catMap.get(teamMap.get(a.teamId)?.categoryId || '')?.order ?? 99;
+      const catB = catMap.get(teamMap.get(b.teamId)?.categoryId || '')?.order ?? 99;
+      return catA - catB;
+    });
+
+  const featuredMatch = pendingMatches[0];
+  const featuredTeam = featuredMatch ? teamMap.get(featuredMatch.teamId) : undefined;
+  const featuredCat = featuredTeam ? catMap.get(featuredTeam.categoryId) : undefined;
 
   const recentMatches = matches
     .filter((m) => m.status === 'FINISHED')
@@ -96,17 +99,81 @@ export default async function HomePage() {
         <div className="absolute -top-32 left-1/4 w-96 h-96 bg-primary-container/25 rounded-full blur-[140px] pointer-events-none animate-pulse-aura" />
 
         <div className="relative max-w-7xl mx-auto px-4 lg:px-8 pt-2 pb-2 sm:pt-3 sm:pb-4 flex flex-col justify-start w-full">
-          {/* Main Headline */}
-          <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl xl:text-7xl tracking-tight text-on-surface uppercase max-w-3xl leading-[0.95]">
-            PASIÓN, CANTERA <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
-              Y ORGULLO SAMPEDREÑO.
-            </span>
-          </h1>
+          {/* Cabecera Hero + Emblema Oficial "Yo Voley... ¿y tú?" */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+            <div className="max-w-3xl">
+              <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl xl:text-7xl tracking-tight text-on-surface uppercase leading-[0.95]">
+                PASIÓN, CANTERA <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                  Y ORGULLO SAMPEDREÑO.
+                </span>
+              </h1>
 
-          <p className="font-body-lg text-sm sm:text-base lg:text-lg text-tertiary-fixed max-w-2xl mt-2.5 mb-1">
-            Club deportivo formativo volcado en el deporte base, los jóvenes y las familias de San Pedro Alcántara.
-          </p>
+              <p className="font-body-lg text-sm sm:text-base lg:text-lg text-tertiary-fixed max-w-2xl mt-2.5 mb-1">
+                Club deportivo formativo volcado en el deporte base, los jóvenes y San Pedro Alcántara.
+              </p>
+            </div>
+
+            {/* Emblema / Lema Oficial de la Temporada: "Yo Voley... ¿y tú?" (Recreación fiel de RRSS) */}
+            <div
+              className="self-start md:self-center shrink-0 select-none px-4 py-2 sm:px-6 sm:py-3 -rotate-6 transform transition-transform duration-300 hover:-rotate-3"
+              aria-label="Lema oficial: Yo Voley... ¿y tú?"
+            >
+              <div
+                className="flex flex-col items-center leading-none"
+                style={{ fontFamily: 'var(--font-brush), cursive' }}
+              >
+                {/* Línea superior blanca: Yo Voley... */}
+                <span className="text-white text-3xl sm:text-4xl lg:text-5xl tracking-wide drop-shadow-[0_3px_10px_rgba(0,0,0,0.9)]">
+                  Yo Voley...
+                </span>
+
+                {/* Trazo de pincel rojo intenso debajo de Yo Voley... */}
+                <svg
+                  viewBox="0 0 240 22"
+                  className="w-40 sm:w-52 lg:w-60 h-4 sm:h-5 -my-1 overflow-visible"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M4 15 C 65 8, 155 5, 236 3"
+                    stroke="#e10600"
+                    strokeWidth="4.5"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                  <path
+                    d="M14 19 C 80 13, 165 9, 226 7"
+                    stroke="#b80000"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    fill="none"
+                    opacity="0.85"
+                  />
+                </svg>
+
+                {/* Línea inferior roja: ¿y tú? */}
+                <span className="text-[#ff1111] text-4xl sm:text-5xl lg:text-6xl tracking-wide -mt-1 drop-shadow-[0_3px_12px_rgba(225,6,0,0.45)]">
+                  ¿y tú?
+                </span>
+
+                {/* Corazón dibujado a mano en trazo blanco debajo */}
+                <svg
+                  viewBox="0 0 44 42"
+                  className="w-6 h-6 sm:w-7 sm:h-7 mt-1 -ml-4 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M21 37 C 18 32, 6 23, 7 13 C 7.8 7, 13.5 5.5, 17.5 10.5 C 19.2 12.6, 20.4 15.2, 21 17 C 21.8 13.5, 24.5 6.5, 30 6.5 C 35 6.5, 37.5 11.5, 36 17.5 C 34 25.5, 24.5 33, 21 37 Z"
+                    stroke="currentColor"
+                    strokeWidth="2.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
 
           {/* Carrusel Interactivo: Finalizados | Hoy (predeterminado) | Próximos */}
           <HeroMatchesCarousel initialMatches={carouselMatches} todayStr={todayStr} />
@@ -147,7 +214,9 @@ export default async function HomePage() {
                   <div className="flex items-center justify-between pb-4 border-b border-white/5">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[11px] font-bold uppercase tracking-wider">
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                      Próxima Jornada {featuredMatch.round}
+                      {featuredMatch.status === 'LIVE'
+                        ? `En Juego • Jornada ${featuredMatch.round}`
+                        : `Próxima Jornada ${featuredMatch.round}`}
                     </span>
                     <span className="text-xs text-tertiary uppercase">
                       {formatMadridDate(featuredMatch.matchDate)} • {formatMadridTime(featuredMatch.matchDate)}h
@@ -158,7 +227,13 @@ export default async function HomePage() {
                   <div className="py-8 grid grid-cols-5 items-center text-center">
                     {/* Home Team */}
                     <div className="col-span-2 flex flex-col items-center">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high border-2 border-primary-container flex items-center justify-center p-2 mb-3 shadow-md">
+                      <div
+                        className={`w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high flex items-center justify-center p-2 mb-3 shadow-md ${
+                          featuredMatch.isClubHome
+                            ? 'border-2 border-primary-container'
+                            : 'border border-white/10'
+                        }`}
+                      >
                         <Image
                           src={getTeamLogo(featuredMatch.homeTeamName)}
                           alt={featuredMatch.homeTeamName}
@@ -170,18 +245,38 @@ export default async function HomePage() {
                       <h4 className="font-display-xl text-lg sm:text-xl uppercase text-white leading-tight">
                         {featuredMatch.homeTeamName}
                       </h4>
-                      <span className="text-[11px] text-primary uppercase font-bold mt-1">Local</span>
+                      <span
+                        className={`text-[11px] uppercase font-bold mt-1 ${
+                          featuredMatch.isClubHome ? 'text-primary' : 'text-tertiary'
+                        }`}
+                      >
+                        Local
+                      </span>
                     </div>
 
-                    {/* VS Center */}
+                    {/* VS / Live Score Center */}
                     <div className="col-span-1 flex flex-col items-center">
-                      <span className="font-display-xl text-2xl sm:text-3xl text-primary uppercase">VS</span>
-                      <span className="text-[10px] text-tertiary uppercase mt-1">1ª Andaluza</span>
+                      {featuredMatch.status === 'LIVE' ? (
+                        <span className="font-display-xl text-2xl sm:text-3xl text-red-400 uppercase">
+                          {featuredMatch.homeScore ?? 0} - {featuredMatch.awayScore ?? 0}
+                        </span>
+                      ) : (
+                        <span className="font-display-xl text-2xl sm:text-3xl text-primary uppercase">VS</span>
+                      )}
+                      <span className="text-[10px] text-tertiary uppercase mt-1">
+                        {featuredCat?.name || 'Liga FAVB'}
+                      </span>
                     </div>
 
                     {/* Away Team */}
                     <div className="col-span-2 flex flex-col items-center">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high border border-white/10 flex items-center justify-center p-2 mb-3 shadow-md">
+                      <div
+                        className={`w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high flex items-center justify-center p-2 mb-3 shadow-md ${
+                          !featuredMatch.isClubHome
+                            ? 'border-2 border-primary-container'
+                            : 'border border-white/10'
+                        }`}
+                      >
                         <Image
                           src={getTeamLogo(featuredMatch.awayTeamName)}
                           alt={featuredMatch.awayTeamName}
@@ -193,11 +288,17 @@ export default async function HomePage() {
                       <h4 className="font-display-xl text-lg sm:text-xl uppercase text-on-surface leading-tight">
                         {featuredMatch.awayTeamName}
                       </h4>
-                      <span className="text-[11px] text-tertiary uppercase mt-1">Visitante</span>
+                      <span
+                        className={`text-[11px] uppercase font-bold mt-1 ${
+                          !featuredMatch.isClubHome ? 'text-primary' : 'text-tertiary'
+                        }`}
+                      >
+                        Visitante
+                      </span>
                     </div>
                   </div>
 
-                  {/* Venue info & free entry notice */}
+                  {/* Venue info */}
                   <div className="bg-surface-container-lowest p-4 border-l-4 border-primary-container flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-primary text-[20px]">stadium</span>
@@ -205,11 +306,15 @@ export default async function HomePage() {
                         <p className="font-body-sm text-sm font-semibold text-white">
                           {featuredMatch.venueName}
                         </p>
-                        <p className="text-xs text-tertiary">Diseminado Ensanche Sur I, 16S, Marbella (Málaga)</p>
+                        <p className="text-xs text-tertiary">
+                          {featuredMatch.isClubHome
+                            ? 'Diseminado Ensanche Sur I, 16S, Marbella (Málaga)'
+                            : 'Desplazamiento Oficial • Partido Visitante'}
+                        </p>
                       </div>
                     </div>
                     <span className="px-3 py-1 bg-white/10 text-white text-xs font-bold uppercase tracking-wider border border-white/10">
-                      1ª Andaluza Senior
+                      {featuredCat?.name || 'Competición FAVB'}
                     </span>
                   </div>
                 </div>
@@ -217,15 +322,21 @@ export default async function HomePage() {
                 {/* Match Actions */}
                 <div className="pt-6 mt-6 border-t border-white/5 flex flex-wrap items-center justify-between gap-3">
                   <Link
-                    href="/calendario"
+                    href={`/partidos?categoria=${featuredCat?.id || 'cat-senior-fem'}&match=${featuredMatch.id}`}
                     className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary hover:text-white"
                   >
-                    <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-                    Ver en Calendario Oficial
+                    <span className="material-symbols-outlined text-[16px]">sports_volleyball</span>
+                    Ver en Centro de Partidos
                   </Link>
 
                   <a
-                    href={CLUB_INFO.venueMapsUrl}
+                    href={
+                      featuredMatch.isClubHome
+                        ? CLUB_INFO.venueMapsUrl
+                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            `${featuredMatch.venueName} Andalucía`
+                          )}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs text-tertiary hover:text-white uppercase font-semibold"
@@ -251,21 +362,24 @@ export default async function HomePage() {
 
               {recentMatches.map((match) => {
                 const scoreResult = calculateMatchScore(match.setScores);
+                const matchTeam = teamMap.get(match.teamId);
+                const matchCat = matchTeam ? catMap.get(matchTeam.categoryId) : undefined;
                 const getScoreColor = (myVal: number, oppVal: number) => {
                   if (myVal > oppVal) return 'text-emerald-400';
                   if (myVal < oppVal) return 'text-white';
                   return 'text-amber-300';
                 };
                 return (
-                  <div
+                  <Link
                     key={match.id}
-                    className="bg-surface-container-low border border-white/5 hover:border-primary-container/40 p-3.5 sm:p-4 transition-all"
+                    href={`/partidos?categoria=${matchCat?.id || 'cat-senior-fem'}&match=${match.id}`}
+                    className="block bg-surface-container-low border border-white/5 hover:border-primary-container/40 p-3.5 sm:p-4 transition-all"
                   >
                     {/* Cabecera con Jornada, Fecha y Encabezados de Sets formato tenis */}
                     <div className="flex items-center justify-between gap-2 text-[11px] text-tertiary uppercase pb-2 border-b border-white/5">
                       <span className="truncate">
-                        Jornada {match.round} •{' '}
-                        {formatMadridDate(match.matchDate, { day: 'numeric', month: 'short' })}
+                        <strong className="text-primary font-bold">{matchCat?.name || 'FAVB'}</strong> • J{match.round}{' '}
+                        • {formatMadridDate(match.matchDate, { day: 'numeric', month: 'short' })}
                       </span>
 
                       <div className="flex items-center gap-1 shrink-0">
@@ -369,7 +483,7 @@ export default async function HomePage() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

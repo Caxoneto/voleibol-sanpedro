@@ -167,9 +167,22 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 1,
     "firstName": "Marta",
     "lastName": "Sanchez Rosado",
-    "position": "SETTER",
-    "birthYear": 2003,
+    "position": "LIBERO",
+    "birthYear": 2008,
     "heightCm": 173,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
+    "id": "p-team-sf-14",
+    "teamId": "team-sf",
+    "number": 2,
+    "firstName": "Lola",
+    "lastName": "Ríos Osuna",
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2008,
+    "heightCm": 174,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -233,8 +246,21 @@ export const FAVB_PLAYERS: Player[] = [
     "firstName": "Luna",
     "lastName": "Guerrero Dueñas",
     "position": "MIDDLE_BLOCKER",
-    "birthYear": 2004,
+    "birthYear": 2008,
     "heightCm": 176,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
+    "id": "p-team-sf-12",
+    "teamId": "team-sf",
+    "number": 12,
+    "firstName": "Cristina",
+    "lastName": "Millanes Garcia",
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2003,
+    "heightCm": 175,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -272,7 +298,7 @@ export const FAVB_PLAYERS: Player[] = [
     "firstName": "Rocio",
     "lastName": "Valencia Artola",
     "position": "SETTER",
-    "birthYear": 2003,
+    "birthYear": 2008,
     "heightCm": 175,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
@@ -292,13 +318,26 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
+    "id": "p-team-sf-13",
+    "teamId": "team-sf",
+    "number": 18,
+    "firstName": "Elena",
+    "lastName": "Santaella Aranda",
+    "position": "MIDDLE_BLOCKER",
+    "birthYear": 2004,
+    "heightCm": 177,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
     "id": "p-team-sf-11",
     "teamId": "team-sf",
     "number": 20,
     "firstName": "Adriana",
     "lastName": "Megens Marin",
     "position": "OPPOSITE",
-    "birthYear": 2003,
+    "birthYear": 2008,
     "heightCm": 179,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
@@ -1166,11 +1205,11 @@ export const FAVB_PLAYERS: Player[] = [
     "id": "p-team-im-1",
     "teamId": "team-im",
     "number": 1,
-    "firstName": "Jugador",
-    "lastName": "1",
+    "firstName": "Rubén",
+    "lastName": "Bernal Pacheco",
     "position": "SETTER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "birthYear": 2013,
+    "heightCm": 168,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1179,11 +1218,11 @@ export const FAVB_PLAYERS: Player[] = [
     "id": "p-team-im-2",
     "teamId": "team-im",
     "number": 2,
-    "firstName": "Jugador",
-    "lastName": "2",
-    "position": "OPPOSITE",
-    "birthYear": 2012,
-    "heightCm": 175,
+    "firstName": "Antonio",
+    "lastName": "Garcia Gonzalez",
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2014,
+    "heightCm": 164,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1191,12 +1230,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-im-3",
     "teamId": "team-im",
-    "number": 3,
-    "firstName": "Jugador",
-    "lastName": "3",
+    "number": 8,
+    "firstName": "Pablo",
+    "lastName": "Martin Garcia",
     "position": "OUTSIDE_HITTER",
     "birthYear": 2013,
-    "heightCm": 178,
+    "heightCm": 170,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1204,12 +1243,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-im-4",
     "teamId": "team-im",
-    "number": 4,
-    "firstName": "Jugador",
-    "lastName": "4",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "number": 10,
+    "firstName": "Agustín",
+    "lastName": "Benítez Cañizares",
+    "position": "MIDDLE_BLOCKER",
+    "birthYear": 2013,
+    "heightCm": 173,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1217,12 +1256,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-im-5",
     "teamId": "team-im",
-    "number": 5,
-    "firstName": "Jugador",
-    "lastName": "5",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2012,
-    "heightCm": 175,
+    "number": 11,
+    "firstName": "Thiago",
+    "lastName": "Perez Martinez",
+    "position": "OPPOSITE",
+    "birthYear": 2013,
+    "heightCm": 171,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1230,25 +1269,25 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-im-6",
     "teamId": "team-im",
-    "number": 6,
-    "firstName": "Jugador",
-    "lastName": "6",
-    "position": "MIDDLE_BLOCKER",
+    "number": 12,
+    "firstName": "Martin",
+    "lastName": "Moncayo Pérez",
+    "position": "OUTSIDE_HITTER",
     "birthYear": 2013,
-    "heightCm": 178,
+    "heightCm": 172,
     "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
+    "isCaptain": true,
     "isHomegrown": true
   },
   {
     "id": "p-team-im-7",
     "teamId": "team-im",
-    "number": 7,
-    "firstName": "Jugador",
-    "lastName": "7",
-    "position": "LIBERO",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "number": 21,
+    "firstName": "Victor",
+    "lastName": "Fabian Jimenez",
+    "position": "MIDDLE_BLOCKER",
+    "birthYear": 2013,
+    "heightCm": 174,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1256,12 +1295,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-im-8",
     "teamId": "team-im",
-    "number": 8,
-    "firstName": "Jugador",
-    "lastName": "8",
-    "position": "SETTER",
-    "birthYear": 2012,
-    "heightCm": 175,
+    "number": 23,
+    "firstName": "Gabriel",
+    "lastName": "Vidal Enriquez",
+    "position": "LIBERO",
+    "birthYear": 2013,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1269,12 +1308,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-im-9",
     "teamId": "team-im",
-    "number": 9,
-    "firstName": "Jugador",
-    "lastName": "9",
-    "position": "OUTSIDE_HITTER",
+    "number": 77,
+    "firstName": "Alexander",
+    "lastName": "Bauzone",
+    "position": "OPPOSITE",
     "birthYear": 2013,
-    "heightCm": 178,
+    "heightCm": 172,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1282,12 +1321,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-im-10",
     "teamId": "team-im",
-    "number": 10,
-    "firstName": "Jugador",
-    "lastName": "10",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "number": 99,
+    "firstName": "Adrián",
+    "lastName": "Galán Toro",
+    "position": "SETTER",
+    "birthYear": 2014,
+    "heightCm": 165,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1425,12 +1464,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-if-negro-1",
     "teamId": "team-if-negro",
-    "number": 1,
-    "firstName": "Jugadora",
-    "lastName": "1",
+    "number": 2,
+    "firstName": "Atenas",
+    "lastName": "Garcia Soler",
     "position": "SETTER",
-    "birthYear": 2011,
-    "heightCm": 161,
+    "birthYear": 2013,
+    "heightCm": 165,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1438,12 +1477,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-if-negro-2",
     "teamId": "team-if-negro",
-    "number": 2,
-    "firstName": "Jugadora",
-    "lastName": "2",
-    "position": "OPPOSITE",
-    "birthYear": 2012,
-    "heightCm": 164,
+    "number": 3,
+    "firstName": "Celia",
+    "lastName": "Mena Dominguez",
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2013,
+    "heightCm": 167,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1451,12 +1490,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-if-negro-3",
     "teamId": "team-if-negro",
-    "number": 3,
-    "firstName": "Jugadora",
-    "lastName": "3",
-    "position": "OUTSIDE_HITTER",
+    "number": 4,
+    "firstName": "Nora",
+    "lastName": "Pareja Beriguete",
+    "position": "MIDDLE_BLOCKER",
     "birthYear": 2013,
-    "heightCm": 167,
+    "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1464,12 +1503,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-if-negro-4",
     "teamId": "team-if-negro",
-    "number": 4,
-    "firstName": "Jugadora",
-    "lastName": "4",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2011,
-    "heightCm": 161,
+    "number": 7,
+    "firstName": "Valeria",
+    "lastName": "Montero Cantudo",
+    "position": "OPPOSITE",
+    "birthYear": 2013,
+    "heightCm": 168,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1477,23 +1516,10 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-if-negro-5",
     "teamId": "team-if-negro",
-    "number": 5,
-    "firstName": "Jugadora",
-    "lastName": "5",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2012,
-    "heightCm": 164,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-if-negro-6",
-    "teamId": "team-if-negro",
-    "number": 6,
-    "firstName": "Jugadora",
-    "lastName": "6",
-    "position": "MIDDLE_BLOCKER",
+    "number": 8,
+    "firstName": "Jimena",
+    "lastName": "Román Ramirez",
+    "position": "OUTSIDE_HITTER",
     "birthYear": 2013,
     "heightCm": 167,
     "photoUrl": "/images/player-placeholder.svg",
@@ -1501,26 +1527,39 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-if-negro-7",
+    "id": "p-team-if-negro-6",
     "teamId": "team-if-negro",
-    "number": 7,
-    "firstName": "Jugadora",
-    "lastName": "7",
-    "position": "LIBERO",
-    "birthYear": 2011,
-    "heightCm": 161,
+    "number": 9,
+    "firstName": "Camila Noemi",
+    "lastName": "Sanabria Cañete",
+    "position": "MIDDLE_BLOCKER",
+    "birthYear": 2013,
+    "heightCm": 170,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
   },
   {
+    "id": "p-team-if-negro-7",
+    "teamId": "team-if-negro",
+    "number": 10,
+    "firstName": "Julia",
+    "lastName": "Trujillo Ruiz",
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2013,
+    "heightCm": 168,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": true,
+    "isHomegrown": true
+  },
+  {
     "id": "p-team-if-negro-8",
     "teamId": "team-if-negro",
-    "number": 8,
-    "firstName": "Jugadora",
-    "lastName": "8",
-    "position": "SETTER",
-    "birthYear": 2012,
+    "number": 15,
+    "firstName": "Valeria",
+    "lastName": "Nuñez Iglesias",
+    "position": "LIBERO",
+    "birthYear": 2013,
     "heightCm": 164,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
@@ -1529,12 +1568,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-if-negro-9",
     "teamId": "team-if-negro",
-    "number": 9,
-    "firstName": "Jugadora",
-    "lastName": "9",
-    "position": "OUTSIDE_HITTER",
+    "number": 18,
+    "firstName": "Alba",
+    "lastName": "Casado Redondo",
+    "position": "SETTER",
     "birthYear": 2013,
-    "heightCm": 167,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1542,12 +1581,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-if-negro-10",
     "teamId": "team-if-negro",
-    "number": 10,
-    "firstName": "Jugadora",
-    "lastName": "10",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2011,
-    "heightCm": 161,
+    "number": 25,
+    "firstName": "Paula",
+    "lastName": "Hernandez Alvarez",
+    "position": "OPPOSITE",
+    "birthYear": 2013,
+    "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1700,6 +1739,13 @@ export const FAVB_STAFF: Staff[] = [
     "photoUrl": "/images/staff-placeholder.svg"
   },
   {
+    "id": "st-sf-3",
+    "teamId": "team-sf",
+    "name": "Martínez",
+    "role": "ASSISTANT",
+    "photoUrl": "/images/staff-placeholder.svg"
+  },
+  {
     "id": "st-jm-1",
     "teamId": "team-jm",
     "name": "Nadeau",
@@ -1716,7 +1762,7 @@ export const FAVB_STAFF: Staff[] = [
   {
     "id": "st-jf-negro-1",
     "teamId": "team-jf-negro",
-    "name": "Silvia Garrido Ruiz",
+    "name": "Entrenador/a Oficial",
     "role": "HEAD_COACH",
     "photoUrl": "/images/staff-placeholder.svg"
   },
@@ -1744,14 +1790,14 @@ export const FAVB_STAFF: Staff[] = [
   {
     "id": "st-cf-negro-1",
     "teamId": "team-cf-negro",
-    "name": "Elena Moreno Sanz",
+    "name": "Entrenador/a Oficial",
     "role": "HEAD_COACH",
     "photoUrl": "/images/staff-placeholder.svg"
   },
   {
     "id": "st-im-1",
     "teamId": "team-im",
-    "name": "Alberto Gil Sampedro",
+    "name": "Rodríguez",
     "role": "HEAD_COACH",
     "photoUrl": "/images/staff-placeholder.svg"
   },
@@ -1765,14 +1811,21 @@ export const FAVB_STAFF: Staff[] = [
   {
     "id": "st-if-negro-1",
     "teamId": "team-if-negro",
-    "name": "Carmen Ortiz Vega",
+    "name": "Nadeau",
     "role": "HEAD_COACH",
+    "photoUrl": "/images/staff-placeholder.svg"
+  },
+  {
+    "id": "st-if-negro-2",
+    "teamId": "team-if-negro",
+    "name": "Martínez",
+    "role": "ASSISTANT",
     "photoUrl": "/images/staff-placeholder.svg"
   },
   {
     "id": "st-if-blanco-1",
     "teamId": "team-if-blanco",
-    "name": "Miriam Soler Blanco",
+    "name": "Entrenador/a Oficial",
     "role": "HEAD_COACH",
     "photoUrl": "/images/staff-placeholder.svg"
   }
@@ -1803,7 +1856,8 @@ export const FAVB_MATCHES: Match[] = [
         "away": 19
       }
     ],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1055"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1055",
+    "isFeatured": false
   },
   {
     "id": "favb-1061",
@@ -1814,10 +1868,31 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": true,
     "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
     "matchDate": "2026-10-10T16:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
+    "status": "FINISHED",
+    "setScores": [
+      {
+        "home": 25,
+        "away": 22
+      },
+      {
+        "home": 26,
+        "away": 24
+      },
+      {
+        "home": 22,
+        "away": 25
+      },
+      {
+        "home": 15,
+        "away": 25
+      },
+      {
+        "home": 11,
+        "away": 15
+      }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1061",
-    "isFeatured": true
+    "isFeatured": false
   },
   {
     "id": "favb-1067",
@@ -1830,7 +1905,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-17T09:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1067"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1067",
+    "isFeatured": false
   },
   {
     "id": "favb-1073",
@@ -1843,7 +1919,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-25T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1073"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1073",
+    "isFeatured": false
   },
   {
     "id": "favb-1078",
@@ -1856,7 +1933,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-01T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1078"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1078",
+    "isFeatured": false
   },
   {
     "id": "favb-1082",
@@ -1869,7 +1947,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-07T17:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1082"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1082",
+    "isFeatured": false
   },
   {
     "id": "favb-1086",
@@ -1882,7 +1961,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-14T17:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1086"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1086",
+    "isFeatured": false
   },
   {
     "id": "favb-1090",
@@ -1895,7 +1975,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-21T17:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1090"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1090",
+    "isFeatured": false
   },
   {
     "id": "favb-1094",
@@ -1908,7 +1989,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-29T12:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1094"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1094",
+    "isFeatured": false
   },
   {
     "id": "favb-1104",
@@ -1921,7 +2003,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-19T16:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1104"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1104",
+    "isFeatured": false
   },
   {
     "id": "favb-1110",
@@ -1934,7 +2017,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-16T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1110"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1110",
+    "isFeatured": false
   },
   {
     "id": "favb-1116",
@@ -1947,7 +2031,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-24T09:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1116"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1116",
+    "isFeatured": false
   },
   {
     "id": "favb-1122",
@@ -1960,7 +2045,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-30T17:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1122"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1122",
+    "isFeatured": false
   },
   {
     "id": "favb-1128",
@@ -1973,7 +2059,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-07T11:45:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1128"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1128",
+    "isFeatured": false
   },
   {
     "id": "favb-1133",
@@ -1986,7 +2073,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-13T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1133"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1133",
+    "isFeatured": false
   },
   {
     "id": "favb-1137",
@@ -1999,7 +2087,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-21T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1137"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1137",
+    "isFeatured": false
   },
   {
     "id": "favb-1141",
@@ -2012,7 +2101,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-27T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1141"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1141",
+    "isFeatured": false
   },
   {
     "id": "favb-1145",
@@ -2025,7 +2115,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-06T19:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1145"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1145",
+    "isFeatured": false
   },
   {
     "id": "favb-1149",
@@ -2038,7 +2129,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-13T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1149"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1149",
+    "isFeatured": false
   },
   {
     "id": "favb-1159",
@@ -2051,7 +2143,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-04-24T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1159"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1159",
+    "isFeatured": false
   },
   {
     "id": "favb-1476",
@@ -2081,7 +2174,8 @@ export const FAVB_MATCHES: Match[] = [
         "away": 25
       }
     ],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1476"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1476",
+    "isFeatured": false
   },
   {
     "id": "favb-1479",
@@ -2094,7 +2188,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-11T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1479"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1479",
+    "isFeatured": true
   },
   {
     "id": "favb-1481",
@@ -2107,7 +2202,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-16T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1481"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1481",
+    "isFeatured": false
   },
   {
     "id": "favb-1482",
@@ -2120,7 +2216,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1482"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1482",
+    "isFeatured": false
   },
   {
     "id": "favb-1486",
@@ -2133,7 +2230,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1486"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1486",
+    "isFeatured": false
   },
   {
     "id": "favb-1489",
@@ -2146,7 +2244,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-20T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1489"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1489",
+    "isFeatured": false
   },
   {
     "id": "favb-1491",
@@ -2159,7 +2258,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-27T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1491"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1491",
+    "isFeatured": false
   },
   {
     "id": "favb-1492",
@@ -2172,7 +2272,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-11T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1492"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1492",
+    "isFeatured": false
   },
   {
     "id": "favb-1834",
@@ -2198,7 +2299,8 @@ export const FAVB_MATCHES: Match[] = [
         "away": 16
       }
     ],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1834"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1834",
+    "isFeatured": false
   },
   {
     "id": "favb-1837",
@@ -2224,7 +2326,8 @@ export const FAVB_MATCHES: Match[] = [
         "away": 25
       }
     ],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1837"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1837",
+    "isFeatured": false
   },
   {
     "id": "favb-1840",
@@ -2237,7 +2340,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-16T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1840"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1840",
+    "isFeatured": false
   },
   {
     "id": "favb-1843",
@@ -2250,7 +2354,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1843"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1843",
+    "isFeatured": false
   },
   {
     "id": "favb-1846",
@@ -2263,7 +2368,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-06T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1846"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1846",
+    "isFeatured": false
   },
   {
     "id": "favb-1849",
@@ -2276,7 +2382,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1849"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1849",
+    "isFeatured": false
   },
   {
     "id": "favb-1852",
@@ -2289,7 +2396,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-20T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1852"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1852",
+    "isFeatured": false
   },
   {
     "id": "favb-1855",
@@ -2302,7 +2410,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-27T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1855"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1855",
+    "isFeatured": false
   },
   {
     "id": "favb-1858",
@@ -2315,7 +2424,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-11T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1858"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1858",
+    "isFeatured": false
   },
   {
     "id": "favb-1861",
@@ -2328,7 +2438,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-18T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1861"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1861",
+    "isFeatured": false
   },
   {
     "id": "favb-5523",
@@ -2341,7 +2452,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5523"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5523",
+    "isFeatured": false
   },
   {
     "id": "favb-5527",
@@ -2354,7 +2466,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-06T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5527"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5527",
+    "isFeatured": false
   },
   {
     "id": "favb-5531",
@@ -2367,7 +2480,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5531"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5531",
+    "isFeatured": false
   },
   {
     "id": "favb-5534",
@@ -2380,7 +2494,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-20T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5534"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5534",
+    "isFeatured": false
   },
   {
     "id": "favb-5536",
@@ -2393,7 +2508,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-11T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5536"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5536",
+    "isFeatured": false
   },
   {
     "id": "favb-5538",
@@ -2406,7 +2522,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-18T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5538"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5538",
+    "isFeatured": false
   },
   {
     "id": "favb-5544",
@@ -2419,7 +2536,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-22T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5544"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5544",
+    "isFeatured": false
   },
   {
     "id": "favb-5548",
@@ -2432,7 +2550,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-05T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5548"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5548",
+    "isFeatured": false
   },
   {
     "id": "favb-5552",
@@ -2445,7 +2564,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-12T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5552"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5552",
+    "isFeatured": false
   },
   {
     "id": "favb-5555",
@@ -2458,7 +2578,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-05T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5555"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5555",
+    "isFeatured": false
   },
   {
     "id": "favb-5557",
@@ -2471,7 +2592,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-12T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5557"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5557",
+    "isFeatured": false
   },
   {
     "id": "favb-5559",
@@ -2484,7 +2606,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-04-02T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5559"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5559",
+    "isFeatured": false
   },
   {
     "id": "favb-3828",
@@ -2497,7 +2620,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-17T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3828"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3828",
+    "isFeatured": false
   },
   {
     "id": "favb-3831",
@@ -2510,7 +2634,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3831"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3831",
+    "isFeatured": false
   },
   {
     "id": "favb-3834",
@@ -2523,7 +2648,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3834"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3834",
+    "isFeatured": false
   },
   {
     "id": "favb-3837",
@@ -2536,7 +2662,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-27T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3837"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3837",
+    "isFeatured": false
   },
   {
     "id": "favb-3840",
@@ -2549,7 +2676,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-18T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3840"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3840",
+    "isFeatured": false
   },
   {
     "id": "favb-3843",
@@ -2562,7 +2690,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-08T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3843"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3843",
+    "isFeatured": false
   },
   {
     "id": "favb-3846",
@@ -2575,7 +2704,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-15T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3846"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3846",
+    "isFeatured": false
   },
   {
     "id": "favb-3849",
@@ -2588,7 +2718,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-29T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3849"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3849",
+    "isFeatured": false
   },
   {
     "id": "favb-3852",
@@ -2601,7 +2732,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-05T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3852"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3852",
+    "isFeatured": false
   },
   {
     "id": "favb-3855",
@@ -2614,7 +2746,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-19T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3855"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3855",
+    "isFeatured": false
   },
   {
     "id": "favb-4162",
@@ -2640,7 +2773,8 @@ export const FAVB_MATCHES: Match[] = [
         "away": 25
       }
     ],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4162"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4162",
+    "isFeatured": false
   },
   {
     "id": "favb-4166",
@@ -2653,7 +2787,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-16T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4166"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4166",
+    "isFeatured": false
   },
   {
     "id": "favb-4170",
@@ -2666,7 +2801,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4170"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4170",
+    "isFeatured": false
   },
   {
     "id": "favb-4173",
@@ -2679,7 +2815,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4173"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4173",
+    "isFeatured": false
   },
   {
     "id": "favb-4175",
@@ -2692,7 +2829,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-20T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4175"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4175",
+    "isFeatured": false
   },
   {
     "id": "favb-4177",
@@ -2705,7 +2843,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-27T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4177"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4177",
+    "isFeatured": false
   },
   {
     "id": "favb-4183",
@@ -2718,7 +2857,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-18T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4183"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4183",
+    "isFeatured": false
   },
   {
     "id": "favb-4187",
@@ -2731,7 +2871,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-15T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4187"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4187",
+    "isFeatured": false
   },
   {
     "id": "favb-4191",
@@ -2744,7 +2885,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-22T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4191"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4191",
+    "isFeatured": false
   },
   {
     "id": "favb-4194",
@@ -2757,7 +2899,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-29T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4194"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4194",
+    "isFeatured": false
   },
   {
     "id": "favb-4196",
@@ -2770,7 +2913,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-05T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4196"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4196",
+    "isFeatured": false
   },
   {
     "id": "favb-4198",
@@ -2783,7 +2927,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-12T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4198"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4198",
+    "isFeatured": false
   },
   {
     "id": "favb-5719",
@@ -2796,7 +2941,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5719"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5719",
+    "isFeatured": false
   },
   {
     "id": "favb-5723",
@@ -2809,7 +2955,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-06T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5723"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5723",
+    "isFeatured": false
   },
   {
     "id": "favb-5727",
@@ -2822,7 +2969,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5727"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5727",
+    "isFeatured": false
   },
   {
     "id": "favb-5731",
@@ -2835,7 +2983,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-20T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5731"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5731",
+    "isFeatured": false
   },
   {
     "id": "favb-5735",
@@ -2848,7 +2997,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-11T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5735"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5735",
+    "isFeatured": false
   },
   {
     "id": "favb-5739",
@@ -2861,7 +3011,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-18T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5739"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5739",
+    "isFeatured": false
   },
   {
     "id": "favb-5743",
@@ -2874,7 +3025,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-15T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5743"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5743",
+    "isFeatured": false
   },
   {
     "id": "favb-5747",
@@ -2887,7 +3039,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-22T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5747"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5747",
+    "isFeatured": false
   },
   {
     "id": "favb-5751",
@@ -2900,7 +3053,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-05T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5751"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5751",
+    "isFeatured": false
   },
   {
     "id": "favb-5755",
@@ -2913,7 +3067,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-12T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5755"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5755",
+    "isFeatured": false
   },
   {
     "id": "favb-5759",
@@ -2926,7 +3081,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-05T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5759"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5759",
+    "isFeatured": false
   },
   {
     "id": "favb-5763",
@@ -2939,7 +3095,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-12T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5763"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5763",
+    "isFeatured": false
   },
   {
     "id": "favb-5767",
@@ -2952,7 +3109,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-04-02T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5767"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5767",
+    "isFeatured": false
   },
   {
     "id": "favb-5771",
@@ -2965,7 +3123,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-04-09T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5771"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5771",
+    "isFeatured": false
   },
   {
     "id": "favb-3696",
@@ -2976,9 +3135,23 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": false,
     "venueName": "C.E.I.P TIERNO GALVÁN (Rincón de la Victoria)",
     "matchDate": "2026-10-10T16:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3696"
+    "status": "FINISHED",
+    "setScores": [
+      {
+        "home": 17,
+        "away": 25
+      },
+      {
+        "home": 21,
+        "away": 25
+      },
+      {
+        "home": 21,
+        "away": 25
+      }
+    ],
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3696",
+    "isFeatured": false
   },
   {
     "id": "favb-3701",
@@ -2991,7 +3164,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-16T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3701"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3701",
+    "isFeatured": false
   },
   {
     "id": "favb-3706",
@@ -3004,7 +3178,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3706"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3706",
+    "isFeatured": false
   },
   {
     "id": "favb-3711",
@@ -3017,7 +3192,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-06T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3711"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3711",
+    "isFeatured": false
   },
   {
     "id": "favb-3716",
@@ -3030,7 +3206,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3716"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3716",
+    "isFeatured": false
   },
   {
     "id": "favb-3721",
@@ -3043,7 +3220,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-20T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3721"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3721",
+    "isFeatured": false
   },
   {
     "id": "favb-3726",
@@ -3056,7 +3234,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-27T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3726"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3726",
+    "isFeatured": false
   },
   {
     "id": "favb-3731",
@@ -3069,7 +3248,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-11T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3731"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3731",
+    "isFeatured": false
   },
   {
     "id": "favb-3736",
@@ -3082,7 +3262,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-18T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3736"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3736",
+    "isFeatured": false
   },
   {
     "id": "favb-3741",
@@ -3095,7 +3276,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-08T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3741"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3741",
+    "isFeatured": false
   },
   {
     "id": "favb-3746",
@@ -3108,7 +3290,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-15T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3746"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3746",
+    "isFeatured": false
   },
   {
     "id": "favb-3751",
@@ -3121,7 +3304,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-22T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3751"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3751",
+    "isFeatured": false
   },
   {
     "id": "favb-3756",
@@ -3134,7 +3318,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-29T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3756"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3756",
+    "isFeatured": false
   },
   {
     "id": "favb-3761",
@@ -3147,7 +3332,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-05T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3761"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3761",
+    "isFeatured": false
   },
   {
     "id": "favb-3766",
@@ -3160,7 +3346,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-12T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3766"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3766",
+    "isFeatured": false
   },
   {
     "id": "favb-3771",
@@ -3173,7 +3360,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-19T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3771"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3771",
+    "isFeatured": false
   },
   {
     "id": "favb-3776",
@@ -3186,7 +3374,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-05T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3776"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3776",
+    "isFeatured": false
   },
   {
     "id": "favb-3781",
@@ -3199,7 +3388,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-19T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3781"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3781",
+    "isFeatured": false
   },
   {
     "id": "favb-4072",
@@ -3212,7 +3402,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-11T14:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4072"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4072",
+    "isFeatured": false
   },
   {
     "id": "favb-4075",
@@ -3225,7 +3416,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-16T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4075"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4075",
+    "isFeatured": false
   },
   {
     "id": "favb-4077",
@@ -3238,7 +3430,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4077"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4077",
+    "isFeatured": false
   },
   {
     "id": "favb-4079",
@@ -3251,7 +3444,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4079"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4079",
+    "isFeatured": false
   },
   {
     "id": "favb-4083",
@@ -3264,7 +3458,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-20T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4083"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4083",
+    "isFeatured": false
   },
   {
     "id": "favb-4087",
@@ -3277,7 +3472,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-27T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4087"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4087",
+    "isFeatured": false
   },
   {
     "id": "favb-4090",
@@ -3290,7 +3486,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-11T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4090"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4090",
+    "isFeatured": false
   },
   {
     "id": "favb-4092",
@@ -3303,7 +3500,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-18T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4092"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4092",
+    "isFeatured": false
   },
   {
     "id": "favb-4094",
@@ -3316,7 +3514,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-08T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4094"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4094",
+    "isFeatured": false
   },
   {
     "id": "favb-4098",
@@ -3329,7 +3528,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-15T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4098"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4098",
+    "isFeatured": false
   },
   {
     "id": "favb-4100",
@@ -3340,9 +3540,23 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": true,
     "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
     "matchDate": "2026-10-10T14:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4100"
+    "status": "FINISHED",
+    "setScores": [
+      {
+        "home": 10,
+        "away": 25
+      },
+      {
+        "home": 14,
+        "away": 25
+      },
+      {
+        "home": 15,
+        "away": 25
+      }
+    ],
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4100",
+    "isFeatured": false
   },
   {
     "id": "favb-4103",
@@ -3355,7 +3569,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-16T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4103"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4103",
+    "isFeatured": false
   },
   {
     "id": "favb-4105",
@@ -3368,7 +3583,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4105"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4105",
+    "isFeatured": false
   },
   {
     "id": "favb-4106",
@@ -3381,7 +3597,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4106"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4106",
+    "isFeatured": false
   },
   {
     "id": "favb-4110",
@@ -3394,7 +3611,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-27T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4110"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4110",
+    "isFeatured": false
   },
   {
     "id": "favb-4113",
@@ -3407,7 +3625,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-11T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4113"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4113",
+    "isFeatured": false
   },
   {
     "id": "favb-4115",
@@ -3420,7 +3639,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-18T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4115"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4115",
+    "isFeatured": false
   },
   {
     "id": "favb-4116",
@@ -3433,7 +3653,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-08T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4116"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4116",
+    "isFeatured": false
   },
   {
     "id": "favb-5775",
@@ -3446,7 +3667,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-10-23T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5775"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5775",
+    "isFeatured": false
   },
   {
     "id": "favb-5779",
@@ -3459,7 +3681,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-06T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5779"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5779",
+    "isFeatured": false
   },
   {
     "id": "favb-5783",
@@ -3472,7 +3695,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-13T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5783"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5783",
+    "isFeatured": false
   },
   {
     "id": "favb-5787",
@@ -3485,7 +3709,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-11-20T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5787"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5787",
+    "isFeatured": false
   },
   {
     "id": "favb-5791",
@@ -3498,7 +3723,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-11T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5791"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5791",
+    "isFeatured": false
   },
   {
     "id": "favb-5795",
@@ -3511,7 +3737,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2026-12-18T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5795"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5795",
+    "isFeatured": false
   },
   {
     "id": "favb-5799",
@@ -3524,7 +3751,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-15T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5799"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5799",
+    "isFeatured": false
   },
   {
     "id": "favb-5803",
@@ -3537,7 +3765,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-01-22T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5803"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5803",
+    "isFeatured": false
   },
   {
     "id": "favb-5807",
@@ -3550,7 +3779,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-05T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5807"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5807",
+    "isFeatured": false
   },
   {
     "id": "favb-5811",
@@ -3563,7 +3793,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-02-12T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5811"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5811",
+    "isFeatured": false
   },
   {
     "id": "favb-5815",
@@ -3576,7 +3807,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-05T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5815"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5815",
+    "isFeatured": false
   },
   {
     "id": "favb-5819",
@@ -3589,7 +3821,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-03-12T17:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5819"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5819",
+    "isFeatured": false
   },
   {
     "id": "favb-5823",
@@ -3602,7 +3835,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-04-02T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5823"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5823",
+    "isFeatured": false
   },
   {
     "id": "favb-5827",
@@ -3615,7 +3849,8 @@ export const FAVB_MATCHES: Match[] = [
     "matchDate": "2027-04-09T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
-    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5827"
+    "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5827",
+    "isFeatured": false
   }
 ];
 
@@ -3624,948 +3859,948 @@ export const FAVB_STANDINGS: Standings[] = [
     "id": "st-cat-senior-fem-1",
     "categoryId": "cat-senior-fem",
     "teamName": "ACADEMIA VC ISONDA",
-    "played": 1,
-    "won": 1,
+    "points": 6,
+    "played": 2,
+    "won": 2,
     "lost": 0,
-    "setsFor": 3,
+    "setsFor": 6,
     "setsAgainst": 0,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-2",
     "categoryId": "cat-senior-fem",
     "teamName": "AL-BAYYANA ROQUETAS",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
     "setsAgainst": 0,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-3",
     "categoryId": "cat-senior-fem",
     "teamName": "LAS FLORES SEVILLA",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
     "setsAgainst": 1,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-4",
     "categoryId": "cat-senior-fem",
     "teamName": "CV CIUDAD DE MÁLAGA",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
     "setsAgainst": 1,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-5",
     "categoryId": "cat-senior-fem",
     "teamName": "GRANAVOLEY ESPAGRUAS",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
     "setsAgainst": 1,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-6",
     "categoryId": "cat-senior-fem",
     "teamName": "CDU ATARFE 1AF",
-    "played": 1,
-    "won": 0,
+    "points": 2,
+    "played": 2,
+    "won": 1,
     "lost": 1,
-    "setsFor": 1,
-    "setsAgainst": 3,
-    "points": 0,
+    "setsFor": 4,
+    "setsAgainst": 5,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-7",
     "categoryId": "cat-senior-fem",
-    "teamName": "AKUMAL SPORT NUTRITION CVSA",
-    "played": 1,
+    "teamName": "VOLEIBOL SAN PEDRO",
+    "points": 1,
+    "played": 2,
     "won": 0,
-    "lost": 1,
-    "setsFor": 1,
-    "setsAgainst": 3,
-    "points": 0,
-    "isCurrentClub": false
+    "lost": 2,
+    "setsFor": 2,
+    "setsAgainst": 6,
+    "isCurrentClub": true
   },
   {
     "id": "st-cat-senior-fem-8",
     "categoryId": "cat-senior-fem",
-    "teamName": "FUNDACIÓN CAJASOL ANDALUCÍA 1AF",
+    "teamName": "AKUMAL SPORT NUTRITION CVSA",
+    "points": 0,
     "played": 1,
     "won": 0,
     "lost": 1,
     "setsFor": 1,
     "setsAgainst": 3,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-9",
     "categoryId": "cat-senior-fem",
-    "teamName": "SIERRA ELVIRA",
+    "teamName": "FUNDACIÓN CAJASOL ANDALUCÍA 1AF",
+    "points": 0,
     "played": 1,
     "won": 0,
     "lost": 1,
-    "setsFor": 0,
+    "setsFor": 1,
     "setsAgainst": 3,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-10",
     "categoryId": "cat-senior-fem",
-    "teamName": "VOLEIBOL SAN PEDRO",
+    "teamName": "3STEVOLEY AIRZONE",
+    "points": 0,
     "played": 1,
     "won": 0,
     "lost": 1,
     "setsFor": 0,
     "setsAgainst": 3,
-    "points": 0,
-    "isCurrentClub": true
+    "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-11",
     "categoryId": "cat-senior-fem",
-    "teamName": "3STEVOLEY AIRZONE",
-    "played": 0,
-    "won": 0,
-    "lost": 0,
-    "setsFor": 0,
-    "setsAgainst": 0,
+    "teamName": "SIERRA ELVIRA",
     "points": 0,
+    "played": 1,
+    "won": 0,
+    "lost": 1,
+    "setsFor": 0,
+    "setsAgainst": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-masc-1",
     "categoryId": "cat-juvenil-masc",
-    "teamName": "FUENGIROLA CV A",
+    "teamName": "CARTAMA",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
-    "setsAgainst": 1,
-    "points": 3,
+    "setsAgainst": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-masc-2",
     "categoryId": "cat-juvenil-masc",
-    "teamName": "INTER PLAYAS",
+    "teamName": "FUENGIROLA CV A",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
     "setsAgainst": 1,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-masc-3",
     "categoryId": "cat-juvenil-masc",
-    "teamName": "UDA BENALMADENA",
-    "played": 1,
-    "won": 0,
+    "teamName": "INTER PLAYAS",
+    "points": 3,
+    "played": 2,
+    "won": 1,
     "lost": 1,
-    "setsFor": 1,
-    "setsAgainst": 3,
-    "points": 0,
+    "setsFor": 3,
+    "setsAgainst": 4,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-masc-4",
     "categoryId": "cat-juvenil-masc",
-    "teamName": "VOLEIBOL SAN PEDRO",
+    "teamName": "UDA BENALMADENA",
+    "points": 0,
     "played": 1,
     "won": 0,
     "lost": 1,
     "setsFor": 1,
     "setsAgainst": 3,
-    "points": 0,
-    "isCurrentClub": true
+    "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-masc-5",
     "categoryId": "cat-juvenil-masc",
-    "teamName": "CARTAMA",
-    "played": 0,
-    "won": 0,
-    "lost": 0,
-    "setsFor": 0,
-    "setsAgainst": 0,
+    "teamName": "VOLEIBOL SAN PEDRO",
     "points": 0,
-    "isCurrentClub": false
+    "played": 1,
+    "won": 0,
+    "lost": 1,
+    "setsFor": 1,
+    "setsAgainst": 3,
+    "isCurrentClub": true
   },
   {
     "id": "st-cat-juvenil-fem-rojo-1",
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "COSTA DEL VOLEY ROSA",
+    "points": 6,
     "played": 2,
     "won": 2,
     "lost": 0,
     "setsFor": 6,
     "setsAgainst": 0,
-    "points": 6,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-rojo-2",
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "CARTAMA AZUL",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
     "setsAgainst": 0,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-rojo-3",
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "INTER PLAYAS A",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
     "setsAgainst": 0,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-rojo-4",
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "NUEVA OLA",
+    "points": 2,
     "played": 2,
     "won": 1,
     "lost": 1,
     "setsFor": 3,
     "setsAgainst": 5,
-    "points": 2,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-rojo-5",
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "LA VEGA VOLEY",
+    "points": 1,
     "played": 2,
     "won": 0,
     "lost": 2,
     "setsFor": 2,
     "setsAgainst": 6,
-    "points": 1,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-rojo-6",
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "VOLEIBOL SAN PEDRO ROJO",
+    "points": 0,
     "played": 2,
     "won": 0,
     "lost": 2,
     "setsFor": 0,
     "setsAgainst": 6,
-    "points": 0,
     "isCurrentClub": true
   },
   {
     "id": "st-cat-juvenil-fem-negro-1",
     "categoryId": "cat-juvenil-fem-negro",
     "teamName": "3STEVOLEY B",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-negro-2",
     "categoryId": "cat-juvenil-fem-negro",
     "teamName": "ALHAURÍN DE LA TORRE",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-negro-3",
     "categoryId": "cat-juvenil-fem-negro",
     "teamName": "CEV JUVENIL",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-negro-4",
     "categoryId": "cat-juvenil-fem-negro",
     "teamName": "FUENGIROLA CV B",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-negro-5",
     "categoryId": "cat-juvenil-fem-negro",
     "teamName": "INTER PLAYAS C",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-negro-6",
     "categoryId": "cat-juvenil-fem-negro",
     "teamName": "LA CORACHA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-juvenil-fem-negro-7",
     "categoryId": "cat-juvenil-fem-negro",
     "teamName": "VOLEIBOL SAN PEDRO NEGRO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": true
   },
   {
     "id": "st-cat-cadete-masc-1",
     "categoryId": "cat-cadete-masc",
     "teamName": "3STEVOLEY",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-masc-2",
     "categoryId": "cat-cadete-masc",
     "teamName": "ALHAURÍN DE LA TORRE A",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-masc-3",
     "categoryId": "cat-cadete-masc",
     "teamName": "CV PIZARRA LA FUENSANTA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-masc-4",
     "categoryId": "cat-cadete-masc",
     "teamName": "UDA BENALMADENA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-masc-5",
     "categoryId": "cat-cadete-masc",
     "teamName": "UNION MALAGUEÑA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-masc-6",
     "categoryId": "cat-cadete-masc",
     "teamName": "VOLEIBOL SAN PEDRO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": true
   },
   {
     "id": "st-cat-cadete-fem-rojo-1",
     "categoryId": "cat-cadete-fem-rojo",
     "teamName": "CV PIZARRA LA FUENSANTA",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
     "setsAgainst": 0,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-rojo-2",
     "categoryId": "cat-cadete-fem-rojo",
     "teamName": "VOLEIBOL SAN PEDRO ROJO",
+    "points": 0,
     "played": 1,
     "won": 0,
     "lost": 1,
     "setsFor": 0,
     "setsAgainst": 3,
-    "points": 0,
     "isCurrentClub": true
   },
   {
     "id": "st-cat-cadete-fem-rojo-3",
     "categoryId": "cat-cadete-fem-rojo",
     "teamName": "3STEVOLEY A",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-rojo-4",
     "categoryId": "cat-cadete-fem-rojo",
     "teamName": "CARTAMA BLANCO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-rojo-5",
     "categoryId": "cat-cadete-fem-rojo",
     "teamName": "FUENGIROLA CV A",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-rojo-6",
     "categoryId": "cat-cadete-fem-rojo",
     "teamName": "NUEVA OLA A",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-rojo-7",
     "categoryId": "cat-cadete-fem-rojo",
     "teamName": "UDA BENALMADENA A",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-negro-1",
     "categoryId": "cat-cadete-fem-negro",
     "teamName": "3STEVOLEY C",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-negro-2",
     "categoryId": "cat-cadete-fem-negro",
     "teamName": "C.V. CIUDAD DE MÁLAGA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-negro-3",
     "categoryId": "cat-cadete-fem-negro",
     "teamName": "CADETE BLANCO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-negro-4",
     "categoryId": "cat-cadete-fem-negro",
     "teamName": "FUENGIROLA CV D",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-negro-5",
     "categoryId": "cat-cadete-fem-negro",
     "teamName": "INTER PLAYAS B",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-negro-6",
     "categoryId": "cat-cadete-fem-negro",
     "teamName": "LA CORACHA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-negro-7",
     "categoryId": "cat-cadete-fem-negro",
     "teamName": "SOHO MALAGA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-negro-8",
     "categoryId": "cat-cadete-fem-negro",
     "teamName": "VOLEIBOL SAN PEDRO NEGRO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": true
   },
   {
     "id": "st-cat-infantil-masc-1",
     "categoryId": "cat-infantil-masc",
     "teamName": "CV PIZARRA LA FUENSANTA AZUL",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
     "setsAgainst": 0,
-    "points": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-masc-2",
     "categoryId": "cat-infantil-masc",
-    "teamName": "CV PIZARRA LA FUENSANTA BLANCO",
+    "teamName": "VOLEIBOL SAN PEDRO",
+    "points": 3,
     "played": 1,
-    "won": 0,
-    "lost": 1,
-    "setsFor": 0,
-    "setsAgainst": 3,
-    "points": 0,
-    "isCurrentClub": false
+    "won": 1,
+    "lost": 0,
+    "setsFor": 3,
+    "setsAgainst": 0,
+    "isCurrentClub": true
   },
   {
     "id": "st-cat-infantil-masc-3",
     "categoryId": "cat-infantil-masc",
     "teamName": "3STEVOLEY",
-    "played": 0,
-    "won": 0,
-    "lost": 0,
-    "setsFor": 0,
-    "setsAgainst": 0,
     "points": 0,
+    "played": 1,
+    "won": 0,
+    "lost": 1,
+    "setsFor": 0,
+    "setsAgainst": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-masc-4",
     "categoryId": "cat-infantil-masc",
-    "teamName": "ALHAURÍN DE LA TORRE",
-    "played": 0,
-    "won": 0,
-    "lost": 0,
-    "setsFor": 0,
-    "setsAgainst": 0,
+    "teamName": "CV PIZARRA LA FUENSANTA BLANCO",
     "points": 0,
+    "played": 1,
+    "won": 0,
+    "lost": 1,
+    "setsFor": 0,
+    "setsAgainst": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-masc-5",
     "categoryId": "cat-infantil-masc",
-    "teamName": "CARTAMA",
+    "teamName": "ALHAURÍN DE LA TORRE",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-masc-6",
     "categoryId": "cat-infantil-masc",
-    "teamName": "COSTA DEL VOLEY",
+    "teamName": "CARTAMA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-masc-7",
     "categoryId": "cat-infantil-masc",
-    "teamName": "FUENGIROLA CV",
+    "teamName": "COSTA DEL VOLEY",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-masc-8",
     "categoryId": "cat-infantil-masc",
-    "teamName": "NUEVA OLA",
+    "teamName": "FUENGIROLA CV",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-masc-9",
     "categoryId": "cat-infantil-masc",
-    "teamName": "UDA BENALMADENA A",
+    "teamName": "NUEVA OLA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-masc-10",
     "categoryId": "cat-infantil-masc",
-    "teamName": "VOLEIBOL SAN PEDRO",
+    "teamName": "UDA BENALMADENA A",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
-    "isCurrentClub": true
+    "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-rojo-1",
     "categoryId": "cat-infantil-fem-rojo",
     "teamName": "3STEVOLEY A",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-rojo-2",
     "categoryId": "cat-infantil-fem-rojo",
     "teamName": "CARTAMA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-rojo-3",
     "categoryId": "cat-infantil-fem-rojo",
     "teamName": "COSTA DEL VOLEY ROSA (ORO)",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-rojo-4",
     "categoryId": "cat-infantil-fem-rojo",
     "teamName": "FORVOLEY TORREMOLINOS",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-rojo-5",
     "categoryId": "cat-infantil-fem-rojo",
     "teamName": "UNION MALAGUEÑA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-rojo-6",
     "categoryId": "cat-infantil-fem-rojo",
     "teamName": "VOLEIBOL SAN PEDRO ROJO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": true
   },
   {
     "id": "st-cat-infantil-fem-negro-1",
     "categoryId": "cat-infantil-fem-negro",
-    "teamName": "CV PIZARRA LA FUENSANTA AZUL",
-    "played": 0,
-    "won": 0,
+    "teamName": "FUENGIROLA CV A",
+    "points": 3,
+    "played": 1,
+    "won": 1,
     "lost": 0,
-    "setsFor": 0,
+    "setsFor": 3,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-negro-2",
     "categoryId": "cat-infantil-fem-negro",
-    "teamName": "FUENGIROLA CV A",
-    "played": 0,
-    "won": 0,
+    "teamName": "MIJAS VOLEY AZUL",
+    "points": 3,
+    "played": 1,
+    "won": 1,
     "lost": 0,
-    "setsFor": 0,
-    "setsAgainst": 0,
-    "points": 0,
+    "setsFor": 3,
+    "setsAgainst": 1,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-negro-3",
     "categoryId": "cat-infantil-fem-negro",
-    "teamName": "MIJAS VOLEY AZUL",
-    "played": 0,
-    "won": 0,
-    "lost": 0,
-    "setsFor": 0,
-    "setsAgainst": 0,
+    "teamName": "UDA BENALMADENA A",
     "points": 0,
+    "played": 1,
+    "won": 0,
+    "lost": 1,
+    "setsFor": 1,
+    "setsAgainst": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-negro-4",
     "categoryId": "cat-infantil-fem-negro",
-    "teamName": "UDA BENALMADENA A",
-    "played": 0,
-    "won": 0,
-    "lost": 0,
-    "setsFor": 0,
-    "setsAgainst": 0,
+    "teamName": "VOLEIBOL SAN PEDRO NEGRO",
     "points": 0,
-    "isCurrentClub": false
+    "played": 1,
+    "won": 0,
+    "lost": 1,
+    "setsFor": 0,
+    "setsAgainst": 3,
+    "isCurrentClub": true
   },
   {
     "id": "st-cat-infantil-fem-negro-5",
     "categoryId": "cat-infantil-fem-negro",
-    "teamName": "VOLEIBOL SAN PEDRO NEGRO",
+    "teamName": "CV PIZARRA LA FUENSANTA AZUL",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
-    "isCurrentClub": true
+    "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-blanco-1",
     "categoryId": "cat-infantil-fem-blanco",
     "teamName": "AD ASUNCIÓN",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-blanco-2",
     "categoryId": "cat-infantil-fem-blanco",
     "teamName": "CLUB NERJA ATLETISMO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-blanco-3",
     "categoryId": "cat-infantil-fem-blanco",
     "teamName": "CV PIZARRA LA FUENSANTA BLANCO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-blanco-4",
     "categoryId": "cat-infantil-fem-blanco",
     "teamName": "EMV ALH.GRANDE",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-blanco-5",
     "categoryId": "cat-infantil-fem-blanco",
     "teamName": "INFANTIL BLANCO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-blanco-6",
     "categoryId": "cat-infantil-fem-blanco",
     "teamName": "INTER PLAYAS",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-blanco-7",
     "categoryId": "cat-infantil-fem-blanco",
     "teamName": "LA VEGA",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-blanco-8",
     "categoryId": "cat-infantil-fem-blanco",
     "teamName": "VOLEIBOL SAN PEDRO BLANCO",
+    "points": 0,
     "played": 0,
     "won": 0,
     "lost": 0,
     "setsFor": 0,
     "setsAgainst": 0,
-    "points": 0,
     "isCurrentClub": true
   }
 ];

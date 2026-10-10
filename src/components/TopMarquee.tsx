@@ -1,10 +1,24 @@
 'use client';
 
+import { INITIAL_MATCHES } from '@/lib/data-store';
+import { formatMadridDate, formatMadridTime } from '@/lib/date-utils';
+
 export default function TopMarquee() {
+  const nextPending = INITIAL_MATCHES.filter((m) => m.status !== 'FINISHED').sort(
+    (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
+  )[0];
+
+  const nextMatchText = nextPending
+    ? `PRÓXIMO PARTIDO: ${nextPending.homeTeamName} vs. ${nextPending.awayTeamName} — ${formatMadridDate(
+        nextPending.matchDate,
+        { weekday: 'long', day: 'numeric', month: 'short' }
+      )} ${formatMadridTime(nextPending.matchDate)}h (${nextPending.venueName})`
+    : 'TEMPORADA OFICIAL 2026 / 2027 EN MARCHA';
+
   const marqueeItems = [
-    'PRÓXIMO PARTIDO: VOLEIBOL SAN PEDRO vs. CDU ATARFE — Sábado 18:00h en Pabellón Polideportivo Sergio Scariolo (1ª Andaluza)',
+    'YO VOLEY... ¿Y TÚ? ♡',
+    nextMatchText,
     '¡VEN A ANIMAR A NUESTRA CANTERA Y PRIMER EQUIPO!',
-    'CLUB ADSCRITO A LA FEDERACIÓN ANDALUZA DE VOLEIBOL (FAVB)',
     'PASIÓN, CANTERA Y ORGULLO SAMPEDREÑO',
     '#VOLEIBOLSAMPEDRO',
   ];

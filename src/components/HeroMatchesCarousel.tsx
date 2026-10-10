@@ -87,12 +87,16 @@ export default function HeroMatchesCarousel({
     }
   };
 
-  // Polling automático cada 45 segundos para partidos en vivo o programados de hoy
+  // Sincronización inmediata al montar + polling automático cada 45 segundos para partidos en vivo o de hoy
   useEffect(() => {
     const activeOrToday = matches.filter(
       (m) => m.status === 'LIVE' || (m.status === 'SCHEDULED' && m.dateStr === todayStr)
     );
     if (activeOrToday.length === 0) return;
+
+    activeOrToday.forEach((m) => {
+      refreshSingleMatch(m.id, true);
+    });
 
     const timer = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
@@ -103,7 +107,8 @@ export default function HeroMatchesCarousel({
     }, 45000);
 
     return () => clearInterval(timer);
-  }, [matches, todayStr]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayStr]);
 
   // 1. Pestaña "Finalizados": partidos de hoy finalizados + completando con anteriores hasta 4
   const finishedMatches = useMemo(() => {

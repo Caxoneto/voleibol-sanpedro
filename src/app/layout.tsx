@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Anton, Space_Grotesk } from 'next/font/google';
+import { Anton, Space_Grotesk, Caveat_Brush } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -17,6 +17,13 @@ const spaceGrotesk = Space_Grotesk({
   weight: ['400', '500', '600', '700'],
   subsets: ['latin'],
   variable: '--font-space-grotesk',
+  display: 'swap',
+});
+
+const caveatBrush = Caveat_Brush({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-brush',
   display: 'swap',
 });
 
@@ -44,7 +51,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`dark scroll-smooth ${anton.variable} ${spaceGrotesk.variable}`}>
+    <html
+      lang="es"
+      className={`dark scroll-smooth ${anton.variable} ${spaceGrotesk.variable} ${caveatBrush.variable}`}
+    >
       <head>
         <link
           rel="stylesheet"
