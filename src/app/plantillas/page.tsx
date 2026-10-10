@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import {
   INITIAL_CATEGORIES,
@@ -9,12 +9,31 @@ import {
   INITIAL_STAFF,
   CLUB_INFO,
 } from '@/lib/data-store';
-import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS } from '@/lib/types';
+import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS, Player, Staff } from '@/lib/types';
 import SponsorBanner from '@/components/SponsorBanner';
 
 export default function PlantillasPage() {
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('senior-femenino');
   const [selectedPosition, setSelectedPosition] = useState<Position | 'ALL'>('ALL');
+  const [players, setPlayers] = useState<Player[]>(INITIAL_PLAYERS);
+  const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF);
+
+  // Sincronizar plantillas oficiales de favoley.net en tiempo real
+  useEffect(() => {
+    fetch('/api/favb/rosters')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.players) && data.players.length > 0) {
+          setPlayers(data.players);
+        }
+        if (data.success && Array.isArray(data.staff) && data.staff.length > 0) {
+          setStaffList(data.staff);
+        }
+      })
+      .catch(() => {
+        // Mantener plantillas base consolidadas
+      });
+  }, []);
 
   // Encontrar la categoría seleccionada
   const activeCategory = useMemo(() => {
@@ -31,17 +50,17 @@ export default function PlantillasPage() {
 
   // Filtrar jugadores por equipo y posición
   const filteredPlayers = useMemo(() => {
-    return INITIAL_PLAYERS.filter((player) => {
+    return players.filter((player) => {
       const matchTeam = player.teamId === activeTeam.id;
       const matchPos = selectedPosition === 'ALL' || player.position === selectedPosition;
       return matchTeam && matchPos;
     });
-  }, [activeTeam, selectedPosition]);
+  }, [players, activeTeam, selectedPosition]);
 
   // Filtrar cuerpo técnico
   const staffMembers = useMemo(() => {
-    return INITIAL_STAFF.filter((s) => s.teamId === activeTeam.id);
-  }, [activeTeam]);
+    return staffList.filter((s) => s.teamId === activeTeam.id);
+  }, [staffList, activeTeam]);
 
   const positionFilters: { label: string; value: Position | 'ALL' }[] = [
     { label: 'Todos', value: 'ALL' },

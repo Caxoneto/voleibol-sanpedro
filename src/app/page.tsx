@@ -287,16 +287,14 @@ export default async function HomePage() {
                     <div className="pt-2.5 space-y-2">
                       {/* Equipo Local */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <div className="w-5 h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
-                            <Image
-                              src={getTeamLogo(match.homeTeamName)}
-                              alt={match.homeTeamName}
-                              width={18}
-                              height={18}
-                              className="object-contain max-h-full max-w-full"
-                            />
-                          </div>
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <Image
+                            src={getTeamLogo(match.homeTeamName)}
+                            alt={match.homeTeamName}
+                            width={32}
+                            height={32}
+                            className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                          />
                           <span
                             className={`text-xs sm:text-sm font-semibold truncate ${
                               match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'
@@ -310,7 +308,7 @@ export default async function HomePage() {
                           {match.setScores.map((set, sIdx) => (
                             <span
                               key={`recent-home-${sIdx}`}
-                              className={`w-6 sm:w-7 py-0.5 text-center font-mono text-xs sm:text-sm font-extrabold leading-none bg-white/[0.04] rounded-[2px] ${getScoreColor(
+                              className={`w-7 sm:w-7.5 h-7 flex items-center justify-center font-mono text-xs sm:text-sm font-extrabold leading-none bg-white/[0.04] rounded-[2px] ${getScoreColor(
                                 set.home,
                                 set.away
                               )}`}
@@ -319,7 +317,7 @@ export default async function HomePage() {
                             </span>
                           ))}
                           <span
-                            className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 py-0.5 text-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.07] ${getScoreColor(
+                            className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getScoreColor(
                               scoreResult.homeSetsWon,
                               scoreResult.awaySetsWon
                             )}`}
@@ -331,16 +329,14 @@ export default async function HomePage() {
 
                       {/* Equipo Visitante */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <div className="w-5 h-5 bg-surface-container-high border border-white/10 p-0.5 shrink-0 flex items-center justify-center">
-                            <Image
-                              src={getTeamLogo(match.awayTeamName)}
-                              alt={match.awayTeamName}
-                              width={18}
-                              height={18}
-                              className="object-contain max-h-full max-w-full"
-                            />
-                          </div>
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <Image
+                            src={getTeamLogo(match.awayTeamName)}
+                            alt={match.awayTeamName}
+                            width={32}
+                            height={32}
+                            className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                          />
                           <span
                             className={`text-xs sm:text-sm font-semibold truncate ${
                               !match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'

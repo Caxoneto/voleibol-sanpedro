@@ -1,5 +1,6 @@
 /**
  * Mapeo oficial y resolución de escudos e iniciales de clubes federados (FAVB)
+ * Las iniciales corresponden exactamente a la nomenclatura oficial que usa favoley.net dentro de cada partido.
  */
 
 export const TEAM_LOGOS_MAP: Record<string, string> = {
@@ -63,53 +64,56 @@ export const TEAM_LOGOS_MAP: Record<string, string> = {
   'CLUB NERJA ATLETISMO': '/images/teams/club-nerja.png',
 };
 
+/**
+ * Nomenclatura oficial de iniciales de la FAVB (extraída de portal-marcador-parcial en favoley.net)
+ */
 export const TEAM_INITIALS_MAP: Record<string, string> = {
-  // San Pedro
+  // San Pedro (en favoley.net todos los equipos del club llevan la sigla oficial VSP)
   'VOLEIBOL SAN PEDRO': 'VSP',
-  'VOLEIBOL SAN PEDRO ROJO': 'SPR',
-  'VOLEIBOL SAN PEDRO NEGRO': 'SPN',
-  'VOLEIBOL SAN PEDRO BLANCO': 'SPB',
+  'VOLEIBOL SAN PEDRO ROJO': 'VSP',
+  'VOLEIBOL SAN PEDRO NEGRO': 'VSP',
+  'VOLEIBOL SAN PEDRO BLANCO': 'VSP',
 
-  // Rivales oficiales FAVB
-  'ACADEMIA VC ISONDA': 'AVI',
-  'CDU ATARFE': 'ATA',
-  'CV CIUDAD DE MÁLAGA': 'CCM',
-  'C.V. CIUDAD DE MÁLAGA': 'CCM',
-  'SIERRA ELVIRA': 'SEL',
+  // Rivales oficiales según nomenclatura interna de favoley.net
+  'ACADEMIA VC ISONDA': 'AVC',
+  'CDU ATARFE': 'CDU',
+  'CV CIUDAD DE MÁLAGA': 'CDM',
+  'C.V. CIUDAD DE MÁLAGA': 'CDM',
+  'SIERRA ELVIRA': 'SIE',
   'FUNDACIÓN CAJASOL ANDALUCÍA': 'FCA',
   'LAS FLORES SEVILLA': 'LFS',
-  'AL-BAYYANA ROQUETAS': 'ABR',
-  'CORPORE SANO CVSA': 'CSC',
-  'GRANAVOLEY ESPAGRUAS': 'GVE',
+  'AL-BAYYANA ROQUETAS': 'ALB',
+  'CORPORE SANO CVSA': 'CVS',
+  'GRANAVOLEY ESPAGRUAS': 'GRV',
   '3STEVOLEY': '3ST',
-  '3STEVOLEY A': '3SA',
+  '3STEVOLEY A': '3ST',
   '3STEVOLEY AIRZONE': '3ST',
-  '3STEVOLEY B': '3SB',
-  '3STEVOLEY C': '3SC',
-  'FUENGIROLA CV': 'FCV',
-  'FUENGIROLA CV A': 'FCA',
-  'FUENGIROLA CV B': 'FCB',
-  'FUENGIROLA CV D': 'FCD',
-  'UDA BENALMADENA': 'UDB',
-  'UDA BENALMADENA A': 'UDB',
+  '3STEVOLEY B': '3ST',
+  '3STEVOLEY C': '3ST',
+  'FUENGIROLA CV': 'CVF',
+  'FUENGIROLA CV A': 'CVF',
+  'FUENGIROLA CV B': 'CVF',
+  'FUENGIROLA CV D': 'CVF',
+  'UDA BENALMADENA': 'UDA',
+  'UDA BENALMADENA A': 'UDA',
   'CARTAMA': 'CAR',
-  'CARTAMA AZUL': 'CAZ',
-  'CARTAMA BLANCO': 'CBL',
-  'INTER PLAYAS': 'IPL',
+  'CARTAMA AZUL': 'CAR',
+  'CARTAMA BLANCO': 'CAR',
+  'INTER PLAYAS': 'IPA',
   'INTER PLAYAS A': 'IPA',
   'INTER PLAYAS B': 'IPB',
   'INTER PLAYAS C': 'IPC',
-  'LA VEGA': 'LVG',
+  'LA VEGA': 'LVV',
   'LA VEGA VOLEY': 'LVV',
-  'NUEVA OLA': 'NOL',
-  'NUEVA OLA A': 'NOA',
-  'ALHAURÍN DE LA TORRE': 'ALT',
-  'ALHAURÍN DE LA TORRE A': 'ALT',
+  'NUEVA OLA': 'OLA',
+  'NUEVA OLA A': 'OLA',
+  'ALHAURÍN DE LA TORRE': 'ADT',
+  'ALHAURÍN DE LA TORRE A': 'ADT',
   'LA CORACHA': 'COR',
   'CEV JUVENIL': 'CEV',
   'CV PIZARRA LA FUENSANTA': 'PIZ',
-  'CV PIZARRA LA FUENSANTA AZUL': 'PZA',
-  'CV PIZARRA LA FUENSANTA BLANCO': 'PZB',
+  'CV PIZARRA LA FUENSANTA AZUL': 'PIA',
+  'CV PIZARRA LA FUENSANTA BLANCO': 'PIB',
   'UNION MALAGUEÑA': 'UMA',
   'CADETE BLANCO': 'CBL',
   'INFANTIL BLANCO': 'IBL',
@@ -119,16 +123,16 @@ export const TEAM_INITIALS_MAP: Record<string, string> = {
   'COSTA DEL VOLEY': 'CDV',
   'COSTA DEL VOLEY ROSA': 'CDV',
   'COSTA DEL VOLEY ROSA (ORO)': 'CDV',
-  'MIJAS VOLEY AZUL': 'MVA',
+  'MIJAS VOLEY AZUL': 'MIV',
   'AD ASUNCIÓN': 'ADA',
   'CLUB NERJA ATLETISMO': 'CNA',
 };
 
 /**
- * Devuelve las 3 iniciales identificativas del club
+ * Devuelve las 3 iniciales oficiales según la nomenclatura de la FAVB (favoley.net)
  */
 export function getTeamInitials(teamName?: string | null): string {
-  if (!teamName) return 'CLB';
+  if (!teamName) return 'FAV';
   const cleanName = teamName.trim().toUpperCase();
 
   if (TEAM_INITIALS_MAP[cleanName]) {
@@ -143,23 +147,31 @@ export function getTeamInitials(teamName?: string | null): string {
     }
   }
 
-  if (norm.includes('SAN PEDRO')) {
-    if (norm.includes('ROJO')) return 'SPR';
-    if (norm.includes('NEGRO')) return 'SPN';
-    if (norm.includes('BLANCO')) return 'SPB';
-    return 'VSP';
-  }
+  if (norm.includes('SAN PEDRO')) return 'VSP';
+  if (norm.includes('ISONDA')) return 'AVC';
   if (norm.includes('COSTA DEL VOLEY')) return 'CDV';
-  if (norm.includes('PIZARRA')) return 'PIZ';
-  if (norm.includes('FUENGIROLA')) return 'FCV';
-  if (norm.includes('BENALMADENA')) return 'UDB';
+  if (norm.includes('PIZARRA')) {
+    if (norm.includes('AZUL')) return 'PIA';
+    if (norm.includes('BLANCO')) return 'PIB';
+    return 'PIZ';
+  }
+  if (norm.includes('FUENGIROLA')) return 'CVF';
+  if (norm.includes('BENALMADENA')) return 'UDA';
   if (norm.includes('CARTAMA')) return 'CAR';
   if (norm.includes('3STEVOLEY')) return '3ST';
-  if (norm.includes('CIUDAD DE MALAGA')) return 'CCM';
-  if (norm.includes('ATARFE')) return 'ATA';
-  if (norm.includes('ALHAURIN')) return 'ALT';
-  if (norm.includes('INTER PLAYAS')) return 'IPL';
-  if (norm.includes('MIJAS')) return 'MVA';
+  if (norm.includes('CIUDAD DE MALAGA')) return 'CDM';
+  if (norm.includes('ATARFE')) return 'CDU';
+  if (norm.includes('CORPORE SANO')) return 'CVS';
+  if (norm.includes('GRANAVOLEY')) return 'GRV';
+  if (norm.includes('SIERRA ELVIRA')) return 'SIE';
+  if (norm.includes('AL-BAYYANA') || norm.includes('ROQUETAS')) return 'ALB';
+  if (norm.includes('CAJASOL')) return 'FCA';
+  if (norm.includes('FLORES SEVILLA')) return 'LFS';
+  if (norm.includes('NUEVA OLA')) return 'OLA';
+  if (norm.includes('LA VEGA')) return 'LVV';
+  if (norm.includes('ALHAURIN')) return 'ADT';
+  if (norm.includes('INTER PLAYAS')) return 'IPA';
+  if (norm.includes('MIJAS')) return 'MIV';
 
   // Fallback automático a 3 letras significativas
   const words = norm
@@ -176,7 +188,7 @@ export function getTeamInitials(teamName?: string | null): string {
   if (words.length === 1) {
     return words[0].slice(0, 3).padEnd(3, 'X');
   }
-  return 'CLB';
+  return 'FAV';
 }
 
 /**
