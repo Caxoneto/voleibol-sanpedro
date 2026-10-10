@@ -194,7 +194,7 @@ interface CacheState {
   standings: Record<string, FavbStanding[]>;
 }
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos de caché automática
+const CACHE_TTL_MS = 20 * 1000; // 20 segundos de caché para reflejar cambios en vivo rápidamente
 
 let cache: CacheState = {
   lastSync: 0,
@@ -227,9 +227,9 @@ export async function fetchLiveMatchScore(favbId: string): Promise<ScrapedMatchS
 
     const html = await res.text();
 
-    // 1. Extraer estado
-    const statusMatch = html.match(/class=\"portal-marcador-estado[^\"]*\">([^<]+)<\/span>/i);
-    const rawStatus = statusMatch ? statusMatch[1].trim() : '';
+    // 1. Extraer estado (permitiendo etiquetas internas como <i aria-hidden="true"></i>)
+    const statusMatch = html.match(/class=\"portal-marcador-estado[^\"]*\">([\s\S]*?)<\/span>/i);
+    const rawStatus = statusMatch ? statusMatch[1].replace(/<[^>]+>/g, '').trim() : '';
 
     let status: 'SCHEDULED' | 'FINISHED' | 'LIVE' = 'SCHEDULED';
     const statusLower = rawStatus.toLowerCase();
@@ -241,6 +241,7 @@ export async function fetchLiveMatchScore(favbId: string): Promise<ScrapedMatchS
       statusLower.includes('directo') ||
       statusLower.includes('vivo') ||
       statusLower.includes('curso') ||
+      html.includes('estado-en_juego') ||
       html.includes('estado-en-juego')
     ) {
       status = 'LIVE';
@@ -249,11 +250,11 @@ export async function fetchLiveMatchScore(favbId: string): Promise<ScrapedMatchS
     // 2. Extraer tanteo del set actual en juego si existe
     let currentSetScore: { set: string; home: number; away: number } | undefined;
     const currentSetMatch = html.match(
-      /portal-marcador-set-actual[\s\S]*?<header>[\s\S]*?<span>([^<]+)<\/span>[\s\S]*?portal-marcador-set-actual-score[\s\S]*?<strong>(\d+)<\/strong>[\s\S]*?<strong>(\d+)<\/strong>/i
+      /portal-marcador-set-actual[\s\S]*?<header>[\s\S]*?<span>([\s\S]*?)<\/span>[\s\S]*?portal-marcador-set-actual-score[\s\S]*?<strong>(\d+)<\/strong>[\s\S]*?<strong>(\d+)<\/strong>/i
     );
     if (currentSetMatch) {
       currentSetScore = {
-        set: currentSetMatch[1].trim(),
+        set: currentSetMatch[1].replace(/<[^>]+>/g, '').trim(),
         home: parseInt(currentSetMatch[2], 10),
         away: parseInt(currentSetMatch[3], 10),
       };
@@ -369,7 +370,8 @@ export async function updateMatchLiveScore(
 }
 
 /**
- * Obtiene y sincroniza datos de la FAVB desde favoley.net
+ * Obtiene y sincroniza datos de la FAVB desde favoley.net,
+ * actualizando en tiempo real todos los partidos de la jornada de hoy o activos.
  */
 export async function syncFavbData(forceRefresh = false): Promise<{
   success: boolean;
@@ -387,9 +389,38 @@ export async function syncFavbData(forceRefresh = false): Promise<{
     };
   }
 
-  // Generamos la lista oficial completa de partidos de la FAVB
-  cache.matches = getConsolidatedOfficialMatches();
-  cache.lastSync = now;
+  // Inicializar catálogo si está vacío
+  if (cache.matches.length === 0) {
+    cache.matches = getConsolidatedOfficialMatches();
+  }
+
+  // Consultar en vivo en favoley.net todos los partidos de hoy o que sigan en curso/pendientes de días previos
+  const todayStr = formatMadridDateString(new Date());
+  const activeOrTodayMatches = cache.matches.filter(
+    (m) => m.dateStr <= todayStr && (m.status !== 'FINISHED' || !m.setScores || m.setScores.length === 0)
+  );
+
+  if (activeOrTodayMatches.length > 0) {
+    await Promise.allSettled(
+      activeOrTodayMatches.map(async (m) => {
+        const favbId = m.favbId || m.id.replace(/^favb-/, '');
+        const scraped = await fetchLiveMatchScore(favbId);
+        if (scraped) {
+          m.status = scraped.status;
+          m.statusText = scraped.statusText;
+          m.homeScore = scraped.homeScore;
+          m.awayScore = scraped.awayScore;
+          m.currentSetScore = scraped.currentSetScore;
+          if (scraped.setScores.length > 0) {
+            m.setScores = scraped.setScores;
+          }
+          m.lastChecked = scraped.lastChecked;
+        }
+      })
+    );
+  }
+
+  cache.lastSync = Date.now();
 
   return {
     success: true,

@@ -1691,7 +1691,11 @@ export const FAVB_MATCHES: Match[] = [
     "venueName": "INSTALACIONES DEPORTIVAS EL NARANJO (Córdoba)",
     "matchDate": "2026-10-04T08:30:00.000Z",
     "status": "FINISHED",
-    "setScores": [],
+    "setScores": [
+      { "home": 25, "away": 15 },
+      { "home": 25, "away": 14 },
+      { "home": 25, "away": 19 }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1055"
   },
   {
@@ -1952,7 +1956,12 @@ export const FAVB_MATCHES: Match[] = [
     "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
     "matchDate": "2026-10-03T15:00:00.000Z",
     "status": "FINISHED",
-    "setScores": [],
+    "setScores": [
+      { "home": 12, "away": 25 },
+      { "home": 22, "away": 25 },
+      { "home": 25, "away": 19 },
+      { "home": 22, "away": 25 }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1476"
   },
   {
@@ -2056,7 +2065,11 @@ export const FAVB_MATCHES: Match[] = [
     "venueName": "POLIDEPORTIVO MUNICIPAL DE CARTAMA – P2 (Cártama)",
     "matchDate": "2026-10-03T09:00:00.000Z",
     "status": "FINISHED",
-    "setScores": [],
+    "setScores": [
+      { "home": 25, "away": 3 },
+      { "home": 25, "away": 10 },
+      { "home": 25, "away": 16 }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1834"
   },
   {

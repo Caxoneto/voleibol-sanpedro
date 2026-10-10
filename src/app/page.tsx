@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { store, CLUB_INFO } from '@/lib/data-store';
+import { syncFavbData } from '@/lib/favb-scraper';
 import { formatMadridDate, formatMadridTime } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
@@ -8,16 +9,48 @@ import SponsorBanner from '@/components/SponsorBanner';
 
 export const revalidate = 0;
 
-export default function HomePage() {
-  const featuredMatch = store.getFeaturedMatch();
-  const recentMatches = store.getRecentMatches().slice(0, 3);
-  const articles = store.getArticles().slice(0, 3);
+export default async function HomePage() {
+  const syncedData = await syncFavbData();
+  const liveMap = new Map(syncedData.matches.map((m) => [m.id, m]));
 
+  const rawFeatured = store.getFeaturedMatch();
+  const featuredLive = rawFeatured ? liveMap.get(rawFeatured.id) : undefined;
+  const featuredMatch = rawFeatured
+    ? {
+        ...rawFeatured,
+        status: featuredLive?.status ?? rawFeatured.status,
+        homeScore: featuredLive?.homeScore ?? rawFeatured.homeScore,
+        awayScore: featuredLive?.awayScore ?? rawFeatured.awayScore,
+        setScores:
+          featuredLive?.setScores && featuredLive.setScores.length > 0
+            ? featuredLive.setScores
+            : rawFeatured.setScores,
+      }
+    : undefined;
+
+  const articles = store.getArticles().slice(0, 3);
   const categories = store.getCategories();
   const teams = store.getTeams();
-  const matches = store.getMatches();
 
-  // Próximo partido programado de cada categoría oficial ordenados por:
+  const matches = store.getMatches().map((m) => {
+    const live = liveMap.get(m.id);
+    if (!live) return m;
+    return {
+      ...m,
+      status: live.status,
+      homeScore: live.homeScore ?? m.homeScore,
+      awayScore: live.awayScore ?? m.awayScore,
+      setScores: live.setScores && live.setScores.length > 0 ? live.setScores : m.setScores,
+      currentSetScore: live.currentSetScore,
+    };
+  });
+
+  const recentMatches = matches
+    .filter((m) => m.status === 'FINISHED')
+    .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime())
+    .slice(0, 3);
+
+  // Próximo partido programado o en juego de cada categoría oficial ordenados por:
   // 1. Proximidad temporal (de izquierda a derecha, el más cercano primero)
   // 2. A la misma fecha y hora, primero el de mayor categoría (menor category.order)
   const upcomingMatchesByCategory = categories
@@ -171,7 +204,10 @@ export default function HomePage() {
                         En Juego
                       </span>
                       <span className="font-bold text-white font-mono">
-                        {match.homeScore ?? 0} : {match.awayScore ?? 0} Sets
+                        {match.homeScore ?? 0}:{match.awayScore ?? 0} Sets
+                        {'currentSetScore' in match && match.currentSetScore
+                          ? ` (${match.currentSetScore.home}-${match.currentSetScore.away})`
+                          : ''}
                       </span>
                     </div>
                   ) : (
