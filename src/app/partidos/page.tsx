@@ -14,6 +14,7 @@ import {
 import { FavbMatch } from '@/lib/favb-scraper';
 import {
   formatMadridDate,
+  formatMadridDateString,
   formatMadridTime,
   generateGoogleCalendarUrl,
   generateIcsContent,
@@ -48,14 +49,17 @@ function PartidosContent() {
     fetchFavbMatches(false);
   }, []);
 
-  // Polling automático cada 45 segundos para partidos EN VIVO o activos
+  // Polling automático cada 45 segundos para partidos EN VIVO o programados para HOY
   useEffect(() => {
-    const liveMatches = matches.filter((m) => m.status === 'LIVE');
-    if (liveMatches.length === 0) return;
+    const todayStr = formatMadridDateString(new Date());
+    const targetMatches = matches.filter(
+      (m) => m.status === 'LIVE' || (m.status === 'SCHEDULED' && m.dateStr === todayStr)
+    );
+    if (targetMatches.length === 0) return;
 
     const timer = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        liveMatches.forEach((m) => {
+        targetMatches.forEach((m) => {
           handleRefreshSingleMatch(m.id, false, true);
         });
       }
@@ -432,6 +436,19 @@ function PartidosContent() {
                         </div>
                       )}
                     </div>
+
+                    {/* Tanteo en tiempo real del set en juego */}
+                    {m.currentSetScore && (
+                      <div className="mb-2 px-2.5 py-1.5 bg-red-950/70 border border-red-500/40 flex items-center justify-between text-xs">
+                        <span className="font-bold text-red-300 uppercase tracking-wide flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+                          {m.currentSetScore.set} (Puntos):
+                        </span>
+                        <span className="font-mono font-bold text-white tracking-widest text-sm">
+                          {m.currentSetScore.home} - {m.currentSetScore.away}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">
@@ -832,6 +849,19 @@ function PartidosContent() {
                                       </div>
                                     )}
                                   </div>
+
+                                  {/* Tanteo en tiempo real del set en juego */}
+                                  {m.currentSetScore && (
+                                    <div className="mb-2 px-2 py-1 bg-red-950/70 border border-red-500/30 flex items-center justify-between text-xs">
+                                      <span className="font-bold text-red-300 uppercase tracking-wide flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+                                        {m.currentSetScore.set}:
+                                      </span>
+                                      <span className="font-mono font-bold text-white tracking-widest text-sm">
+                                        {m.currentSetScore.home} - {m.currentSetScore.away}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
 
                                 <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">

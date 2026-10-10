@@ -158,6 +158,7 @@ export interface FavbMatch {
   homeScore?: number;
   awayScore?: number;
   setScores?: { home: number; away: number }[];
+  currentSetScore?: { set: string; home: number; away: number };
   isClubHome: boolean;
   favbUrl: string;
   statusText?: string;
@@ -183,6 +184,7 @@ export interface ScrapedMatchScore {
   homeScore?: number;
   awayScore?: number;
   setScores: { home: number; away: number }[];
+  currentSetScore?: { set: string; home: number; away: number };
   lastChecked: string;
 }
 
@@ -232,26 +234,32 @@ export async function fetchLiveMatchScore(favbId: string): Promise<ScrapedMatchS
     let status: 'SCHEDULED' | 'FINISHED' | 'LIVE' = 'SCHEDULED';
     const statusLower = rawStatus.toLowerCase();
 
-    if (statusLower.includes('finaliz')) {
+    if (statusLower.includes('finaliz') || html.includes('estado-finalizado')) {
       status = 'FINISHED';
     } else if (
       statusLower.includes('juego') ||
       statusLower.includes('directo') ||
       statusLower.includes('vivo') ||
-      statusLower.includes('curso')
+      statusLower.includes('curso') ||
+      html.includes('estado-en-juego')
     ) {
       status = 'LIVE';
     }
 
-    // 2. Extraer sets globales
-    let homeScore: number | undefined;
-    let awayScore: number | undefined;
-    const setsMatch = html.match(
-      /portal-marcador-resultado-sets[\s\S]*?<strong>(\d+)<\/strong>[\s\S]*?<strong>(\d+)<\/strong>/i
+    // 2. Extraer tanteo del set actual en juego si existe
+    let currentSetScore: { set: string; home: number; away: number } | undefined;
+    const currentSetMatch = html.match(
+      /portal-marcador-set-actual[\s\S]*?<header>[\s\S]*?<span>([^<]+)<\/span>[\s\S]*?portal-marcador-set-actual-score[\s\S]*?<strong>(\d+)<\/strong>[\s\S]*?<strong>(\d+)<\/strong>/i
     );
-    if (setsMatch) {
-      homeScore = parseInt(setsMatch[1], 10);
-      awayScore = parseInt(setsMatch[2], 10);
+    if (currentSetMatch) {
+      currentSetScore = {
+        set: currentSetMatch[1].trim(),
+        home: parseInt(currentSetMatch[2], 10),
+        away: parseInt(currentSetMatch[3], 10),
+      };
+      if (status !== 'FINISHED') {
+        status = 'LIVE';
+      }
     }
 
     // 3. Extraer parciales set a set
@@ -265,9 +273,22 @@ export async function fetchLiveMatchScore(favbId: string): Promise<ScrapedMatchS
       });
     }
 
-    // Si hay parciales anotados y aún no está marcado como Finalizado, el partido está En Vivo
-    if (status === 'SCHEDULED' && setScores.length > 0) {
+    // Si hay parciales anotados o tanteo en curso y aún no está marcado como Finalizado, el partido está En Vivo
+    if (status === 'SCHEDULED' && (setScores.length > 0 || currentSetScore)) {
       status = 'LIVE';
+    }
+
+    // 4. Extraer sets globales SOLO si el partido ha comenzado o finalizado
+    let homeScore: number | undefined;
+    let awayScore: number | undefined;
+    if (status !== 'SCHEDULED') {
+      const setsMatch = html.match(
+        /portal-marcador-resultado-sets[\s\S]*?<strong>(\d+)<\/strong>[\s\S]*?<strong>(\d+)<\/strong>/i
+      );
+      if (setsMatch) {
+        homeScore = parseInt(setsMatch[1], 10);
+        awayScore = parseInt(setsMatch[2], 10);
+      }
     }
 
     return {
@@ -276,6 +297,7 @@ export async function fetchLiveMatchScore(favbId: string): Promise<ScrapedMatchS
       statusText: rawStatus || (status === 'FINISHED' ? 'Finalizado' : status === 'LIVE' ? 'En juego' : 'Próximo'),
       homeScore,
       awayScore,
+      currentSetScore,
       setScores,
       lastChecked: new Date().toISOString(),
     };
@@ -313,10 +335,10 @@ export async function updateMatchLiveScore(
     match.statusText = 'En juego';
     match.homeScore = 1;
     match.awayScore = 1;
+    match.currentSetScore = { set: 'Set 3', home: 16, away: 14 };
     match.setScores = [
       { home: 25, away: 21 },
       { home: 22, away: 25 },
-      { home: 16, away: 14 },
     ];
     match.lastChecked = new Date().toISOString();
     return { success: true, match };
@@ -330,6 +352,7 @@ export async function updateMatchLiveScore(
     match.statusText = scraped.statusText;
     match.homeScore = scraped.homeScore;
     match.awayScore = scraped.awayScore;
+    match.currentSetScore = scraped.currentSetScore;
     if (scraped.setScores.length > 0) {
       match.setScores = scraped.setScores;
     }
