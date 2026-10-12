@@ -28,6 +28,11 @@ export default async function HomePage() {
     if (!live) return m;
     return {
       ...m,
+      homeTeamName: live.homeTeam || m.homeTeamName,
+      awayTeamName: live.awayTeam || m.awayTeamName,
+      isClubHome: live.isClubHome ?? m.isClubHome,
+      matchDate: live.matchDate || m.matchDate,
+      venueName: live.venue || m.venueName,
       status: live.status,
       homeScore: live.homeScore ?? m.homeScore,
       awayScore: live.awayScore ?? m.awayScore,

@@ -20,6 +20,7 @@ export const TEAM_LOGOS_MAP: Record<string, string> = {
   'LAS FLORES SEVILLA': '/images/teams/las-flores-sevilla.jpg',
   'AL-BAYYANA ROQUETAS': '/images/teams/al-bayyana-roquetas.jpg',
   'CORPORE SANO CVSA': '/images/teams/corpore-sano-cvsa.jpg',
+  'AKUMAL SPORT NUTRITION CVSA': '/images/teams/corpore-sano-cvsa.jpg',
   'GRANAVOLEY ESPAGRUAS': '/images/teams/granavoley-espagruas.jpg',
   '3STEVOLEY': '/images/teams/3stevoley.jpg',
   '3STEVOLEY A': '/images/teams/3stevoley-a.jpg',
@@ -84,6 +85,7 @@ export const TEAM_INITIALS_MAP: Record<string, string> = {
   'LAS FLORES SEVILLA': 'LFS',
   'AL-BAYYANA ROQUETAS': 'ALB',
   'CORPORE SANO CVSA': 'CVS',
+  'AKUMAL SPORT NUTRITION CVSA': 'CVS',
   'GRANAVOLEY ESPAGRUAS': 'GRV',
   '3STEVOLEY': '3ST',
   '3STEVOLEY A': '3ST',
@@ -161,7 +163,7 @@ export function getTeamInitials(teamName?: string | null): string {
   if (norm.includes('3STEVOLEY')) return '3ST';
   if (norm.includes('CIUDAD DE MALAGA')) return 'CDM';
   if (norm.includes('ATARFE')) return 'CDU';
-  if (norm.includes('CORPORE SANO')) return 'CVS';
+  if (norm.includes('CORPORE SANO') || norm.includes('CVSA') || norm.includes('AKUMAL')) return 'CVS';
   if (norm.includes('GRANAVOLEY')) return 'GRV';
   if (norm.includes('SIERRA ELVIRA')) return 'SIE';
   if (norm.includes('AL-BAYYANA') || norm.includes('ROQUETAS')) return 'ALB';
@@ -236,7 +238,7 @@ export function getTeamLogo(teamName?: string | null): string {
   if (norm.includes('AL-BAYYANA') || norm.includes('ROQUETAS')) return '/images/teams/al-bayyana-roquetas.jpg';
   if (norm.includes('CAJASOL')) return '/images/teams/fundacion-cajasol-andalucia.jpg';
   if (norm.includes('FLORES SEVILLA')) return '/images/teams/las-flores-sevilla.jpg';
-  if (norm.includes('CORPORE SANO')) return '/images/teams/corpore-sano-cvsa.jpg';
+  if (norm.includes('CORPORE SANO') || norm.includes('CVSA') || norm.includes('AKUMAL')) return '/images/teams/corpore-sano-cvsa.jpg';
   if (norm.includes('GRANAVOLEY')) return '/images/teams/granavoley-espagruas.jpg';
   if (norm.includes('ISONDA')) return '/images/teams/academia-vc-isonda.jpg';
   if (norm.includes('SIERRA ELVIRA')) return '/images/teams/sierra-elvira.jpg';

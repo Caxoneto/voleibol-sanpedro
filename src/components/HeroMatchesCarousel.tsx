@@ -89,6 +89,70 @@ export default function HeroMatchesCarousel({
 
   // Sincronización inmediata al montar + polling automático cada 45 segundos para partidos en vivo o de hoy
   useEffect(() => {
+    const mergeSyncedMatches = (liveList: Array<Record<string, unknown>>) => {
+      const liveMap = new Map(liveList.map((lm) => [String(lm.id), lm]));
+      setMatches((prev) =>
+        prev.map((m) => {
+          const live = liveMap.get(m.id);
+          if (!live) return m;
+          return {
+            ...m,
+            homeTeamName: typeof live.homeTeam === 'string' && live.homeTeam ? live.homeTeam : m.homeTeamName,
+            awayTeamName: typeof live.awayTeam === 'string' && live.awayTeam ? live.awayTeam : m.awayTeamName,
+            isClubHome: typeof live.isClubHome === 'boolean' ? live.isClubHome : m.isClubHome,
+            matchDate: typeof live.matchDate === 'string' && live.matchDate ? live.matchDate : m.matchDate,
+            dateStr: typeof live.dateStr === 'string' && live.dateStr ? live.dateStr : m.dateStr,
+            status:
+              live.status === 'FINISHED' || live.status === 'LIVE' || live.status === 'SCHEDULED'
+                ? live.status
+                : m.status,
+            homeScore: typeof live.homeScore === 'number' ? live.homeScore : m.homeScore,
+            awayScore: typeof live.awayScore === 'number' ? live.awayScore : m.awayScore,
+            setScores:
+              Array.isArray(live.setScores) && live.setScores.length > 0
+                ? (live.setScores as { home: number; away: number }[])
+                : m.setScores,
+            currentSetScore:
+              live.currentSetScore && typeof live.currentSetScore === 'object'
+                ? (live.currentSetScore as { set: string; home: number; away: number })
+                : m.currentSetScore,
+          };
+        })
+      );
+    };
+
+    try {
+      const cached = localStorage.getItem('cdv_synced_matches_v1');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
+          mergeSyncedMatches(parsed.matches);
+        }
+      }
+    } catch {
+      // Ignorar errores de localStorage
+    }
+
+    fetch('/api/favb/sync', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.matches) && data.matches.length > 0) {
+          mergeSyncedMatches(data.matches);
+          try {
+            localStorage.setItem(
+              'cdv_synced_matches_v1',
+              JSON.stringify({
+                matches: data.matches,
+                lastSync: data.lastSync || new Date().toISOString(),
+              })
+            );
+          } catch {
+            // Ignorar cuota de localStorage
+          }
+        }
+      })
+      .catch(() => {});
+
     const activeOrToday = matches.filter(
       (m) => m.status === 'LIVE' || (m.status === 'SCHEDULED' && m.dateStr === todayStr)
     );

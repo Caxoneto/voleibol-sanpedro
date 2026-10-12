@@ -28,17 +28,114 @@ interface RoundSummary {
   earliestPendingTime: number;
 }
 
+const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v1';
+
 export default function CalendarioPage() {
+  const [allMatches, setAllMatches] = useState<Match[]>(INITIAL_MATCHES);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [conditionFilter, setConditionFilter] = useState<'ALL' | 'LOCAL' | 'VISITANTE'>('ALL');
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [showVenueModal, setShowVenueModal] = useState(false);
+  const [syncing, setSyncing] = useState<boolean>(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   const roundsScrollRef = useRef<HTMLDivElement | null>(null);
 
+  const applyLiveMatches = (liveList: Array<Record<string, unknown>>) => {
+    const liveMap = new Map(liveList.map((lm) => [String(lm.id), lm]));
+    const merged: Match[] = INITIAL_MATCHES.map((m) => {
+      const live = liveMap.get(m.id);
+      if (!live) return m;
+      return {
+        ...m,
+        homeTeamName: typeof live.homeTeam === 'string' && live.homeTeam ? live.homeTeam : m.homeTeamName,
+        awayTeamName: typeof live.awayTeam === 'string' && live.awayTeam ? live.awayTeam : m.awayTeamName,
+        isClubHome: typeof live.isClubHome === 'boolean' ? live.isClubHome : m.isClubHome,
+        matchDate: typeof live.matchDate === 'string' && live.matchDate ? live.matchDate : m.matchDate,
+        venueName: typeof live.venue === 'string' && live.venue ? live.venue : m.venueName,
+        status:
+          live.status === 'FINISHED' || live.status === 'LIVE' || live.status === 'SCHEDULED'
+            ? live.status
+            : m.status,
+        setScores:
+          Array.isArray(live.setScores) && live.setScores.length > 0
+            ? (live.setScores as { home: number; away: number }[])
+            : m.setScores,
+      };
+    });
+    setAllMatches(merged);
+  };
+
+  const fetchLiveCalendarMatches = async (force = false) => {
+    if (force) setSyncing(true);
+    try {
+      const res = await fetch(`/api/favb/sync?force=${force}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.matches) && data.matches.length > 0) {
+        applyLiveMatches(data.matches);
+        const formattedTime = data.lastSync
+          ? new Date(data.lastSync).toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        setLastSyncTime(formattedTime);
+
+        try {
+          localStorage.setItem(
+            MATCHES_STORAGE_KEY,
+            JSON.stringify({
+              matches: data.matches,
+              lastSync: data.lastSync || new Date().toISOString(),
+            })
+          );
+        } catch {
+          // Ignorar límite de localStorage
+        }
+
+        if (force) {
+          setSyncFeedback('Calendario, horarios y resultados sincronizados con favoley.net');
+          setTimeout(() => setSyncFeedback(null), 3500);
+        }
+      }
+    } catch {
+      if (force) {
+        setSyncFeedback('Mostrando último calendario oficial sincronizado.');
+        setTimeout(() => setSyncFeedback(null), 3500);
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(MATCHES_STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
+          applyLiveMatches(parsed.matches);
+        }
+        if (parsed.lastSync) {
+          setLastSyncTime(
+            new Date(parsed.lastSync).toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          );
+        }
+      }
+    } catch {
+      // Ignorar error de lectura
+    }
+
+    fetchLiveCalendarMatches(false);
+  }, []);
+
   // 1. Partidos filtrados por categoría y condición (Local / Visitante)
   const filteredMatches = useMemo(() => {
-    return INITIAL_MATCHES.filter((match) => {
+    return allMatches.filter((match) => {
       if (selectedCategory !== 'ALL') {
         const team = INITIAL_TEAMS.find((t) => t.id === match.teamId);
         if (!team || team.categoryId !== selectedCategory) return false;
@@ -48,7 +145,7 @@ export default function CalendarioPage() {
 
       return true;
     }).sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
-  }, [selectedCategory, conditionFilter]);
+  }, [allMatches, selectedCategory, conditionFilter]);
 
   // 2. Agrupación por Jornadas (J1, J2, J3...) para no sobrecargar el DOM en móvil
   const roundsData = useMemo<RoundSummary[]>(() => {
@@ -402,9 +499,29 @@ export default function CalendarioPage() {
                 Visitante
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => fetchLiveCalendarMatches(true)}
+              disabled={syncing}
+              className="w-8 h-8 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
+              title={`Sincronizar calendario, horarios y resultados con favoley.net (Última: ${lastSyncTime})`}
+              aria-label="Sincronizar calendario"
+            >
+              <span className={`material-symbols-outlined text-[18px] ${syncing ? 'animate-spin' : ''}`}>
+                sync
+              </span>
+            </button>
           </div>
         </div>
       </section>
+
+      {syncFeedback && (
+        <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
+          <span className="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
+          <span>{syncFeedback}</span>
+        </div>
+      )}
 
       {/* Selector de Jornadas (J1, J2, J3...) + Listado de Partidos de la Jornada */}
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-4 sm:py-6 space-y-4">

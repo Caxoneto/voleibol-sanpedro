@@ -8,11 +8,14 @@ import { FAVB_COMPETITIONS } from '@/lib/favb-scraper';
 import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 
+const STANDINGS_STORAGE_KEY = 'cdv_synced_standings_v1';
+
 export default function ClasificacionPage() {
   const [selectedCatId, setSelectedCatId] = useState<string>('cat-senior-fem');
   const [allStandings, setAllStandings] = useState<Standings[]>(INITIAL_STANDINGS);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [showRulesDropdown, setShowRulesDropdown] = useState<boolean>(false);
   const catScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -23,24 +26,64 @@ export default function ClasificacionPage() {
       const data = await res.json();
       if (data.success && Array.isArray(data.standings) && data.standings.length > 0) {
         setAllStandings(data.standings);
-        if (data.lastSync) {
+        const formattedTime = data.lastSync
+          ? new Date(data.lastSync).toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        setLastSyncTime(formattedTime);
+
+        try {
+          localStorage.setItem(
+            STANDINGS_STORAGE_KEY,
+            JSON.stringify({
+              standings: data.standings,
+              lastSync: data.lastSync || new Date().toISOString(),
+            })
+          );
+        } catch {
+          // Ignorar cuota de localStorage
+        }
+
+        if (force) {
+          setSyncFeedback('Clasificación oficial sincronizada en directo con favoley.net');
+          setTimeout(() => setSyncFeedback(null), 3500);
+        }
+      }
+    } catch (err) {
+      console.error('Error sincronizando clasificación con favoley.net:', err);
+      if (force) {
+        setSyncFeedback('Mostrando última clasificación oficial sincronizada.');
+        setTimeout(() => setSyncFeedback(null), 3500);
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Hidratar inmediatamente desde localStorage y sincronizar al entrar y cada 60s
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(STANDINGS_STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed.standings) && parsed.standings.length > 0) {
+          setAllStandings(parsed.standings);
+        }
+        if (parsed.lastSync) {
           setLastSyncTime(
-            new Date(data.lastSync).toLocaleTimeString('es-ES', {
+            new Date(parsed.lastSync).toLocaleTimeString('es-ES', {
               hour: '2-digit',
               minute: '2-digit',
             })
           );
         }
       }
-    } catch (err) {
-      console.error('Error sincronizando clasificación con favoley.net:', err);
-    } finally {
-      setSyncing(false);
+    } catch {
+      // Ignorar errores de lectura de localStorage
     }
-  };
 
-  // Sincronización automática al entrar y cada 60s
-  useEffect(() => {
     fetchLiveStandings(false);
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
@@ -153,6 +196,13 @@ export default function ClasificacionPage() {
           </button>
         </div>
       </section>
+
+      {syncFeedback && (
+        <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
+          <span className="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
+          <span>{syncFeedback}</span>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 sm:py-10 space-y-8">
         {/* Cabecera del grupo activo */}

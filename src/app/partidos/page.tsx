@@ -87,8 +87,27 @@ function PartidosContent() {
     INITIAL_PLAYERS.find((p) => p.teamId === 'team-sf' && p.isCaptain) || INITIAL_PLAYERS[0];
   const featuredMatch = INITIAL_MATCHES.find((m) => m.isFeatured) || INITIAL_MATCHES[0];
 
-  // Sincronización en segundo plano al montar el componente
+  // Hidratar inmediatamente desde localStorage y sincronizar en segundo plano al montar
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem('cdv_synced_matches_v1');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
+          setMatches(parsed.matches);
+        }
+        if (parsed.lastSync) {
+          setLastSyncTime(
+            new Date(parsed.lastSync).toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          );
+        }
+      }
+    } catch {
+      // Ignorar errores de localStorage
+    }
     fetchFavbMatches(false);
   }, []);
 
@@ -165,7 +184,7 @@ function PartidosContent() {
   const fetchFavbMatches = async (force: boolean) => {
     if (force) setSyncing(true);
     try {
-      const res = await fetch(`/api/favb/sync?force=${force}`);
+      const res = await fetch(`/api/favb/sync?force=${force}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success && data.matches) {
         setMatches(data.matches);
@@ -175,6 +194,24 @@ function PartidosContent() {
             minute: '2-digit',
           })
         );
+        try {
+          localStorage.setItem(
+            'cdv_synced_matches_v1',
+            JSON.stringify({
+              matches: data.matches,
+              lastSync: data.lastSync || new Date().toISOString(),
+            })
+          );
+        } catch {
+          // Ignorar cuota de localStorage
+        }
+        if (force) {
+          setRefreshFeedback({
+            matchId: 'global',
+            message: 'Partidos, horarios y resultados sincronizados en directo con favoley.net',
+          });
+          setTimeout(() => setRefreshFeedback(null), 3500);
+        }
         // Si veníamos con un partido en la URL y su estado cambió tras sincronizar, asegurar pestaña correcta
         if (initialMatchParam) {
           const updatedTarget = (data.matches as FavbMatch[]).find(
