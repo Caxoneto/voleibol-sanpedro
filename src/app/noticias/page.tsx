@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { store, CLUB_INFO } from '@/lib/data-store';
+import { store, INITIAL_TEAMS, INITIAL_CATEGORIES, CLUB_INFO } from '@/lib/data-store';
 import { formatMadridDate } from '@/lib/date-utils';
+import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 
 export default function NoticiasPage() {
@@ -26,9 +27,9 @@ export default function NoticiasPage() {
 
   const categories = [
     { label: 'Todas las noticias', value: 'ALL' },
-    { label: 'Institucional y FAVB', value: 'cat-inst' },
-    { label: 'Cantera FAVB', value: 'cat-cantera' },
-    { label: 'Senior Femenino', value: 'cat-senior-fem' },
+    { label: 'Competición y Resultados', value: 'cat-competicion' },
+    { label: 'Club e Institucional', value: 'cat-club' },
+    { label: 'Normativa y FAVB', value: 'cat-inst' },
   ];
 
   const allArticles = store.getArticles();
@@ -38,8 +39,16 @@ export default function NoticiasPage() {
   });
 
   const featuredArticle = filteredArticles[0];
-  const gridArticles = filteredArticles.slice(1);
-  const upcomingMatch = store.getUpcomingMatches()[0] || store.getFeaturedMatch();
+  const upcomingMatches = store.getUpcomingMatches();
+  const upcomingMatch =
+    upcomingMatches.find((m) => m.isClubHome) || upcomingMatches[0] || store.getFeaturedMatch();
+  const upcomingTeam = upcomingMatch
+    ? INITIAL_TEAMS.find((t) => t.id === upcomingMatch.teamId)
+    : undefined;
+  const upcomingCategory = upcomingTeam
+    ? INITIAL_CATEGORIES.find((c) => c.id === upcomingTeam.categoryId)
+    : undefined;
+  const upcomingCatId = upcomingCategory?.id || 'cat-senior-fem';
 
   const handleAccreditationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +75,7 @@ export default function NoticiasPage() {
               TEMPORADA 26/27
             </span>
             <p className="font-body-sm text-body-sm text-on-surface truncate">
-              Ligas Federadas FAVB: 8 equipos de cantera y primer equipo compitiendo por San Pedro Alcántara.
+              Ligas Federadas FAVB: cantera y primeros equipos compitiendo por San Pedro Alcántara.
             </p>
           </div>
           <div className="hidden lg:flex items-center gap-3 text-on-surface-variant font-label-sm text-label-sm">
@@ -92,8 +101,11 @@ export default function NoticiasPage() {
                 <span className="material-symbols-outlined text-[18px]">sports_volleyball</span>
                 <span>SALA DE COMUNICACIÓN & ACTUALIDAD</span>
               </div>
-              <h1 className="font-headline-lg text-headline-lg uppercase text-on-surface tracking-tight">
-                CRÓNICAS Y NOTICIAS ROJINEGRAS
+              <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none">
+                <span className="text-white">CRÓNICAS Y </span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                  NOTICIAS ROJINEGRAS
+                </span>
               </h1>
             </div>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-md">
@@ -102,7 +114,7 @@ export default function NoticiasPage() {
           </div>
 
           {/* Filter Pills / Categories */}
-          <div className="flex items-center gap-2 overflow-x-auto py-5 no-scrollbar mt-4 border-b border-white/5">
+          <div className="flex items-center gap-2 overflow-x-auto py-4 category-scrollbar mt-4 border-b border-white/5">
             {categories.map((c) => {
               const active = selectedCat === c.value;
               return (
@@ -239,7 +251,7 @@ export default function NoticiasPage() {
 
             {/* Articles Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {(gridArticles.length > 0 ? gridArticles : filteredArticles).map((art) => (
+              {filteredArticles.map((art) => (
                 <Link
                   key={art.id}
                   href={`/noticias/${art.slug}`}
@@ -305,20 +317,6 @@ export default function NoticiasPage() {
                 Recursos profesionales para periodistas acreditados, medios de radiodifusión y reporteros gráficos.
               </p>
               <div className="space-y-2">
-                <a
-                  href="/images/logo.jpg"
-                  download="dossier-cdv-san-pedro.jpg"
-                  className="p-3 bg-surface-container flex items-center justify-between hover:bg-surface-container-highest transition-colors border border-white/5"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[20px]">download</span>
-                    <span className="font-label-md text-label-md uppercase text-on-surface font-bold">
-                      Dossier de Prensa
-                    </span>
-                  </div>
-                  <span className="font-label-sm text-[11px] text-outline">OFICIAL</span>
-                </a>
-
                 <a
                   href="#acreditacion"
                   className="p-3 bg-surface-container flex items-center justify-between hover:bg-surface-container-highest transition-colors border border-white/5"
@@ -400,38 +398,105 @@ export default function NoticiasPage() {
 
             {/* Module 3: Próxima Cita en Casa */}
             {upcomingMatch && (
-              <div className="p-6 bg-surface-container-low shadow-md border border-white/5">
+              <div className="p-5 sm:p-6 bg-surface-container-low shadow-md border border-white/5 overflow-hidden">
                 <div className="flex items-center justify-between pb-3">
                   <span className="font-label-sm text-label-sm text-primary uppercase font-bold tracking-widest">
                     PRÓXIMA CITA EN CASA
                   </span>
                   <span className="material-symbols-outlined text-outline text-[18px]">stadium</span>
                 </div>
-                <div className="bg-surface-container-high p-4 flex items-center justify-between gap-3 mb-3 border border-white/5">
-                  <div className="text-center flex-1">
-                    <span className="font-headline-sm text-headline-sm uppercase text-on-surface block truncate">
-                      {upcomingMatch.homeTeamName.includes('San Pedro') ? 'CDV SP' : upcomingMatch.homeTeamName}
+
+                {upcomingCategory && (
+                  <div className="mb-2.5 flex items-center justify-between gap-2">
+                    <span className="px-2 py-0.5 bg-primary-container/20 border border-primary-container/40 text-primary text-[10px] font-bold uppercase tracking-wider truncate">
+                      {upcomingCategory.name}
                     </span>
-                    <span className="font-label-sm text-[10px] text-primary font-bold">LOCAL</span>
+                    <span className="text-[10px] font-mono text-tertiary uppercase shrink-0">
+                      Jornada {upcomingMatch.round}
+                    </span>
                   </div>
-                  <span className="font-headline-md text-headline-md text-outline">VS</span>
-                  <div className="text-center flex-1">
-                    <span className="font-headline-sm text-headline-sm uppercase text-on-surface block truncate">
-                      {upcomingMatch.awayTeamName.includes('San Pedro') ? 'CDV SP' : upcomingMatch.awayTeamName}
+                )}
+
+                <div className="bg-surface-container-high p-3.5 mb-3 border border-white/5 space-y-2.5 overflow-hidden">
+                  {/* Equipo Local */}
+                  <div className="flex items-center justify-between gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <Image
+                        src={getTeamLogo(upcomingMatch.homeTeamName)}
+                        alt={upcomingMatch.homeTeamName}
+                        width={28}
+                        height={28}
+                        className="w-7 h-7 object-contain shrink-0"
+                      />
+                      {upcomingMatch.isClubHome ? (
+                        <Link
+                          href={`/plantillas?categoria=${upcomingCatId}`}
+                          className="font-headline-sm text-xs sm:text-sm uppercase font-bold text-primary hover:underline decoration-primary underline-offset-2 truncate"
+                          title={`Ver plantilla de ${upcomingCategory?.name || 'nuestro equipo'}`}
+                        >
+                          {upcomingMatch.homeTeamName}
+                        </Link>
+                      ) : (
+                        <span className="font-headline-sm text-xs sm:text-sm uppercase font-bold text-on-surface truncate">
+                          {upcomingMatch.homeTeamName}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-label-sm text-[9px] px-1.5 py-0.5 bg-primary-container/20 text-primary font-bold uppercase shrink-0">
+                      LOCAL
                     </span>
-                    <span className="font-label-sm text-[10px] text-outline">VISITANTE</span>
+                  </div>
+
+                  {/* Separador VS */}
+                  <div className="flex items-center gap-2">
+                    <div className="h-px bg-white/10 flex-1" />
+                    <span className="font-display-xl text-xs text-outline uppercase tracking-widest px-1">
+                      VS
+                    </span>
+                    <div className="h-px bg-white/10 flex-1" />
+                  </div>
+
+                  {/* Equipo Visitante */}
+                  <div className="flex items-center justify-between gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <Image
+                        src={getTeamLogo(upcomingMatch.awayTeamName)}
+                        alt={upcomingMatch.awayTeamName}
+                        width={28}
+                        height={28}
+                        className="w-7 h-7 object-contain shrink-0"
+                      />
+                      {!upcomingMatch.isClubHome ? (
+                        <Link
+                          href={`/plantillas?categoria=${upcomingCatId}`}
+                          className="font-headline-sm text-xs sm:text-sm uppercase font-bold text-primary hover:underline decoration-primary underline-offset-2 truncate"
+                          title={`Ver plantilla de ${upcomingCategory?.name || 'nuestro equipo'}`}
+                        >
+                          {upcomingMatch.awayTeamName}
+                        </Link>
+                      ) : (
+                        <span className="font-headline-sm text-xs sm:text-sm uppercase font-bold text-on-surface truncate">
+                          {upcomingMatch.awayTeamName}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-label-sm text-[9px] px-1.5 py-0.5 bg-white/5 text-outline font-bold uppercase shrink-0">
+                      VISITANTE
+                    </span>
                   </div>
                 </div>
-                <div className="text-center font-body-sm text-body-sm text-on-surface-variant">
+
+                <div className="text-center font-body-sm text-xs text-on-surface-variant leading-relaxed">
                   {formatMadridDate(upcomingMatch.matchDate, {
                     weekday: 'short',
                     day: 'numeric',
                     month: 'short',
                   })}{' '}
-                  • {formatMadridDate(upcomingMatch.matchDate, { hour: '2-digit', minute: '2-digit' })} h • {upcomingMatch.venueName}
+                  • {formatMadridDate(upcomingMatch.matchDate, { hour: '2-digit', minute: '2-digit' })} h •{' '}
+                  {upcomingMatch.venueName}
                 </div>
                 <Link
-                  href="/partidos"
+                  href={`/partidos?categoria=${upcomingCatId}&match=${upcomingMatch.id}`}
                   className="mt-4 w-full py-2.5 bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-sm text-label-sm uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors border border-white/5"
                 >
                   <span>VER CALENDARIO Y ENTRADAS</span>
@@ -446,45 +511,20 @@ export default function NoticiasPage() {
       {/* Sala de Prensa & Acreditaciones Form Section */}
       <section id="acreditacion" className="w-full bg-surface-container-high py-16 px-4 lg:px-12 border-t border-white/5">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* Dossier e info medios */}
+          {/* Info medios */}
           <div className="lg:col-span-5 space-y-6">
             <div>
               <span className="text-xs text-primary font-bold uppercase tracking-wider font-label-sm">
                 Recursos para Medios
               </span>
               <h2 className="font-headline-lg text-3xl uppercase text-on-surface mt-1">
-                Sala de Prensa y Dossier
+                Sala de Prensa y Medios
               </h2>
             </div>
 
             <p className="font-body-md text-sm text-on-surface-variant leading-relaxed">
               El C.D. Voleibol San Pedro facilita la labor informativa a redactores, emisoras de radio y fotógrafos deportivos. El acceso a pista y cabinas de prensa en el Pabellón Sergio Scariolo se gestiona mediante solicitud de acreditación previa.
             </p>
-
-            {/* Descarga Dossier Temporada */}
-            <div className="p-5 bg-surface-container-lowest border border-white/10 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary text-[32px]">
-                  description
-                </span>
-                <div>
-                  <h4 className="font-headline-sm text-sm uppercase text-on-surface font-bold">
-                    Dossier Oficial Temporada 26/27
-                  </h4>
-                  <span className="text-xs text-tertiary font-body-sm">
-                    PDF • Historia, Plantillas y Sede Pabellón Sergio Scariolo
-                  </span>
-                </div>
-              </div>
-
-              <a
-                href="/images/logo.jpg"
-                download="dossier-cdv-san-pedro.jpg"
-                className="px-4 py-2.5 bg-primary-container hover:bg-secondary-container text-on-primary text-xs font-bold uppercase shrink-0 font-label-md"
-              >
-                Descargar
-              </a>
-            </div>
 
             <div className="p-4 bg-surface-container-low border-l-4 border-primary-container text-xs text-on-surface-variant font-body-sm">
               <strong className="text-on-surface block mb-1">Contacto del Responsable de Prensa:</strong>

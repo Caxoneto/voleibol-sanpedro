@@ -586,16 +586,25 @@ function PartidosContent() {
                   height={32}
                   className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                 />
-                <span
-                  className={`text-xs sm:text-sm uppercase truncate ${
-                    m.isClubHome ? 'text-primary font-bold' : 'text-white font-semibold'
-                  }`}
-                >
-                  <span className="sm:hidden font-display-xl text-base tracking-wider">
-                    {getTeamInitials(m.homeTeam)}
+                {m.isClubHome ? (
+                  <Link
+                    href={`/plantillas?categoria=${m.categoryId}`}
+                    className="text-xs sm:text-sm uppercase truncate text-primary font-bold hover:underline decoration-primary underline-offset-2"
+                    title={`Ver plantilla de ${m.categoryName}`}
+                  >
+                    <span className="sm:hidden font-display-xl text-base tracking-wider">
+                      {getTeamInitials(m.homeTeam)}
+                    </span>
+                    <span className="hidden sm:inline">{m.homeTeam}</span>
+                  </Link>
+                ) : (
+                  <span className="text-xs sm:text-sm uppercase truncate text-white font-semibold">
+                    <span className="sm:hidden font-display-xl text-base tracking-wider">
+                      {getTeamInitials(m.homeTeam)}
+                    </span>
+                    <span className="hidden sm:inline">{m.homeTeam}</span>
                   </span>
-                  <span className="hidden sm:inline">{m.homeTeam}</span>
-                </span>
+                )}
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
@@ -634,16 +643,25 @@ function PartidosContent() {
                   height={32}
                   className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                 />
-                <span
-                  className={`text-xs sm:text-sm uppercase truncate ${
-                    !m.isClubHome ? 'text-primary font-bold' : 'text-white font-semibold'
-                  }`}
-                >
-                  <span className="sm:hidden font-display-xl text-base tracking-wider">
-                    {getTeamInitials(m.awayTeam)}
+                {!m.isClubHome ? (
+                  <Link
+                    href={`/plantillas?categoria=${m.categoryId}`}
+                    className="text-xs sm:text-sm uppercase truncate text-primary font-bold hover:underline decoration-primary underline-offset-2"
+                    title={`Ver plantilla de ${m.categoryName}`}
+                  >
+                    <span className="sm:hidden font-display-xl text-base tracking-wider">
+                      {getTeamInitials(m.awayTeam)}
+                    </span>
+                    <span className="hidden sm:inline">{m.awayTeam}</span>
+                  </Link>
+                ) : (
+                  <span className="text-xs sm:text-sm uppercase truncate text-white font-semibold">
+                    <span className="sm:hidden font-display-xl text-base tracking-wider">
+                      {getTeamInitials(m.awayTeam)}
+                    </span>
+                    <span className="hidden sm:inline">{m.awayTeam}</span>
                   </span>
-                  <span className="hidden sm:inline">{m.awayTeam}</span>
-                </span>
+                )}
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
@@ -729,8 +747,11 @@ function PartidosContent() {
                 2026 / 2027
               </span>
             </div>
-            <h1 className="font-display-xl text-3xl sm:text-4xl lg:text-5xl uppercase text-white tracking-tight leading-none">
-              PARTIDOS Y RESULTADOS
+            <h1 className="font-display-xl text-3xl sm:text-4xl lg:text-5xl uppercase tracking-tight leading-none">
+              <span className="text-white">PARTIDOS Y </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                RESULTADOS
+              </span>
             </h1>
           </div>
 
@@ -762,7 +783,7 @@ function PartidosContent() {
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex items-center justify-between gap-3">
           <div
             ref={catScrollContainerRef}
-            className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-1"
+            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1.5 scroll-smooth flex-1"
           >
             <span className="text-[11px] font-bold uppercase tracking-wider text-tertiary shrink-0 mr-1 hidden sm:inline">
               Categoría:
@@ -1110,13 +1131,19 @@ function PartidosContent() {
                                               height={30}
                                               className="w-7 h-7 object-contain shrink-0"
                                             />
-                                            <p
-                                              className={`font-headline-sm text-xs sm:text-sm uppercase font-bold truncate ${
-                                                m.isClubHome ? 'text-primary' : 'text-white'
-                                              }`}
-                                            >
-                                              {m.homeTeam}
-                                            </p>
+                                            {m.isClubHome ? (
+                                              <Link
+                                                href={`/plantillas?categoria=${m.categoryId}`}
+                                                className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
+                                                title={`Ver plantilla de ${m.categoryName}`}
+                                              >
+                                                {m.homeTeam}
+                                              </Link>
+                                            ) : (
+                                              <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
+                                                {m.homeTeam}
+                                              </p>
+                                            )}
                                           </div>
                                           <div className="flex items-center gap-2.5" title={m.awayTeam}>
                                             <Image
@@ -1126,13 +1153,19 @@ function PartidosContent() {
                                               height={30}
                                               className="w-7 h-7 object-contain shrink-0"
                                             />
-                                            <p
-                                              className={`font-headline-sm text-xs sm:text-sm uppercase font-bold truncate ${
-                                                !m.isClubHome ? 'text-primary' : 'text-white'
-                                              }`}
-                                            >
-                                              {m.awayTeam}
-                                            </p>
+                                            {!m.isClubHome ? (
+                                              <Link
+                                                href={`/plantillas?categoria=${m.categoryId}`}
+                                                className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
+                                                title={`Ver plantilla de ${m.categoryName}`}
+                                              >
+                                                {m.awayTeam}
+                                              </Link>
+                                            ) : (
+                                              <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
+                                                {m.awayTeam}
+                                              </p>
+                                            )}
                                           </div>
                                         </div>
                                       </div>

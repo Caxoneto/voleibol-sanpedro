@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { INITIAL_CATEGORIES, INITIAL_STANDINGS, CLUB_INFO } from '@/lib/data-store';
 import { Standings } from '@/lib/types';
@@ -136,11 +137,15 @@ export default function ClasificacionPage() {
                 TEMPORADA 2026 / 2027
               </span>
             </div>
-            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase text-white tracking-tight leading-none">
-              CLASIFICACIÓN OFICIAL
+            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none">
+              <span className="text-white">CLASIFICACIÓN </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                OFICIAL
+              </span>
             </h1>
             <p className="font-body-md text-sm sm:text-base text-tertiary max-w-2xl mt-2">
-              Clasificación sincronizada en tiempo real con la Federación Andaluza de Voleibol (favoley.net). Consulta posiciones, partidos jugados, sets y puntos oficiales.
+              Consulta posiciones, partidos jugados, sets y puntos oficiales{' '}
+              <span className="text-primary-container font-bold">en vivo</span>
             </p>
           </div>
 
@@ -161,7 +166,7 @@ export default function ClasificacionPage() {
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
           <div
             ref={catScrollRef}
-            className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-1"
+            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1.5 scroll-smooth flex-1"
           >
             {availableCategories.map((cat) => {
               const isSelected = cat.id === selectedCatId;
@@ -286,9 +291,17 @@ export default function ClasificacionPage() {
                           height={32}
                           className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                         />
-                        <span className={team.isCurrentClub ? 'text-primary' : 'text-white'}>
-                          {team.teamName}
-                        </span>
+                        {team.isCurrentClub ? (
+                          <Link
+                            href={`/plantillas?categoria=${selectedCatId}`}
+                            className="text-primary hover:underline decoration-primary underline-offset-4 transition-colors"
+                            title={`Ver plantilla de ${activeCategory.name}`}
+                          >
+                            {team.teamName}
+                          </Link>
+                        ) : (
+                          <span className="text-white">{team.teamName}</span>
+                        )}
                         {team.isCurrentClub && (
                           <span className="px-2 py-0.5 bg-primary-container text-white text-[9px] uppercase font-bold tracking-wider">
                             Nuestro Club

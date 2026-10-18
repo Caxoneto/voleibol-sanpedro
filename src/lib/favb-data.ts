@@ -175,7 +175,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-14",
+    "id": "p-team-sf-2",
     "teamId": "team-sf",
     "number": 2,
     "firstName": "Lola",
@@ -188,7 +188,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-2",
+    "id": "p-team-sf-3",
     "teamId": "team-sf",
     "number": 3,
     "firstName": "Mine",
@@ -201,20 +201,33 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-3",
+    "id": "p-team-sf-4",
     "teamId": "team-sf",
     "number": 4,
-    "firstName": "Nathalie",
-    "lastName": "Pozzi Banegas",
-    "position": "OPPOSITE",
-    "birthYear": 2003,
-    "heightCm": 177,
+    "firstName": "Nerea",
+    "lastName": "Sanchez Olvera",
+    "position": "LIBERO",
+    "birthYear": 2004,
+    "heightCm": 171,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-4",
+    "id": "p-team-sf-5",
+    "teamId": "team-sf",
+    "number": 4,
+    "firstName": "Lucía",
+    "lastName": "Jiménez Cuadrado",
+    "position": "SETTER",
+    "birthYear": 2008,
+    "heightCm": 175,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
+    "id": "p-team-sf-6",
     "teamId": "team-sf",
     "number": 5,
     "firstName": "Yumara",
@@ -227,7 +240,20 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-5",
+    "id": "p-team-sf-7",
+    "teamId": "team-sf",
+    "number": 6,
+    "firstName": "Nathalie",
+    "lastName": "Pozzi Banegas",
+    "position": "OPPOSITE",
+    "birthYear": 2003,
+    "heightCm": 177,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
+    "id": "p-team-sf-8",
     "teamId": "team-sf",
     "number": 8,
     "firstName": "Maria",
@@ -240,7 +266,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-6",
+    "id": "p-team-sf-9",
     "teamId": "team-sf",
     "number": 11,
     "firstName": "Luna",
@@ -253,7 +279,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-12",
+    "id": "p-team-sf-10",
     "teamId": "team-sf",
     "number": 12,
     "firstName": "Cristina",
@@ -266,7 +292,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-7",
+    "id": "p-team-sf-11",
     "teamId": "team-sf",
     "number": 14,
     "firstName": "Elsa",
@@ -279,7 +305,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-8",
+    "id": "p-team-sf-12",
     "teamId": "team-sf",
     "number": 15,
     "firstName": "Sandra",
@@ -292,7 +318,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-9",
+    "id": "p-team-sf-13",
     "teamId": "team-sf",
     "number": 17,
     "firstName": "Rocio",
@@ -305,20 +331,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-10",
-    "teamId": "team-sf",
-    "number": 18,
-    "firstName": "Nerea",
-    "lastName": "Sanchez Olvera",
-    "position": "LIBERO",
-    "birthYear": 2004,
-    "heightCm": 171,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-sf-13",
+    "id": "p-team-sf-14",
     "teamId": "team-sf",
     "number": 18,
     "firstName": "Elena",
@@ -331,7 +344,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-sf-11",
+    "id": "p-team-sf-15",
     "teamId": "team-sf",
     "number": 20,
     "firstName": "Adriana",
@@ -385,6 +398,19 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-jm-4",
     "teamId": "team-jm",
+    "number": 4,
+    "firstName": "Pedro",
+    "lastName": "Núñez Romero",
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2010,
+    "heightCm": 177,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
+    "id": "p-team-jm-5",
+    "teamId": "team-jm",
     "number": 9,
     "firstName": "Timur",
     "lastName": "Shylko",
@@ -396,20 +422,20 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-jm-5",
+    "id": "p-team-jm-6",
     "teamId": "team-jm",
     "number": 11,
-    "firstName": "Pedro",
-    "lastName": "Núñez Romero",
+    "firstName": "Ignacio",
+    "lastName": "Mendez",
     "position": "OUTSIDE_HITTER",
-    "birthYear": 2010,
-    "heightCm": 177,
+    "birthYear": 2008,
+    "heightCm": 181,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
   },
   {
-    "id": "p-team-jm-11",
+    "id": "p-team-jm-7",
     "teamId": "team-jm",
     "number": 15,
     "firstName": "Álvaro",
@@ -422,7 +448,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-jm-6",
+    "id": "p-team-jm-8",
     "teamId": "team-jm",
     "number": 18,
     "firstName": "Ángel",
@@ -435,7 +461,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-jm-12",
+    "id": "p-team-jm-9",
     "teamId": "team-jm",
     "number": 19,
     "firstName": "Lebron Michael",
@@ -448,7 +474,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-jm-7",
+    "id": "p-team-jm-10",
     "teamId": "team-jm",
     "number": 21,
     "firstName": "Alejandro",
@@ -461,7 +487,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-jm-8",
+    "id": "p-team-jm-11",
     "teamId": "team-jm",
     "number": 69,
     "firstName": "Dominik",
@@ -474,20 +500,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-jm-9",
-    "teamId": "team-jm",
-    "number": 98,
-    "firstName": "Ignacio",
-    "lastName": "Mendez",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2008,
-    "heightCm": 181,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-jm-10",
+    "id": "p-team-jm-12",
     "teamId": "team-jm",
     "number": 99,
     "firstName": "Gonzalo",
@@ -541,6 +554,19 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-jf-rojo-4",
     "teamId": "team-jf-rojo",
+    "number": 5,
+    "firstName": "Marina",
+    "lastName": "Perez Cañete",
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2008,
+    "heightCm": 168,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
+    "id": "p-team-jf-rojo-5",
+    "teamId": "team-jf-rojo",
     "number": 6,
     "firstName": "Sheena Elaine",
     "lastName": "Garay Fernandez",
@@ -552,7 +578,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-jf-rojo-5",
+    "id": "p-team-jf-rojo-6",
     "teamId": "team-jf-rojo",
     "number": 7,
     "firstName": "Roma",
@@ -565,7 +591,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-jf-rojo-6",
+    "id": "p-team-jf-rojo-7",
     "teamId": "team-jf-rojo",
     "number": 11,
     "firstName": "Luna",
@@ -573,19 +599,6 @@ export const FAVB_PLAYERS: Player[] = [
     "position": "MIDDLE_BLOCKER",
     "birthYear": 2009,
     "heightCm": 173,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true
-  },
-  {
-    "id": "p-team-jf-rojo-7",
-    "teamId": "team-jf-rojo",
-    "number": 12,
-    "firstName": "Lola",
-    "lastName": "Ríos Osuna",
-    "position": "SETTER",
-    "birthYear": 2008,
-    "heightCm": 175,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -645,6 +658,19 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-jf-rojo-12",
     "teamId": "team-jf-rojo",
+    "number": 21,
+    "firstName": "Lola",
+    "lastName": "Ríos Osuna",
+    "position": "SETTER",
+    "birthYear": 2008,
+    "heightCm": 175,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
+    "id": "p-team-jf-rojo-13",
+    "teamId": "team-jf-rojo",
     "number": 31,
     "firstName": "Sofía",
     "lastName": "Benítez Cañizares",
@@ -665,7 +691,7 @@ export const FAVB_PLAYERS: Player[] = [
     "birthYear": 2007,
     "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
+    "isCaptain": true,
     "isHomegrown": true
   },
   {
@@ -674,9 +700,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 2,
     "firstName": "Jugadora",
     "lastName": "2",
-    "position": "OPPOSITE",
-    "birthYear": 2008,
-    "heightCm": 172,
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2007,
+    "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -687,9 +713,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 3,
     "firstName": "Jugadora",
     "lastName": "3",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2009,
-    "heightCm": 175,
+    "position": "OPPOSITE",
+    "birthYear": 2007,
+    "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -700,7 +726,7 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 4,
     "firstName": "Jugadora",
     "lastName": "4",
-    "position": "OUTSIDE_HITTER",
+    "position": "MIDDLE_BLOCKER",
     "birthYear": 2007,
     "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
@@ -713,9 +739,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 5,
     "firstName": "Jugadora",
     "lastName": "5",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2008,
-    "heightCm": 172,
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2007,
+    "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -727,8 +753,8 @@ export const FAVB_PLAYERS: Player[] = [
     "firstName": "Jugadora",
     "lastName": "6",
     "position": "MIDDLE_BLOCKER",
-    "birthYear": 2009,
-    "heightCm": 175,
+    "birthYear": 2007,
+    "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -739,7 +765,7 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 7,
     "firstName": "Jugadora",
     "lastName": "7",
-    "position": "LIBERO",
+    "position": "SETTER",
     "birthYear": 2007,
     "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
@@ -752,9 +778,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 8,
     "firstName": "Jugadora",
     "lastName": "8",
-    "position": "SETTER",
-    "birthYear": 2008,
-    "heightCm": 172,
+    "position": "OPPOSITE",
+    "birthYear": 2007,
+    "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -765,9 +791,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 9,
     "firstName": "Jugadora",
     "lastName": "9",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2009,
-    "heightCm": 175,
+    "position": "SETTER",
+    "birthYear": 2007,
+    "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -778,7 +804,7 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 10,
     "firstName": "Jugadora",
     "lastName": "10",
-    "position": "MIDDLE_BLOCKER",
+    "position": "OUTSIDE_HITTER",
     "birthYear": 2007,
     "heightCm": 169,
     "photoUrl": "/images/player-placeholder.svg",
@@ -801,7 +827,7 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-cm-2",
     "teamId": "team-cm",
-    "number": 11,
+    "number": 4,
     "firstName": "Pedro",
     "lastName": "Núñez Romero",
     "position": "OUTSIDE_HITTER",
@@ -840,12 +866,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-cm-5",
     "teamId": "team-cm",
-    "number": 3,
+    "number": 5,
     "firstName": "Jugador",
-    "lastName": "3",
+    "lastName": "5",
     "position": "OUTSIDE_HITTER",
-    "birthYear": 2009,
-    "heightCm": 179,
+    "birthYear": 2011,
+    "heightCm": 176,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -853,12 +879,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-cm-6",
     "teamId": "team-cm",
-    "number": 4,
+    "number": 6,
     "firstName": "Jugador",
-    "lastName": "4",
+    "lastName": "6",
     "position": "MIDDLE_BLOCKER",
-    "birthYear": 2010,
-    "heightCm": 182,
+    "birthYear": 2011,
+    "heightCm": 176,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -866,12 +892,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-cm-7",
     "teamId": "team-cm",
-    "number": 5,
+    "number": 7,
     "firstName": "Jugador",
-    "lastName": "5",
-    "position": "MIDDLE_BLOCKER",
+    "lastName": "7",
+    "position": "SETTER",
     "birthYear": 2011,
-    "heightCm": 185,
+    "heightCm": 176,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -879,12 +905,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-cm-8",
     "teamId": "team-cm",
-    "number": 6,
+    "number": 8,
     "firstName": "Jugador",
-    "lastName": "6",
-    "position": "SETTER",
-    "birthYear": 2010,
-    "heightCm": 182,
+    "lastName": "8",
+    "position": "OPPOSITE",
+    "birthYear": 2011,
+    "heightCm": 176,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -892,12 +918,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-cm-9",
     "teamId": "team-cm",
-    "number": 7,
+    "number": 9,
     "firstName": "Jugador",
-    "lastName": "7",
-    "position": "OUTSIDE_HITTER",
+    "lastName": "9",
+    "position": "SETTER",
     "birthYear": 2011,
-    "heightCm": 185,
+    "heightCm": 176,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -905,12 +931,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-cm-10",
     "teamId": "team-cm",
-    "number": 8,
+    "number": 10,
     "firstName": "Jugador",
-    "lastName": "8",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2009,
-    "heightCm": 179,
+    "lastName": "10",
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2011,
+    "heightCm": 176,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1074,12 +1100,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-cf-rojo-13",
     "teamId": "team-cf-rojo",
-    "number": 25,
-    "firstName": "Alejandra",
-    "lastName": "Redondo Lendinez",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2010,
-    "heightCm": 170,
+    "number": 33,
+    "firstName": "Angela",
+    "lastName": "Gomez Moreno",
+    "position": "MIDDLE_BLOCKER",
+    "birthYear": 2011,
+    "heightCm": 172,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1087,12 +1113,12 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-cf-rojo-14",
     "teamId": "team-cf-rojo",
-    "number": 33,
-    "firstName": "Angela",
-    "lastName": "Gomez Moreno",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "number": 75,
+    "firstName": "Alejandra",
+    "lastName": "Redondo Lendinez",
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2010,
+    "heightCm": 170,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1107,7 +1133,7 @@ export const FAVB_PLAYERS: Player[] = [
     "birthYear": 2009,
     "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
+    "isCaptain": true,
     "isHomegrown": true
   },
   {
@@ -1116,9 +1142,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 2,
     "firstName": "Jugadora",
     "lastName": "2",
-    "position": "OPPOSITE",
-    "birthYear": 2010,
-    "heightCm": 169,
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1129,9 +1155,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 3,
     "firstName": "Jugadora",
     "lastName": "3",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "position": "OPPOSITE",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1142,7 +1168,7 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 4,
     "firstName": "Jugadora",
     "lastName": "4",
-    "position": "OUTSIDE_HITTER",
+    "position": "MIDDLE_BLOCKER",
     "birthYear": 2009,
     "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
@@ -1155,9 +1181,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 5,
     "firstName": "Jugadora",
     "lastName": "5",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2010,
-    "heightCm": 169,
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1169,8 +1195,8 @@ export const FAVB_PLAYERS: Player[] = [
     "firstName": "Jugadora",
     "lastName": "6",
     "position": "MIDDLE_BLOCKER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1181,7 +1207,7 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 7,
     "firstName": "Jugadora",
     "lastName": "7",
-    "position": "LIBERO",
+    "position": "SETTER",
     "birthYear": 2009,
     "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
@@ -1194,9 +1220,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 8,
     "firstName": "Jugadora",
     "lastName": "8",
-    "position": "SETTER",
-    "birthYear": 2010,
-    "heightCm": 169,
+    "position": "OPPOSITE",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1207,9 +1233,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 9,
     "firstName": "Jugadora",
     "lastName": "9",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "position": "SETTER",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1220,7 +1246,7 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 10,
     "firstName": "Jugadora",
     "lastName": "10",
-    "position": "MIDDLE_BLOCKER",
+    "position": "OUTSIDE_HITTER",
     "birthYear": 2009,
     "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
@@ -1510,7 +1536,7 @@ export const FAVB_PLAYERS: Player[] = [
     "birthYear": 2013,
     "heightCm": 167,
     "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
+    "isCaptain": true,
     "isHomegrown": true
   },
   {
@@ -1529,6 +1555,19 @@ export const FAVB_PLAYERS: Player[] = [
   {
     "id": "p-team-if-negro-4",
     "teamId": "team-if-negro",
+    "number": 6,
+    "firstName": "Daryna",
+    "lastName": "Maslova Maslov",
+    "position": "MIDDLE_BLOCKER",
+    "birthYear": 2014,
+    "heightCm": 167,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
+    "id": "p-team-if-negro-5",
+    "teamId": "team-if-negro",
     "number": 7,
     "firstName": "Valeria",
     "lastName": "Montero Cantudo",
@@ -1540,7 +1579,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-if-negro-5",
+    "id": "p-team-if-negro-6",
     "teamId": "team-if-negro",
     "number": 8,
     "firstName": "Jimena",
@@ -1553,7 +1592,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-if-negro-6",
+    "id": "p-team-if-negro-7",
     "teamId": "team-if-negro",
     "number": 9,
     "firstName": "Camila Noemi",
@@ -1566,7 +1605,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-if-negro-7",
+    "id": "p-team-if-negro-8",
     "teamId": "team-if-negro",
     "number": 10,
     "firstName": "Julia",
@@ -1579,7 +1618,20 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-if-negro-8",
+    "id": "p-team-if-negro-9",
+    "teamId": "team-if-negro",
+    "number": 12,
+    "firstName": "Candela",
+    "lastName": "Díaz Calvente",
+    "position": "OPPOSITE",
+    "birthYear": 2013,
+    "heightCm": 165,
+    "photoUrl": "/images/player-placeholder.svg",
+    "isCaptain": false,
+    "isHomegrown": true
+  },
+  {
+    "id": "p-team-if-negro-10",
     "teamId": "team-if-negro",
     "number": 15,
     "firstName": "Valeria",
@@ -1592,7 +1644,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-if-negro-9",
+    "id": "p-team-if-negro-11",
     "teamId": "team-if-negro",
     "number": 18,
     "firstName": "Alba",
@@ -1605,7 +1657,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true
   },
   {
-    "id": "p-team-if-negro-10",
+    "id": "p-team-if-negro-12",
     "teamId": "team-if-negro",
     "number": 25,
     "firstName": "Paula",
@@ -1627,7 +1679,7 @@ export const FAVB_PLAYERS: Player[] = [
     "birthYear": 2009,
     "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
+    "isCaptain": true,
     "isHomegrown": true
   },
   {
@@ -1636,9 +1688,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 2,
     "firstName": "Jugadora",
     "lastName": "2",
-    "position": "OPPOSITE",
-    "birthYear": 2010,
-    "heightCm": 169,
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1649,9 +1701,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 3,
     "firstName": "Jugadora",
     "lastName": "3",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "position": "OPPOSITE",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1662,7 +1714,7 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 4,
     "firstName": "Jugadora",
     "lastName": "4",
-    "position": "OUTSIDE_HITTER",
+    "position": "MIDDLE_BLOCKER",
     "birthYear": 2009,
     "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
@@ -1675,9 +1727,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 5,
     "firstName": "Jugadora",
     "lastName": "5",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2010,
-    "heightCm": 169,
+    "position": "OUTSIDE_HITTER",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1689,8 +1741,8 @@ export const FAVB_PLAYERS: Player[] = [
     "firstName": "Jugadora",
     "lastName": "6",
     "position": "MIDDLE_BLOCKER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1701,7 +1753,7 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 7,
     "firstName": "Jugadora",
     "lastName": "7",
-    "position": "LIBERO",
+    "position": "SETTER",
     "birthYear": 2009,
     "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
@@ -1714,9 +1766,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 8,
     "firstName": "Jugadora",
     "lastName": "8",
-    "position": "SETTER",
-    "birthYear": 2010,
-    "heightCm": 169,
+    "position": "OPPOSITE",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1727,9 +1779,9 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 9,
     "firstName": "Jugadora",
     "lastName": "9",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2011,
-    "heightCm": 172,
+    "position": "SETTER",
+    "birthYear": 2009,
+    "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
     "isCaptain": false,
     "isHomegrown": true
@@ -1740,7 +1792,7 @@ export const FAVB_PLAYERS: Player[] = [
     "number": 10,
     "firstName": "Jugadora",
     "lastName": "10",
-    "position": "MIDDLE_BLOCKER",
+    "position": "OUTSIDE_HITTER",
     "birthYear": 2009,
     "heightCm": 166,
     "photoUrl": "/images/player-placeholder.svg",
@@ -1786,6 +1838,13 @@ export const FAVB_STAFF: Staff[] = [
     "photoUrl": "/images/staff-placeholder.svg"
   },
   {
+    "id": "stf-team-jf-rojo-2",
+    "teamId": "team-jf-rojo",
+    "name": "Rodríguez",
+    "role": "HEAD_COACH",
+    "photoUrl": "/images/staff-placeholder.svg"
+  },
+  {
     "id": "st-jf-negro-1",
     "teamId": "team-jf-negro",
     "name": "Entrenador/a Oficial",
@@ -1814,6 +1873,13 @@ export const FAVB_STAFF: Staff[] = [
     "photoUrl": "/images/staff-placeholder.svg"
   },
   {
+    "id": "stf-team-cf-rojo-3",
+    "teamId": "team-cf-rojo",
+    "name": "Rodríguez",
+    "role": "HEAD_COACH",
+    "photoUrl": "/images/staff-placeholder.svg"
+  },
+  {
     "id": "st-cf-negro-1",
     "teamId": "team-cf-negro",
     "name": "Entrenador/a Oficial",
@@ -1828,10 +1894,31 @@ export const FAVB_STAFF: Staff[] = [
     "photoUrl": "/images/staff-placeholder.svg"
   },
   {
+    "id": "stf-team-im-2",
+    "teamId": "team-im",
+    "name": "Galán",
+    "role": "ASSISTANT",
+    "photoUrl": "/images/staff-placeholder.svg"
+  },
+  {
     "id": "st-if-rojo-1",
     "teamId": "team-if-rojo",
     "name": "Vázquez",
     "role": "HEAD_COACH",
+    "photoUrl": "/images/staff-placeholder.svg"
+  },
+  {
+    "id": "st-if-rojo-2",
+    "teamId": "team-if-rojo",
+    "name": "Nadeau",
+    "role": "ASSISTANT",
+    "photoUrl": "/images/staff-placeholder.svg"
+  },
+  {
+    "id": "st-if-rojo-3",
+    "teamId": "team-if-rojo",
+    "name": "Martínez",
+    "role": "ASSISTANT",
     "photoUrl": "/images/staff-placeholder.svg"
   },
   {
@@ -1853,20 +1940,6 @@ export const FAVB_STAFF: Staff[] = [
     "teamId": "team-if-blanco",
     "name": "Entrenador/a Oficial",
     "role": "HEAD_COACH",
-    "photoUrl": "/images/staff-placeholder.svg"
-  },
-  {
-    "id": "st-if-rojo-2",
-    "teamId": "team-if-rojo",
-    "name": "Nadeau",
-    "role": "ASSISTANT",
-    "photoUrl": "/images/staff-placeholder.svg"
-  },
-  {
-    "id": "st-if-rojo-3",
-    "teamId": "team-if-rojo",
-    "name": "Martínez",
-    "role": "ASSISTANT",
     "photoUrl": "/images/staff-placeholder.svg"
   }
 ];
@@ -1943,8 +2016,21 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": false,
     "venueName": "COMPLEJO DEPORTIVO UNIVERSITARIO MALAGA (Málaga)",
     "matchDate": "2026-10-17T09:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
+    "status": "FINISHED",
+    "setScores": [
+      {
+        "home": 25,
+        "away": 17
+      },
+      {
+        "home": 25,
+        "away": 17
+      },
+      {
+        "home": 25,
+        "away": 16
+      }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1067",
     "isFeatured": false
   },
@@ -2266,7 +2352,7 @@ export const FAVB_MATCHES: Match[] = [
     "awayTeamName": "VOLEIBOL SAN PEDRO",
     "isClubHome": false,
     "venueName": "IES JOAQUÍN LOBATO (Torre del Mar)",
-    "matchDate": "2026-10-23T10:00:00.000Z",
+    "matchDate": "2026-10-24T14:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1482",
@@ -2391,8 +2477,21 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": false,
     "venueName": "IES JOAQUÍN LOBATO (Torre del Mar)",
     "matchDate": "2026-10-17T14:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
+    "status": "FINISHED",
+    "setScores": [
+      {
+        "home": 25,
+        "away": 14
+      },
+      {
+        "home": 25,
+        "away": 23
+      },
+      {
+        "home": 26,
+        "away": 24
+      }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1840",
     "isFeatured": false
   },
@@ -2403,8 +2502,8 @@ export const FAVB_MATCHES: Match[] = [
     "homeTeamName": "VOLEIBOL SAN PEDRO ROJO",
     "awayTeamName": "LA VEGA VOLEY",
     "isClubHome": true,
-    "venueName": "Pabellón Polideportivo Sergio Scariolo",
-    "matchDate": "2026-10-23T16:30:00.000Z",
+    "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
+    "matchDate": "2026-10-24T10:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=1843",
@@ -2501,8 +2600,8 @@ export const FAVB_MATCHES: Match[] = [
     "homeTeamName": "VOLEIBOL SAN PEDRO NEGRO",
     "awayTeamName": "ALHAURÍN DE LA TORRE",
     "isClubHome": true,
-    "venueName": "Pabellón Polideportivo Sergio Scariolo",
-    "matchDate": "2026-10-23T16:30:00.000Z",
+    "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
+    "matchDate": "2026-10-24T16:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5523",
@@ -2683,8 +2782,8 @@ export const FAVB_MATCHES: Match[] = [
     "homeTeamName": "VOLEIBOL SAN PEDRO",
     "awayTeamName": "ALHAURÍN DE LA TORRE A",
     "isClubHome": true,
-    "venueName": "Pabellón Polideportivo Sergio Scariolo",
-    "matchDate": "2026-10-23T16:30:00.000Z",
+    "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
+    "matchDate": "2026-10-25T09:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3831",
@@ -2838,8 +2937,21 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": false,
     "venueName": "POLIDEPORTIVO FERNANDO RUIZ HIERRO – P1 (Vélez-Málaga)",
     "matchDate": "2026-10-17T10:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
+    "status": "FINISHED",
+    "setScores": [
+      {
+        "home": 10,
+        "away": 25
+      },
+      {
+        "home": 14,
+        "away": 25
+      },
+      {
+        "home": 14,
+        "away": 25
+      }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4166",
     "isFeatured": false
   },
@@ -2850,8 +2962,8 @@ export const FAVB_MATCHES: Match[] = [
     "homeTeamName": "VOLEIBOL SAN PEDRO ROJO",
     "awayTeamName": "UDA BENALMADENA A",
     "isClubHome": true,
-    "venueName": "Pabellón Polideportivo Sergio Scariolo",
-    "matchDate": "2026-10-23T16:30:00.000Z",
+    "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
+    "matchDate": "2026-10-24T14:30:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4170",
@@ -2991,7 +3103,7 @@ export const FAVB_MATCHES: Match[] = [
     "awayTeamName": "VOLEIBOL SAN PEDRO NEGRO",
     "isClubHome": false,
     "venueName": "C.E.I.P TIERNO GALVÁN (Rincón de la Victoria)",
-    "matchDate": "2026-10-23T10:00:00.000Z",
+    "matchDate": "2026-10-24T18:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=5719",
@@ -3215,8 +3327,21 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": true,
     "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
     "matchDate": "2026-10-16T16:30:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
+    "status": "FINISHED",
+    "setScores": [
+      {
+        "home": 8,
+        "away": 25
+      },
+      {
+        "home": 12,
+        "away": 25
+      },
+      {
+        "home": 7,
+        "away": 25
+      }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3701",
     "isFeatured": true
   },
@@ -3228,7 +3353,7 @@ export const FAVB_MATCHES: Match[] = [
     "awayTeamName": "VOLEIBOL SAN PEDRO",
     "isClubHome": false,
     "venueName": "POLIDEPORTIVO MUNICIPAL DE CARTAMA (Cártama)",
-    "matchDate": "2026-10-23T10:00:00.000Z",
+    "matchDate": "2026-10-24T09:15:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3706",
@@ -3480,8 +3605,21 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": true,
     "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
     "matchDate": "2026-10-17T14:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
+    "status": "FINISHED",
+    "setScores": [
+      {
+        "home": 25,
+        "away": 3
+      },
+      {
+        "home": 25,
+        "away": 8
+      },
+      {
+        "home": 25,
+        "away": 18
+      }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4075",
     "isFeatured": false
   },
@@ -3493,7 +3631,7 @@ export const FAVB_MATCHES: Match[] = [
     "awayTeamName": "VOLEIBOL SAN PEDRO ROJO",
     "isClubHome": false,
     "venueName": "C.E.I.P TIERNO GALVÁN (Rincón de la Victoria)",
-    "matchDate": "2026-10-23T10:00:00.000Z",
+    "matchDate": "2026-10-25T11:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4077",
@@ -3633,8 +3771,29 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": false,
     "venueName": "IES POETAS ANDALUCES (Benalmádena)",
     "matchDate": "2026-10-17T14:00:00.000Z",
-    "status": "SCHEDULED",
-    "setScores": [],
+    "status": "FINISHED",
+    "setScores": [
+      {
+        "home": 25,
+        "away": 23
+      },
+      {
+        "home": 15,
+        "away": 25
+      },
+      {
+        "home": 25,
+        "away": 20
+      },
+      {
+        "home": 13,
+        "away": 25
+      },
+      {
+        "home": 15,
+        "away": 10
+      }
+    ],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4103",
     "isFeatured": false
   },
@@ -3645,8 +3804,8 @@ export const FAVB_MATCHES: Match[] = [
     "homeTeamName": "VOLEIBOL SAN PEDRO NEGRO",
     "awayTeamName": "CV PIZARRA LA FUENSANTA AZUL",
     "isClubHome": true,
-    "venueName": "Pabellón Polideportivo Sergio Scariolo",
-    "matchDate": "2026-10-23T16:30:00.000Z",
+    "venueName": "POLIDEPORTIVO SERGIO SCARIOLO – P3 (San Pedro de Alcántara)",
+    "matchDate": "2026-10-24T08:00:00.000Z",
     "status": "SCHEDULED",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=4105",
@@ -3952,19 +4111,19 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-senior-fem-1",
     "categoryId": "cat-senior-fem",
-    "teamName": "ACADEMIA VC ISONDA",
-    "points": 6,
-    "played": 2,
-    "won": 2,
+    "teamName": "CV CIUDAD DE MÁLAGA",
+    "points": 8,
+    "played": 3,
+    "won": 3,
     "lost": 0,
-    "setsFor": 6,
-    "setsAgainst": 0,
+    "setsFor": 9,
+    "setsAgainst": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-2",
     "categoryId": "cat-senior-fem",
-    "teamName": "AL-BAYYANA ROQUETAS",
+    "teamName": "ACADEMIA VC ISONDA",
     "points": 6,
     "played": 2,
     "won": 2,
@@ -3976,13 +4135,13 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-senior-fem-3",
     "categoryId": "cat-senior-fem",
-    "teamName": "CV CIUDAD DE MÁLAGA",
-    "points": 5,
+    "teamName": "AL-BAYYANA ROQUETAS",
+    "points": 6,
     "played": 2,
     "won": 2,
     "lost": 0,
     "setsFor": 6,
-    "setsAgainst": 3,
+    "setsAgainst": 0,
     "isCurrentClub": false
   },
   {
@@ -4012,17 +4171,29 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-senior-fem-6",
     "categoryId": "cat-senior-fem",
-    "teamName": "AKUMAL SPORT NUTRITION CVSA",
+    "teamName": "FUNDACIÓN CAJASOL ANDALUCÍA 1AF",
     "points": 3,
-    "played": 2,
+    "played": 3,
     "won": 1,
-    "lost": 1,
+    "lost": 2,
     "setsFor": 4,
-    "setsAgainst": 4,
+    "setsAgainst": 6,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-7",
+    "categoryId": "cat-senior-fem",
+    "teamName": "AKUMAL SPORT NUTRITION CVSA",
+    "points": 3,
+    "played": 3,
+    "won": 1,
+    "lost": 2,
+    "setsFor": 4,
+    "setsAgainst": 7,
+    "isCurrentClub": false
+  },
+  {
+    "id": "st-cat-senior-fem-8",
     "categoryId": "cat-senior-fem",
     "teamName": "CDU ATARFE 1AF",
     "points": 2,
@@ -4034,28 +4205,16 @@ export const FAVB_STANDINGS: Standings[] = [
     "isCurrentClub": false
   },
   {
-    "id": "st-cat-senior-fem-8",
+    "id": "st-cat-senior-fem-9",
     "categoryId": "cat-senior-fem",
     "teamName": "VOLEIBOL SAN PEDRO",
     "points": 1,
-    "played": 2,
+    "played": 3,
     "won": 0,
-    "lost": 2,
+    "lost": 3,
     "setsFor": 2,
-    "setsAgainst": 6,
+    "setsAgainst": 9,
     "isCurrentClub": true
-  },
-  {
-    "id": "st-cat-senior-fem-9",
-    "categoryId": "cat-senior-fem",
-    "teamName": "FUNDACIÓN CAJASOL ANDALUCÍA 1AF",
-    "points": 0,
-    "played": 2,
-    "won": 0,
-    "lost": 2,
-    "setsFor": 1,
-    "setsAgainst": 6,
-    "isCurrentClub": false
   },
   {
     "id": "st-cat-senior-fem-10",
@@ -4145,11 +4304,11 @@ export const FAVB_STANDINGS: Standings[] = [
     "id": "st-cat-juvenil-fem-rojo-1",
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "CARTAMA AZUL",
-    "points": 6,
-    "played": 2,
-    "won": 2,
+    "points": 9,
+    "played": 3,
+    "won": 3,
     "lost": 0,
-    "setsFor": 6,
+    "setsFor": 9,
     "setsAgainst": 0,
     "isCurrentClub": false
   },
@@ -4169,11 +4328,11 @@ export const FAVB_STANDINGS: Standings[] = [
     "id": "st-cat-juvenil-fem-rojo-3",
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "INTER PLAYAS A",
-    "points": 3,
-    "played": 2,
-    "won": 1,
+    "points": 6,
+    "played": 3,
+    "won": 2,
     "lost": 1,
-    "setsFor": 3,
+    "setsFor": 6,
     "setsAgainst": 3,
     "isCurrentClub": false
   },
@@ -4182,11 +4341,11 @@ export const FAVB_STANDINGS: Standings[] = [
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "NUEVA OLA",
     "points": 2,
-    "played": 2,
+    "played": 3,
     "won": 1,
-    "lost": 1,
+    "lost": 2,
     "setsFor": 3,
-    "setsAgainst": 5,
+    "setsAgainst": 8,
     "isCurrentClub": false
   },
   {
@@ -4206,11 +4365,11 @@ export const FAVB_STANDINGS: Standings[] = [
     "categoryId": "cat-juvenil-fem-rojo",
     "teamName": "VOLEIBOL SAN PEDRO ROJO",
     "points": 0,
-    "played": 2,
+    "played": 3,
     "won": 0,
-    "lost": 2,
+    "lost": 3,
     "setsFor": 0,
-    "setsAgainst": 6,
+    "setsAgainst": 9,
     "isCurrentClub": true
   },
   {
@@ -4300,55 +4459,55 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-cadete-masc-1",
     "categoryId": "cat-cadete-masc",
-    "teamName": "3STEVOLEY",
-    "points": 0,
-    "played": 0,
-    "won": 0,
+    "teamName": "ALHAURÍN DE LA TORRE A",
+    "points": 3,
+    "played": 1,
+    "won": 1,
     "lost": 0,
-    "setsFor": 0,
+    "setsFor": 3,
     "setsAgainst": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-masc-2",
     "categoryId": "cat-cadete-masc",
-    "teamName": "ALHAURÍN DE LA TORRE A",
-    "points": 0,
-    "played": 0,
-    "won": 0,
+    "teamName": "CV PIZARRA LA FUENSANTA",
+    "points": 3,
+    "played": 1,
+    "won": 1,
     "lost": 0,
-    "setsFor": 0,
+    "setsFor": 3,
     "setsAgainst": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-masc-3",
     "categoryId": "cat-cadete-masc",
-    "teamName": "CV PIZARRA LA FUENSANTA",
+    "teamName": "UDA BENALMADENA",
     "points": 0,
-    "played": 0,
+    "played": 1,
     "won": 0,
-    "lost": 0,
+    "lost": 1,
     "setsFor": 0,
-    "setsAgainst": 0,
+    "setsAgainst": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-masc-4",
     "categoryId": "cat-cadete-masc",
-    "teamName": "UDA BENALMADENA",
+    "teamName": "UNION MALAGUEÑA",
     "points": 0,
-    "played": 0,
+    "played": 1,
     "won": 0,
-    "lost": 0,
+    "lost": 1,
     "setsFor": 0,
-    "setsAgainst": 0,
+    "setsAgainst": 3,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-masc-5",
     "categoryId": "cat-cadete-masc",
-    "teamName": "UNION MALAGUEÑA",
+    "teamName": "3STEVOLEY",
     "points": 0,
     "played": 0,
     "won": 0,
@@ -4372,19 +4531,19 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-cadete-fem-rojo-1",
     "categoryId": "cat-cadete-fem-rojo",
-    "teamName": "CARTAMA BLANCO",
-    "points": 3,
-    "played": 1,
-    "won": 1,
+    "teamName": "FUENGIROLA CV A",
+    "points": 5,
+    "played": 2,
+    "won": 2,
     "lost": 0,
-    "setsFor": 3,
-    "setsAgainst": 0,
+    "setsFor": 6,
+    "setsAgainst": 2,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-rojo-2",
     "categoryId": "cat-cadete-fem-rojo",
-    "teamName": "CV PIZARRA LA FUENSANTA",
+    "teamName": "CARTAMA BLANCO",
     "points": 3,
     "played": 1,
     "won": 1,
@@ -4396,17 +4555,29 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-cadete-fem-rojo-3",
     "categoryId": "cat-cadete-fem-rojo",
-    "teamName": "FUENGIROLA CV A",
-    "points": 2,
+    "teamName": "CV PIZARRA LA FUENSANTA",
+    "points": 3,
     "played": 1,
     "won": 1,
     "lost": 0,
     "setsFor": 3,
-    "setsAgainst": 2,
+    "setsAgainst": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-cadete-fem-rojo-4",
+    "categoryId": "cat-cadete-fem-rojo",
+    "teamName": "VOLEIBOL SAN PEDRO ROJO",
+    "points": 3,
+    "played": 2,
+    "won": 1,
+    "lost": 1,
+    "setsFor": 3,
+    "setsAgainst": 3,
+    "isCurrentClub": true
+  },
+  {
+    "id": "st-cat-cadete-fem-rojo-5",
     "categoryId": "cat-cadete-fem-rojo",
     "teamName": "UDA BENALMADENA A",
     "points": 1,
@@ -4418,21 +4589,9 @@ export const FAVB_STANDINGS: Standings[] = [
     "isCurrentClub": false
   },
   {
-    "id": "st-cat-cadete-fem-rojo-5",
-    "categoryId": "cat-cadete-fem-rojo",
-    "teamName": "VOLEIBOL SAN PEDRO ROJO",
-    "points": 0,
-    "played": 1,
-    "won": 0,
-    "lost": 1,
-    "setsFor": 0,
-    "setsAgainst": 3,
-    "isCurrentClub": true
-  },
-  {
     "id": "st-cat-cadete-fem-rojo-6",
     "categoryId": "cat-cadete-fem-rojo",
-    "teamName": "NUEVA OLA A",
+    "teamName": "3STEVOLEY A",
     "points": 0,
     "played": 1,
     "won": 0,
@@ -4444,13 +4603,13 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-cadete-fem-rojo-7",
     "categoryId": "cat-cadete-fem-rojo",
-    "teamName": "3STEVOLEY A",
+    "teamName": "NUEVA OLA A",
     "points": 0,
-    "played": 0,
+    "played": 2,
     "won": 0,
-    "lost": 0,
+    "lost": 2,
     "setsFor": 0,
-    "setsAgainst": 0,
+    "setsAgainst": 6,
     "isCurrentClub": false
   },
   {
@@ -4552,17 +4711,41 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-infantil-masc-1",
     "categoryId": "cat-infantil-masc",
-    "teamName": "CV PIZARRA LA FUENSANTA AZUL",
-    "points": 3,
-    "played": 1,
-    "won": 1,
+    "teamName": "ALHAURÍN DE LA TORRE",
+    "points": 6,
+    "played": 2,
+    "won": 2,
     "lost": 0,
-    "setsFor": 3,
+    "setsFor": 6,
     "setsAgainst": 0,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-masc-2",
+    "categoryId": "cat-infantil-masc",
+    "teamName": "CV PIZARRA LA FUENSANTA AZUL",
+    "points": 6,
+    "played": 2,
+    "won": 2,
+    "lost": 0,
+    "setsFor": 6,
+    "setsAgainst": 1,
+    "isCurrentClub": false
+  },
+  {
+    "id": "st-cat-infantil-masc-3",
+    "categoryId": "cat-infantil-masc",
+    "teamName": "FUENGIROLA CV",
+    "points": 4,
+    "played": 2,
+    "won": 1,
+    "lost": 1,
+    "setsFor": 5,
+    "setsAgainst": 4,
+    "isCurrentClub": false
+  },
+  {
+    "id": "st-cat-infantil-masc-4",
     "categoryId": "cat-infantil-masc",
     "teamName": "CARTAMA",
     "points": 3,
@@ -4574,31 +4757,19 @@ export const FAVB_STANDINGS: Standings[] = [
     "isCurrentClub": false
   },
   {
-    "id": "st-cat-infantil-masc-3",
-    "categoryId": "cat-infantil-masc",
-    "teamName": "ALHAURÍN DE LA TORRE",
-    "points": 3,
-    "played": 1,
-    "won": 1,
-    "lost": 0,
-    "setsFor": 3,
-    "setsAgainst": 0,
-    "isCurrentClub": false
-  },
-  {
-    "id": "st-cat-infantil-masc-4",
+    "id": "st-cat-infantil-masc-5",
     "categoryId": "cat-infantil-masc",
     "teamName": "VOLEIBOL SAN PEDRO",
     "points": 3,
-    "played": 1,
+    "played": 2,
     "won": 1,
-    "lost": 0,
+    "lost": 1,
     "setsFor": 3,
-    "setsAgainst": 0,
+    "setsAgainst": 3,
     "isCurrentClub": true
   },
   {
-    "id": "st-cat-infantil-masc-5",
+    "id": "st-cat-infantil-masc-6",
     "categoryId": "cat-infantil-masc",
     "teamName": "COSTA DEL VOLEY",
     "points": 2,
@@ -4610,19 +4781,31 @@ export const FAVB_STANDINGS: Standings[] = [
     "isCurrentClub": false
   },
   {
-    "id": "st-cat-infantil-masc-6",
+    "id": "st-cat-infantil-masc-7",
     "categoryId": "cat-infantil-masc",
-    "teamName": "FUENGIROLA CV",
-    "points": 1,
-    "played": 1,
+    "teamName": "NUEVA OLA",
+    "points": 0,
+    "played": 2,
     "won": 0,
-    "lost": 1,
-    "setsFor": 2,
-    "setsAgainst": 3,
+    "lost": 2,
+    "setsFor": 1,
+    "setsAgainst": 6,
     "isCurrentClub": false
   },
   {
-    "id": "st-cat-infantil-masc-7",
+    "id": "st-cat-infantil-masc-8",
+    "categoryId": "cat-infantil-masc",
+    "teamName": "CV PIZARRA LA FUENSANTA BLANCO",
+    "points": 0,
+    "played": 2,
+    "won": 0,
+    "lost": 2,
+    "setsFor": 1,
+    "setsAgainst": 6,
+    "isCurrentClub": false
+  },
+  {
+    "id": "st-cat-infantil-masc-9",
     "categoryId": "cat-infantil-masc",
     "teamName": "3STEVOLEY",
     "points": 0,
@@ -4634,33 +4817,9 @@ export const FAVB_STANDINGS: Standings[] = [
     "isCurrentClub": false
   },
   {
-    "id": "st-cat-infantil-masc-8",
-    "categoryId": "cat-infantil-masc",
-    "teamName": "UDA BENALMADENA A",
-    "points": 0,
-    "played": 1,
-    "won": 0,
-    "lost": 1,
-    "setsFor": 0,
-    "setsAgainst": 3,
-    "isCurrentClub": false
-  },
-  {
-    "id": "st-cat-infantil-masc-9",
-    "categoryId": "cat-infantil-masc",
-    "teamName": "NUEVA OLA",
-    "points": 0,
-    "played": 1,
-    "won": 0,
-    "lost": 1,
-    "setsFor": 0,
-    "setsAgainst": 3,
-    "isCurrentClub": false
-  },
-  {
     "id": "st-cat-infantil-masc-10",
     "categoryId": "cat-infantil-masc",
-    "teamName": "CV PIZARRA LA FUENSANTA BLANCO",
+    "teamName": "UDA BENALMADENA A",
     "points": 0,
     "played": 1,
     "won": 0,
@@ -4673,11 +4832,11 @@ export const FAVB_STANDINGS: Standings[] = [
     "id": "st-cat-infantil-fem-rojo-1",
     "categoryId": "cat-infantil-fem-rojo",
     "teamName": "CARTAMA",
-    "points": 3,
-    "played": 1,
-    "won": 1,
+    "points": 6,
+    "played": 2,
+    "won": 2,
     "lost": 0,
-    "setsFor": 3,
+    "setsFor": 6,
     "setsAgainst": 0,
     "isCurrentClub": false
   },
@@ -4696,37 +4855,37 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-infantil-fem-rojo-3",
     "categoryId": "cat-infantil-fem-rojo",
-    "teamName": "COSTA DEL VOLEY ROSA (ORO)",
+    "teamName": "VOLEIBOL SAN PEDRO ROJO",
     "points": 3,
-    "played": 1,
+    "played": 2,
     "won": 1,
-    "lost": 0,
+    "lost": 1,
     "setsFor": 3,
-    "setsAgainst": 0,
-    "isCurrentClub": false
+    "setsAgainst": 3,
+    "isCurrentClub": true
   },
   {
     "id": "st-cat-infantil-fem-rojo-4",
     "categoryId": "cat-infantil-fem-rojo",
-    "teamName": "VOLEIBOL SAN PEDRO ROJO",
-    "points": 0,
-    "played": 1,
-    "won": 0,
+    "teamName": "COSTA DEL VOLEY ROSA (ORO)",
+    "points": 3,
+    "played": 2,
+    "won": 1,
     "lost": 1,
-    "setsFor": 0,
+    "setsFor": 3,
     "setsAgainst": 3,
-    "isCurrentClub": true
+    "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-rojo-5",
     "categoryId": "cat-infantil-fem-rojo",
     "teamName": "FORVOLEY TORREMOLINOS",
     "points": 0,
-    "played": 1,
+    "played": 2,
     "won": 0,
-    "lost": 1,
+    "lost": 2,
     "setsFor": 0,
-    "setsAgainst": 3,
+    "setsAgainst": 6,
     "isCurrentClub": false
   },
   {
@@ -4744,6 +4903,18 @@ export const FAVB_STANDINGS: Standings[] = [
   {
     "id": "st-cat-infantil-fem-negro-1",
     "categoryId": "cat-infantil-fem-negro",
+    "teamName": "MIJAS VOLEY AZUL",
+    "points": 6,
+    "played": 2,
+    "won": 2,
+    "lost": 0,
+    "setsFor": 6,
+    "setsAgainst": 2,
+    "isCurrentClub": false
+  },
+  {
+    "id": "st-cat-infantil-fem-negro-2",
+    "categoryId": "cat-infantil-fem-negro",
     "teamName": "FUENGIROLA CV A",
     "points": 3,
     "played": 1,
@@ -4754,39 +4925,27 @@ export const FAVB_STANDINGS: Standings[] = [
     "isCurrentClub": false
   },
   {
-    "id": "st-cat-infantil-fem-negro-2",
-    "categoryId": "cat-infantil-fem-negro",
-    "teamName": "MIJAS VOLEY AZUL",
-    "points": 3,
-    "played": 1,
-    "won": 1,
-    "lost": 0,
-    "setsFor": 3,
-    "setsAgainst": 1,
-    "isCurrentClub": false
-  },
-  {
     "id": "st-cat-infantil-fem-negro-3",
     "categoryId": "cat-infantil-fem-negro",
     "teamName": "UDA BENALMADENA A",
-    "points": 0,
-    "played": 1,
-    "won": 0,
+    "points": 2,
+    "played": 2,
+    "won": 1,
     "lost": 1,
-    "setsFor": 1,
-    "setsAgainst": 3,
+    "setsFor": 4,
+    "setsAgainst": 5,
     "isCurrentClub": false
   },
   {
     "id": "st-cat-infantil-fem-negro-4",
     "categoryId": "cat-infantil-fem-negro",
     "teamName": "VOLEIBOL SAN PEDRO NEGRO",
-    "points": 0,
-    "played": 1,
+    "points": 1,
+    "played": 2,
     "won": 0,
-    "lost": 1,
-    "setsFor": 0,
-    "setsAgainst": 3,
+    "lost": 2,
+    "setsFor": 2,
+    "setsAgainst": 6,
     "isCurrentClub": true
   },
   {
@@ -4794,11 +4953,11 @@ export const FAVB_STANDINGS: Standings[] = [
     "categoryId": "cat-infantil-fem-negro",
     "teamName": "CV PIZARRA LA FUENSANTA AZUL",
     "points": 0,
-    "played": 0,
+    "played": 1,
     "won": 0,
-    "lost": 0,
-    "setsFor": 0,
-    "setsAgainst": 0,
+    "lost": 1,
+    "setsFor": 1,
+    "setsAgainst": 3,
     "isCurrentClub": false
   },
   {

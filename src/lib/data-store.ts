@@ -59,6 +59,105 @@ export const INITIAL_STANDINGS: Standings[] = FAVB_STANDINGS;
 
 export const INITIAL_ARTICLES: Article[] = [
   {
+    id: 'art-resultados-primeras-jornadas-26-27',
+    title: 'Resultados de las Primeras Jornadas: Victorias de Cantera y Estreno Competitivo en las Ligas FAVB 26/27',
+    slug: 'resultados-primeras-jornadas-ligas-favb-26-27',
+    excerpt: 'Repaso completo a los marcadores oficiales de todas nuestras categorías en el arranque de la temporada 2026/2027, destacando los triunfos por 3-0 de Infantil Masculino, Infantil Femenino Rojo y Cadete Femenino Rojo, junto a los tie-breaks disputados por Senior Femenino e Infantil Femenino Negro.',
+    contentMarkdown: `Las competiciones oficiales de la Federación Andaluza de Voleibol (FAVB) ya están en plena marcha para los equipos del **C.D. Voleibol San Pedro** en esta temporada 2026/2027. Las primeras jornadas ligueras han dejado grandes momentos en el Pabellón Polideportivo Sergio Scariolo y en las pistas de toda la provincia, con importantes victorias en nuestras categorías de cantera y partidos decididos en el quinto set.
+
+A continuación repasamos el balance y los resultados oficiales registrados en cada una de las categorías del club en este arranque de liga:
+
+### Senior Femenino (1ª División Andaluza)
+
+Nuestro primer equipo femenino compite en el exigente Grupo B de Primera División Andaluza, sumando ya su primer punto en casa tras un intenso duelo a cinco sets ante CDU Atarfe:
+
+- **Jornada 1:** ACADEMIA VC ISONDA **3 - 0** VOLEIBOL SAN PEDRO (25-15, 25-14, 25-19)
+- **Jornada 2:** VOLEIBOL SAN PEDRO **2 - 3** CDU ATARFE 1AF (25-22, 26-24, 22-25, 15-25, 11-15) — Primer punto oficial sumado en el Pabellón Sergio Scariolo tras adelantarse 2-0 en un vibrante encuentro.
+- **Jornada 3:** CV CIUDAD DE MÁLAGA **3 - 0** VOLEIBOL SAN PEDRO (25-17, 25-17, 25-16)
+
+### Cadete Femenino Rojo
+
+Gran reacción del conjunto Cadete Femenino Rojo, que tras un debut muy igualado en casa logró su primera victoria a domicilio por la vía rápida en la segunda jornada:
+
+- **Jornada 1:** VOLEIBOL SAN PEDRO ROJO **0 - 3** CV PIZARRA LA FUENSANTA (20-25, 23-25, 21-25)
+- **Jornada 2:** NUEVA OLA A **0 - 3** VOLEIBOL SAN PEDRO ROJO (10-25, 14-25, 14-25) — Victoria contundente a domicilio sumando los 3 primeros puntos en la tabla.
+
+### Infantil Masculino
+
+Estreno con triunfo a domicilio para nuestros chicos del Infantil Masculino en la jornada inaugural de la competición provincial:
+
+- **Jornada 1:** 3STEVOLEY **0 - 3** VOLEIBOL SAN PEDRO (17-25, 21-25, 21-25) — Primera victoria oficial de la temporada sin ceder un solo set en Estepona.
+- **Jornada 2:** VOLEIBOL SAN PEDRO **0 - 3** ALHAURÍN DE LA TORRE (8-25, 12-25, 7-25)
+
+### Infantil Femenino Rojo
+
+Nuestro equipo Infantil Femenino Rojo firmó una actuación sobresaliente en su estreno como local en el Sergio Scariolo durante la segunda jornada:
+
+- **Jornada 1:** COSTA DEL VOLEY ROSA (ORO) **3 - 0** VOLEIBOL SAN PEDRO ROJO (25-19, 25-19, 25-16)
+- **Jornada 2:** VOLEIBOL SAN PEDRO ROJO **3 - 0** FORVOLEY TORREMOLINOS (25-3, 25-8, 25-18) — Triunfo autoritario en casa para sumar los 3 primeros puntos ligueros.
+
+### Infantil Femenino Negro
+
+Progresión competitiva inmediata del bloque Infantil Femenino Negro, que en su segunda salida forzó el tie-break en Benalmádena para estrenar su casillero de puntos:
+
+- **Jornada 1:** VOLEIBOL SAN PEDRO NEGRO **0 - 3** FUENGIROLA CV A (10-25, 14-25, 15-25)
+- **Jornada 2:** UDA BENALMADENA A **3 - 2** VOLEIBOL SAN PEDRO NEGRO (25-23, 15-25, 25-20, 13-25, 15-10) — Punto de mérito a domicilio en un encuentro disputado de principio a fin.
+
+### Juvenil Masculino y Juvenil Femenino Rojo
+
+Nuestros conjuntos juveniles han afrontado un calendario inicial de máxima exigencia ante rivales de la parte alta de la clasificación:
+
+- **Juvenil Masculino (J1):** VOLEIBOL SAN PEDRO **1 - 3** FUENGIROLA CV A (12-25, 22-25, 25-19, 22-25)
+- **Juvenil Masculino (J2):** UDA BENALMADENA **3 - 0** VOLEIBOL SAN PEDRO (25-12, 25-13, 25-19)
+- **Juvenil Femenino Rojo (J1):** CARTAMA AZUL **3 - 0** VOLEIBOL SAN PEDRO ROJO (25-3, 25-10, 25-16)
+- **Juvenil Femenino Rojo (J2):** VOLEIBOL SAN PEDRO ROJO **0 - 3** COSTA DEL VOLEY ROSA (21-25, 23-25, 20-25)
+- **Juvenil Femenino Rojo (J3):** INTER PLAYAS A **3 - 0** VOLEIBOL SAN PEDRO ROJO (25-14, 25-23, 26-24)
+
+### Debut del resto de categorías federadas
+
+Completan la puesta en marcha de nuestras once categorías los estrenos de **Cadete Masculino** (ante 3stevoley), **Infantil Femenino Blanco** (frente a Fuengirola CV B), **Júnior Masculino** y **Senior Masculino**, cuyas actas, marcadores en directo y clasificaciones pueden seguirse jornada a jornada desde nuestra web oficial.`,
+    categoryId: 'cat-competicion',
+    categoryName: 'Competición y Resultados',
+    coverImageUrl: '/images/hero-spike.png',
+    publishedAt: '2026-10-18T08:00:00.000Z',
+    isFeatured: true,
+    readingTimeMinutes: 3,
+  },
+  {
+    id: 'art-loteria-2026',
+    title: 'Lotería de Navidad 2026: Juega con el C.D. Voleibol San Pedro al número 15.586 y apoya al club',
+    slug: 'loteria-navidad-2026-voleibol-san-pedro-15586',
+    excerpt: 'Desde el club se ponen a la venta los décimos de la tradicional Lotería Nacional de Navidad (22 de diciembre de 2026) al número 15.586 por 23 €, con donativo de apoyo a nuestra cantera.',
+    contentMarkdown: `El C.D. Voleibol San Pedro pone a la venta los décimos de la tradicional Lotería Nacional de Navidad para el sorteo extraordinario del próximo **22 de diciembre de 2026**.
+
+Compartir este número es una de las tradiciones de nuestras familias, socios, jugadores y aficionados. Con cada décimo adquirido estás colaborando de forma directa y decisiva con el club y el proyecto formativo de nuestra cantera en San Pedro Alcántara.
+
+### 15.586
+
+### Datos del Décimo Oficial
+
+- **Número jugado:** **15.586**
+- **Fecha del sorteo:** 22 de diciembre de 2026 (S.E. Loterías y Apuestas del Estado).
+- **Precio por décimo:** **23 €** (incluye donativo de apoyo al club).
+
+### ¿Cómo adquirir tu décimo?
+
+Puedes hacerte con tus décimos del **15.586** de varias formas:
+
+1. **En el Pabellón Polideportivo Sergio Scariolo:** Preguntando directamente a los entrenadores o delegados durante los entrenamientos semanales de cantera y del primer equipo.
+2. **Reserva directa por WhatsApp:** Si prefieres coordinar tu reserva previamente con los responsables del club, puedes escribirnos directamente:
+
+[Reservar décimos por WhatsApp](https://wa.me/34622112233?text=Hola%2C%20estoy%20interesado%20en%20comprar%20decimos%20de%20Loteria%20de%20Navidad%20del%20Voleibol%20San%20Pedro%20(15.586))
+
+¡Muchas gracias por apoyar al club y mucha suerte a todos con el **15.586**!`,
+    categoryId: 'cat-club',
+    categoryName: 'Club e Institucional',
+    coverImageUrl: '/images/noticias/loteria-navidad-2026.png',
+    publishedAt: '2026-10-06T19:00:00.000Z',
+    isFeatured: true,
+    readingTimeMinutes: 2,
+  },
+  {
     id: 'art-reglas-2026',
     title: 'Nuevas Reglas de Juego 2026: Cambios Oficiales de la RFEVB y la FAVB para la Temporada 26/27',
     slug: 'nuevas-reglas-juego-temporada-2026-rfevb-favb',
@@ -124,81 +223,11 @@ Asimismo, los clubes, jugadores y técnicos pueden descargar la copia íntegra d
 
 [Descargar PDF oficial de Cambios de Reglas 2026](/docs/cambios-de-reglas-2026-rfevb.pdf)`,
     categoryId: 'cat-inst',
-    categoryName: 'Institucional y FAVB',
+    categoryName: 'Normativa y FAVB',
     coverImageUrl: '/images/noticias/nuevas-reglas-2026.png',
     publishedAt: '2026-10-06T18:00:00.000Z',
     isFeatured: true,
     readingTimeMinutes: 4,
-  },
-  {
-    id: 'art-loteria-2026',
-    title: 'Lotería de Navidad 2026: Juega con el C.D. Voleibol San Pedro al número 15.586 y apoya al club',
-    slug: 'loteria-navidad-2026-voleibol-san-pedro-15586',
-    excerpt: 'Desde el club se ponen a la venta los décimos de la tradicional Lotería Nacional de Navidad (22 de diciembre de 2026) al número 15.586 por 23 €, con donativo de apoyo a nuestra cantera.',
-    contentMarkdown: `El C.D. Voleibol San Pedro pone a la venta los décimos de la tradicional Lotería Nacional de Navidad para el sorteo extraordinario del próximo **22 de diciembre de 2026**.
-
-Compartir este número es una de las tradiciones de nuestras familias, socios, jugadores y aficionados. Con cada décimo adquirido estás colaborando de forma directa y decisiva con el club y el proyecto formativo de nuestra cantera en San Pedro Alcántara.
-
-### 15.586
-
-### Datos del Décimo Oficial
-
-- **Número jugado:** **15.586**
-- **Fecha del sorteo:** 22 de diciembre de 2026 (S.E. Loterías y Apuestas del Estado).
-- **Precio por décimo:** **23 €** (incluye donativo de apoyo al club).
-
-### ¿Cómo adquirir tu décimo?
-
-Puedes hacerte con tus décimos del **15.586** de varias formas:
-
-1. **En el Pabellón Polideportivo Sergio Scariolo:** Preguntando directamente a los entrenadores o delegados durante los entrenamientos semanales de cantera y del primer equipo.
-2. **Reserva directa por WhatsApp:** Si prefieres coordinar tu reserva previamente con los responsables del club, puedes escribirnos directamente:
-
-[Reservar décimos por WhatsApp](https://wa.me/34622112233?text=Hola%2C%20estoy%20interesado%20en%20comprar%20decimos%20de%20Loteria%20de%20Navidad%20del%20Voleibol%20San%20Pedro%20(15.586))
-
-¡Muchas gracias por apoyar al club y mucha suerte a todos con el **15.586**!`,
-    categoryId: 'cat-inst',
-    categoryName: 'Club e Institucional',
-    coverImageUrl: '/images/noticias/loteria-navidad-2026.png',
-    publishedAt: '2026-10-06T19:00:00.000Z',
-    isFeatured: true,
-    readingTimeMinutes: 2,
-  },
-  {
-    id: 'art-cantera-favb',
-    title: 'Arrancan las Ligas Provinciales de Cantera de la FAVB con 8 equipos sampedreños',
-    slug: 'arranque-ligas-provinciales-cantera-favb',
-    excerpt: 'Nuestros equipos Júnior, Juvenil, Cadete e Infantil debutan este mes en las competiciones oficiales de la Federación Andaluza de Voleibol en el Pabellón Sergio Scariolo.',
-    contentMarkdown: `La temporada 2026/2027 echa a rodar de forma oficial para toda la estructura de cantera del C.D. Voleibol San Pedro. En esta campaña histórica, el club inscribe un récord de 8 conjuntos federados en las Ligas Provinciales de Málaga organizadas por la Federación Andaluza de Voleibol (FAVB).
-
-La apuesta decidida por el voleibol base sampedreño se consolida con presencia en todas las franjas de edad, dando cabida a más de 120 chicos y chicas de San Pedro Alcántara y la Costa del Sol occidental.
-
-### Categorías federadas en liza
-
-Nuestra representación para el curso 26/27 queda estructurada en las siguientes divisiones:
-
-- **Júnior:** Conjuntos Júnior Masculino y Júnior Femenino, compitiendo en el máximo nivel formativo provincial previo al salto sénior.
-- **Juvenil:** Equipos Juvenil Masculino y Juvenil Femenino, buscando revalidar los puestos de fase final andaluza.
-- **Cadete:** Cadete Masculino y Cadete Femenino, franja de consolidación táctica y ritmo de juego.
-- **Infantil:** Infantil Masculino e Infantil Femenino, la base del club donde se fomentan los fundamentos del saque, pase y colocación.
-
-### El Pabellón Sergio Scariolo como sede central
-
-Todos los encuentros como local se disputarán en la pista central del Pabellón Polideportivo Sergio Scariolo durante las mañanas de los sábados y domingos. La entrada para presenciar los partidos de cantera es completamente libre y gratuita para familiares, vecinos y aficionados.
-
-Invitamos a todo el pueblo de San Pedro a llenar las gradas y arropar a nuestros jóvenes canteranos en cada saque y remate.
-
-### Seguimiento oficial en el portal FAVB
-
-Todos los calendarios, actas electrónicas y clasificaciones se actualizan en tiempo real a través del portal de la federación:
-
-[Consultar portal oficial de la Federación Andaluza de Voleibol](https://favoley.net/publico/index.php)`,
-    categoryId: 'cat-cantera',
-    categoryName: 'Cantera FAVB',
-    coverImageUrl: 'https://images.unsplash.com/photo-1547347298-4074fc3086f0?w=1200&auto=format&fit=crop&q=80',
-    publishedAt: '2026-10-05T12:00:00.000Z',
-    isFeatured: false,
-    readingTimeMinutes: 3,
   },
 ];
 
@@ -395,15 +424,13 @@ class DataStore {
   }
 
   getArticles(): Article[] {
-    return [...this.articles].sort((a, b) => {
-      if (a.isFeatured && !b.isFeatured) return -1;
-      if (!a.isFeatured && b.isFeatured) return 1;
-      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-    });
+    return [...INITIAL_ARTICLES].sort(
+      (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+    );
   }
 
   getArticleBySlug(slug: string): Article | undefined {
-    return this.articles.find((a) => a.slug === slug);
+    return INITIAL_ARTICLES.find((a) => a.slug === slug);
   }
 
   getSponsorTiers(): SponsorTier[] {

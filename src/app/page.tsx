@@ -113,10 +113,6 @@ export default async function HomePage() {
                   Y ORGULLO SAMPEDREÑO.
                 </span>
               </h1>
-
-              <p className="font-body-lg text-sm sm:text-base lg:text-lg text-tertiary-fixed max-w-2xl mt-2.5 mb-1">
-                Club deportivo formativo volcado en el deporte base, los jóvenes y San Pedro Alcántara.
-              </p>
             </div>
 
             {/* Emblema / Lema Oficial de la Temporada: "Yo Voley... ¿y tú?" (Recreación fiel de RRSS) */}
@@ -197,7 +193,10 @@ export default async function HomePage() {
                 Centro de Competición
               </span>
               <h2 className="font-headline-lg text-3xl sm:text-4xl uppercase tracking-wide text-on-surface mt-1">
-                Enfrentamientos y Marcadores
+                <span>Enfrentamientos y </span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                  Marcadores
+                </span>
               </h2>
             </div>
             <Link
@@ -247,9 +246,19 @@ export default async function HomePage() {
                           className="object-contain max-h-full max-w-full"
                         />
                       </div>
-                      <h4 className="font-display-xl text-lg sm:text-xl uppercase text-white leading-tight">
-                        {featuredMatch.homeTeamName}
-                      </h4>
+                      {featuredMatch.isClubHome ? (
+                        <Link
+                          href={`/plantillas?categoria=${featuredCat?.id || 'cat-senior-fem'}`}
+                          className="font-display-xl text-lg sm:text-xl uppercase text-white hover:text-primary hover:underline decoration-primary underline-offset-4 leading-tight transition-colors"
+                          title={`Ver plantilla de ${featuredCat?.name || 'nuestro equipo'}`}
+                        >
+                          {featuredMatch.homeTeamName}
+                        </Link>
+                      ) : (
+                        <h4 className="font-display-xl text-lg sm:text-xl uppercase text-white leading-tight">
+                          {featuredMatch.homeTeamName}
+                        </h4>
+                      )}
                       <span
                         className={`text-[11px] uppercase font-bold mt-1 ${
                           featuredMatch.isClubHome ? 'text-primary' : 'text-tertiary'
@@ -290,9 +299,19 @@ export default async function HomePage() {
                           className="object-contain max-h-full max-w-full"
                         />
                       </div>
-                      <h4 className="font-display-xl text-lg sm:text-xl uppercase text-on-surface leading-tight">
-                        {featuredMatch.awayTeamName}
-                      </h4>
+                      {!featuredMatch.isClubHome ? (
+                        <Link
+                          href={`/plantillas?categoria=${featuredCat?.id || 'cat-senior-fem'}`}
+                          className="font-display-xl text-lg sm:text-xl uppercase text-on-surface hover:text-primary hover:underline decoration-primary underline-offset-4 leading-tight transition-colors"
+                          title={`Ver plantilla de ${featuredCat?.name || 'nuestro equipo'}`}
+                        >
+                          {featuredMatch.awayTeamName}
+                        </Link>
+                      ) : (
+                        <h4 className="font-display-xl text-lg sm:text-xl uppercase text-on-surface leading-tight">
+                          {featuredMatch.awayTeamName}
+                        </h4>
+                      )}
                       <span
                         className={`text-[11px] uppercase font-bold mt-1 ${
                           !featuredMatch.isClubHome ? 'text-primary' : 'text-tertiary'
@@ -369,19 +388,25 @@ export default async function HomePage() {
                 const scoreResult = calculateMatchScore(match.setScores);
                 const matchTeam = teamMap.get(match.teamId);
                 const matchCat = matchTeam ? catMap.get(matchTeam.categoryId) : undefined;
+                const matchCatId = matchCat?.id || 'cat-senior-fem';
                 const getScoreColor = (myVal: number, oppVal: number) => {
                   if (myVal > oppVal) return 'text-emerald-400';
                   if (myVal < oppVal) return 'text-white';
                   return 'text-amber-300';
                 };
                 return (
-                  <Link
+                  <div
                     key={match.id}
-                    href={`/partidos?categoria=${matchCat?.id || 'cat-senior-fem'}&match=${match.id}`}
-                    className="block bg-surface-container-low border border-white/5 hover:border-primary-container/40 p-3.5 sm:p-4 transition-all"
+                    className="relative bg-surface-container-low border border-white/5 hover:border-primary-container/40 p-3.5 sm:p-4 transition-all"
                   >
+                    <Link
+                      href={`/partidos?categoria=${matchCatId}&match=${match.id}`}
+                      className="absolute inset-0 z-0"
+                      aria-label={`Ver partido ${match.homeTeamName} vs ${match.awayTeamName}`}
+                    />
+
                     {/* Cabecera con Jornada, Fecha y Encabezados de Sets formato tenis */}
-                    <div className="flex items-center justify-between gap-2 text-[11px] text-tertiary uppercase pb-2 border-b border-white/5">
+                    <div className="relative z-10 pointer-events-none flex items-center justify-between gap-2 text-[11px] text-tertiary uppercase pb-2 border-b border-white/5">
                       <span className="truncate">
                         <strong className="text-primary font-bold">{matchCat?.name || 'FAVB'}</strong> • J{match.round}{' '}
                         • {formatMadridDate(match.matchDate, { day: 'numeric', month: 'short' })}
@@ -403,7 +428,7 @@ export default async function HomePage() {
                     </div>
 
                     {/* Filas de Equipos + Puntos de cada Set + Total de Sets */}
-                    <div className="pt-2.5 space-y-2">
+                    <div className="relative z-10 pointer-events-none pt-2.5 space-y-2">
                       {/* Equipo Local */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -414,13 +439,19 @@ export default async function HomePage() {
                             height={32}
                             className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                           />
-                          <span
-                            className={`text-xs sm:text-sm font-semibold truncate ${
-                              match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'
-                            }`}
-                          >
-                            {match.homeTeamName}
-                          </span>
+                          {match.isClubHome ? (
+                            <Link
+                              href={`/plantillas?categoria=${matchCatId}`}
+                              className="pointer-events-auto text-xs sm:text-sm text-primary font-bold truncate hover:underline decoration-primary underline-offset-2"
+                              title={`Ver plantilla de ${matchCat?.name || 'nuestro equipo'}`}
+                            >
+                              {match.homeTeamName}
+                            </Link>
+                          ) : (
+                            <span className="text-xs sm:text-sm font-semibold text-on-surface truncate">
+                              {match.homeTeamName}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1 shrink-0">
@@ -456,13 +487,19 @@ export default async function HomePage() {
                             height={32}
                             className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                           />
-                          <span
-                            className={`text-xs sm:text-sm font-semibold truncate ${
-                              !match.isClubHome ? 'text-primary font-bold' : 'text-on-surface'
-                            }`}
-                          >
-                            {match.awayTeamName}
-                          </span>
+                          {!match.isClubHome ? (
+                            <Link
+                              href={`/plantillas?categoria=${matchCatId}`}
+                              className="pointer-events-auto text-xs sm:text-sm text-primary font-bold truncate hover:underline decoration-primary underline-offset-2"
+                              title={`Ver plantilla de ${matchCat?.name || 'nuestro equipo'}`}
+                            >
+                              {match.awayTeamName}
+                            </Link>
+                          ) : (
+                            <span className="text-xs sm:text-sm font-semibold text-on-surface truncate">
+                              {match.awayTeamName}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1 shrink-0">
@@ -488,7 +525,7 @@ export default async function HomePage() {
                         </div>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 );
               })}
             </div>
@@ -505,7 +542,10 @@ export default async function HomePage() {
                 Actualidad Sampedreña
               </span>
               <h2 className="font-headline-lg text-3xl sm:text-4xl uppercase tracking-wide text-on-surface mt-1">
-                Crónicas y Noticias del Club
+                <span>Crónicas y </span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                  Noticias del Club
+                </span>
               </h2>
             </div>
             <Link

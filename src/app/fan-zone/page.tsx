@@ -214,8 +214,11 @@ export default function FanZonePage() {
                 #VOLEIBOLSAMPEDRO
               </span>
             </div>
-            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase text-white tracking-tight leading-none">
-              FAN-ZONE COMUNITARIA
+            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none">
+              <span className="text-white">FAN-ZONE </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                COMUNITARIA
+              </span>
             </h1>
             <p className="font-body-md text-sm sm:text-base text-tertiary max-w-2xl mt-2">
               El corazón del Sergio Scariolo: vota el MVP de cada jornada, canta con la grada rojinegra, comparte tus fotos y descarga fondos oficiales del club.

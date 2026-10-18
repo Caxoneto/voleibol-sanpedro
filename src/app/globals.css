@@ -24,14 +24,105 @@
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #131313;
+  background: #141111;
 }
 ::-webkit-scrollbar-thumb {
   background: #2a2a2a;
-  border-radius: 0px;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #d90429;
+}
+::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(
+    90deg,
+    #2b0004 0%,
+    #68000e 16%,
+    #930018 32%,
+    #d90429 45%,
+    #ff1e38 50%,
+    #d90429 55%,
+    #930018 68%,
+    #68000e 84%,
+    #2b0004 100%
+  );
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 179, 175, 0.2);
+}
+::-webkit-scrollbar-thumb:horizontal:hover {
+  background: linear-gradient(
+    90deg,
+    #410005 0%,
+    #930018 18%,
+    #d90429 36%,
+    #ff475e 50%,
+    #d90429 64%,
+    #930018 82%,
+    #410005 100%
+  );
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Category horizontal scrollbar: hidden on touch mobile, intense club red gradient in center & darker edges on desktop */
+@media (max-width: 767px) {
+  .category-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .category-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .category-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #d90429 #161212;
+  }
+  .category-scrollbar::-webkit-scrollbar {
+    height: 7px;
+  }
+  .category-scrollbar::-webkit-scrollbar-track {
+    background: linear-gradient(90deg, #0e0e0e 0%, #1c1516 50%, #0e0e0e 100%);
+    border-radius: 9999px;
+  }
+  .category-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      90deg,
+      #2b0004 0%,
+      #68000e 16%,
+      #930018 32%,
+      #d90429 44%,
+      #ff1e38 50%,
+      #d90429 56%,
+      #930018 68%,
+      #68000e 84%,
+      #2b0004 100%
+    );
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 179, 175, 0.22);
+    box-shadow: 0 0 8px rgba(217, 4, 41, 0.35);
+  }
+  .category-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      90deg,
+      #410005 0%,
+      #930018 16%,
+      #d90429 34%,
+      #ff4d63 50%,
+      #d90429 66%,
+      #930018 84%,
+      #410005 100%
+    );
+  }
 }
 
 @keyframes marquee {
@@ -46,6 +137,20 @@
 }
 .animate-marquee-smooth:hover {
   animation-play-state: paused;
+}
+
+.animate-team-marquee {
+  display: inline-flex;
+  width: max-content;
+  animation: marquee 9.5s linear infinite;
+}
+.group:hover .animate-team-marquee {
+  animation-play-state: paused;
+}
+
+.mask-fade-edges {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 90%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 90%, transparent 100%);
 }
 
 @keyframes heroZoom {

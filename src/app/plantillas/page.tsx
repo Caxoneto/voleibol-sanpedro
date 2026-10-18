@@ -76,8 +76,32 @@ export default function PlantillasPage() {
     }
   };
 
-  // Hidratar inmediatamente desde localStorage y sincronizar con favoley.net al entrar y cada 90s
+  // Hidratar categoría desde URL (?categoria= o ?category= o ?slug=) + localStorage y sincronizar con favoley.net
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const catParam =
+        params.get('categoria') || params.get('category') || params.get('slug') || params.get('team');
+      if (catParam) {
+        const normalized = catParam.trim().toLowerCase();
+        const matchedCat = INITIAL_CATEGORIES.find(
+          (c) =>
+            c.id.toLowerCase() === normalized ||
+            c.slug.toLowerCase() === normalized ||
+            c.name.toLowerCase() === normalized
+        );
+        if (matchedCat) {
+          setSelectedCategorySlug(matchedCat.slug);
+        } else {
+          const matchedTeam = INITIAL_TEAMS.find((t) => t.id.toLowerCase() === normalized);
+          if (matchedTeam) {
+            const teamCat = INITIAL_CATEGORIES.find((c) => c.id === matchedTeam.categoryId);
+            if (teamCat) setSelectedCategorySlug(teamCat.slug);
+          }
+        }
+      }
+    }
+
     try {
       const cached = localStorage.getItem(ROSTERS_STORAGE_KEY);
       if (cached) {
@@ -177,8 +201,11 @@ export default function PlantillasPage() {
                 TEMPORADA 2026 / 2027
               </span>
             </div>
-            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase text-white tracking-tight leading-none">
-              PLANTILLAS Y CUERPO TÉCNICO
+            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none">
+              <span className="text-white">PLANTILLAS Y </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                CUERPO TÉCNICO
+              </span>
             </h1>
             <p className="font-body-md text-sm sm:text-base text-tertiary max-w-2xl mt-2">
               Conoce a los jugadores, entrenadores y cantera que defienden los colores de San Pedro Alcántara en las ligas de la Federación Andaluza de Voleibol.
@@ -202,7 +229,7 @@ export default function PlantillasPage() {
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
           <div
             ref={catScrollRef}
-            className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-1"
+            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1.5 scroll-smooth flex-1"
           >
             {INITIAL_CATEGORIES.map((cat) => {
               const isSelected = cat.slug === selectedCategorySlug;

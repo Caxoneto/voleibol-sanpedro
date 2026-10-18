@@ -50,8 +50,11 @@ export default function PatrocinioPage() {
                 SAN PEDRO ALCÁNTARA
               </span>
             </div>
-            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase text-white tracking-tight leading-none">
-              PATROCINIO Y APOYO AL DEPORTE BASE
+            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none">
+              <span className="text-white">PATROCINIO Y </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                APOYO AL DEPORTE BASE
+              </span>
             </h1>
             <p className="font-body-md text-sm sm:text-base text-tertiary max-w-2xl mt-2">
               Únete a las empresas y comercios que hacen posible que más de 120 jóvenes y niños sampedreños jueguen al voleibol federado en el Pabellón Sergio Scariolo de San Pedro Alcántara.

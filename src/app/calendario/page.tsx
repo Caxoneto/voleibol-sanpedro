@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import {
   INITIAL_CATEGORIES,
@@ -391,8 +392,11 @@ export default function CalendarioPage() {
                 FAVB FEDERADO
               </span>
             </div>
-            <h1 className="font-display-xl text-3xl sm:text-5xl lg:text-6xl uppercase text-white tracking-tight leading-none mt-1">
-              CALENDARIO DE COMPETICIÓN
+            <h1 className="font-display-xl text-3xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none mt-1">
+              <span className="text-white">CALENDARIO DE </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+                COMPETICIÓN
+              </span>
             </h1>
           </div>
 
@@ -439,7 +443,7 @@ export default function CalendarioPage() {
       <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
           {/* Categorías */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 overflow-x-auto category-scrollbar pb-1.5">
             <button
               onClick={() => handleSelectCategory('ALL')}
               className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
@@ -575,7 +579,7 @@ export default function CalendarioPage() {
             {/* Píldoras horizontales J1, J2, J3... */}
             <div
               ref={roundsScrollRef}
-              className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pt-0.5 pb-1"
+              className="flex items-center gap-1.5 overflow-x-auto category-scrollbar scroll-smooth pt-0.5 pb-1.5"
             >
               {roundsData.map((r) => {
                 const isSelected = r.round === currentRoundObj?.round;
@@ -796,13 +800,19 @@ export default function CalendarioPage() {
                             height={24}
                             className="w-6 h-6 object-contain shrink-0"
                           />
-                          <span
-                            className={`font-headline-sm text-sm sm:text-base uppercase font-bold truncate ${
-                              match.isClubHome ? 'text-primary' : 'text-white'
-                            }`}
-                          >
-                            {match.homeTeamName}
-                          </span>
+                          {match.isClubHome ? (
+                            <Link
+                              href={`/plantillas?categoria=${team?.categoryId || 'cat-senior-fem'}`}
+                              className="font-headline-sm text-sm sm:text-base uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
+                              title={`Ver plantilla de ${team?.name || 'nuestro equipo'}`}
+                            >
+                              {match.homeTeamName}
+                            </Link>
+                          ) : (
+                            <span className="font-headline-sm text-sm sm:text-base uppercase font-bold truncate text-white">
+                              {match.homeTeamName}
+                            </span>
+                          )}
                         </div>
 
                         {scoreResult ? (
@@ -821,13 +831,19 @@ export default function CalendarioPage() {
                             height={24}
                             className="w-6 h-6 object-contain shrink-0"
                           />
-                          <span
-                            className={`font-headline-sm text-sm sm:text-base uppercase font-bold truncate ${
-                              !match.isClubHome ? 'text-primary' : 'text-white'
-                            }`}
-                          >
-                            {match.awayTeamName}
-                          </span>
+                          {!match.isClubHome ? (
+                            <Link
+                              href={`/plantillas?categoria=${team?.categoryId || 'cat-senior-fem'}`}
+                              className="font-headline-sm text-sm sm:text-base uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
+                              title={`Ver plantilla de ${team?.name || 'nuestro equipo'}`}
+                            >
+                              {match.awayTeamName}
+                            </Link>
+                          ) : (
+                            <span className="font-headline-sm text-sm sm:text-base uppercase font-bold truncate text-white">
+                              {match.awayTeamName}
+                            </span>
+                          )}
                         </div>
                       </div>
 

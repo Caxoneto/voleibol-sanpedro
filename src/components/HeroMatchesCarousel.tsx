@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatMadridDate } from '@/lib/date-utils';
@@ -42,9 +42,16 @@ export default function HeroMatchesCarousel({
   initialMatches,
   todayStr,
 }: HeroMatchesCarouselProps) {
+  const initialHasToday = useMemo(
+    () => initialMatches.some((m) => m.dateStr === todayStr),
+    [initialMatches, todayStr]
+  );
+
   const [matches, setMatches] = useState<HeroCarouselMatchItem[]>(initialMatches);
-  const [activeTab, setActiveTab] = useState<FilterTab>('today');
+  const [activeTab, setActiveTab] = useState<FilterTab>(initialHasToday ? 'today' : 'upcoming');
   const [refreshingIds, setRefreshingIds] = useState<Set<string>>(new Set());
+  const userChangedTabRef = useRef<boolean>(false);
+  const carouselRef = useRef<HTMLDivElement | null>(null);
 
   // Actualizar un partido individual desde favoley.net
   const refreshSingleMatch = async (matchId: string, silent = false) => {
@@ -196,7 +203,7 @@ export default function HeroMatchesCarousel({
     return [...todayFinished, ...pastFinished.slice(0, neededFromPast)];
   }, [matches, todayStr]);
 
-  // 2. Pestaña "Hoy" (Predeterminada): partidos del día de hoy ordenados por hora y categoría
+  // 2. Pestaña "Hoy": partidos del día de hoy ordenados por hora y categoría
   const todayMatches = useMemo(() => {
     return matches
       .filter((m) => m.dateStr === todayStr)
@@ -209,7 +216,6 @@ export default function HeroMatchesCarousel({
   }, [matches, todayStr]);
 
   // 3. Pestaña "Próximos": próximo partido programado por categoría
-  // Ordenados de izquierda a derecha por proximidad temporal y desempate por mayor categoría
   const upcomingMatches = useMemo(() => {
     const byCategory = new Map<string, HeroCarouselMatchItem>();
 
@@ -241,6 +247,16 @@ export default function HeroMatchesCarousel({
     });
   }, [matches, todayStr]);
 
+  // Si no hay partidos hoy (ni siquiera tras sincronizar), mostrar "Próximos" por defecto
+  useEffect(() => {
+    if (userChangedTabRef.current) return;
+    if (todayMatches.length > 0) {
+      setActiveTab('today');
+    } else {
+      setActiveTab('upcoming');
+    }
+  }, [todayMatches.length]);
+
   const currentList =
     activeTab === 'finished'
       ? finishedMatches
@@ -249,6 +265,37 @@ export default function HeroMatchesCarousel({
       : upcomingMatches;
 
   const hasLiveToday = todayMatches.some((m) => m.status === 'LIVE');
+
+  // Posicionar el carrusel automáticamente en el primer partido que esté jugándose (o el próximo en horario de juego)
+  useEffect(() => {
+    const container = carouselRef.current;
+    if (!container || currentList.length === 0) return;
+
+    const nowMs = Date.now();
+    // 1. Buscar el primero con estado LIVE
+    let targetMatch = currentList.find((m) => m.status === 'LIVE');
+
+    // 2. Si estamos en "Hoy" y ninguno figura aún como LIVE explícito, buscar el primero en ventana de juego (desde 15 min antes hasta 2h15m después del inicio) o el primer pendiente
+    if (!targetMatch && activeTab === 'today') {
+      targetMatch =
+        currentList.find((m) => {
+          if (m.status === 'FINISHED') return false;
+          const startMs = new Date(m.matchDate).getTime();
+          return nowMs >= startMs - 15 * 60 * 1000 && nowMs <= startMs + 135 * 60 * 1000;
+        }) || currentList.find((m) => m.status !== 'FINISHED');
+    }
+
+    if (!targetMatch) {
+      container.scrollTo({ left: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const cardEl = document.getElementById(`hero-card-${activeTab}-${targetMatch.id}`);
+    if (cardEl) {
+      const targetLeft = cardEl.offsetLeft - (container.clientWidth - cardEl.clientWidth) / 2;
+      container.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+    }
+  }, [activeTab, currentList]);
 
   // Regla de colores solicitada: verde ganando, blanco perdiendo, amarillo empate
   const getPointColorClass = (myVal: number, oppVal: number) => {
@@ -324,7 +371,10 @@ export default function HeroMatchesCarousel({
           {/* Botón 1: Finalizados */}
           <button
             type="button"
-            onClick={() => setActiveTab('finished')}
+            onClick={() => {
+              userChangedTabRef.current = true;
+              setActiveTab('finished');
+            }}
             className={`px-3 py-1.5 text-[11px] sm:text-xs font-label-md uppercase tracking-wider font-bold transition-all border ${
               activeTab === 'finished'
                 ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
@@ -334,10 +384,13 @@ export default function HeroMatchesCarousel({
             Finalizados
           </button>
 
-          {/* Botón 2: Hoy (Predeterminado) */}
+          {/* Botón 2: Hoy */}
           <button
             type="button"
-            onClick={() => setActiveTab('today')}
+            onClick={() => {
+              userChangedTabRef.current = true;
+              setActiveTab('today');
+            }}
             className={`px-3 py-1.5 text-[11px] sm:text-xs font-label-md uppercase tracking-wider font-bold transition-all border flex items-center gap-1.5 ${
               activeTab === 'today'
                 ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
@@ -365,7 +418,10 @@ export default function HeroMatchesCarousel({
           {/* Botón 3: Próximos */}
           <button
             type="button"
-            onClick={() => setActiveTab('upcoming')}
+            onClick={() => {
+              userChangedTabRef.current = true;
+              setActiveTab('upcoming');
+            }}
             className={`px-3 py-1.5 text-[11px] sm:text-xs font-label-md uppercase tracking-wider font-bold transition-all border ${
               activeTab === 'upcoming'
                 ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
@@ -387,7 +443,7 @@ export default function HeroMatchesCarousel({
         </Link>
       </div>
 
-      {/* Carrusel horizontal de tarjetas (Mobile-First, formato tenis con logos grandes y 3 iniciales) */}
+      {/* Carrusel horizontal de tarjetas (Mobile peek a ambos lados + 3 iniciales con carrusel de nombre completo) */}
       {currentList.length === 0 ? (
         <div className="bg-surface-container-low/80 border border-white/10 p-4 text-center flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-tertiary">
@@ -395,14 +451,20 @@ export default function HeroMatchesCarousel({
           </p>
           <button
             type="button"
-            onClick={() => setActiveTab('upcoming')}
+            onClick={() => {
+              userChangedTabRef.current = true;
+              setActiveTab('upcoming');
+            }}
             className="px-3 py-1 bg-primary-container text-white text-[11px] uppercase font-bold tracking-wider"
           >
             Ver Próximos Partidos
           </button>
         </div>
       ) : (
-        <div className="flex gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory">
+        <div
+          ref={carouselRef}
+          className="flex gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory"
+        >
           {currentList.map((match) => {
             const isLive = match.status === 'LIVE';
             const isFinished = match.status === 'FINISHED';
@@ -411,12 +473,18 @@ export default function HeroMatchesCarousel({
             const setColumns = hasScoreboard ? getTennisSetColumns(match) : [];
             const isRefreshing = refreshingIds.has(match.id);
             const compactCols = setColumns.length >= 4;
+            const isSingleCard = currentList.length === 1;
 
             return (
               <Link
                 key={`${activeTab}-${match.id}`}
+                id={`hero-card-${activeTab}-${match.id}`}
                 href={`/partidos?categoria=${match.categoryId}&match=${match.id}`}
-                className={`group snap-start shrink-0 w-[250px] sm:w-[275px] bg-surface-container-low/95 hover:bg-surface-container-high border p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5 ${
+                className={`group shrink-0 ${
+                  isSingleCard
+                    ? 'w-full sm:w-[300px] snap-start'
+                    : 'w-[calc(100%-3.5rem)] sm:w-[300px] snap-center first:snap-start last:snap-end'
+                } bg-surface-container-low/95 hover:bg-surface-container-high border p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5 ${
                   isLive
                     ? 'border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.22)]'
                     : 'border-white/10 hover:border-primary-container'
@@ -435,7 +503,6 @@ export default function HeroMatchesCarousel({
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
-                    {/* Botón actualizar: SOLO icono, a la izquierda del icono de casa/fuera, solo si NO ha finalizado */}
                     {!isFinished && (
                       <button
                         type="button"
@@ -540,12 +607,12 @@ export default function HeroMatchesCarousel({
                   )}
                 </div>
 
-                {/* 3. Filas de Equipos (Logo Grande SIN recuadro + 3 Iniciales) + Columnas de Sets + Total de Sets */}
+                {/* 3. Filas de Equipos (Logo Grande + 3 Iniciales + Nombre completo en carrusel) + Columnas de Sets + Total de Sets */}
                 <div className="space-y-2 pt-0.5">
                   {/* Fila Equipo Local */}
                   <div className="flex items-center justify-between gap-2">
                     <div
-                      className="flex items-center gap-2 min-w-0"
+                      className="flex items-center gap-2 min-w-0 flex-1"
                       title={match.homeTeamName}
                     >
                       <Image
@@ -556,12 +623,20 @@ export default function HeroMatchesCarousel({
                         className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                       />
                       <span
-                        className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none ${
+                        className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none shrink-0 w-9 sm:w-10 ${
                           match.isClubHome ? 'text-primary' : 'text-white'
                         }`}
                       >
                         {getTeamInitials(match.homeTeamName)}
                       </span>
+                      <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
+                        <div className="animate-team-marquee items-center whitespace-nowrap text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-tertiary/90">
+                          <span className="pr-6">{match.homeTeamName}</span>
+                          <span className="pr-6" aria-hidden="true">
+                            {match.homeTeamName}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     {hasScoreboard && (
@@ -595,7 +670,7 @@ export default function HeroMatchesCarousel({
                   {/* Fila Equipo Visitante */}
                   <div className="flex items-center justify-between gap-2">
                     <div
-                      className="flex items-center gap-2 min-w-0"
+                      className="flex items-center gap-2 min-w-0 flex-1"
                       title={match.awayTeamName}
                     >
                       <Image
@@ -606,12 +681,20 @@ export default function HeroMatchesCarousel({
                         className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
                       />
                       <span
-                        className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none ${
+                        className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none shrink-0 w-9 sm:w-10 ${
                           !match.isClubHome ? 'text-primary' : 'text-white'
                         }`}
                       >
                         {getTeamInitials(match.awayTeamName)}
                       </span>
+                      <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
+                        <div className="animate-team-marquee items-center whitespace-nowrap text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-tertiary/90">
+                          <span className="pr-6">{match.awayTeamName}</span>
+                          <span className="pr-6" aria-hidden="true">
+                            {match.awayTeamName}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     {hasScoreboard && (
