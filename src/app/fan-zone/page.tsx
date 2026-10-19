@@ -265,7 +265,7 @@ export default function FanZonePage() {
           </div>
 
           {/* Candidatos Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
             {mvpCandidates.map((candidate) => {
               const count = voteCounts[candidate.id] || 0;
               const percent = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
@@ -275,30 +275,32 @@ export default function FanZonePage() {
                 <div
                   key={candidate.id}
                   onClick={() => !hasVoted && setSelectedPlayerId(candidate.id)}
-                  className={`group bg-surface-container-lowest border p-4 transition-all cursor-pointer relative overflow-hidden ${
+                  className={`group bg-surface-container-lowest border p-3 sm:p-4 transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                     isSelected
                       ? 'border-primary-container ring-2 ring-primary-container/50 bg-primary-container/10'
                       : 'border-white/5 hover:border-white/20'
                   } ${hasVoted ? 'cursor-default' : ''}`}
                 >
-                  <div className="relative h-44 w-full mb-3 overflow-hidden">
-                    <Image
-                      src={candidate.photoUrl}
-                      alt={candidate.firstName}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute top-2 left-2 font-display-xl text-3xl text-white">
-                      #{candidate.number}
+                  <div>
+                    <div className="relative h-36 sm:h-44 w-full mb-2.5 sm:mb-3 overflow-hidden">
+                      <Image
+                        src={candidate.photoUrl}
+                        alt={candidate.firstName}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute top-2 left-2 font-display-xl text-2xl sm:text-3xl text-white">
+                        #{candidate.number}
+                      </div>
                     </div>
-                  </div>
 
-                  <h3 className="font-display-xl text-lg uppercase text-white leading-tight">
-                    {candidate.firstName} {candidate.lastName}
-                  </h3>
-                  <span className="text-[10px] text-tertiary uppercase block mb-3">
-                    {POSITION_SHORT_LABELS[candidate.position] || candidate.position}
-                  </span>
+                    <h3 className="font-display-xl text-base sm:text-lg uppercase text-white leading-tight">
+                      {candidate.firstName} {candidate.lastName}
+                    </h3>
+                    <span className="text-[10px] text-tertiary uppercase block mb-2.5 sm:mb-3">
+                      {POSITION_SHORT_LABELS[candidate.position] || candidate.position}
+                    </span>
+                  </div>
 
                   {/* Resultados / Porcentaje */}
                   {hasVoted && (
@@ -320,7 +322,7 @@ export default function FanZonePage() {
                     <div className="pt-2">
                       <button
                         type="button"
-                        className={`w-full py-1.5 text-xs uppercase font-bold tracking-wider transition-colors ${
+                        className={`w-full py-2 sm:py-1.5 text-xs uppercase font-bold tracking-wider transition-colors ${
                           isSelected
                             ? 'bg-primary-container text-white'
                             : 'bg-surface-container-high text-tertiary group-hover:text-white'
@@ -338,15 +340,15 @@ export default function FanZonePage() {
           {/* Botón de Enviar Voto */}
           {!hasVoted ? (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">
-              <span className="text-xs text-tertiary">
+              <span className="text-xs text-tertiary text-center sm:text-left">
                 {selectedPlayerId
-                  ? 'Has seleccionado un jugador. Haz clic en el botón para confirmar.'
+                  ? 'Has seleccionado una jugadora. Haz clic en el botón para confirmar.'
                   : 'Selecciona una tarjeta arriba para activar tu voto.'}
               </span>
               <button
                 onClick={handleVoteSubmit}
                 disabled={!selectedPlayerId}
-                className="px-8 py-3 bg-primary-container hover:bg-secondary-container disabled:opacity-40 text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
+                className="w-full sm:w-auto px-8 py-3 bg-primary-container hover:bg-secondary-container disabled:opacity-40 text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
               >
                 Confirmar Voto MVP
               </button>
@@ -606,7 +608,7 @@ export default function FanZonePage() {
                   value={uploadAuthor}
                   onChange={(e) => setUploadAuthor(e.target.value)}
                   placeholder="Ej. Familia Ruiz • San Pedro"
-                  className="w-full px-3 py-2 bg-surface-container-high border border-white/10 text-white text-xs focus:border-primary-container focus:outline-none"
+                  className="w-full px-3 py-2 bg-surface-container-high border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
                 />
               </div>
 
@@ -620,7 +622,7 @@ export default function FanZonePage() {
                   value={uploadCaption}
                   onChange={(e) => setUploadCaption(e.target.value)}
                   placeholder="¡Vamos San Pedro! Qué gran partido vivimos este sábado..."
-                  className="w-full px-3 py-2 bg-surface-container-high border border-white/10 text-white text-xs focus:border-primary-container focus:outline-none"
+                  className="w-full px-3 py-2 bg-surface-container-high border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
                 />
               </div>
 

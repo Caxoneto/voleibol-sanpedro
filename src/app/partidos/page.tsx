@@ -807,12 +807,12 @@ function PartidosContent() {
             })}
           </div>
 
-          {/* En Desktop: Botón de actualizar (solo icono) fijo a la derecha en la barra sticky de categorías */}
+          {/* Botón de actualizar (solo icono) integrado en la barra sticky de categorías (Mobile y Desktop) */}
           <button
             type="button"
             onClick={() => fetchFavbMatches(true)}
             disabled={syncing}
-            className="hidden md:flex w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
+            className="flex w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
             title={`Actualizar todos los marcadores desde favoley.net (Última: ${lastSyncTime})`}
             aria-label="Actualizar resultados"
           >
@@ -822,20 +822,6 @@ function PartidosContent() {
           </button>
         </div>
       </section>
-
-      {/* En Mobile: Botón flotante (solo icono) arriba a la derecha justo debajo del listado de categorías */}
-      <button
-        type="button"
-        onClick={() => fetchFavbMatches(true)}
-        disabled={syncing}
-        className="md:hidden fixed top-[166px] right-3 z-40 w-9 h-9 bg-primary-container/95 hover:bg-primary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/25 shadow-[0_4px_16px_rgba(0,0,0,0.85)] backdrop-blur-sm active:scale-95 transition-all"
-        title="Actualizar resultados desde favoley.net"
-        aria-label="Actualizar resultados"
-      >
-        <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`}>
-          sync
-        </span>
-      </button>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 sm:py-5 space-y-5">
         {/* MÓDULO DESTACADO: PARTIDOS EN DIRECTO AHORA */}

@@ -31,7 +31,7 @@ export default function Navbar() {
     <nav className="w-full bg-[#131313] border-b border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.7)] relative z-40">
       <div className="h-20 max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between">
         {/* Brand Logo */}
-        <Link href="/" className="group flex items-center gap-3">
+        <Link href="/" className="group flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="relative w-10 h-10 overflow-hidden rounded-none border border-white/10 group-hover:border-primary-container transition-colors shrink-0">
             <Image
               src="/images/logo.jpg"
@@ -40,11 +40,11 @@ export default function Navbar() {
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
           </div>
-          <div className="flex flex-col">
-            <span className="font-display-xl text-xl sm:text-2xl tracking-wider uppercase text-on-surface leading-none group-hover:text-primary transition-colors">
+          <div className="flex flex-col min-w-0">
+            <span className="font-display-xl text-xl sm:text-2xl tracking-wider uppercase text-on-surface leading-none group-hover:text-primary transition-colors whitespace-nowrap">
               C.D.V. SAN PEDRO
             </span>
-            <span className="font-label-sm text-[10px] uppercase tracking-widest text-primary font-bold">
+            <span className="font-label-sm text-[10px] uppercase tracking-widest text-primary font-bold whitespace-nowrap mt-0.5">
               Portal Oficial del Club
             </span>
           </div>
@@ -71,7 +71,7 @@ export default function Navbar() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Redes Sociales Oficiales Desktop */}
           <div className="hidden lg:flex items-center gap-1.5 mr-1">
             <a
@@ -96,16 +96,27 @@ export default function Navbar() {
             </a>
           </div>
 
-          {/* Botón Jugador@s hacia FeelSports */}
+          {/* Botón Jugador@s hacia FeelSports: solo icono doble monigote en mobile, texto completo en sm+ */}
           <a
             href="https://feelsports.es/"
             target="_blank"
             rel="noopener noreferrer"
             title="Portal de Jugador@s FeelSports"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs font-label-md uppercase font-bold tracking-wider transition-all duration-300 shadow-[3px_3px_0px_0px_#0e0e0e] hover:shadow-[0_0_15px_rgba(217,4,41,0.5)] active:scale-95"
+            aria-label="Portal de Jugador@s FeelSports"
+            className="inline-flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-primary-container hover:bg-secondary-container text-white text-xs font-label-md uppercase font-bold tracking-wider transition-all duration-300 shadow-[3px_3px_0px_0px_#0e0e0e] hover:shadow-[0_0_15px_rgba(217,4,41,0.5)] active:scale-95"
           >
-            <span>Jugador@s</span>
-            <span className="material-symbols-outlined text-[15px]">open_in_new</span>
+            {/* Icono de doble monigote en versión mobile */}
+            <svg
+              className="w-5 h-5 shrink-0 sm:hidden fill-current"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+            </svg>
+            <span className="hidden sm:inline-flex items-center gap-1.5">
+              <span>Jugador@s</span>
+              <span className="material-symbols-outlined text-[15px]">open_in_new</span>
+            </span>
           </a>
 
           {/* Mobile Menu Toggle */}
@@ -124,7 +135,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="xl:hidden bg-[#131313] border-b border-primary-container/40 px-6 py-6 shadow-2xl animate-in slide-in-from-top duration-200">
+        <div className="xl:hidden bg-[#131313] border-b border-primary-container/40 px-6 py-5 shadow-2xl max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain animate-in slide-in-from-top duration-200">
           <div className="flex flex-col gap-4">
             {navLinks.map((link) => {
               const active = isActive(link.href);

@@ -236,21 +236,21 @@ export default function ClasificacionPage() {
 
         {/* Tabla Oficial */}
         <div className="bg-surface-container-low border border-white/5 shadow-2xl overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[650px]">
+          <table className="w-full text-left border-collapse sm:min-w-[640px]">
             <thead>
-              <tr className="bg-surface-container-lowest border-b border-white/10 text-xs text-tertiary uppercase tracking-wider">
-                <th className="py-3 px-4 w-16 text-center font-bold">POS</th>
-                <th className="py-3 px-4 font-semibold">CLUB / EQUIPO</th>
-                <th className="py-3 px-3 text-center font-semibold" title="Partidos Jugados">PJ</th>
-                <th className="py-3 px-3 text-center font-semibold" title="Partidos Ganados">PG</th>
-                <th className="py-3 px-3 text-center font-semibold" title="Partidos Perdidos">PP</th>
-                <th className="py-3 px-3 text-center font-semibold" title="Sets a Favor">SF</th>
-                <th className="py-3 px-3 text-center font-semibold" title="Sets en Contra">SC</th>
-                <th className="py-3 px-3 text-center font-semibold" title="Diferencia de Sets">DIF</th>
-                <th className="py-3 px-4 text-center font-bold text-white bg-primary-container/20">PTS</th>
+              <tr className="bg-surface-container-lowest border-b border-white/10 text-[10px] sm:text-xs text-tertiary uppercase tracking-wider">
+                <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 w-8 sm:w-16 text-center font-bold">POS</th>
+                <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 font-semibold">CLUB / EQUIPO</th>
+                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Partidos Jugados">PJ</th>
+                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Partidos Ganados">PG</th>
+                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Partidos Perdidos">PP</th>
+                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Sets a Favor">SF</th>
+                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Sets en Contra">SC</th>
+                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Diferencia de Sets">DIF</th>
+                <th className="py-2.5 sm:py-3 px-2 sm:px-4 text-center font-bold text-white bg-primary-container/20">PTS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 text-sm">
+            <tbody className="divide-y divide-white/5 text-xs sm:text-sm">
               {standings.map((team, idx) => {
                 const pos = idx + 1;
                 const isPlayoffZone = pos <= 3;
@@ -268,12 +268,12 @@ export default function ClasificacionPage() {
                     }`}
                   >
                     {/* Posición */}
-                    <td className="py-3.5 px-4 text-center relative">
+                    <td className="py-2.5 sm:py-3.5 px-1.5 sm:px-4 text-center relative">
                       {isPlayoffZone && (
                         <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary-container" />
                       )}
                       <span
-                        className={`font-display-xl text-lg ${
+                        className={`font-display-xl text-base sm:text-lg ${
                           isPlayoffZone ? 'text-primary' : 'text-tertiary'
                         }`}
                       >
@@ -282,28 +282,30 @@ export default function ClasificacionPage() {
                     </td>
 
                     {/* Nombre del Club con Escudo Oficial */}
-                    <td className="py-3.5 px-4 font-headline-sm uppercase text-white font-bold">
-                      <div className="flex items-center gap-3">
+                    <td className="py-2.5 sm:py-3.5 px-1.5 sm:px-4 font-headline-sm uppercase text-white font-bold max-w-[140px] sm:max-w-none">
+                      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
                         <Image
                           src={getTeamLogo(team.teamName)}
                           alt={team.teamName}
                           width={32}
                           height={32}
-                          className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                          className="w-5 h-5 sm:w-8 sm:h-8 object-contain shrink-0"
                         />
                         {team.isCurrentClub ? (
                           <Link
                             href={`/plantillas?categoria=${selectedCatId}`}
-                            className="text-primary hover:underline decoration-primary underline-offset-4 transition-colors"
+                            className="text-primary hover:underline decoration-primary underline-offset-4 transition-colors text-[11px] sm:text-sm leading-tight truncate sm:whitespace-normal"
                             title={`Ver plantilla de ${activeCategory.name}`}
                           >
                             {team.teamName}
                           </Link>
                         ) : (
-                          <span className="text-white">{team.teamName}</span>
+                          <span className="text-white text-[11px] sm:text-sm leading-tight truncate sm:whitespace-normal">
+                            {team.teamName}
+                          </span>
                         )}
                         {team.isCurrentClub && (
-                          <span className="px-2 py-0.5 bg-primary-container text-white text-[9px] uppercase font-bold tracking-wider">
+                          <span className="hidden md:inline-block px-2 py-0.5 bg-primary-container text-white text-[9px] uppercase font-bold tracking-wider shrink-0">
                             Nuestro Club
                           </span>
                         )}
@@ -311,27 +313,27 @@ export default function ClasificacionPage() {
                     </td>
 
                     {/* Métricas */}
-                    <td className="py-3.5 px-3 text-center font-mono text-white font-semibold">
+                    <td className="py-2.5 sm:py-3.5 px-1 sm:px-3 text-center font-mono text-white font-semibold">
                       {team.played}
                     </td>
-                    <td className="py-3.5 px-3 text-center font-mono text-emerald-400 font-bold">
+                    <td className="py-2.5 sm:py-3.5 px-1 sm:px-3 text-center font-mono text-emerald-400 font-bold">
                       {team.won}
                     </td>
-                    <td className="py-3.5 px-3 text-center font-mono text-rose-400">
+                    <td className="py-2.5 sm:py-3.5 px-1 sm:px-3 text-center font-mono text-rose-400">
                       {team.lost}
                     </td>
-                    <td className="py-3.5 px-3 text-center font-mono text-tertiary">
+                    <td className="py-2.5 sm:py-3.5 px-1 sm:px-3 text-center font-mono text-tertiary">
                       {team.setsFor}
                     </td>
-                    <td className="py-3.5 px-3 text-center font-mono text-tertiary">
+                    <td className="py-2.5 sm:py-3.5 px-1 sm:px-3 text-center font-mono text-tertiary">
                       {team.setsAgainst}
                     </td>
-                    <td className="py-3.5 px-3 text-center font-mono text-tertiary">
+                    <td className="py-2.5 sm:py-3.5 px-1 sm:px-3 text-center font-mono text-tertiary">
                       {setDiff > 0 ? `+${setDiff}` : setDiff}
                     </td>
 
                     {/* Puntos Oficiales */}
-                    <td className="py-3.5 px-4 text-center font-display-xl text-2xl text-white bg-primary-container/20">
+                    <td className="py-2.5 sm:py-3.5 px-2 sm:px-4 text-center font-display-xl text-lg sm:text-2xl text-white bg-primary-container/20">
                       {team.points}
                     </td>
                   </tr>

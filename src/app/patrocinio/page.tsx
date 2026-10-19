@@ -234,7 +234,7 @@ export default function PatrocinioPage() {
                       value={form.companyName}
                       onChange={(e) => setForm({ ...form, companyName: e.target.value })}
                       placeholder="Ej. Cafetería San Pedro Centro"
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
 
@@ -248,7 +248,7 @@ export default function PatrocinioPage() {
                       value={form.contactPerson}
                       onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
                       placeholder="Ej. Laura Delgado"
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export default function PatrocinioPage() {
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
                       placeholder="+34 600 000 000"
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
 
@@ -278,7 +278,7 @@ export default function PatrocinioPage() {
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
                       placeholder="contacto@empresa.com"
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
 
@@ -289,7 +289,7 @@ export default function PatrocinioPage() {
                     <select
                       value={selectedTier}
                       onChange={(e) => setSelectedTier(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     >
                       {INITIAL_SPONSOR_TIERS.map((t) => (
                         <option key={t.id} value={t.name}>
@@ -310,7 +310,7 @@ export default function PatrocinioPage() {
                     value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
                     placeholder="Cuéntanos sobre tu negocio o cualquier pregunta sobre lonas, pancartas o camisetas..."
-                    className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-xs focus:border-primary-container focus:outline-none"
+                    className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
                   />
                 </div>
 

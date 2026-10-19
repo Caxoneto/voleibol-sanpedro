@@ -370,7 +370,7 @@ export default function NoticiasPage() {
               <form onSubmit={handleNewsletterSubmit} className="space-y-2">
                 <div className="relative">
                   <input
-                    className="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-sm text-body-sm px-4 py-3 focus:outline-none focus:border-primary-container border border-white/10 transition-all"
+                    className="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-sm text-base sm:text-body-sm px-4 py-3 focus:outline-none focus:border-primary-container border border-white/10 transition-all"
                     placeholder="Tu correo electrónico..."
                     required
                     type="email"
@@ -509,7 +509,7 @@ export default function NoticiasPage() {
       </section>
 
       {/* Sala de Prensa & Acreditaciones Form Section */}
-      <section id="acreditacion" className="w-full bg-surface-container-high py-16 px-4 lg:px-12 border-t border-white/5">
+      <section id="acreditacion" className="w-full bg-surface-container-high py-10 sm:py-16 px-4 lg:px-12 border-t border-white/5">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Info medios */}
           <div className="lg:col-span-5 space-y-6">
@@ -534,7 +534,7 @@ export default function NoticiasPage() {
           </div>
 
           {/* Formulario de Solicitud de Acreditación */}
-          <div className="lg:col-span-7 bg-surface-container-low border border-white/10 p-6 sm:p-8">
+          <div className="lg:col-span-7 bg-surface-container-low border border-white/10 p-5 sm:p-8">
             <h3 className="font-headline-sm text-xl uppercase text-on-surface mb-1 font-bold">
               Solicitud de Acreditación de Partido
             </h3>
@@ -575,7 +575,7 @@ export default function NoticiasPage() {
                         setAccreditationForm({ ...accreditationForm, fullName: e.target.value })
                       }
                       placeholder="Ej. Juan Gómez Ruiz"
-                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
 
@@ -591,7 +591,7 @@ export default function NoticiasPage() {
                         setAccreditationForm({ ...accreditationForm, mediaOutlet: e.target.value })
                       }
                       placeholder="Ej. Diario Sur / Radio Marbella"
-                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
                 </div>
@@ -606,7 +606,7 @@ export default function NoticiasPage() {
                       onChange={(e) =>
                         setAccreditationForm({ ...accreditationForm, role: e.target.value })
                       }
-                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     >
                       <option>Redactor / Periodista</option>
                       <option>Fotógrafo de Pista</option>
@@ -627,7 +627,7 @@ export default function NoticiasPage() {
                         setAccreditationForm({ ...accreditationForm, email: e.target.value })
                       }
                       placeholder="prensa@medio.es"
-                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
 
@@ -643,7 +643,7 @@ export default function NoticiasPage() {
                         setAccreditationForm({ ...accreditationForm, phone: e.target.value })
                       }
                       placeholder="+34 600 000 000"
-                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
                 </div>
@@ -659,7 +659,7 @@ export default function NoticiasPage() {
                       setAccreditationForm({ ...accreditationForm, notes: e.target.value })
                     }
                     placeholder="Ej. Necesidad de toma de corriente para retransmisión o acceso especial a pie de pista."
-                    className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-xs focus:border-primary-container focus:outline-none"
+                    className="w-full px-3 py-2 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
                   />
                 </div>
 

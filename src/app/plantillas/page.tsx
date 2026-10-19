@@ -298,7 +298,7 @@ export default function PlantillasPage() {
           </div>
 
           {/* Posiciones Tabs */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 sm:flex-wrap">
             <span className="text-xs text-tertiary uppercase mr-2 hidden sm:inline">
               Posición:
             </span>
@@ -308,7 +308,7 @@ export default function PlantillasPage() {
                 <button
                   key={pf.value}
                   onClick={() => setSelectedPosition(pf.value)}
-                  className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                  className={`px-3 py-2 sm:py-1.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0 transition-colors ${
                     isPosActive
                       ? 'bg-white text-black font-bold'
                       : 'bg-surface-container-high text-tertiary hover:text-white'
@@ -322,7 +322,7 @@ export default function PlantillasPage() {
         </div>
 
         {/* Grid de Jugadores con Placeholders en Grises y Negro */}
-        <div className="py-8">
+        <div className="py-6 sm:py-8">
           {filteredPlayers.length === 0 ? (
             <div className="bg-surface-container-low border border-white/5 p-12 text-center flex flex-col items-center justify-center">
               <span className="material-symbols-outlined text-4xl text-tertiary mb-2">
@@ -342,7 +342,7 @@ export default function PlantillasPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {filteredPlayers.map((player) => {
                 const isPlaceholderSlot =
                   player.firstName === 'Jugador' || player.firstName === 'Jugadora';
@@ -353,7 +353,7 @@ export default function PlantillasPage() {
                     className="group bg-surface-container-low border border-white/5 hover:border-primary-container/80 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-md hover:-translate-y-1"
                   >
                     {/* Athletic Silhouette Placeholder & Badges */}
-                    <div className="relative h-72 w-full bg-[#18181b] overflow-hidden">
+                    <div className="relative h-48 sm:h-72 w-full bg-[#18181b] overflow-hidden">
                       <Image
                         src={player.photoUrl || '/images/player-placeholder.svg'}
                         alt={`${player.firstName} ${player.lastName}`}
@@ -363,26 +363,26 @@ export default function PlantillasPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-transparent to-black/20" />
 
                       {/* Big Dorsal Number */}
-                      <div className="absolute top-3 left-3">
-                        <span className="font-display-xl text-5xl sm:text-6xl text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
+                      <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3">
+                        <span className="font-display-xl text-4xl sm:text-6xl text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
                           {player.number}
                         </span>
                       </div>
 
                       {/* Roles Badges */}
-                      <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+                      <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex flex-col items-end gap-1">
                         {player.isCaptain && !isPlaceholderSlot && (
-                          <span className="px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] uppercase tracking-wider shadow">
+                          <span className="px-1.5 sm:px-2 py-0.5 bg-amber-500 text-black font-bold text-[9px] sm:text-[10px] uppercase tracking-wider shadow">
                             Capitán
                           </span>
                         )}
                         {isPlaceholderSlot ? (
-                          <span className="px-2 py-0.5 bg-surface-container-highest text-tertiary font-bold text-[10px] uppercase tracking-wider border border-white/10 shadow">
-                            Pendiente Acta FAVB
+                          <span className="px-1.5 sm:px-2 py-0.5 bg-surface-container-highest text-tertiary font-bold text-[9px] sm:text-[10px] uppercase tracking-wider border border-white/10 shadow">
+                            Pendiente Acta
                           </span>
                         ) : (
                           player.isHomegrown && (
-                            <span className="px-2 py-0.5 bg-primary-container text-white font-bold text-[10px] uppercase tracking-wider shadow">
+                            <span className="px-1.5 sm:px-2 py-0.5 bg-primary-container text-white font-bold text-[9px] sm:text-[10px] uppercase tracking-wider shadow">
                               Federado FAVB
                             </span>
                           )
@@ -390,17 +390,17 @@ export default function PlantillasPage() {
                       </div>
 
                       {/* Position Overlay */}
-                      <div className="absolute bottom-3 left-3 right-3">
-                        <span className="px-2.5 py-1 bg-surface-container-highest/90 backdrop-blur-sm text-primary font-label-sm text-[11px] uppercase tracking-widest font-bold">
+                      <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-3 sm:right-3">
+                        <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-surface-container-highest/90 backdrop-blur-sm text-primary font-label-sm text-[10px] sm:text-[11px] uppercase tracking-widest font-bold inline-block truncate max-w-full">
                           {POSITION_SHORT_LABELS[player.position]}
                         </span>
                       </div>
                     </div>
 
                     {/* Player Details */}
-                    <div className="p-4 flex flex-col justify-between flex-1">
+                    <div className="p-3 sm:p-4 flex flex-col justify-between flex-1">
                       <div>
-                        <h3 className="font-display-xl text-xl uppercase text-white leading-tight group-hover:text-primary transition-colors">
+                        <h3 className="font-display-xl text-base sm:text-xl uppercase text-white leading-tight group-hover:text-primary transition-colors">
                           {isPlaceholderSlot ? (
                             <span>
                               {player.firstName} {player.lastName}
@@ -413,28 +413,28 @@ export default function PlantillasPage() {
                           )}
                         </h3>
                         {isPlaceholderSlot && (
-                          <span className="text-[11px] text-tertiary block mt-1">
-                            Se actualizará al publicarse el acta oficial en favoley.net
+                          <span className="text-[10px] sm:text-[11px] text-tertiary block mt-1 leading-snug">
+                            Pendiente de acta en favoley.net
                           </span>
                         )}
                       </div>
 
                       {/* Physical Stats */}
-                      <div className="mt-4 pt-3 border-t border-white/5 grid grid-cols-2 gap-2 text-xs">
+                      <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/5 grid grid-cols-2 gap-1.5 sm:gap-2 text-xs">
                         <div>
-                          <span className="text-tertiary block text-[10px] uppercase">Dorsal</span>
-                          <span className="font-headline-sm text-sm text-white font-bold">
+                          <span className="text-tertiary block text-[9px] sm:text-[10px] uppercase">Dorsal</span>
+                          <span className="font-headline-sm text-xs sm:text-sm text-white font-bold">
                             #{player.number}
                           </span>
                         </div>
                         <div>
-                          <span className="text-tertiary block text-[10px] uppercase">Estado FAVB</span>
+                          <span className="text-tertiary block text-[9px] sm:text-[10px] uppercase">Estado FAVB</span>
                           <span
-                            className={`font-headline-sm text-sm font-bold ${
+                            className={`font-headline-sm text-xs sm:text-sm font-bold ${
                               isPlaceholderSlot ? 'text-tertiary' : 'text-emerald-400'
                             }`}
                           >
-                            {isPlaceholderSlot ? 'En inscripción' : 'Inscrito'}
+                            {isPlaceholderSlot ? 'Pendiente' : 'Inscrito'}
                           </span>
                         </div>
                       </div>

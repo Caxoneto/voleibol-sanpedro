@@ -107,7 +107,7 @@ export default async function HomePage() {
           {/* Cabecera Hero + Emblema Oficial "Yo Voley... ¿y tú?" */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
             <div className="max-w-3xl">
-              <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl xl:text-7xl tracking-tight text-on-surface uppercase leading-[0.95]">
+              <h1 className="font-display-xl text-[2.1rem] sm:text-5xl lg:text-6xl xl:text-7xl tracking-tight text-on-surface uppercase leading-[0.95]">
                 PASIÓN, CANTERA <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
                   Y ORGULLO SAMPEDREÑO.
@@ -117,7 +117,7 @@ export default async function HomePage() {
 
             {/* Emblema / Lema Oficial de la Temporada: "Yo Voley... ¿y tú?" (Recreación fiel de RRSS) */}
             <div
-              className="self-start md:self-center shrink-0 select-none px-4 py-2 sm:px-6 sm:py-3 -rotate-6 transform transition-transform duration-300 hover:-rotate-3"
+              className="self-start md:self-center shrink-0 select-none px-4 py-1 sm:px-6 sm:py-3 -rotate-6 transform transition-transform duration-300 hover:-rotate-3"
               aria-label="Lema oficial: Yo Voley... ¿y tú?"
             >
               <div
@@ -185,9 +185,9 @@ export default async function HomePage() {
       <SponsorBanner />
 
       {/* Centro de Competición & Marcadores */}
-      <section className="w-full py-16 bg-surface-container-lowest">
+      <section className="w-full py-10 sm:py-16 bg-surface-container-lowest">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 sm:mb-10">
             <div>
               <span className="font-label-sm text-xs uppercase tracking-widest text-primary block font-bold">
                 Centro de Competición
@@ -213,26 +213,26 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Featured Match Card (Left 7 Cols) */}
             {featuredMatch && (
-              <div className="lg:col-span-7 bg-surface-container-low p-6 sm:p-8 flex flex-col justify-between border border-primary-container/30 shadow-[0px_0px_30px_rgba(217,4,41,0.15)] relative">
+              <div className="lg:col-span-7 bg-surface-container-low p-4 sm:p-8 flex flex-col justify-between border border-primary-container/30 shadow-[0px_0px_30px_rgba(217,4,41,0.15)] relative">
                 <div>
-                  <div className="flex items-center justify-between pb-4 border-b border-white/5">
+                  <div className="flex items-center justify-between gap-2 pb-4 border-b border-white/5 flex-wrap">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[11px] font-bold uppercase tracking-wider">
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       {featuredMatch.status === 'LIVE'
                         ? `En Juego • Jornada ${featuredMatch.round}`
                         : `Próxima Jornada ${featuredMatch.round}`}
                     </span>
-                    <span className="text-xs text-tertiary uppercase">
+                    <span className="text-[11px] sm:text-xs text-tertiary uppercase">
                       {formatMadridDate(featuredMatch.matchDate)} • {formatMadridTime(featuredMatch.matchDate)}h
                     </span>
                   </div>
 
                   {/* Team vs Team Header */}
-                  <div className="py-8 grid grid-cols-5 items-center text-center">
+                  <div className="py-5 sm:py-8 grid grid-cols-5 items-center text-center gap-1">
                     {/* Home Team */}
                     <div className="col-span-2 flex flex-col items-center">
                       <div
-                        className={`w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high flex items-center justify-center p-2 mb-3 shadow-md ${
+                        className={`w-14 h-14 sm:w-20 sm:h-20 bg-surface-container-high flex items-center justify-center p-2 mb-2.5 sm:mb-3 shadow-md ${
                           featuredMatch.isClubHome
                             ? 'border-2 border-primary-container'
                             : 'border border-white/10'
@@ -249,18 +249,18 @@ export default async function HomePage() {
                       {featuredMatch.isClubHome ? (
                         <Link
                           href={`/plantillas?categoria=${featuredCat?.id || 'cat-senior-fem'}`}
-                          className="font-display-xl text-lg sm:text-xl uppercase text-white hover:text-primary hover:underline decoration-primary underline-offset-4 leading-tight transition-colors"
+                          className="font-display-xl text-base sm:text-xl uppercase text-white hover:text-primary hover:underline decoration-primary underline-offset-4 leading-tight transition-colors"
                           title={`Ver plantilla de ${featuredCat?.name || 'nuestro equipo'}`}
                         >
                           {featuredMatch.homeTeamName}
                         </Link>
                       ) : (
-                        <h4 className="font-display-xl text-lg sm:text-xl uppercase text-white leading-tight">
+                        <h4 className="font-display-xl text-base sm:text-xl uppercase text-white leading-tight">
                           {featuredMatch.homeTeamName}
                         </h4>
                       )}
                       <span
-                        className={`text-[11px] uppercase font-bold mt-1 ${
+                        className={`text-[10px] sm:text-[11px] uppercase font-bold mt-1 ${
                           featuredMatch.isClubHome ? 'text-primary' : 'text-tertiary'
                         }`}
                       >
@@ -271,13 +271,13 @@ export default async function HomePage() {
                     {/* VS / Live Score Center */}
                     <div className="col-span-1 flex flex-col items-center">
                       {featuredMatch.status === 'LIVE' ? (
-                        <span className="font-display-xl text-2xl sm:text-3xl text-red-400 uppercase">
+                        <span className="font-display-xl text-xl sm:text-3xl text-red-400 uppercase">
                           {featuredMatch.homeScore ?? 0} - {featuredMatch.awayScore ?? 0}
                         </span>
                       ) : (
                         <span className="font-display-xl text-2xl sm:text-3xl text-primary uppercase">VS</span>
                       )}
-                      <span className="text-[10px] text-tertiary uppercase mt-1">
+                      <span className="text-[10px] text-tertiary uppercase mt-1 leading-tight">
                         {featuredCat?.name || 'Liga FAVB'}
                       </span>
                     </div>
@@ -285,7 +285,7 @@ export default async function HomePage() {
                     {/* Away Team */}
                     <div className="col-span-2 flex flex-col items-center">
                       <div
-                        className={`w-16 h-16 sm:w-20 sm:h-20 bg-surface-container-high flex items-center justify-center p-2 mb-3 shadow-md ${
+                        className={`w-14 h-14 sm:w-20 sm:h-20 bg-surface-container-high flex items-center justify-center p-2 mb-2.5 sm:mb-3 shadow-md ${
                           !featuredMatch.isClubHome
                             ? 'border-2 border-primary-container'
                             : 'border border-white/10'
@@ -302,18 +302,18 @@ export default async function HomePage() {
                       {!featuredMatch.isClubHome ? (
                         <Link
                           href={`/plantillas?categoria=${featuredCat?.id || 'cat-senior-fem'}`}
-                          className="font-display-xl text-lg sm:text-xl uppercase text-on-surface hover:text-primary hover:underline decoration-primary underline-offset-4 leading-tight transition-colors"
+                          className="font-display-xl text-base sm:text-xl uppercase text-on-surface hover:text-primary hover:underline decoration-primary underline-offset-4 leading-tight transition-colors"
                           title={`Ver plantilla de ${featuredCat?.name || 'nuestro equipo'}`}
                         >
                           {featuredMatch.awayTeamName}
                         </Link>
                       ) : (
-                        <h4 className="font-display-xl text-lg sm:text-xl uppercase text-on-surface leading-tight">
+                        <h4 className="font-display-xl text-base sm:text-xl uppercase text-on-surface leading-tight">
                           {featuredMatch.awayTeamName}
                         </h4>
                       )}
                       <span
-                        className={`text-[11px] uppercase font-bold mt-1 ${
+                        className={`text-[10px] sm:text-[11px] uppercase font-bold mt-1 ${
                           !featuredMatch.isClubHome ? 'text-primary' : 'text-tertiary'
                         }`}
                       >

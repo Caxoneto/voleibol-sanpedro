@@ -470,11 +470,11 @@ export default function CalendarioPage() {
           </div>
 
           {/* Condición */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="flex items-center bg-surface-container-high p-0.5 border border-white/5">
+          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 shrink-0 w-full md:w-auto">
+            <div className="flex items-center bg-surface-container-high p-0.5 border border-white/5 flex-1 sm:flex-initial">
               <button
                 onClick={() => setConditionFilter('ALL')}
-                className={`px-2.5 py-1 text-xs font-bold uppercase ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 sm:py-1 text-xs font-bold uppercase transition-colors ${
                   conditionFilter === 'ALL'
                     ? 'bg-white text-black'
                     : 'text-tertiary hover:text-white'
@@ -484,7 +484,7 @@ export default function CalendarioPage() {
               </button>
               <button
                 onClick={() => setConditionFilter('LOCAL')}
-                className={`px-2.5 py-1 text-xs font-bold uppercase ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 sm:py-1 text-xs font-bold uppercase transition-colors ${
                   conditionFilter === 'LOCAL'
                     ? 'bg-primary-container text-white'
                     : 'text-tertiary hover:text-white'
@@ -494,7 +494,7 @@ export default function CalendarioPage() {
               </button>
               <button
                 onClick={() => setConditionFilter('VISITANTE')}
-                className={`px-2.5 py-1 text-xs font-bold uppercase ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 sm:py-1 text-xs font-bold uppercase transition-colors ${
                   conditionFilter === 'VISITANTE'
                     ? 'bg-white text-black'
                     : 'text-tertiary hover:text-white'
@@ -508,7 +508,7 @@ export default function CalendarioPage() {
               type="button"
               onClick={() => fetchLiveCalendarMatches(true)}
               disabled={syncing}
-              className="w-8 h-8 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
+              className="w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
               title={`Sincronizar calendario, horarios y resultados con favoley.net (Última: ${lastSyncTime})`}
               aria-label="Sincronizar calendario"
             >
@@ -544,7 +544,7 @@ export default function CalendarioPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedRound(recommendedRound)}
-                    className="ml-1 px-2 py-0.5 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
+                    className="ml-1 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
                   >
                     Ir a J{recommendedRound} (Próxima)
                   </button>
@@ -552,26 +552,26 @@ export default function CalendarioPage() {
               </div>
 
               {/* Flechas de navegación rápida entre jornadas */}
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
                   disabled={!prevRoundObj}
                   onClick={() => prevRoundObj && setSelectedRound(prevRoundObj.round)}
-                  className="w-7 h-7 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
                   title={prevRoundObj ? `Jornada anterior (J${prevRoundObj.round})` : 'Primera jornada'}
                   aria-label="Jornada anterior"
                 >
-                  <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                 </button>
                 <button
                   type="button"
                   disabled={!nextRoundObj}
                   onClick={() => nextRoundObj && setSelectedRound(nextRoundObj.round)}
-                  className="w-7 h-7 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
                   title={nextRoundObj ? `Siguiente jornada (J${nextRoundObj.round})` : 'Última jornada'}
                   aria-label="Siguiente jornada"
                 >
-                  <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                 </button>
               </div>
             </div>
