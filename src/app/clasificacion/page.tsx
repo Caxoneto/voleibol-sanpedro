@@ -156,7 +156,7 @@ export default function ClasificacionPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-container-high hover:bg-primary-container text-white font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow-md shrink-0 border border-white/10 self-start md:self-auto"
           >
             <span>Ver tabla en favoley.net</span>
-            <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">open_in_new</span>
           </a>
         </div>
       </section>
@@ -175,6 +175,7 @@ export default function ClasificacionPage() {
                   key={cat.id}
                   id={`clasif-cat-pill-${cat.id}`}
                   onClick={() => setSelectedCatId(cat.id)}
+                  aria-pressed={isSelected}
                   className={`px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[3px_3px_0px_0px_#0e0e0e] -translate-y-0.5'
@@ -195,7 +196,7 @@ export default function ClasificacionPage() {
             title={`Sincronizar clasificación ahora con favoley.net (Última: ${lastSyncTime})`}
             aria-label="Sincronizar clasificación"
           >
-            <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`}>
+            <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
               sync
             </span>
           </button>
@@ -204,7 +205,7 @@ export default function ClasificacionPage() {
 
       {syncFeedback && (
         <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
-          <span className="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
+          <span className="material-symbols-outlined text-emerald-400 text-[18px]" aria-hidden="true">check_circle</span>
           <span>{syncFeedback}</span>
         </div>
       )}
@@ -237,17 +238,18 @@ export default function ClasificacionPage() {
         {/* Tabla Oficial */}
         <div className="bg-surface-container-low border border-white/5 shadow-2xl overflow-x-auto">
           <table className="w-full text-left border-collapse sm:min-w-[640px]">
+            <caption className="sr-only">Clasificación oficial de la categoría {activeCategory.name}</caption>
             <thead>
               <tr className="bg-surface-container-lowest border-b border-white/10 text-[10px] sm:text-xs text-tertiary uppercase tracking-wider">
-                <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 w-8 sm:w-16 text-center font-bold">POS</th>
-                <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 font-semibold">CLUB / EQUIPO</th>
-                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Partidos Jugados">PJ</th>
-                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Partidos Ganados">PG</th>
-                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Partidos Perdidos">PP</th>
-                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Sets a Favor">SF</th>
-                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Sets en Contra">SC</th>
-                <th className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Diferencia de Sets">DIF</th>
-                <th className="py-2.5 sm:py-3 px-2 sm:px-4 text-center font-bold text-white bg-primary-container/20">PTS</th>
+                <th scope="col" className="py-2.5 sm:py-3 px-1.5 sm:px-4 w-8 sm:w-16 text-center font-bold">POS</th>
+                <th scope="col" className="py-2.5 sm:py-3 px-1.5 sm:px-4 font-semibold">CLUB / EQUIPO</th>
+                <th scope="col" className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Partidos Jugados">PJ</th>
+                <th scope="col" className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Partidos Ganados">PG</th>
+                <th scope="col" className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Partidos Perdidos">PP</th>
+                <th scope="col" className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Sets a Favor">SF</th>
+                <th scope="col" className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Sets en Contra">SC</th>
+                <th scope="col" className="py-2.5 sm:py-3 px-1 sm:px-3 text-center font-semibold" title="Diferencia de Sets">DIF</th>
+                <th scope="col" className="py-2.5 sm:py-3 px-2 sm:px-4 text-center font-bold text-white bg-primary-container/20">PTS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs sm:text-sm">
@@ -348,10 +350,12 @@ export default function ClasificacionPage() {
           <button
             type="button"
             onClick={() => setShowRulesDropdown(!showRulesDropdown)}
+            aria-expanded={showRulesDropdown}
+            aria-controls="favb-rules-content"
             className="w-full flex items-center justify-between text-left group"
           >
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-[22px]">info</span>
+              <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">info</span>
               <div>
                 <h3 className="font-headline-sm text-sm uppercase text-white font-bold group-hover:text-primary transition-colors">
                   Criterio Oficial de Puntuación FAVB / RFEVB
@@ -365,13 +369,14 @@ export default function ClasificacionPage() {
               className={`material-symbols-outlined text-tertiary transition-transform duration-200 text-[24px] ${
                 showRulesDropdown ? 'rotate-180' : ''
               }`}
+              aria-hidden="true"
             >
               expand_more
             </span>
           </button>
 
           {showRulesDropdown && (
-            <div className="mt-6 pt-6 border-t border-white/10 space-y-4 animate-in fade-in duration-200">
+            <div id="favb-rules-content" className="mt-6 pt-6 border-t border-white/10 space-y-4 animate-in fade-in duration-200">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                 <div className="p-4 bg-surface-container-lowest border-l-4 border-emerald-500">
                   <span className="font-bold text-white uppercase block">Victoria 3-0 o 3-1</span>

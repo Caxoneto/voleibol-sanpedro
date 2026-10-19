@@ -62,6 +62,13 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col selection:bg-primary-container selection:text-white">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2.5 focus:bg-primary-container focus:text-white focus:font-headline focus:font-bold focus:text-xs focus:uppercase focus:tracking-widest focus:rounded-sm focus:shadow-lg"
+        >
+          Saltar al contenido principal
+        </a>
+
         {/* Cabecera Fija Unificada (Nunca se pierde el banner ni se transparenta al scrolear) */}
         <header className="fixed top-0 left-0 w-full z-50 bg-[#131313] shadow-[0_4px_24px_rgba(0,0,0,0.8)]">
           <TopMarquee />
@@ -69,7 +76,7 @@ export default function RootLayout({
         </header>
 
         {/* Contenido principal comenzando justo debajo de la cabecera fija */}
-        <main className="flex-1 w-full pt-28">
+        <main id="main-content" tabIndex={-1} className="flex-1 w-full pt-28 focus:outline-none">
           {children}
         </main>
         

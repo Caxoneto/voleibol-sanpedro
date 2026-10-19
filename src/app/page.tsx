@@ -204,7 +204,7 @@ export default async function HomePage() {
               className="group font-label-md text-xs uppercase tracking-wider text-primary hover:text-white flex items-center gap-1.5 transition-colors font-bold"
             >
               <span>Ver Calendario Completo</span>
-              <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">
+              <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform" aria-hidden="true">
                 arrow_forward
               </span>
             </Link>
@@ -325,7 +325,7 @@ export default async function HomePage() {
                   {/* Venue info */}
                   <div className="bg-surface-container-lowest p-4 border-l-4 border-primary-container flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-[20px]">stadium</span>
+                      <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">stadium</span>
                       <div>
                         <p className="font-body-sm text-sm font-semibold text-white">
                           {featuredMatch.venueName}
@@ -349,7 +349,7 @@ export default async function HomePage() {
                     href={`/partidos?categoria=${featuredCat?.id || 'cat-senior-fem'}&match=${featuredMatch.id}`}
                     className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary hover:text-white"
                   >
-                    <span className="material-symbols-outlined text-[16px]">sports_volleyball</span>
+                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">sports_volleyball</span>
                     Ver en Centro de Partidos
                   </Link>
 
@@ -365,7 +365,7 @@ export default async function HomePage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs text-tertiary hover:text-white uppercase font-semibold"
                   >
-                    <span className="material-symbols-outlined text-[16px]">near_me</span>
+                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">near_me</span>
                     Cómo llegar al Pabellón
                   </a>
                 </div>
@@ -402,7 +402,7 @@ export default async function HomePage() {
                     <Link
                       href={`/partidos?categoria=${matchCatId}&match=${match.id}`}
                       className="absolute inset-0 z-0"
-                      aria-label={`Ver partido ${match.homeTeamName} vs ${match.awayTeamName}`}
+                      aria-label={`Ver detalles del resultado ${match.homeTeamName} contra ${match.awayTeamName}`}
                     />
 
                     {/* Cabecera con Jornada, Fecha y Encabezados de Sets formato tenis */}
@@ -553,7 +553,7 @@ export default async function HomePage() {
               className="font-label-md text-xs uppercase tracking-wider text-primary hover:text-white flex items-center gap-1.5 transition-colors font-bold"
             >
               <span>Ir a Sala de Prensa</span>
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_forward</span>
             </Link>
           </div>
 
@@ -596,7 +596,7 @@ export default async function HomePage() {
                     className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary group-hover:text-white transition-colors"
                   >
                     <span>Leer Noticia Completa</span>
-                    <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">
+                    <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform" aria-hidden="true">
                       arrow_forward
                     </span>
                   </span>
@@ -634,7 +634,7 @@ export default async function HomePage() {
             className="shrink-0 inline-flex items-center gap-2 px-6 py-3 bg-surface-container-lowest hover:bg-primary-container text-white font-label-md text-xs uppercase tracking-wider font-bold border border-white/10 transition-all shadow-md"
           >
             <span>Portal FAVB (favoley.net)</span>
-            <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">open_in_new</span>
           </a>
         </div>
       </section>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -10,6 +10,16 @@ import { InstagramIcon, FacebookIcon } from '@/components/SocialIcons';
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
 
   const navLinks = [
     { label: 'Inicio', href: '/' },
@@ -115,7 +125,7 @@ export default function Navbar() {
             </svg>
             <span className="hidden sm:inline-flex items-center gap-1.5">
               <span>Jugador@s</span>
-              <span className="material-symbols-outlined text-[15px]">open_in_new</span>
+              <span className="material-symbols-outlined text-[15px]" aria-hidden="true">open_in_new</span>
             </span>
           </a>
 
@@ -124,9 +134,11 @@ export default function Navbar() {
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="xl:hidden w-10 h-10 flex items-center justify-center bg-surface-container-high text-on-surface border border-white/10 hover:text-primary"
-            aria-label="Abrir menú"
+            aria-label={mobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav-drawer"
           >
-            <span className="material-symbols-outlined text-[24px]">
+            <span className="material-symbols-outlined text-[24px]" aria-hidden="true">
               {mobileMenuOpen ? 'close' : 'menu'}
             </span>
           </button>
@@ -135,7 +147,13 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="xl:hidden bg-[#131313] border-b border-primary-container/40 px-6 py-5 shadow-2xl max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain animate-in slide-in-from-top duration-200">
+        <div
+          id="mobile-nav-drawer"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menú de navegación móvil"
+          className="xl:hidden bg-[#131313] border-b border-primary-container/40 px-6 py-5 shadow-2xl max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain animate-in slide-in-from-top duration-200"
+        >
           <div className="flex flex-col gap-4">
             {navLinks.map((link) => {
               const active = isActive(link.href);
@@ -149,7 +167,7 @@ export default function Navbar() {
                   }`}
                 >
                   <span>{link.label}</span>
-                  <span className="material-symbols-outlined text-[20px] text-tertiary">
+                  <span className="material-symbols-outlined text-[20px] text-tertiary" aria-hidden="true">
                     chevron_right
                   </span>
                 </Link>
@@ -186,7 +204,7 @@ export default function Navbar() {
                 className="w-full text-center bg-primary-container hover:bg-secondary-container text-white py-3 font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e]"
               >
                 <span>Portal Jugador@s (FeelSports)</span>
-                <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">open_in_new</span>
               </a>
             </div>
           </div>

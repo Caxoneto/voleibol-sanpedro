@@ -511,6 +511,7 @@ function PartidosContent() {
                     className={`material-symbols-outlined text-[15px] ${
                       isRefreshing ? 'animate-spin text-white' : ''
                     }`}
+                    aria-hidden="true"
                   >
                     sync
                   </span>
@@ -530,7 +531,7 @@ function PartidosContent() {
                     : `Fuera (${m.venue})`
                 }
               >
-                <span className="material-symbols-outlined text-[15px]">
+                <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                   {m.isClubHome ? 'home' : 'flight'}
                 </span>
               </span>
@@ -695,7 +696,7 @@ function PartidosContent() {
         {/* Pie de tarjeta con sede y botones de SOLO icono (Ubicación Maps + Acta FAVB) */}
         <div className="pt-2.5 mt-2 border-t border-white/5 flex items-center justify-between gap-2 text-[11px] text-tertiary">
           <div className="flex items-center gap-1 min-w-0">
-            <span className="material-symbols-outlined text-[14px] text-primary shrink-0">
+            <span className="material-symbols-outlined text-[14px] text-primary shrink-0" aria-hidden="true">
               pin_drop
             </span>
             <span className="truncate">{m.venue}</span>
@@ -711,7 +712,7 @@ function PartidosContent() {
               title={`Cómo llegar a ${m.venue}`}
               aria-label="Cómo llegar al pabellón"
             >
-              <span className="material-symbols-outlined text-[14px]">directions</span>
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">directions</span>
             </a>
 
             <a
@@ -723,7 +724,7 @@ function PartidosContent() {
               title="Ver acta oficial en favoley.net"
               aria-label="Ver acta oficial en favoley.net"
             >
-              <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
             </a>
           </div>
         </div>
@@ -771,7 +772,7 @@ function PartidosContent() {
       {/* Notificación flotante de feedback al actualizar marcador */}
       {refreshFeedback && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#161616] border-2 border-primary-container text-white px-4 py-3 shadow-2xl flex items-center gap-3 animate-bounce">
-          <span className="material-symbols-outlined text-primary text-[22px]">check_circle</span>
+          <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">check_circle</span>
           <span className="text-xs font-bold uppercase tracking-wider">
             {refreshFeedback.message}
           </span>
@@ -795,6 +796,7 @@ function PartidosContent() {
                   key={category.id}
                   id={`cat-pill-${category.id}`}
                   onClick={() => handleSelectCategoryFromBar(category.id)}
+                  aria-pressed={isSelected}
                   className={`px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e] -translate-y-0.5'
@@ -816,7 +818,7 @@ function PartidosContent() {
             title={`Actualizar todos los marcadores desde favoley.net (Última: ${lastSyncTime})`}
             aria-label="Actualizar resultados"
           >
-            <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`}>
+            <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
               sync
             </span>
           </button>
@@ -878,6 +880,7 @@ function PartidosContent() {
                     <button
                       type="button"
                       onClick={() => handleToggleCategory(category.id)}
+                      aria-expanded={isExpanded}
                       className="w-full p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-left transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -923,11 +926,11 @@ function PartidosContent() {
                               className="p-0.5 text-primary flex items-center justify-center"
                               title={
                                 nextMatch.isClubHome
-                                  ? 'En casa (Sergio Scariolo)'
+                                    ? 'En casa (Sergio Scariolo)'
                                   : `Fuera (${nextMatch.venue})`
                               }
                             >
-                              <span className="material-symbols-outlined text-[15px]">
+                              <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                                 {nextMatch.isClubHome ? 'home' : 'flight'}
                               </span>
                             </span>
@@ -944,6 +947,7 @@ function PartidosContent() {
                               ? 'rotate-180 text-primary'
                               : 'text-tertiary group-hover:text-white'
                           }`}
+                          aria-hidden="true"
                         >
                           expand_more
                         </span>
@@ -1084,6 +1088,7 @@ function PartidosContent() {
                                                 className={`material-symbols-outlined text-[15px] ${
                                                   isRefreshing ? 'animate-spin text-white' : ''
                                                 }`}
+                                                aria-hidden="true"
                                               >
                                                 sync
                                               </span>
@@ -1101,7 +1106,7 @@ function PartidosContent() {
                                                   : `Partido fuera (${m.venue})`
                                               }
                                             >
-                                              <span className="material-symbols-outlined text-[15px]">
+                                              <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                                                 {m.isClubHome ? 'home' : 'flight'}
                                               </span>
                                             </span>
@@ -1172,7 +1177,7 @@ function PartidosContent() {
 
                                         <div className="flex items-center justify-between gap-2 pt-1">
                                           <div className="flex items-center gap-1 text-[11px] text-tertiary min-w-0">
-                                            <span className="material-symbols-outlined text-[14px] text-primary shrink-0">
+                                            <span className="material-symbols-outlined text-[14px] text-primary shrink-0" aria-hidden="true">
                                               pin_drop
                                             </span>
                                             <span className="truncate" title={m.venue}>
@@ -1189,7 +1194,7 @@ function PartidosContent() {
                                               title="Añadir a Google Calendar"
                                               aria-label="Añadir a Google Calendar"
                                             >
-                                              <span className="material-symbols-outlined text-[15px] text-primary">
+                                              <span className="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">
                                                 event
                                               </span>
                                             </a>
@@ -1201,7 +1206,7 @@ function PartidosContent() {
                                               title="Añadir a la agenda del móvil (.ics)"
                                               aria-label="Añadir al móvil"
                                             >
-                                              <span className="material-symbols-outlined text-[15px] text-primary">
+                                              <span className="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">
                                                 smartphone
                                               </span>
                                             </button>
@@ -1214,7 +1219,7 @@ function PartidosContent() {
                                               title={`Cómo llegar a ${m.venue}`}
                                               aria-label="Cómo llegar al pabellón"
                                             >
-                                              <span className="material-symbols-outlined text-[15px]">
+                                              <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                                                 directions
                                               </span>
                                             </a>
@@ -1275,7 +1280,7 @@ function PartidosContent() {
                 title="Partido jugado en el Pabellón Polideportivo Sergio Scariolo"
               >
                 <span className="w-5 h-5 flex items-center justify-center bg-primary-container/20 text-primary border border-primary-container/30">
-                  <span className="material-symbols-outlined text-[13px]">home</span>
+                  <span className="material-symbols-outlined text-[13px]" aria-hidden="true">home</span>
                 </span>
                 <span>En Casa</span>
               </span>
@@ -1284,7 +1289,7 @@ function PartidosContent() {
                 title="Partido jugado fuera de casa (a domicilio)"
               >
                 <span className="w-5 h-5 flex items-center justify-center bg-white/5 text-tertiary border border-white/10">
-                  <span className="material-symbols-outlined text-[13px]">flight</span>
+                  <span className="material-symbols-outlined text-[13px]" aria-hidden="true">flight</span>
                 </span>
                 <span>Fuera</span>
               </span>
@@ -1298,7 +1303,7 @@ function PartidosContent() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
               <div className="md:col-span-8 space-y-3">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-500 text-black text-[10px] uppercase font-bold tracking-wider">
-                  <span className="material-symbols-outlined text-[14px]">military_tech</span>
+                  <span className="material-symbols-outlined text-[14px]" aria-hidden="true">military_tech</span>
                   CAPITANA Y REFERENTE • SENIOR FEMENINO (+18)
                 </div>
                 <h3 className="font-display-xl text-3xl sm:text-4xl uppercase text-white">
@@ -1328,7 +1333,7 @@ function PartidosContent() {
                     className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary hover:text-white"
                   >
                     <span>Votar MVP Senior en la Fan-Zone</span>
-                    <span className="material-symbols-outlined text-[16px]">how_to_vote</span>
+                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">how_to_vote</span>
                   </Link>
                 </div>
               </div>

@@ -39,7 +39,7 @@ function renderInline(text: string): React.ReactNode {
         >
           <span>{label}</span>
           {isExternal && (
-            <span className="material-symbols-outlined text-[13px] inline-block">open_in_new</span>
+            <span className="material-symbols-outlined text-[13px] inline-block" aria-hidden="true">open_in_new</span>
           )}
         </a>
       );
@@ -80,7 +80,7 @@ function parseArticleContent(content: string) {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative z-10">
               <div className="space-y-1.5">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[10px] uppercase font-bold tracking-widest">
-                  <span className="material-symbols-outlined text-[12px]">verified</span>
+                  <span className="material-symbols-outlined text-[12px]" aria-hidden="true">verified</span>
                   <span>Documento Oficial FAVB / RFEVB</span>
                 </div>
                 <h4 className="text-white font-bold text-base sm:text-lg font-headline-sm normal-case">
@@ -97,7 +97,7 @@ function parseArticleContent(content: string) {
                 className="px-5 py-3 bg-primary-container hover:bg-secondary-container text-white text-xs font-bold uppercase tracking-wider shrink-0 flex items-center gap-2 transition-all shadow-md group-hover:scale-105"
               >
                 <span>{label}</span>
-                <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">open_in_new</span>
               </a>
             </div>
           </div>
@@ -114,7 +114,7 @@ function parseArticleContent(content: string) {
           >
             <div className="flex items-center gap-3">
               <span className="w-10 h-10 bg-red-950/60 border border-primary-container/40 flex items-center justify-center text-primary shrink-0">
-                <span className="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+                <span className="material-symbols-outlined text-[20px]" aria-hidden="true">picture_as_pdf</span>
               </span>
               <div>
                 <h5 className="text-white font-bold text-sm font-headline-sm normal-case">
@@ -130,7 +130,7 @@ function parseArticleContent(content: string) {
               download
               className="px-4 py-2.5 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all shrink-0"
             >
-              <span className="material-symbols-outlined text-[16px]">download</span>
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">download</span>
               <span>{label}</span>
             </a>
           </div>
@@ -147,7 +147,7 @@ function parseArticleContent(content: string) {
           >
             <div className="space-y-1.5">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#25D366]/20 text-[#25D366] text-[10px] uppercase font-bold tracking-widest">
-                <span className="material-symbols-outlined text-[12px]">chat</span>
+                <span className="material-symbols-outlined text-[12px]" aria-hidden="true">chat</span>
                 <span>Atención Oficial del Club</span>
               </div>
               <h4 className="text-white font-bold text-base sm:text-lg font-headline-sm normal-case">
@@ -164,7 +164,7 @@ function parseArticleContent(content: string) {
               className="px-5 py-3 bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-bold uppercase tracking-wider shrink-0 flex items-center gap-2 transition-all shadow-md"
             >
               <span>{label}</span>
-              <span className="material-symbols-outlined text-[16px]">send</span>
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">send</span>
             </a>
           </div>
         );
@@ -344,7 +344,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
             href="/noticias"
             className="inline-flex items-center gap-1.5 font-label-md text-label-md uppercase tracking-wider text-primary hover:text-white transition-colors mb-6"
           >
-            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
             <span>Volver a Noticias y Sala de Prensa</span>
           </Link>
 
@@ -362,7 +362,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
             </span>
             <span>•</span>
             <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">timer</span>
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">timer</span>
               {article.readingTimeMinutes} min de lectura
             </span>
           </div>
@@ -419,7 +419,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
         {/* Social Share Bar */}
         <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 bg-surface-container-low p-4 border border-white/5">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[20px]">share</span>
+            <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">share</span>
             <span className="font-label-sm text-label-sm uppercase font-bold text-on-surface tracking-wider">
               Difundir y seguir al club:
             </span>
@@ -460,7 +460,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
               onClick={handleCopyLink}
               className="px-3.5 py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md uppercase flex items-center gap-1.5 transition-colors border border-white/10"
             >
-              <span className="material-symbols-outlined text-[14px]">link</span>
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">link</span>
               <span>{copied ? '¡Copiado!' : 'Copiar Enlace'}</span>
             </button>
           </div>

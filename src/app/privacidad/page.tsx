@@ -38,7 +38,7 @@ export default function PrivacidadPage() {
           {/* 1. Responsable */}
           <div className="bg-surface-container-lowest border border-white/5 p-6 sm:p-8 space-y-4">
             <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-xs">
-              <span className="material-symbols-outlined text-[18px]">security</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">security</span>
               <span>Responsable del Tratamiento</span>
             </div>
             <h2 className="font-headline-sm text-xl sm:text-2xl text-white uppercase tracking-wide">
@@ -64,7 +64,7 @@ export default function PrivacidadPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-surface-container-low p-4 border border-white/5">
                 <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-[18px]">sports_volleyball</span>
+                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">sports_volleyball</span>
                   Cantera y Deportistas Federados
                 </h3>
                 <p className="text-xs text-tertiary leading-relaxed">
@@ -73,7 +73,7 @@ export default function PrivacidadPage() {
               </div>
               <div className="bg-surface-container-low p-4 border border-white/5">
                 <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-[18px]">diversity_3</span>
+                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">diversity_3</span>
                   Padres, Madres y Tutores Legales
                 </h3>
                 <p className="text-xs text-tertiary leading-relaxed">
@@ -82,7 +82,7 @@ export default function PrivacidadPage() {
               </div>
               <div className="bg-surface-container-low p-4 border border-white/5">
                 <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-[18px]">handshake</span>
+                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">handshake</span>
                   Patrocinadores y Contacto Web
                 </h3>
                 <p className="text-xs text-tertiary leading-relaxed">
@@ -91,7 +91,7 @@ export default function PrivacidadPage() {
               </div>
               <div className="bg-surface-container-low p-4 border border-white/5">
                 <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-[18px]">photo_camera</span>
+                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">photo_camera</span>
                   Imagen y Crónicas Deportivas
                 </h3>
                 <p className="text-xs text-tertiary leading-relaxed">

@@ -134,6 +134,18 @@ export default function CalendarioPage() {
     fetchLiveCalendarMatches(false);
   }, []);
 
+  // Cerrar modal del Pabellón con tecla Escape
+  useEffect(() => {
+    if (!showVenueModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowVenueModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showVenueModal]);
+
   // 1. Partidos filtrados por categoría y condición (Local / Visitante)
   const filteredMatches = useMemo(() => {
     return allMatches.filter((match) => {
@@ -409,7 +421,7 @@ export default function CalendarioPage() {
               title="Guardar calendario completo en mi móvil (iPhone, Android, Outlook)"
               aria-label="Guardar calendario en mi móvil"
             >
-              <span className="material-symbols-outlined text-primary text-[18px]">
+              <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">
                 smartphone
               </span>
             </button>
@@ -421,7 +433,7 @@ export default function CalendarioPage() {
               title="Exportar calendario en PDF imprimible"
               aria-label="Exportar PDF"
             >
-              <span className="material-symbols-outlined text-primary text-[18px]">
+              <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">
                 picture_as_pdf
               </span>
             </button>
@@ -433,7 +445,7 @@ export default function CalendarioPage() {
               title="Cómo llegar al Pabellón Polideportivo Sergio Scariolo"
               aria-label="Cómo llegar al Pabellón"
             >
-              <span className="material-symbols-outlined text-[18px]">near_me</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">near_me</span>
             </button>
           </div>
         </div>
@@ -512,7 +524,7 @@ export default function CalendarioPage() {
               title={`Sincronizar calendario, horarios y resultados con favoley.net (Última: ${lastSyncTime})`}
               aria-label="Sincronizar calendario"
             >
-              <span className={`material-symbols-outlined text-[18px] ${syncing ? 'animate-spin' : ''}`}>
+              <span className={`material-symbols-outlined text-[18px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
                 sync
               </span>
             </button>
@@ -522,7 +534,7 @@ export default function CalendarioPage() {
 
       {syncFeedback && (
         <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
-          <span className="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
+          <span className="material-symbols-outlined text-emerald-400 text-[18px]" aria-hidden="true">check_circle</span>
           <span>{syncFeedback}</span>
         </div>
       )}
@@ -534,7 +546,7 @@ export default function CalendarioPage() {
           <div className="bg-surface-container-lowest border border-white/10 p-3 sm:p-4 space-y-2.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="material-symbols-outlined text-primary text-[18px] shrink-0">
+                <span className="material-symbols-outlined text-primary text-[18px] shrink-0" aria-hidden="true">
                   calendar_view_week
                 </span>
                 <span className="text-xs font-bold uppercase tracking-wider text-white truncate">
@@ -561,7 +573,7 @@ export default function CalendarioPage() {
                   title={prevRoundObj ? `Jornada anterior (J${prevRoundObj.round})` : 'Primera jornada'}
                   aria-label="Jornada anterior"
                 >
-                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_left</span>
                 </button>
                 <button
                   type="button"
@@ -571,7 +583,7 @@ export default function CalendarioPage() {
                   title={nextRoundObj ? `Siguiente jornada (J${nextRoundObj.round})` : 'Última jornada'}
                   aria-label="Siguiente jornada"
                 >
-                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_right</span>
                 </button>
               </div>
             </div>
@@ -730,7 +742,7 @@ export default function CalendarioPage() {
                               : `Partido fuera (${match.venueName})`
                           }
                         >
-                          <span className="material-symbols-outlined text-[15px]">
+                          <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                             {match.isClubHome ? 'home' : 'flight'}
                           </span>
                         </span>
@@ -743,7 +755,7 @@ export default function CalendarioPage() {
                           title="Guardar en Google Calendar"
                           aria-label="Google Calendar"
                         >
-                          <span className="material-symbols-outlined text-[15px] text-primary">
+                          <span className="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">
                             event
                           </span>
                         </a>
@@ -755,7 +767,7 @@ export default function CalendarioPage() {
                           title="Añadir a la agenda del móvil (.ics)"
                           aria-label="Añadir al móvil"
                         >
-                          <span className="material-symbols-outlined text-[15px] text-primary">
+                          <span className="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">
                             smartphone
                           </span>
                         </button>
@@ -768,7 +780,7 @@ export default function CalendarioPage() {
                             title="Ver ubicación del Pabellón Sergio Scariolo"
                             aria-label="Ubicación"
                           >
-                            <span className="material-symbols-outlined text-[15px]">
+                            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                               directions
                             </span>
                           </button>
@@ -781,7 +793,7 @@ export default function CalendarioPage() {
                             title={`Cómo llegar a ${match.venueName}`}
                             aria-label="Cómo llegar al pabellón visitante"
                           >
-                            <span className="material-symbols-outlined text-[15px]">
+                            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                               directions
                             </span>
                           </a>
@@ -849,7 +861,7 @@ export default function CalendarioPage() {
 
                       {/* Venue */}
                       <div className="flex items-center gap-1.5 text-xs text-tertiary mt-1.5">
-                        <span className="material-symbols-outlined text-[15px] text-primary shrink-0">
+                        <span className="material-symbols-outlined text-[15px] text-primary shrink-0" aria-hidden="true">
                           pin_drop
                         </span>
                         <span className="truncate">{match.venueName}</span>
@@ -870,7 +882,7 @@ export default function CalendarioPage() {
                             : `Partido fuera (${match.venueName})`
                         }
                       >
-                        <span className="material-symbols-outlined text-[16px]">
+                        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
                           {match.isClubHome ? 'home' : 'flight'}
                         </span>
                       </span>
@@ -883,7 +895,7 @@ export default function CalendarioPage() {
                         title="Abrir y guardar este partido en Google Calendar"
                         aria-label="Google Calendar"
                       >
-                        <span className="material-symbols-outlined text-[16px] text-primary">
+                        <span className="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">
                           event
                         </span>
                       </a>
@@ -895,7 +907,7 @@ export default function CalendarioPage() {
                         title="Añadir cita a la agenda de tu móvil (Apple Calendar, Android, etc.)"
                         aria-label="Añadir a mi móvil"
                       >
-                        <span className="material-symbols-outlined text-[16px] text-primary">
+                        <span className="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">
                           smartphone
                         </span>
                       </button>
@@ -908,7 +920,7 @@ export default function CalendarioPage() {
                           title="Ubicación del Pabellón Sergio Scariolo"
                           aria-label="Ubicación"
                         >
-                          <span className="material-symbols-outlined text-[16px]">
+                          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
                             directions
                           </span>
                         </button>
@@ -921,7 +933,7 @@ export default function CalendarioPage() {
                           title={`Cómo llegar a ${match.venueName} en Google Maps`}
                           aria-label="Cómo llegar al pabellón visitante"
                         >
-                          <span className="material-symbols-outlined text-[16px]">
+                          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
                             directions
                           </span>
                         </a>
@@ -943,7 +955,7 @@ export default function CalendarioPage() {
                 onClick={() => setSelectedRound(prevRoundObj.round)}
                 className="px-3.5 py-2 bg-surface-container-high hover:bg-primary-container text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 border border-white/10 transition-colors"
               >
-                <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
                 <span>Jornada {prevRoundObj.round}</span>
               </button>
             ) : (
@@ -957,7 +969,7 @@ export default function CalendarioPage() {
                 className="px-3.5 py-2 bg-surface-container-high hover:bg-primary-container text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 border border-white/10 transition-colors"
               >
                 <span>Jornada {nextRoundObj.round}</span>
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
               </button>
             ) : (
               <div />
@@ -970,25 +982,29 @@ export default function CalendarioPage() {
       {showVenueModal && (
         <div
           id="pabellon"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="venue-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
         >
           <div className="bg-surface-container-lowest border-2 border-primary-container p-6 sm:p-8 max-w-xl w-full shadow-2xl relative">
             <button
               onClick={() => setShowVenueModal(false)}
               className="absolute top-4 right-4 text-tertiary hover:text-white"
+              aria-label="Cerrar información del pabellón"
             >
-              <span className="material-symbols-outlined text-[24px]">close</span>
+              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">close</span>
             </button>
 
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-primary-container text-white flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]">stadium</span>
+                <span className="material-symbols-outlined text-[22px]" aria-hidden="true">stadium</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase tracking-widest text-primary font-bold block">
                   Sede Oficial de Juego
                 </span>
-                <h3 className="font-display-xl text-xl sm:text-2xl uppercase text-white">
+                <h3 id="venue-modal-title" className="font-display-xl text-xl sm:text-2xl uppercase text-white">
                   Pabellón Sergio Scariolo
                 </h3>
               </div>
@@ -1017,7 +1033,7 @@ export default function CalendarioPage() {
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto flex-1 text-center py-3 px-4 bg-primary-container hover:bg-secondary-container text-white font-label-md text-xs uppercase tracking-wider font-bold shadow-md flex items-center justify-center gap-2"
               >
-                <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">open_in_new</span>
                 Abrir en Google Maps
               </a>
               <button

@@ -18,6 +18,7 @@ export async function GET() {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': 'attachment; filename="calendario-cdv-san-pedro.ics"',
       'Cache-Control': 'no-cache',
+      'X-Content-Type-Options': 'nosniff',
     },
   });
 }

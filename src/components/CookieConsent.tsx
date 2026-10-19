@@ -48,6 +48,17 @@ export default function CookieConsent() {
     return () => window.removeEventListener('open-cookie-settings', handleOpenSettings);
   }, []);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showModal]);
+
   const saveConsent = (prefs: CookiePreferences) => {
     const finalPrefs = { ...prefs, necessary: true };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(finalPrefs));
@@ -90,7 +101,7 @@ export default function CookieConsent() {
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div className="flex-1 pr-2">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="material-symbols-outlined text-primary text-[20px]">cookie</span>
+                <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">cookie</span>
                 <span className="font-headline-sm text-sm uppercase tracking-wider text-white font-bold">
                   POLÍTICA DE COOKIES Y PRIVACIDAD
                 </span>
@@ -107,21 +118,21 @@ export default function CookieConsent() {
               <button
                 type="button"
                 onClick={() => setShowModal(true)}
-                className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white text-xs uppercase tracking-wider font-bold transition-all border border-white/10"
+                className="px-4 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-white font-headline text-xs uppercase tracking-widest font-bold transition-all border border-white/10 rounded-sm"
               >
                 Configurar
               </button>
               <button
                 type="button"
                 onClick={handleRejectAll}
-                className="px-4 py-2 bg-surface-container-highest hover:bg-white hover:text-black text-white text-xs uppercase tracking-wider font-bold transition-all"
+                className="px-5 py-2.5 bg-primary-container hover:bg-primary text-on-primary font-headline font-bold text-xs uppercase tracking-widest rounded-sm transition-all"
               >
-                Rechazar no esenciales
+                Rechazar todas
               </button>
               <button
                 type="button"
                 onClick={handleAcceptAll}
-                className="px-5 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs uppercase tracking-wider font-bold transition-all shadow-md shadow-primary-container/20"
+                className="px-5 py-2.5 bg-primary-container hover:bg-primary text-on-primary font-headline font-bold text-xs uppercase tracking-widest rounded-sm transition-all"
               >
                 Aceptar todas
               </button>
@@ -145,12 +156,12 @@ export default function CookieConsent() {
               className="absolute top-4 right-4 text-tertiary hover:text-white p-1 transition-colors"
               aria-label="Cerrar modal"
             >
-              <span className="material-symbols-outlined text-[24px]">close</span>
+              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">close</span>
             </button>
 
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-primary-container text-white flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">tune</span>
+                <span className="material-symbols-outlined text-[22px]" aria-hidden="true">tune</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase tracking-widest text-primary font-bold block">
@@ -203,8 +214,10 @@ export default function CookieConsent() {
                     Nos permiten medir de forma anónima el número de visitantes y páginas más consultadas para mejorar la experiencia de nuestras familias y aficionados.
                   </p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer mt-1">
+                <label htmlFor="cookie-analytics" className="relative inline-flex items-center cursor-pointer mt-1">
                   <input
+                    id="cookie-analytics"
+                    aria-label="Activar cookies analíticas"
                     type="checkbox"
                     checked={preferences.analytics}
                     onChange={(e) =>
@@ -228,8 +241,10 @@ export default function CookieConsent() {
                     Permiten recordar tus filtros favoritos de categoría de voleibol y opciones visuales para tus próximas visitas.
                   </p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer mt-1">
+                <label htmlFor="cookie-preferences" className="relative inline-flex items-center cursor-pointer mt-1">
                   <input
+                    id="cookie-preferences"
+                    aria-label="Activar cookies de preferencias"
                     type="checkbox"
                     checked={preferences.preferences}
                     onChange={(e) =>

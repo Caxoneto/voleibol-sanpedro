@@ -68,6 +68,18 @@ export default function FanZonePage() {
   const [uploadAuthor, setUploadAuthor] = useState('');
   const [uploadCaption, setUploadCaption] = useState('');
 
+  // Cerrar modal de subir foto con tecla Escape
+  useEffect(() => {
+    if (!showUploadModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowUploadModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showUploadModal]);
+
   // Inicializar votos desde store y verificar localStorage
   useEffect(() => {
     const votedLocally = localStorage.getItem('cdv_mvp_voted_j13');
@@ -226,7 +238,7 @@ export default function FanZonePage() {
           </div>
 
           <div className="flex items-center gap-2 text-xs text-primary font-bold uppercase tracking-wider shrink-0">
-            <span className="material-symbols-outlined text-[20px]">favorite</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">favorite</span>
             <span>«Voleibol para todos»</span>
           </div>
         </div>
@@ -250,7 +262,7 @@ export default function FanZonePage() {
               </h2>
             </div>
             <div className="flex items-center gap-2 text-xs text-tertiary">
-              <span className="material-symbols-outlined text-primary text-[18px]">how_to_vote</span>
+              <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">how_to_vote</span>
               <span>1 voto por aficionado / sesión</span>
             </div>
           </div>
@@ -355,7 +367,7 @@ export default function FanZonePage() {
             </div>
           ) : (
             <div className="p-4 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">verified</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">verified</span>
               <span>{votingFeedback || '¡Tu voto ha sido registrado! Gracias por participar.'}</span>
             </div>
           )}
@@ -367,7 +379,7 @@ export default function FanZonePage() {
           <div className="lg:col-span-5 bg-surface-container-low border border-white/5 p-6 sm:p-8 space-y-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-primary-container text-white flex items-center justify-center">
-                <span className="material-symbols-outlined text-[24px]">music_note</span>
+                <span className="material-symbols-outlined text-[24px]" aria-hidden="true">music_note</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase tracking-widest text-primary font-bold block">
@@ -403,14 +415,14 @@ export default function FanZonePage() {
                   onClick={toggleAnthem}
                   className="px-4 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs uppercase font-bold flex items-center gap-2 transition-all shadow"
                 >
-                  <span className="material-symbols-outlined text-[18px]">
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
                     {isPlayingAnthem ? 'pause' : 'play_arrow'}
                   </span>
                   <span>{isPlayingAnthem ? 'Pausar Himno' : 'Escuchar Himno'}</span>
                 </button>
 
                 <span className="text-[11px] text-tertiary flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]">volume_up</span>
+                  <span className="material-symbols-outlined text-[14px]" aria-hidden="true">volume_up</span>
                   Sintetizador Web Audio
                 </span>
               </div>
@@ -485,7 +497,7 @@ export default function FanZonePage() {
                 onClick={() => setShowUploadModal(true)}
                 className="px-4 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs uppercase font-bold tracking-wider flex items-center gap-1.5 transition-all self-start sm:self-auto shadow"
               >
-                <span className="material-symbols-outlined text-[16px]">add_a_photo</span>
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">add_a_photo</span>
                 <span>Subir Mi Foto</span>
               </button>
             </div>
@@ -519,7 +531,7 @@ export default function FanZonePage() {
                 <div className="p-4 pt-0 flex items-center justify-between text-xs text-tertiary border-t border-white/5 mt-2">
                   <span className="text-[10px] text-tertiary font-mono">#VoleibolSanPedro</span>
                   <span className="flex items-center gap-1 text-primary">
-                    <span className="material-symbols-outlined text-[14px]">favorite</span>
+                    <span className="material-symbols-outlined text-[14px]" aria-hidden="true">favorite</span>
                     {photo.likes}
                   </span>
                 </div>
@@ -570,7 +582,7 @@ export default function FanZonePage() {
                   download
                   className="w-full py-2 bg-surface-container-high hover:bg-primary-container text-white text-xs font-bold uppercase text-center flex items-center justify-center gap-1.5 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[16px]">download</span>
+                  <span className="material-symbols-outlined text-[16px]" aria-hidden="true">download</span>
                   <span>Descargar Gratis</span>
                 </a>
               </div>
@@ -581,16 +593,22 @@ export default function FanZonePage() {
 
       {/* Modal Subir Foto Afición */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="upload-photo-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+        >
           <div className="bg-surface-container-lowest border border-primary-container p-6 sm:p-8 max-w-lg w-full shadow-2xl relative">
             <button
               onClick={() => setShowUploadModal(false)}
               className="absolute top-4 right-4 text-tertiary hover:text-white"
+              aria-label="Cerrar ventana de subida de foto"
             >
-              <span className="material-symbols-outlined text-[24px]">close</span>
+              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">close</span>
             </button>
 
-            <h3 className="font-display-xl text-2xl uppercase text-white mb-2">
+            <h3 id="upload-photo-modal-title" className="font-display-xl text-2xl uppercase text-white mb-2">
               Compartir Foto en el Muro
             </h3>
             <p className="text-xs text-tertiary mb-6">
@@ -599,10 +617,11 @@ export default function FanZonePage() {
 
             <form onSubmit={handleAddPhoto} className="space-y-4">
               <div>
-                <label className="block text-xs uppercase font-bold text-tertiary mb-1">
+                <label htmlFor="upload-author" className="block text-xs uppercase font-bold text-tertiary mb-1">
                   Tu Nombre o Familia
                 </label>
                 <input
+                  id="upload-author"
                   type="text"
                   required
                   value={uploadAuthor}
@@ -613,10 +632,11 @@ export default function FanZonePage() {
               </div>
 
               <div>
-                <label className="block text-xs uppercase font-bold text-tertiary mb-1">
+                <label htmlFor="upload-caption" className="block text-xs uppercase font-bold text-tertiary mb-1">
                   Mensaje / Pie de Foto
                 </label>
                 <textarea
+                  id="upload-caption"
                   required
                   rows={3}
                   value={uploadCaption}

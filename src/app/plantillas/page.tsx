@@ -219,7 +219,7 @@ export default function PlantillasPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-container-high hover:bg-primary-container text-white font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow-md shrink-0 border border-white/10 self-start md:self-auto"
           >
             <span>Ver actas en favoley.net</span>
-            <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">open_in_new</span>
           </a>
         </div>
       </section>
@@ -241,6 +241,7 @@ export default function PlantillasPage() {
                     setSelectedCategorySlug(cat.slug);
                     setSelectedPosition('ALL');
                   }}
+                  aria-pressed={isSelected}
                   className={`px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[3px_3px_0px_0px_#0e0e0e] -translate-y-0.5'
@@ -261,7 +262,7 @@ export default function PlantillasPage() {
             title={`Sincronizar plantillas y cuerpo técnico ahora con favoley.net (Última: ${lastSyncTime})`}
             aria-label="Sincronizar plantillas"
           >
-            <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`}>
+            <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
               sync
             </span>
           </button>
@@ -271,7 +272,7 @@ export default function PlantillasPage() {
       {/* Aviso flotante de confirmación de sincronización */}
       {syncFeedback && (
         <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
-          <span className="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
+          <span className="material-symbols-outlined text-emerald-400 text-[18px]" aria-hidden="true">check_circle</span>
           <span>{syncFeedback}</span>
         </div>
       )}
@@ -308,6 +309,7 @@ export default function PlantillasPage() {
                 <button
                   key={pf.value}
                   onClick={() => setSelectedPosition(pf.value)}
+                  aria-pressed={isPosActive}
                   className={`px-3 py-2 sm:py-1.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0 transition-colors ${
                     isPosActive
                       ? 'bg-white text-black font-bold'
@@ -325,7 +327,7 @@ export default function PlantillasPage() {
         <div className="py-6 sm:py-8">
           {filteredPlayers.length === 0 ? (
             <div className="bg-surface-container-low border border-white/5 p-12 text-center flex flex-col items-center justify-center">
-              <span className="material-symbols-outlined text-4xl text-tertiary mb-2">
+              <span className="material-symbols-outlined text-4xl text-tertiary mb-2" aria-hidden="true">
                 sports_volleyball
               </span>
               <h3 className="font-headline-sm text-lg uppercase text-white font-bold">

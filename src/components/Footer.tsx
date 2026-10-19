@@ -57,7 +57,7 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-white transition-colors uppercase font-bold tracking-wider mt-1 font-label-sm"
             >
-              <span className="material-symbols-outlined text-[16px]">pin_drop</span>
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">pin_drop</span>
               Abrir en Google Maps
             </a>
             <div className="text-xs text-tertiary mt-2 space-y-1 font-body-sm">
@@ -109,7 +109,7 @@ export default function Footer() {
                   className="inline-flex items-center gap-1 text-primary hover:underline font-bold"
                 >
                   <span>Portal FAVB (favoley.net)</span>
-                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                  <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
                 </a>
               </li>
             </ul>
@@ -128,7 +128,7 @@ export default function Footer() {
                 href="/patrocinio"
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs uppercase tracking-wider font-bold transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
               >
-                <span className="material-symbols-outlined text-[16px]">handshake</span>
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">handshake</span>
                 Dossier de Patrocinio
               </Link>
               <a
@@ -193,6 +193,10 @@ export default function Footer() {
                 Política de Cookies
               </Link>
               <span className="text-white/20 select-none">•</span>
+              <Link href="/accesibilidad" className="text-on-surface-variant hover:text-white text-xs transition-colors">
+                Accesibilidad
+              </Link>
+              <span className="text-white/20 select-none">•</span>
               <CookieSettingsButton />
             </nav>
 
@@ -230,7 +234,7 @@ export default function Footer() {
                 className="hover:text-primary transition-colors flex items-center gap-1 font-semibold"
               >
                 <span>FeelSports</span>
-                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
               </a>
             </div>
           </div>

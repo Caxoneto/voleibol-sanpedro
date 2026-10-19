@@ -11,7 +11,7 @@ export default function CookieSettingsButton() {
     <button
       type="button"
       onClick={handleOpen}
-      className="hover:text-primary transition-colors cursor-pointer text-left focus:outline-none"
+      className="hover:text-primary transition-colors cursor-pointer text-left"
     >
       Configuración de cookies
     </button>

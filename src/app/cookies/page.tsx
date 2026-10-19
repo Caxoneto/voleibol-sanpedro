@@ -40,7 +40,7 @@ export default function CookiesPage() {
           <div className="bg-surface-container-low border border-primary-container/40 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="space-y-2 max-w-2xl">
               <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary">
-                <span className="material-symbols-outlined text-[16px]">tune</span>
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">tune</span>
                 Panel de Preferencias
               </span>
               <h2 className="text-xl sm:text-2xl font-bold text-white uppercase tracking-tight">
@@ -77,7 +77,7 @@ export default function CookiesPage() {
               <div className="bg-surface-container-low p-4 border border-white/5">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-white font-bold flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[18px]">verified_user</span>
+                    <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">verified_user</span>
                     Cookies Técnicas y Estrictamente Necesarias
                   </h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider bg-white/10 text-white px-2 py-0.5">
@@ -92,7 +92,7 @@ export default function CookiesPage() {
               <div className="bg-surface-container-low p-4 border border-white/5">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-white font-bold flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[18px]">analytics</span>
+                    <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">analytics</span>
                     Cookies de Análisis y Rendimiento
                   </h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider bg-primary-container/20 text-primary border border-primary-container/30 px-2 py-0.5">
@@ -107,7 +107,7 @@ export default function CookiesPage() {
               <div className="bg-surface-container-low p-4 border border-white/5">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-white font-bold flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[18px]">settings</span>
+                    <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">settings</span>
                     Cookies de Preferencias y Funcionalidad
                   </h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider bg-primary-container/20 text-primary border border-primary-container/30 px-2 py-0.5">
@@ -128,13 +128,14 @@ export default function CookiesPage() {
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
+                <caption className="sr-only">Inventario de cookies utilizadas en el portal del C.D. Voleibol San Pedro</caption>
                 <thead>
                   <tr className="border-b border-white/10 text-white uppercase font-bold tracking-wider bg-surface-container-low">
-                    <th className="p-3">Identificador</th>
-                    <th className="p-3">Titular</th>
-                    <th className="p-3">Finalidad</th>
-                    <th className="p-3">Tipo</th>
-                    <th className="p-3">Duración</th>
+                    <th scope="col" className="p-3">Identificador</th>
+                    <th scope="col" className="p-3">Titular</th>
+                    <th scope="col" className="p-3">Finalidad</th>
+                    <th scope="col" className="p-3">Tipo</th>
+                    <th scope="col" className="p-3">Duración</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-tertiary">
@@ -183,7 +184,7 @@ export default function CookiesPage() {
                   <span className="text-white font-bold text-sm block">Google Chrome</span>
                   <span className="text-xs text-tertiary">Instrucciones de configuración</span>
                 </div>
-                <span className="material-symbols-outlined text-tertiary group-hover:text-primary transition-colors text-[18px]">open_in_new</span>
+                <span className="material-symbols-outlined text-tertiary group-hover:text-primary transition-colors text-[18px]" aria-hidden="true">open_in_new</span>
               </a>
 
               <a
@@ -196,7 +197,7 @@ export default function CookiesPage() {
                   <span className="text-white font-bold text-sm block">Mozilla Firefox</span>
                   <span className="text-xs text-tertiary">Instrucciones de configuración</span>
                 </div>
-                <span className="material-symbols-outlined text-tertiary group-hover:text-primary transition-colors text-[18px]">open_in_new</span>
+                <span className="material-symbols-outlined text-tertiary group-hover:text-primary transition-colors text-[18px]" aria-hidden="true">open_in_new</span>
               </a>
 
               <a
@@ -209,7 +210,7 @@ export default function CookiesPage() {
                   <span className="text-white font-bold text-sm block">Apple Safari</span>
                   <span className="text-xs text-tertiary">Instrucciones de configuración</span>
                 </div>
-                <span className="material-symbols-outlined text-tertiary group-hover:text-primary transition-colors text-[18px]">open_in_new</span>
+                <span className="material-symbols-outlined text-tertiary group-hover:text-primary transition-colors text-[18px]" aria-hidden="true">open_in_new</span>
               </a>
 
               <a
@@ -222,7 +223,7 @@ export default function CookiesPage() {
                   <span className="text-white font-bold text-sm block">Microsoft Edge</span>
                   <span className="text-xs text-tertiary">Instrucciones de configuración</span>
                 </div>
-                <span className="material-symbols-outlined text-tertiary group-hover:text-primary transition-colors text-[18px]">open_in_new</span>
+                <span className="material-symbols-outlined text-tertiary group-hover:text-primary transition-colors text-[18px]" aria-hidden="true">open_in_new</span>
               </a>
             </div>
             <p className="text-xs text-tertiary pt-2">

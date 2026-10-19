@@ -437,7 +437,7 @@ export default function HeroMatchesCarousel({
           className="text-[11px] sm:text-xs text-tertiary hover:text-white uppercase font-bold flex items-center gap-1 group transition-colors"
         >
           <span>Ver todos</span>
-          <span className="material-symbols-outlined text-[15px] group-hover:translate-x-0.5 transition-transform">
+          <span className="material-symbols-outlined text-[15px] group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
             arrow_forward
           </span>
         </Link>
@@ -476,11 +476,10 @@ export default function HeroMatchesCarousel({
             const isSingleCard = currentList.length === 1;
 
             return (
-              <Link
+              <div
                 key={`${activeTab}-${match.id}`}
                 id={`hero-card-${activeTab}-${match.id}`}
-                href={`/partidos?categoria=${match.categoryId}&match=${match.id}`}
-                className={`group shrink-0 ${
+                className={`group relative shrink-0 ${
                   isSingleCard
                     ? 'w-full sm:w-[300px] snap-start'
                     : 'w-[calc(100%-3.5rem)] sm:w-[300px] snap-center first:snap-start last:snap-end'
@@ -491,8 +490,14 @@ export default function HeroMatchesCarousel({
                 }`}
                 title={`${match.categoryName}: ${match.homeTeamName} vs ${match.awayTeamName}`}
               >
+                <Link
+                  href={`/partidos?cat=${match.categoryId}#match-${match.id}`}
+                  aria-label={`Ver detalles del partido ${match.homeTeamName} contra ${match.awayTeamName}`}
+                  className="absolute inset-0 z-0 rounded-sm"
+                />
+
                 {/* 1. Cabecera: Jornada, Categoría y a la derecha [Botón Actualizar Icono] + [Icono Casa/Fuera] */}
-                <div className="flex items-center justify-between gap-1.5 pb-1.5 border-b border-white/10">
+                <div className="relative z-10 flex items-center justify-between gap-1.5 pb-1.5 border-b border-white/10">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[9px] sm:text-[10px] font-bold shrink-0">
                       J{match.round}
@@ -524,6 +529,7 @@ export default function HeroMatchesCarousel({
                           className={`material-symbols-outlined text-[13px] ${
                             isRefreshing ? 'animate-spin text-white' : ''
                           }`}
+                          aria-hidden="true"
                         >
                           sync
                         </span>
@@ -539,7 +545,7 @@ export default function HeroMatchesCarousel({
                       }`}
                       title={match.isClubHome ? 'En casa (Pabellón Sergio Scariolo)' : 'Fuera / A domicilio'}
                     >
-                      <span className="material-symbols-outlined text-[13px]">
+                      <span className="material-symbols-outlined text-[13px]" aria-hidden="true">
                         {match.isClubHome ? 'home' : 'flight'}
                       </span>
                     </span>
@@ -547,7 +553,7 @@ export default function HeroMatchesCarousel({
                 </div>
 
                 {/* 2. Subcabecera: Estado/Fecha a la izquierda + Encabezados de Sets (S1, S2... | SETS) encima de los puntos */}
-                <div className="flex items-center justify-between gap-1 pt-1.5 pb-1">
+                <div className="relative z-10 pointer-events-none flex items-center justify-between gap-1 pt-1.5 pb-1">
                   <div className="flex items-center gap-1.5 min-w-0">
                     {isLive ? (
                       <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-red-400">
@@ -608,7 +614,7 @@ export default function HeroMatchesCarousel({
                 </div>
 
                 {/* 3. Filas de Equipos (Logo Grande + 3 Iniciales + Nombre completo en carrusel) + Columnas de Sets + Total de Sets */}
-                <div className="space-y-2 pt-0.5">
+                <div className="relative z-10 pointer-events-none space-y-2 pt-0.5">
                   {/* Fila Equipo Local */}
                   <div className="flex items-center justify-between gap-2">
                     <div
@@ -725,7 +731,7 @@ export default function HeroMatchesCarousel({
                     )}
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

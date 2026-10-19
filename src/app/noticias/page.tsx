@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { store, INITIAL_TEAMS, INITIAL_CATEGORIES, CLUB_INFO } from '@/lib/data-store';
@@ -13,6 +13,7 @@ export default function NoticiasPage() {
   const [accreditationSubmitted, setAccreditationSubmitted] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterStatus, setNewsletterStatus] = useState<string | null>(null);
+  const [showPressModal, setShowPressModal] = useState<boolean>(false);
 
   // Formulario de acreditación
   const [accreditationForm, setAccreditationForm] = useState({
@@ -56,6 +57,18 @@ export default function NoticiasPage() {
     setAccreditationSubmitted(true);
   };
 
+  // Cerrar modal de acreditación con tecla Escape
+  useEffect(() => {
+    if (!showPressModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowPressModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPressModal]);
+
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newsletterEmail) return;
@@ -80,12 +93,12 @@ export default function NoticiasPage() {
           </div>
           <div className="hidden lg:flex items-center gap-3 text-on-surface-variant font-label-sm text-label-sm">
             <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px] text-primary">campaign</span>
+              <span className="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">campaign</span>
               SALA DE PRENSA
             </span>
             <span className="text-outline">/</span>
             <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+              <span className="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">calendar_month</span>
               OCTUBRE 2026
             </span>
           </div>
@@ -98,7 +111,7 @@ export default function NoticiasPage() {
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
             <div>
               <div className="flex items-center gap-1.5 text-primary font-label-md text-label-md uppercase tracking-widest mb-1.5">
-                <span className="material-symbols-outlined text-[18px]">sports_volleyball</span>
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">sports_volleyball</span>
                 <span>SALA DE COMUNICACIÓN & ACTUALIDAD</span>
               </div>
               <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none">
@@ -171,12 +184,12 @@ export default function NoticiasPage() {
                   <div>
                     <div className="flex items-center gap-2 text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-3">
                       <span className="flex items-center gap-1 text-primary">
-                        <span className="material-symbols-outlined text-[16px]">schedule</span>
+                        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">schedule</span>
                         {featuredArticle.readingTimeMinutes} MIN LECTURA
                       </span>
                       <span>•</span>
                       <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[16px]">event</span>
+                        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">event</span>
                         {formatMadridDate(featuredArticle.publishedAt, {
                           day: 'numeric',
                           month: 'long',
@@ -222,7 +235,7 @@ export default function NoticiasPage() {
 
                     <span className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-container text-on-primary font-label-lg text-label-lg uppercase tracking-wider group-hover:bg-secondary-container transition-all shadow-md">
                       <span>Leer Noticia Completa</span>
-                      <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                      <span className="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_forward</span>
                     </span>
                   </div>
                 </div>
@@ -287,12 +300,12 @@ export default function NoticiasPage() {
 
                     <div className="pt-4 mt-4 border-t border-white/5 flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
                       <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">timer</span>
+                        <span className="material-symbols-outlined text-[14px]" aria-hidden="true">timer</span>
                         {art.readingTimeMinutes} min
                       </span>
                       <span className="text-primary group-hover:text-white flex items-center gap-1 font-bold uppercase transition-colors">
                         <span>Leer</span>
-                        <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">
+                        <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform" aria-hidden="true">
                           chevron_right
                         </span>
                       </span>
@@ -308,7 +321,7 @@ export default function NoticiasPage() {
             {/* Module 1: Sala de Prensa y Medios Oficiales */}
             <div className="p-6 bg-surface-container-low shadow-md border border-white/5">
               <div className="flex items-center gap-2 pb-2">
-                <span className="material-symbols-outlined text-primary text-[22px]">newspaper</span>
+                <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">newspaper</span>
                 <h4 className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wide">
                   SALA DE PRENSA
                 </h4>
@@ -317,35 +330,36 @@ export default function NoticiasPage() {
                 Recursos profesionales para periodistas acreditados, medios de radiodifusión y reporteros gráficos.
               </p>
               <div className="space-y-2">
-                <a
-                  href="#acreditacion"
-                  className="p-3 bg-surface-container flex items-center justify-between hover:bg-surface-container-highest transition-colors border border-white/5"
+                <button
+                  type="button"
+                  onClick={() => setShowPressModal(true)}
+                  className="w-full p-3 bg-surface-container flex items-center justify-between hover:bg-surface-container-highest transition-colors border border-white/5 text-left"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[20px]">badge</span>
+                    <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">badge</span>
                     <span className="font-label-md text-label-md uppercase text-on-surface font-bold">
                       Acreditaciones de Partido
                     </span>
                   </div>
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">arrow_downward</span>
-                </a>
+                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant" aria-hidden="true">arrow_forward</span>
+                </button>
 
                 <Link
                   href="/fan-zone"
                   className="p-3 bg-surface-container flex items-center justify-between hover:bg-surface-container-highest transition-colors border border-white/5"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[20px]">photo_library</span>
+                    <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">photo_library</span>
                     <span className="font-label-md text-label-md uppercase text-on-surface font-bold">
                       Galería Gráfica HD
                     </span>
                   </div>
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">open_in_new</span>
+                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant" aria-hidden="true">open_in_new</span>
                 </Link>
               </div>
 
               <div className="mt-4 pt-3 bg-surface-container-lowest p-3 flex items-center gap-2 border border-white/5">
-                <span className="material-symbols-outlined text-primary text-[18px]">mail</span>
+                <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">mail</span>
                 <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
                   Contacto: <strong className="text-on-surface">{CLUB_INFO.contactEmail}</strong>
                 </span>
@@ -356,7 +370,7 @@ export default function NoticiasPage() {
             <div id="boletin" className="p-6 bg-surface-container-low shadow-md relative overflow-hidden border border-white/5">
               <div className="absolute -right-12 -bottom-12 w-32 h-32 bg-primary-container/10 rounded-full blur-2xl pointer-events-none" />
               <div className="flex items-center gap-2 pb-1">
-                <span className="material-symbols-outlined text-primary text-[22px]">mark_email_read</span>
+                <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">mark_email_read</span>
                 <h4 className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wide">
                   BOLETÍN ROJINEGRO
                 </h4>
@@ -370,6 +384,8 @@ export default function NoticiasPage() {
               <form onSubmit={handleNewsletterSubmit} className="space-y-2">
                 <div className="relative">
                   <input
+                    id="newsletter-email"
+                    aria-label="Correo electrónico para suscribirse al boletín"
                     className="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-sm text-base sm:text-body-sm px-4 py-3 focus:outline-none focus:border-primary-container border border-white/10 transition-all"
                     placeholder="Tu correo electrónico..."
                     required
@@ -382,7 +398,7 @@ export default function NoticiasPage() {
                   className="w-full py-3 bg-primary-container hover:bg-secondary-container text-on-primary font-label-md text-label-md uppercase tracking-wider font-bold transition-all shadow-md flex items-center justify-center gap-2"
                   type="submit"
                 >
-                  <span className="material-symbols-outlined text-[18px]">send</span>
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">send</span>
                   <span>SUSCRIBIRME GRATIS</span>
                 </button>
               </form>
@@ -403,7 +419,7 @@ export default function NoticiasPage() {
                   <span className="font-label-sm text-label-sm text-primary uppercase font-bold tracking-widest">
                     PRÓXIMA CITA EN CASA
                   </span>
-                  <span className="material-symbols-outlined text-outline text-[18px]">stadium</span>
+                  <span className="material-symbols-outlined text-outline text-[18px]" aria-hidden="true">stadium</span>
                 </div>
 
                 {upcomingCategory && (
@@ -500,7 +516,7 @@ export default function NoticiasPage() {
                   className="mt-4 w-full py-2.5 bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-sm text-label-sm uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors border border-white/5"
                 >
                   <span>VER CALENDARIO Y ENTRADAS</span>
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
                 </Link>
               </div>
             )}
@@ -534,8 +550,48 @@ export default function NoticiasPage() {
           </div>
 
           {/* Formulario de Solicitud de Acreditación */}
-          <div className="lg:col-span-7 bg-surface-container-low border border-white/10 p-5 sm:p-8">
-            <h3 className="font-headline-sm text-xl uppercase text-on-surface mb-1 font-bold">
+          <div className="lg:col-span-7 bg-surface-container-low border border-white/10 p-5 sm:p-8 flex flex-col justify-between">
+            <div>
+              <h3 className="font-headline-sm text-xl uppercase text-on-surface mb-1 font-bold">
+                Solicitud de Acreditación de Partido
+              </h3>
+              <p className="text-xs text-on-surface-variant mb-6 font-body-sm leading-relaxed">
+                Completa el formulario oficial para reservar tu pase de prensa, cabina de retransmisión o acceso a pie de pista en el Pabellón Sergio Scariolo para los próximos compromisos oficiales de la FAVB.
+              </p>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowPressModal(true)}
+                className="w-full sm:w-auto py-3.5 px-6 bg-primary-container hover:bg-secondary-container text-on-primary font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">badge</span>
+                <span>Solicitar Acreditación Oficial</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+            {/* Modal: Solicitud de Acreditación de Prensa */}
+      {showPressModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="press-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+        >
+          <div className="bg-surface-container-low border-2 border-primary-container p-6 sm:p-8 max-w-xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setShowPressModal(false)}
+              className="absolute top-4 right-4 text-tertiary hover:text-white"
+              aria-label="Cerrar solicitud de acreditación"
+            >
+              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">close</span>
+            </button>
+
+            <h3 id="press-modal-title" className="font-headline-sm text-xl uppercase text-on-surface mb-1 font-bold">
               Solicitud de Acreditación de Partido
             </h3>
             <p className="text-xs text-on-surface-variant mb-6 font-body-sm">
@@ -544,7 +600,7 @@ export default function NoticiasPage() {
 
             {accreditationSubmitted ? (
               <div className="p-6 bg-emerald-500/15 border border-emerald-500/30 text-center space-y-3">
-                <span className="material-symbols-outlined text-4xl text-emerald-400">
+                <span className="material-symbols-outlined text-4xl text-emerald-400" aria-hidden="true">
                   check_circle
                 </span>
                 <h4 className="font-headline-sm text-xl uppercase text-on-surface font-bold">
@@ -554,20 +610,25 @@ export default function NoticiasPage() {
                   El equipo de comunicación del club revisará tus datos y recibirás la confirmación oficial en tu correo electrónico.
                 </p>
                 <button
-                  onClick={() => setAccreditationSubmitted(false)}
+                  type="button"
+                  onClick={() => {
+                    setAccreditationSubmitted(false);
+                    setShowPressModal(false);
+                  }}
                   className="mt-2 px-4 py-2 bg-surface-container-high text-xs uppercase font-bold text-on-surface hover:bg-surface-bright"
                 >
-                  Enviar otra solicitud
+                  Cerrar
                 </button>
               </div>
             ) : (
               <form onSubmit={handleAccreditationSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
+                    <label htmlFor="press-fullname" className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
                       Nombre Completo
                     </label>
                     <input
+                      id="press-fullname"
                       type="text"
                       required
                       value={accreditationForm.fullName}
@@ -580,10 +641,11 @@ export default function NoticiasPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
+                    <label htmlFor="press-media" className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
                       Medio de Comunicación / Freelance
                     </label>
                     <input
+                      id="press-media"
                       type="text"
                       required
                       value={accreditationForm.mediaOutlet}
@@ -598,10 +660,11 @@ export default function NoticiasPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
+                    <label htmlFor="press-role" className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
                       Función
                     </label>
                     <select
+                      id="press-role"
                       value={accreditationForm.role}
                       onChange={(e) =>
                         setAccreditationForm({ ...accreditationForm, role: e.target.value })
@@ -616,10 +679,11 @@ export default function NoticiasPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
+                    <label htmlFor="press-email" className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
                       Email
                     </label>
                     <input
+                      id="press-email"
                       type="email"
                       required
                       value={accreditationForm.email}
@@ -632,10 +696,11 @@ export default function NoticiasPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
+                    <label htmlFor="press-phone" className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
                       Teléfono
                     </label>
                     <input
+                      id="press-phone"
                       type="tel"
                       required
                       value={accreditationForm.phone}
@@ -649,10 +714,11 @@ export default function NoticiasPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
+                  <label htmlFor="press-notes" className="block text-xs uppercase font-bold text-on-surface-variant mb-1 font-label-sm">
                     Observaciones o necesidades técnicas (Opcional)
                   </label>
                   <textarea
+                    id="press-notes"
                     rows={2}
                     value={accreditationForm.notes}
                     onChange={(e) =>
@@ -673,7 +739,7 @@ export default function NoticiasPage() {
             )}
           </div>
         </div>
-      </section>
+      )}
 
       <SponsorBanner />
     </div>

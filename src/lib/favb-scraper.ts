@@ -224,6 +224,7 @@ export interface ScrapedMatchScore {
   setScores: { home: number; away: number }[];
   currentSetScore?: { set: string; home: number; away: number };
   lastChecked: string;
+  error?: string;
 }
 
 export interface FavbRawPersona {
@@ -257,6 +258,11 @@ interface CacheState {
 
 const CACHE_TTL_MS = 20 * 1000; // 20 segundos de caché para reflejar cambios en vivo rápidamente
 const ROSTER_CACHE_TTL_MS = 60 * 1000; // 60 segundos para plantillas salvo force=true
+
+let lastForceSyncTime = 0;
+let lastForceStandingsTime = 0;
+let lastForceRostersTime = 0;
+const MIN_FORCE_COOLDOWN_MS = 45 * 1000;
 
 let cache: CacheState = {
   lastSync: 0,
@@ -436,8 +442,14 @@ function recordTeamPersonas(teamId: string | undefined, personas: FavbRawPersona
  * Consulta y extrae el marcador en vivo oficial de un partido desde favoley.net (`seccion=marcador`)
  * Incluye el tanteo punto a punto del set actual en juego (`currentSetScore`).
  */
-export async function fetchLiveMatchScore(favbId: string): Promise<ScrapedMatchScore | null> {
-  const url = `https://favoley.net/publico/seccion.php?seccion=marcador&id=${favbId}`;
+export async function fetchLiveMatchScore(
+  favbId: string
+): Promise<(ScrapedMatchScore | { error: string }) | null> {
+  const cleanFavbId = String(favbId).replace(/\D/g, '');
+  if (!/^\d{1,10}$/.test(cleanFavbId)) {
+    return { error: 'ID de partido inválido' };
+  }
+  const url = `https://favoley.net/publico/seccion.php?seccion=marcador&id=${encodeURIComponent(cleanFavbId)}`;
   try {
     const res = await fetch(url, {
       headers: {
@@ -523,7 +535,7 @@ export async function fetchLiveMatchScore(favbId: string): Promise<ScrapedMatchS
     }
 
     return {
-      favbId,
+      favbId: cleanFavbId,
       status,
       statusText: rawStatus || (status === 'FINISHED' ? 'Finalizado' : status === 'LIVE' ? 'En juego' : 'Próximo'),
       homeScore,
@@ -594,7 +606,7 @@ export async function updateMatchLiveScore(
     }
   }
 
-  if (scraped) {
+  if (scraped && !('error' in scraped)) {
     match.status = scraped.status;
     match.statusText = scraped.statusText;
     match.homeScore = scraped.homeScore;
@@ -637,6 +649,14 @@ export async function syncFavbData(forceRefresh = false): Promise<{
   fromCache: boolean;
 }> {
   const now = Date.now();
+  if (forceRefresh && now - lastForceSyncTime < MIN_FORCE_COOLDOWN_MS && cache.matches.length > 0) {
+    return {
+      success: true,
+      matches: cache.matches,
+      lastSync: new Date(cache.lastSync),
+      fromCache: true,
+    };
+  }
   if (!forceRefresh && cache.lastSync > 0 && now - cache.lastSync < CACHE_TTL_MS && cache.matches.length > 0) {
     return {
       success: true,
@@ -694,7 +714,7 @@ export async function syncFavbData(forceRefresh = false): Promise<{
         // Si el partido es de HOY o está EN JUEGO (LIVE), consultar también seccion=marcador para obtener currentSetScore punto a punto
         if (m.status === 'LIVE' || (m.dateStr === todayStr && m.status !== 'FINISHED')) {
           const live = await fetchLiveMatchScore(favbId);
-          if (live) {
+          if (live && !('error' in live)) {
             m.status = live.status;
             m.statusText = live.statusText;
             if (live.homeScore !== undefined) m.homeScore = live.homeScore;
@@ -709,6 +729,9 @@ export async function syncFavbData(forceRefresh = false): Promise<{
   }
 
   cache.lastSync = Date.now();
+  if (forceRefresh) {
+    lastForceSyncTime = cache.lastSync;
+  }
 
   return {
     success: true,
@@ -717,6 +740,8 @@ export async function syncFavbData(forceRefresh = false): Promise<{
     fromCache: false,
   };
 }
+
+export const syncFavbMatches = syncFavbData;
 
 /**
  * Retorna todos los partidos oficiales federados de la FAVB de la temporada 2026/2027
@@ -849,6 +874,15 @@ export async function syncFavbRosters(forceRefresh = false): Promise<{
   fromCache: boolean;
 }> {
   const now = Date.now();
+  if (forceRefresh && now - lastForceRostersTime < MIN_FORCE_COOLDOWN_MS && rosterCache.players.length > 0) {
+    return {
+      success: true,
+      players: rosterCache.players,
+      staff: rosterCache.staff,
+      lastSync: new Date(rosterCache.lastSync),
+      fromCache: true,
+    };
+  }
   if (
     !forceRefresh &&
     rosterCache.lastSync > 0 &&
@@ -1066,6 +1100,10 @@ export async function syncFavbRosters(forceRefresh = false): Promise<{
       staff: updatedStaff,
     };
 
+    if (forceRefresh) {
+      lastForceRostersTime = rosterCache.lastSync;
+    }
+
     return {
       success: true,
       players: updatedPlayers,
@@ -1156,6 +1194,14 @@ export async function syncFavbStandings(forceRefresh = false): Promise<{
   fromCache: boolean;
 }> {
   const now = Date.now();
+  if (forceRefresh && now - lastForceStandingsTime < MIN_FORCE_COOLDOWN_MS && standingsCache.standings.length > 0) {
+    return {
+      success: true,
+      standings: standingsCache.standings,
+      lastSync: new Date(standingsCache.lastSync),
+      fromCache: true,
+    };
+  }
   if (
     !forceRefresh &&
     standingsCache.lastSync > 0 &&
@@ -1206,6 +1252,10 @@ export async function syncFavbStandings(forceRefresh = false): Promise<{
     lastSync: Date.now(),
     standings: consolidated.length > 0 ? consolidated : FAVB_STANDINGS,
   };
+
+  if (forceRefresh) {
+    lastForceStandingsTime = standingsCache.lastSync;
+  }
 
   return {
     success: true,

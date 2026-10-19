@@ -16,6 +16,11 @@
 
   main > :first-child { margin-top: 0 !important; }
   main > :last-child { margin-bottom: 0 !important; }
+
+  :focus-visible {
+    outline: 2px solid #d90429 !important;
+    outline-offset: 3px !important;
+  }
 }
 
 /* Scrollbar styling */
@@ -215,3 +220,29 @@
   transform: translate(-2px, -2px);
   box-shadow: 4px 4px 0px 0px #d90429;
 }
+
+/* Soporte accesible para reducción de movimiento (WCAG 2.1 / 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-marquee-smooth,
+  .animate-team-marquee,
+  .animate-hero-bg,
+  .animate-pulse-aura,
+  .shimmer-effect::after {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+

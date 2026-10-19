@@ -67,7 +67,7 @@ export default function PatrocinioPage() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-5 py-3 bg-[#25D366] hover:bg-[#20ba59] text-black font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow-lg shrink-0"
           >
-            <span className="material-symbols-outlined text-[18px]">chat</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span>
             <span>Contacto Comercial WhatsApp</span>
           </a>
         </div>
@@ -156,7 +156,7 @@ export default function PatrocinioPage() {
                   <div className="space-y-3 border-t border-white/10 pt-4">
                     {tier.features.map((feat, idx) => (
                       <div key={idx} className="flex items-start gap-2 text-xs text-on-surface">
-                        <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">
+                        <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5" aria-hidden="true">
                           check_circle
                         </span>
                         <span>{feat}</span>
@@ -200,7 +200,7 @@ export default function PatrocinioPage() {
 
             {submitted ? (
               <div className="p-8 bg-emerald-500/15 border border-emerald-500/30 text-center space-y-4">
-                <span className="material-symbols-outlined text-5xl text-emerald-400">
+                <span className="material-symbols-outlined text-5xl text-emerald-400" aria-hidden="true">
                   handshake
                 </span>
                 <h3 className="font-display-xl text-2xl uppercase text-white">
@@ -216,7 +216,7 @@ export default function PatrocinioPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#25D366] text-black text-xs font-bold uppercase"
                   >
-                    <span className="material-symbols-outlined text-[16px]">chat</span>
+                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">chat</span>
                     <span>Agilizar por WhatsApp Directo</span>
                   </a>
                 </div>
@@ -225,10 +225,11 @@ export default function PatrocinioPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs uppercase font-bold text-tertiary mb-1">
+                    <label htmlFor="sponsor-company" className="block text-xs uppercase font-bold text-tertiary mb-1">
                       Nombre de la Empresa o Comercio
                     </label>
                     <input
+                      id="sponsor-company"
                       type="text"
                       required
                       value={form.companyName}
@@ -239,10 +240,11 @@ export default function PatrocinioPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs uppercase font-bold text-tertiary mb-1">
+                    <label htmlFor="sponsor-contact" className="block text-xs uppercase font-bold text-tertiary mb-1">
                       Persona de Contacto
                     </label>
                     <input
+                      id="sponsor-contact"
                       type="text"
                       required
                       value={form.contactPerson}
@@ -255,10 +257,11 @@ export default function PatrocinioPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs uppercase font-bold text-tertiary mb-1">
+                    <label htmlFor="sponsor-phone" className="block text-xs uppercase font-bold text-tertiary mb-1">
                       Teléfono
                     </label>
                     <input
+                      id="sponsor-phone"
                       type="tel"
                       required
                       value={form.phone}
@@ -269,10 +272,11 @@ export default function PatrocinioPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs uppercase font-bold text-tertiary mb-1">
+                    <label htmlFor="sponsor-email" className="block text-xs uppercase font-bold text-tertiary mb-1">
                       Correo Electrónico
                     </label>
                     <input
+                      id="sponsor-email"
                       type="email"
                       required
                       value={form.email}
@@ -283,10 +287,11 @@ export default function PatrocinioPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs uppercase font-bold text-tertiary mb-1">
+                    <label htmlFor="sponsor-tier" className="block text-xs uppercase font-bold text-tertiary mb-1">
                       Paquete de Interés
                     </label>
                     <select
+                      id="sponsor-tier"
                       value={selectedTier}
                       onChange={(e) => setSelectedTier(e.target.value)}
                       className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
@@ -302,10 +307,11 @@ export default function PatrocinioPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs uppercase font-bold text-tertiary mb-1">
+                  <label htmlFor="sponsor-message" className="block text-xs uppercase font-bold text-tertiary mb-1">
                     Mensaje o consulta adicional (Opcional)
                   </label>
                   <textarea
+                    id="sponsor-message"
                     rows={3}
                     value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
@@ -328,7 +334,7 @@ export default function PatrocinioPage() {
                     rel="noopener noreferrer"
                     className="w-full sm:w-auto px-6 py-3 bg-[#25D366] hover:bg-[#20ba59] text-black font-label-md text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-2 shrink-0"
                   >
-                    <span className="material-symbols-outlined text-[18px]">chat</span>
+                    <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span>
                     <span>O háblanos por WhatsApp</span>
                   </a>
                 </div>

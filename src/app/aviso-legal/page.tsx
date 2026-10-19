@@ -38,7 +38,7 @@ export default function AvisoLegalPage() {
           {/* 1. Datos Identificativos */}
           <div className="bg-surface-container-lowest border border-white/5 p-6 sm:p-8 space-y-4">
             <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-xs">
-              <span className="material-symbols-outlined text-[18px]">badge</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">badge</span>
               <span>Artículo 10 LSSI-CE</span>
             </div>
             <h2 className="font-headline-sm text-xl sm:text-2xl text-white uppercase tracking-wide">
