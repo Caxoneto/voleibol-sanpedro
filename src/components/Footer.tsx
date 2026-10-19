@@ -163,7 +163,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Facebook Oficial del C.D. Voleibol San Pedro"
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white text-[11px] uppercase tracking-wider font-bold transition-all shadow-[3px_3px_0px_0px_#0e0e0e]"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#1460c7] hover:bg-[#1150a8] text-white text-[11px] uppercase tracking-wider font-bold transition-all shadow-[3px_3px_0px_0px_#0e0e0e]"
                 >
                   <FacebookIcon className="w-4 h-4 text-white shrink-0" />
                   <span>Facebook</span>

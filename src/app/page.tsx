@@ -255,9 +255,9 @@ export default async function HomePage() {
                           {featuredMatch.homeTeamName}
                         </Link>
                       ) : (
-                        <h4 className="font-display-xl text-base sm:text-xl uppercase text-white leading-tight">
+                        <h3 className="font-display-xl text-base sm:text-xl uppercase text-white leading-tight">
                           {featuredMatch.homeTeamName}
-                        </h4>
+                        </h3>
                       )}
                       <span
                         className={`text-[10px] sm:text-[11px] uppercase font-bold mt-1 ${
@@ -308,9 +308,9 @@ export default async function HomePage() {
                           {featuredMatch.awayTeamName}
                         </Link>
                       ) : (
-                        <h4 className="font-display-xl text-base sm:text-xl uppercase text-on-surface leading-tight">
+                        <h3 className="font-display-xl text-base sm:text-xl uppercase text-on-surface leading-tight">
                           {featuredMatch.awayTeamName}
-                        </h4>
+                        </h3>
                       )}
                       <span
                         className={`text-[10px] sm:text-[11px] uppercase font-bold mt-1 ${
@@ -442,7 +442,7 @@ export default async function HomePage() {
                           {match.isClubHome ? (
                             <Link
                               href={`/plantillas?categoria=${matchCatId}`}
-                              className="pointer-events-auto text-xs sm:text-sm text-primary font-bold truncate hover:underline decoration-primary underline-offset-2"
+                              className="pointer-events-auto inline-flex items-center min-h-[28px] py-1 text-xs sm:text-sm text-primary font-bold truncate hover:underline decoration-primary underline-offset-2"
                               title={`Ver plantilla de ${matchCat?.name || 'nuestro equipo'}`}
                             >
                               {match.homeTeamName}
@@ -490,7 +490,7 @@ export default async function HomePage() {
                           {!match.isClubHome ? (
                             <Link
                               href={`/plantillas?categoria=${matchCatId}`}
-                              className="pointer-events-auto text-xs sm:text-sm text-primary font-bold truncate hover:underline decoration-primary underline-offset-2"
+                              className="pointer-events-auto inline-flex items-center min-h-[28px] py-1 text-xs sm:text-sm text-primary font-bold truncate hover:underline decoration-primary underline-offset-2"
                               title={`Ver plantilla de ${matchCat?.name || 'nuestro equipo'}`}
                             >
                               {match.awayTeamName}
