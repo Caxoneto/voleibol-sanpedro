@@ -42,6 +42,7 @@ export default function CalendarioPage() {
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   const roundsScrollRef = useRef<HTMLDivElement | null>(null);
+  const catScrollRef = useRef<HTMLDivElement | null>(null);
 
   const applyLiveMatches = (liveList: Array<Record<string, unknown>>) => {
     const liveMap = new Map(liveList.map((lm) => [String(lm.id), lm]));
@@ -229,6 +230,17 @@ export default function CalendarioPage() {
     setSelectedRound(null); // Fuerza recalcular la próxima jornada pendiente para la nueva categoría
   };
 
+  // Centrar automáticamente la categoría seleccionada en el carrusel horizontal
+  useEffect(() => {
+    const container = catScrollRef.current;
+    const pill = document.getElementById(`cal-cat-pill-${selectedCategory}`);
+    if (container && pill) {
+      const targetLeft = pill.offsetLeft - (container.clientWidth - pill.clientWidth) / 2;
+      const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
+      container.scrollTo({ left: Math.max(0, Math.min(maxScroll, targetLeft)), behavior: 'smooth' });
+    }
+  }, [selectedCategory]);
+
   const activeRound = selectedRound ?? recommendedRound;
 
   // Centrar automáticamente el botón de la jornada activa en la barra horizontal
@@ -400,9 +412,6 @@ export default function CalendarioPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                 TEMPORADA OFICIAL 2026 / 2027
               </span>
-              <span className="text-xs text-tertiary uppercase tracking-wider">
-                FAVB FEDERADO
-              </span>
             </div>
             <h1 className="font-display-xl text-3xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none mt-1">
               <span className="text-white">CALENDARIO DE </span>
@@ -455,12 +464,17 @@ export default function CalendarioPage() {
       <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
           {/* Categorías */}
-          <div className="flex items-center gap-1.5 overflow-x-auto category-scrollbar pb-1.5">
+          <div
+            ref={catScrollRef}
+            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory w-full md:flex-1"
+          >
             <button
+              id="cal-cat-pill-ALL"
               onClick={() => handleSelectCategory('ALL')}
-              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
+              aria-pressed={selectedCategory === 'ALL'}
+              className={`w-[calc(100%-4.5rem)] sm:w-auto snap-center first:snap-start last:snap-end flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                 selectedCategory === 'ALL'
-                  ? 'bg-primary-container text-white'
+                  ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e]'
                   : 'bg-surface-container-high text-tertiary hover:text-white'
               }`}
             >
@@ -469,10 +483,12 @@ export default function CalendarioPage() {
             {INITIAL_CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
+                id={`cal-cat-pill-${cat.id}`}
                 onClick={() => handleSelectCategory(cat.id)}
-                className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
+                aria-pressed={selectedCategory === cat.id}
+                className={`w-[calc(100%-4.5rem)] sm:w-auto snap-center first:snap-start last:snap-end flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                   selectedCategory === cat.id
-                    ? 'bg-primary-container text-white'
+                    ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e]'
                     : 'bg-surface-container-high text-tertiary hover:text-white'
                 }`}
               >

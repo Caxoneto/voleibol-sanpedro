@@ -136,8 +136,9 @@ function PartidosContent() {
     const container = catScrollContainerRef.current;
     const pill = document.getElementById(`cat-pill-${catId}`);
     if (container && pill) {
-      const targetLeft = pill.offsetLeft - container.clientWidth / 2 + pill.clientWidth / 2;
-      container.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+      const targetLeft = pill.offsetLeft - (container.clientWidth - pill.clientWidth) / 2;
+      const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
+      container.scrollTo({ left: Math.max(0, Math.min(maxScroll, targetLeft)), behavior: 'smooth' });
     }
   };
 
@@ -748,23 +749,12 @@ function PartidosContent() {
                 2026 / 2027
               </span>
             </div>
-            <h1 className="font-display-xl text-3xl sm:text-4xl lg:text-5xl uppercase tracking-tight leading-none">
+            <h1 className="font-display-xl text-3xl sm:text-4xl lg:text-5xl uppercase tracking-tight leading-none whitespace-nowrap">
               <span className="text-white">PARTIDOS Y </span>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
                 RESULTADOS
               </span>
             </h1>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href="https://favoley.net/publico/seccion.php?seccion=competiciones"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-2 bg-primary-container hover:bg-secondary-container text-white font-label-md text-[11px] uppercase tracking-wider font-bold transition-all shadow"
-            >
-              favoley.net
-            </a>
           </div>
         </div>
       </section>
@@ -781,10 +771,10 @@ function PartidosContent() {
 
       {/* Selector Rápido Horizontal de Categorías (Sticky) + Botón Icono Actualizar integrado en Desktop */}
       <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex items-center justify-between gap-2.5 sm:gap-3">
           <div
             ref={catScrollContainerRef}
-            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1.5 scroll-smooth flex-1"
+            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory flex-1"
           >
             <span className="text-[11px] font-bold uppercase tracking-wider text-tertiary shrink-0 mr-1 hidden sm:inline">
               Categoría:
@@ -797,7 +787,7 @@ function PartidosContent() {
                   id={`cat-pill-${category.id}`}
                   onClick={() => handleSelectCategoryFromBar(category.id)}
                   aria-pressed={isSelected}
-                  className={`px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                  className={`w-[calc(100%-4.5rem)] sm:w-auto snap-center first:snap-start last:snap-end flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e] -translate-y-0.5'
                       : 'bg-surface-container-high text-tertiary hover:text-white'

@@ -7,6 +7,7 @@ import {
   Standings,
   Article,
   SponsorTier,
+  CurrentSponsor,
   SponsorInquiry,
   FanVote,
   Chant,
@@ -21,7 +22,7 @@ export const CLUB_INFO: ClubInfo = {
   shortName: 'CDV San Pedro',
   federationRegisteredName: 'SAN PEDRO C.D VOLEIBOL',
   cif: 'G93147924',
-  president: 'Carlos Alberto Alcántara González',
+  president: 'Alberto Alcántara González',
   officialAddress: 'C/ Diego Piña Macias Nº 21, 29670 San Pedro Alcántara (Málaga)',
   postalCode: '29670',
   city: 'San Pedro Alcántara',
@@ -33,8 +34,8 @@ export const CLUB_INFO: ClubInfo = {
   federationName: 'Federación Andaluza de Voleibol (FAVB)',
   federationUrl: 'https://favoley.net/publico/index.php',
   contactEmail: 'voleibolsanpedro@hotmail.es',
-  contactPhone: '+34 952 78 50 12',
-  whatsappUrl: 'https://wa.me/34622112233?text=Hola%2C%20me%20gustar%C3%ADa%20informaci%C3%B3n%20sobre%20el%20C.D.%20Voleibol%20San%20Pedro',
+  contactPhone: '+34 657 71 37 71',
+  whatsappUrl: 'https://wa.me/34657713771?text=Hola%2C%20me%20gustar%C3%ADa%20informaci%C3%B3n%20sobre%20el%20C.D.%20Voleibol%20San%20Pedro',
   instagramUrl: 'https://www.instagram.com/voleibolsanpedro/',
   facebookUrl: 'https://www.facebook.com/CDVoleibolSanPedro/',
   socialHashtag: '#VoleibolSanPedro',
@@ -147,7 +148,7 @@ Puedes hacerte con tus décimos del **15.586** de varias formas:
 1. **En el Pabellón Polideportivo Sergio Scariolo:** Preguntando directamente a los entrenadores o delegados durante los entrenamientos semanales de cantera y del primer equipo.
 2. **Reserva directa por WhatsApp:** Si prefieres coordinar tu reserva previamente con los responsables del club, puedes escribirnos directamente:
 
-[Reservar décimos por WhatsApp](https://wa.me/34622112233?text=Hola%2C%20estoy%20interesado%20en%20comprar%20decimos%20de%20Loteria%20de%20Navidad%20del%20Voleibol%20San%20Pedro%20(15.586))
+[Reservar décimos por WhatsApp](https://wa.me/34657713771?text=Hola%2C%20estoy%20interesado%20en%20comprar%20decimos%20de%20Loteria%20de%20Navidad%20del%20Voleibol%20San%20Pedro%20(15.586))
 
 ¡Muchas gracias por apoyar al club y mucha suerte a todos con el **15.586**!`,
     categoryId: 'cat-club',
@@ -234,42 +235,94 @@ Asimismo, los clubes, jugadores y técnicos pueden descargar la copia íntegra d
 export const INITIAL_SPONSOR_TIERS: SponsorTier[] = [
   {
     id: 'sp-1',
-    name: 'Comercio Amigo de San Pedro',
-    priceAnnual: '250 € / temporada',
-    description: 'Pensado para cafeterías, panaderías, talleres y comercios locales de San Pedro que quieren apoyar a los jóvenes del pueblo.',
+    name: 'Empresa Colaboradora',
+    priceAnnual: '300€',
+    description: '',
     features: [
-      'Logotipo y mención en la sección de Patrocinadores de la web oficial',
-      'Distintivo físico adhesivo oficial: "Establecimiento Colaborador C.D.V. San Pedro"',
-      'Menciones mensuales de agradecimiento en redes sociales oficiales (#VoleibolSanPedro)',
-      'Acceso al club de empresas colaboradoras',
+      'Bienvenida en redes',
+      'Presencia en el listado de colaboradores',
     ],
     isFeatured: false,
   },
   {
     id: 'sp-2',
-    name: 'Lona en Pabellón Sergio Scariolo',
-    priceAnnual: '600 € / temporada',
-    description: 'Máxima visibilidad de marca en cada jornada de liga y torneos federados para empresas de Marbella, Estepona y la Costa del Sol.',
+    name: 'Patrocinador Local',
+    priceAnnual: '600€',
+    description: '',
     features: [
-      'Pancarta publicitaria de 3x1 metros a pie de pista o barandilla en el Pabellón Sergio Scariolo',
-      'Presencia destacada en el faldón de la web oficial',
-      'Agradecimiento por megafonía en los partidos de 1ª División Andaluza',
-      'Dossier fotográfico de tu marca en pista para uso comercial propio',
+      'Ventajas anteriores',
+      'Presencia en soportes colectivos del club',
+      'Menciones periódicas',
     ],
-    isFeatured: true,
+    isFeatured: false,
   },
   {
     id: 'sp-3',
-    name: 'Patrocinador de Cantera',
-    priceAnnual: '1.500 € / temporada',
-    description: 'Apoya el equipamiento y desplazamientos de las categorías de cantera del voleibol sampedreño.',
+    name: 'Patrocinador Oficial',
+    priceAnnual: '1.200€',
+    description: '',
     features: [
-      'Logotipo en la camiseta de juego oficial de categorías de Cantera',
-      'Presencia en cartelería oficial física y digital',
-      'Espacio editorial destacado en la web oficial y boletín informativo',
-      'Agradecimiento especial en la clausura de temporada',
+      'Ventajas anteriores',
+      'Banner en pista',
+      'Logotipo en camiseta de entrenamiento',
+      'Contenido específico',
     ],
     isFeatured: false,
+  },
+  {
+    id: 'sp-4',
+    name: 'Patrocinador Principal',
+    priceAnnual: 'desde 2.500€',
+    description: '',
+    features: [
+      'Presencia destacada',
+      'Acciones personalizadas',
+      'Protagonismo en eventos',
+    ],
+    isFeatured: true,
+  },
+];
+
+export const CURRENT_SPONSORS: CurrentSponsor[] = [
+  {
+    id: 'sponsor-inch',
+    name: 'INCH',
+    tagline: 'Thai Noodles • Ramen • Sushi',
+    logoUrl: '/images/sponsors/inch.png',
+    url: 'https://inchbar.es/inch-san-pedro/',
+    bgClass: 'bg-white',
+  },
+  {
+    id: 'sponsor-biscottino',
+    name: 'Heladería Biscottino',
+    tagline: 'Elaboración artesanal diaria y a la vista',
+    logoUrl: '/images/sponsors/heladeria-biscottino.png',
+    url: 'https://www.instagram.com/heladeriabiscottino1y2/',
+    bgClass: 'bg-white',
+  },
+  {
+    id: 'sponsor-pimentel',
+    name: 'Pimentel Artes Gráficas',
+    tagline: 'Artes Gráficas',
+    logoUrl: '/images/sponsors/pimentel-artes-graficas.png',
+    url: 'https://pimentel.es/',
+    bgClass: 'bg-white',
+  },
+  {
+    id: 'sponsor-gaucho',
+    name: 'Grupo Gaucho',
+    tagline: '',
+    logoUrl: '/images/sponsors/grupo-gaucho.png',
+    url: 'https://grupogaucho.es/',
+    bgClass: 'bg-[#0b0a09]',
+  },
+  {
+    id: 'sponsor-morales',
+    name: 'Morales Obra Civil',
+    tagline: '952 78 19 33',
+    logoUrl: '/images/sponsors/morales-obra-civil.png',
+    url: 'https://www.valledelsol.org/',
+    bgClass: 'bg-white',
   },
 ];
 

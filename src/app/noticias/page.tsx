@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { store, INITIAL_TEAMS, INITIAL_CATEGORIES, CLUB_INFO } from '@/lib/data-store';
@@ -14,6 +14,8 @@ export default function NoticiasPage() {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterStatus, setNewsletterStatus] = useState<string | null>(null);
   const [showPressModal, setShowPressModal] = useState<boolean>(false);
+  const [showPressRoom, setShowPressRoom] = useState<boolean>(false);
+  const catScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Formulario de acreditación
   const [accreditationForm, setAccreditationForm] = useState({
@@ -69,6 +71,17 @@ export default function NoticiasPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showPressModal]);
 
+  // Centrar categoría seleccionada en el carrusel horizontal
+  useEffect(() => {
+    const container = catScrollRef.current;
+    const pill = document.getElementById(`noticias-cat-pill-${selectedCat}`);
+    if (container && pill) {
+      const targetLeft = pill.offsetLeft - (container.clientWidth - pill.clientWidth) / 2;
+      const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
+      container.scrollTo({ left: Math.max(0, Math.min(maxScroll, targetLeft)), behavior: 'smooth' });
+    }
+  }, [selectedCat]);
+
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newsletterEmail) return;
@@ -80,14 +93,14 @@ export default function NoticiasPage() {
   return (
     <div className="w-full min-h-screen bg-surface font-body-md text-on-surface antialiased">
       {/* Dynamic Atmospheric Header Ticker */}
-      <section className="w-full bg-surface-container-lowest px-4 lg:px-12 py-2.5 border-b border-white/5">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2.5">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-on-primary font-label-sm text-label-sm uppercase tracking-wider">
+      <section className="w-full bg-surface-container-lowest px-4 lg:px-12 py-2.5 border-b border-white/5 overflow-hidden">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white font-label-sm text-label-sm uppercase tracking-wider shrink-0">
               <span className="w-2 h-2 rounded-full bg-white animate-ping" />
               TEMPORADA 26/27
             </span>
-            <p className="font-body-sm text-body-sm text-on-surface truncate">
+            <p className="font-body-sm text-body-sm text-on-surface truncate min-w-0">
               Ligas Federadas FAVB: cantera y primeros equipos compitiendo por San Pedro Alcántara.
             </p>
           </div>
@@ -106,7 +119,7 @@ export default function NoticiasPage() {
       </section>
 
       {/* Editorial Title & Interactive Tag Filter Bar */}
-      <section className="w-full px-4 lg:px-12 pt-10 pb-6 bg-surface">
+      <section className="w-full px-4 lg:px-12 pt-6 sm:pt-10 pb-4 sm:pb-6 bg-surface">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
             <div>
@@ -121,22 +134,27 @@ export default function NoticiasPage() {
                 </span>
               </h1>
             </div>
-            <p className="font-body-md text-body-md text-on-surface-variant max-w-md">
+            <p className="hidden md:block font-body-md text-body-md text-on-surface-variant max-w-md">
               Cobertura completa y actualizada de todas nuestras categorías: cantera formativa, compromisos federados FAVB y la vida institucional del C.D.V. San Pedro.
             </p>
           </div>
 
           {/* Filter Pills / Categories */}
-          <div className="flex items-center gap-2 overflow-x-auto py-4 category-scrollbar mt-4 border-b border-white/5">
+          <div
+            ref={catScrollRef}
+            className="flex items-center gap-2 overflow-x-auto py-3 sm:py-4 category-scrollbar scroll-smooth snap-x snap-mandatory mt-3 sm:mt-4 border-b border-white/5"
+          >
             {categories.map((c) => {
               const active = selectedCat === c.value;
               return (
                 <button
                   key={c.value}
+                  id={`noticias-cat-pill-${c.value}`}
                   onClick={() => setSelectedCat(c.value)}
-                  className={`shrink-0 px-4 py-2 font-label-md text-label-md uppercase tracking-wider transition-all ${
+                  aria-pressed={active}
+                  className={`w-[calc(100%-4.5rem)] sm:w-auto snap-center first:snap-start last:snap-end flex items-center justify-center text-center shrink-0 px-4 py-2 font-label-md text-xs sm:text-label-md uppercase tracking-wider whitespace-nowrap transition-all ${
                     active
-                      ? 'bg-primary-container text-on-primary shadow-md'
+                      ? 'bg-primary-container text-white shadow-md font-bold'
                       : 'bg-surface-container-high text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -170,7 +188,7 @@ export default function NoticiasPage() {
 
                   {/* Category Floating Ribbon */}
                   <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
-                    <span className="px-3 py-1 bg-primary-container text-on-primary font-label-md text-label-md uppercase tracking-wider shadow-lg">
+                    <span className="px-3 py-1 bg-primary-container text-white font-label-md text-label-md uppercase tracking-wider shadow-lg">
                       {featuredArticle.categoryName}
                     </span>
                     <span className="px-3 py-1 bg-surface-container-lowest/90 backdrop-blur text-primary font-label-sm text-label-sm uppercase tracking-wider">
@@ -233,7 +251,7 @@ export default function NoticiasPage() {
                       </div>
                     </div>
 
-                    <span className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-container text-on-primary font-label-lg text-label-lg uppercase tracking-wider group-hover:bg-secondary-container transition-all shadow-md">
+                    <span className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-container text-white font-label-lg text-label-lg uppercase tracking-wider group-hover:bg-secondary-container transition-all shadow-md">
                       <span>Leer Noticia Completa</span>
                       <span className="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_forward</span>
                     </span>
@@ -318,52 +336,86 @@ export default function NoticiasPage() {
 
           {/* Right Editorial Sidebar (span 4 or 3) */}
           <aside className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6">
-            {/* Module 1: Sala de Prensa y Medios Oficiales */}
-            <div className="p-6 bg-surface-container-low shadow-md border border-white/5">
-              <div className="flex items-center gap-2 pb-2">
-                <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">newspaper</span>
-                <h4 className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wide">
-                  SALA DE PRENSA
-                </h4>
-              </div>
-              <p className="font-body-sm text-body-sm text-on-surface-variant mb-4 leading-relaxed">
-                Recursos profesionales para periodistas acreditados, medios de radiodifusión y reporteros gráficos.
-              </p>
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPressModal(true)}
-                  className="w-full p-3 bg-surface-container flex items-center justify-between hover:bg-surface-container-highest transition-colors border border-white/5 text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">badge</span>
-                    <span className="font-label-md text-label-md uppercase text-on-surface font-bold">
-                      Acreditaciones de Partido
+            {/* Module 1: Sala de Prensa y Medios Oficiales (Desplegable) */}
+            <div id="acreditacion" className="bg-surface-container-low shadow-md border border-white/5">
+              <button
+                type="button"
+                onClick={() => setShowPressRoom((prev) => !prev)}
+                aria-expanded={showPressRoom}
+                aria-controls="press-room-panel"
+                className="w-full p-5 sm:p-6 flex items-center justify-between gap-3 text-left group hover:bg-surface-container transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">newspaper</span>
+                  <div>
+                    <h4 className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wide group-hover:text-primary transition-colors">
+                      SALA DE PRENSA
+                    </h4>
+                    <span className="text-[11px] text-on-surface-variant block">
+                      Acreditaciones y recursos para medios
                     </span>
                   </div>
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant" aria-hidden="true">arrow_forward</span>
-                </button>
-
-                <Link
-                  href="/fan-zone"
-                  className="p-3 bg-surface-container flex items-center justify-between hover:bg-surface-container-highest transition-colors border border-white/5"
+                </div>
+                <span
+                  className={`material-symbols-outlined text-on-surface-variant transition-transform duration-200 text-[24px] shrink-0 ${
+                    showPressRoom ? 'rotate-180 text-primary' : ''
+                  }`}
+                  aria-hidden="true"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">photo_library</span>
-                    <span className="font-label-md text-label-md uppercase text-on-surface font-bold">
-                      Galería Gráfica HD
-                    </span>
-                  </div>
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant" aria-hidden="true">open_in_new</span>
-                </Link>
-              </div>
-
-              <div className="mt-4 pt-3 bg-surface-container-lowest p-3 flex items-center gap-2 border border-white/5">
-                <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">mail</span>
-                <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                  Contacto: <strong className="text-on-surface">{CLUB_INFO.contactEmail}</strong>
+                  expand_more
                 </span>
-              </div>
+              </button>
+
+              {showPressRoom && (
+                <div id="press-room-panel" className="px-5 sm:px-6 pb-5 sm:pb-6 pt-2 border-t border-white/5 animate-in fade-in duration-200">
+                  <p className="font-body-sm text-body-sm text-on-surface-variant mb-4 leading-relaxed">
+                    Recursos profesionales para periodistas acreditados, medios de radiodifusión y reporteros gráficos en el Pabellón Sergio Scariolo.
+                  </p>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowPressModal(true)}
+                      className="w-full p-3 bg-surface-container flex items-center justify-between hover:bg-surface-container-highest transition-colors border border-white/5 text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">badge</span>
+                        <span className="font-label-md text-label-md uppercase text-on-surface font-bold">
+                          Acreditaciones de Partido
+                        </span>
+                      </div>
+                      <span className="material-symbols-outlined text-[18px] text-on-surface-variant" aria-hidden="true">arrow_forward</span>
+                    </button>
+
+                    <Link
+                      href="/fan-zone"
+                      className="p-3 bg-surface-container flex items-center justify-between hover:bg-surface-container-highest transition-colors border border-white/5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">photo_library</span>
+                        <span className="font-label-md text-label-md uppercase text-on-surface font-bold">
+                          Galería Gráfica HD
+                        </span>
+                      </div>
+                      <span className="material-symbols-outlined text-[18px] text-on-surface-variant" aria-hidden="true">open_in_new</span>
+                    </Link>
+                  </div>
+
+                  <div className="mt-4 pt-3 bg-surface-container-lowest p-3 space-y-1 border border-white/5 text-xs text-on-surface-variant">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-[16px]" aria-hidden="true">mail</span>
+                      <span className="truncate">
+                        Contacto: <strong className="text-on-surface">{CLUB_INFO.contactEmail}</strong>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-[16px]" aria-hidden="true">call</span>
+                      <span>
+                        Tel: <strong className="text-on-surface font-mono">{CLUB_INFO.contactPhone}</strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Module 2: Newsletter 'Boletín Rojinegro' */}
@@ -395,7 +447,7 @@ export default function NoticiasPage() {
                   />
                 </div>
                 <button
-                  className="w-full py-3 bg-primary-container hover:bg-secondary-container text-on-primary font-label-md text-label-md uppercase tracking-wider font-bold transition-all shadow-md flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-primary-container hover:bg-secondary-container text-white font-label-md text-label-md uppercase tracking-wider font-bold transition-all shadow-md flex items-center justify-center gap-2"
                   type="submit"
                 >
                   <span className="material-symbols-outlined text-[18px]" aria-hidden="true">send</span>
@@ -524,56 +576,7 @@ export default function NoticiasPage() {
         </div>
       </section>
 
-      {/* Sala de Prensa & Acreditaciones Form Section */}
-      <section id="acreditacion" className="w-full bg-surface-container-high py-10 sm:py-16 px-4 lg:px-12 border-t border-white/5">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* Info medios */}
-          <div className="lg:col-span-5 space-y-6">
-            <div>
-              <span className="text-xs text-primary font-bold uppercase tracking-wider font-label-sm">
-                Recursos para Medios
-              </span>
-              <h2 className="font-headline-lg text-3xl uppercase text-on-surface mt-1">
-                Sala de Prensa y Medios
-              </h2>
-            </div>
-
-            <p className="font-body-md text-sm text-on-surface-variant leading-relaxed">
-              El C.D. Voleibol San Pedro facilita la labor informativa a redactores, emisoras de radio y fotógrafos deportivos. El acceso a pista y cabinas de prensa en el Pabellón Sergio Scariolo se gestiona mediante solicitud de acreditación previa.
-            </p>
-
-            <div className="p-4 bg-surface-container-low border-l-4 border-primary-container text-xs text-on-surface-variant font-body-sm">
-              <strong className="text-on-surface block mb-1">Contacto del Responsable de Prensa:</strong>
-              Email: {CLUB_INFO.contactEmail} <br />
-              Tel: {CLUB_INFO.contactPhone} ({CLUB_INFO.venueName})
-            </div>
-          </div>
-
-          {/* Formulario de Solicitud de Acreditación */}
-          <div className="lg:col-span-7 bg-surface-container-low border border-white/10 p-5 sm:p-8 flex flex-col justify-between">
-            <div>
-              <h3 className="font-headline-sm text-xl uppercase text-on-surface mb-1 font-bold">
-                Solicitud de Acreditación de Partido
-              </h3>
-              <p className="text-xs text-on-surface-variant mb-6 font-body-sm leading-relaxed">
-                Completa el formulario oficial para reservar tu pase de prensa, cabina de retransmisión o acceso a pie de pista en el Pabellón Sergio Scariolo para los próximos compromisos oficiales de la FAVB.
-              </p>
-            </div>
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowPressModal(true)}
-                className="w-full sm:w-auto py-3.5 px-6 bg-primary-container hover:bg-secondary-container text-on-primary font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">badge</span>
-                <span>Solicitar Acreditación Oficial</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-            {/* Modal: Solicitud de Acreditación de Prensa */}
+      {/* Modal: Solicitud de Acreditación de Prensa */}
       {showPressModal && (
         <div
           role="dialog"
@@ -731,7 +734,7 @@ export default function NoticiasPage() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-primary-container hover:bg-secondary-container text-on-primary font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-md"
+                  className="w-full py-3 bg-primary-container hover:bg-secondary-container text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-md"
                 >
                   Enviar Solicitud de Acreditación
                 </button>

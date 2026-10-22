@@ -3,9 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { INITIAL_CATEGORIES, INITIAL_STANDINGS, CLUB_INFO } from '@/lib/data-store';
+import { INITIAL_CATEGORIES, INITIAL_STANDINGS } from '@/lib/data-store';
 import { Standings } from '@/lib/types';
-import { FAVB_COMPETITIONS } from '@/lib/favb-scraper';
 import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 
@@ -100,8 +99,9 @@ export default function ClasificacionPage() {
     const pill = document.getElementById(`clasif-cat-pill-${selectedCatId}`);
     if (container && pill) {
       const targetLeft =
-        pill.offsetLeft - container.clientWidth / 2 + pill.clientWidth / 2;
-      container.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+        pill.offsetLeft - (container.clientWidth - pill.clientWidth) / 2;
+      const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
+      container.scrollTo({ left: Math.max(0, Math.min(maxScroll, targetLeft)), behavior: 'smooth' });
     }
   }, [selectedCatId]);
 
@@ -116,57 +116,30 @@ export default function ClasificacionPage() {
   const activeCategory =
     INITIAL_CATEGORIES.find((c) => c.id === selectedCatId) || INITIAL_CATEGORIES[0];
 
-  const activeCompMeta = FAVB_COMPETITIONS.find((c) => c.categoryId === selectedCatId);
-  const favbDirectClasifUrl = activeCompMeta
-    ? `https://favoley.net/publico/seccion.php?seccion=competicion&id=${activeCompMeta.favbId}&vista=clasificacion&grupo=${activeCompMeta.grupo}&fase=${activeCompMeta.fase}`
-    : CLUB_INFO.federationUrl;
-
   return (
     <div className="w-full min-h-screen bg-background">
       {/* Top Banner */}
-      <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-10 sm:py-12 border-b border-white/5 overflow-hidden">
+      <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-5 sm:py-8 border-b border-white/5 overflow-hidden">
         <div className="absolute -right-20 -top-24 w-96 h-96 rounded-full bg-primary-container/10 blur-3xl pointer-events-none" />
-        <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[11px] uppercase font-bold tracking-widest">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                TABLAS OFICIALES EN VIVO FAVB
-              </span>
-              <span className="text-xs text-tertiary uppercase tracking-wider">
-                TEMPORADA 2026 / 2027
-              </span>
-            </div>
-            <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none">
-              <span className="text-white">CLASIFICACIÓN </span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
-                OFICIAL
-              </span>
-            </h1>
-            <p className="font-body-md text-sm sm:text-base text-tertiary max-w-2xl mt-2">
-              Consulta posiciones, partidos jugados, sets y puntos oficiales{' '}
-              <span className="text-primary-container font-bold">en vivo</span>
-            </p>
-          </div>
-
-          <a
-            href={favbDirectClasifUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-container-high hover:bg-primary-container text-white font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow-md shrink-0 border border-white/10 self-start md:self-auto"
-          >
-            <span>Ver tabla en favoley.net</span>
-            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">open_in_new</span>
-          </a>
+        <div className="max-w-7xl mx-auto relative z-10">
+          <span className="text-xs text-tertiary uppercase tracking-wider block mb-1">
+            TEMPORADA 2026 / 2027
+          </span>
+          <h1 className="font-display-xl text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight leading-none">
+            <span className="text-white">CLASIFICACIÓN </span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
+              OFICIAL
+            </span>
+          </h1>
         </div>
       </section>
 
       {/* Tabs por categoría + Botón Icono Actualizar */}
       <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-2.5 sm:gap-3">
           <div
             ref={catScrollRef}
-            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1.5 scroll-smooth flex-1"
+            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory flex-1"
           >
             {availableCategories.map((cat) => {
               const isSelected = cat.id === selectedCatId;
@@ -176,7 +149,7 @@ export default function ClasificacionPage() {
                   id={`clasif-cat-pill-${cat.id}`}
                   onClick={() => setSelectedCatId(cat.id)}
                   aria-pressed={isSelected}
-                  className={`px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                  className={`w-[calc(100%-4.5rem)] sm:w-auto snap-center first:snap-start last:snap-end flex items-center justify-center text-center px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[3px_3px_0px_0px_#0e0e0e] -translate-y-0.5'
                       : 'bg-surface-container-high text-tertiary hover:text-white'

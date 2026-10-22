@@ -606,38 +606,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Banner Institucional Federación Andaluza de Voleibol (FAVB) */}
-      <section className="w-full bg-surface-container-high py-12 px-4 lg:px-8 border-y border-white/5">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 bg-primary-container text-white flex items-center justify-center font-display-xl text-xl shrink-0 shadow-lg">
-              FAVB
-            </div>
-            <div>
-              <span className="text-xs uppercase tracking-widest text-primary font-bold">
-                Afiliación Oficial
-              </span>
-              <h3 className="font-headline-sm text-lg sm:text-xl uppercase text-white font-bold">
-                Adscrito a la Federación Andaluza de Voleibol
-              </h3>
-              <p className="font-body-sm text-xs text-tertiary max-w-2xl mt-1">
-                Todas las competiciones de nuestro club se rigen bajo los reglamentos y actas oficiales de la FAVB y la RFEVB. Consulta normativas, calendarios autonómicos y designaciones arbitrales oficiales.
-              </p>
-            </div>
-          </div>
-
-          <a
-            href={CLUB_INFO.federationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 inline-flex items-center gap-2 px-6 py-3 bg-surface-container-lowest hover:bg-primary-container text-white font-label-md text-xs uppercase tracking-wider font-bold border border-white/10 transition-all shadow-md"
-          >
-            <span>Portal FAVB (favoley.net)</span>
-            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">open_in_new</span>
-          </a>
-        </div>
-      </section>
     </div>
   );
 }

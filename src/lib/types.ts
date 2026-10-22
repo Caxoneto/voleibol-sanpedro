@@ -125,6 +125,15 @@ export interface SponsorTier {
   isFeatured: boolean;
 }
 
+export interface CurrentSponsor {
+  id: string;
+  name: string;
+  tagline: string;
+  logoUrl: string;
+  url: string;
+  bgClass?: string;
+}
+
 export interface SponsorInquiry {
   id: string;
   companyName: string;
