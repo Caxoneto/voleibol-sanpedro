@@ -2770,7 +2770,8 @@ export const FAVB_MATCHES: Match[] = [
     "isClubHome": false,
     "venueName": "C.E.I.P TIERNO GALVÁN (Rincón de la Victoria)",
     "matchDate": "2026-10-18T10:00:00.000Z",
-    "status": "SCHEDULED",
+    "status": "POSTPONED",
+    "statusText": "Aplazado",
     "setScores": [],
     "favbMatchUrl": "https://favoley.net/publico/seccion.php?seccion=marcador&id=3828",
     "isFeatured": false

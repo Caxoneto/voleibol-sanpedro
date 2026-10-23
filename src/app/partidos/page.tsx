@@ -417,9 +417,9 @@ function PartidosContent() {
         .filter((m) => m.status === 'LIVE')
         .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
-      // Próximos / Pendientes: ordenados por proximidad temporal ascendente (el más cercano primero)
+      // Próximos / Pendientes (incluye programados, aplazados y cancelados aún no jugados):
       const scheduled = catMatches
-        .filter((m) => m.status === 'SCHEDULED')
+        .filter((m) => m.status === 'SCHEDULED' || m.status === 'POSTPONED' || m.status === 'CANCELLED')
         .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
       // Finalizados: ordenados por proximidad temporal descendente (el más reciente primero)
@@ -427,8 +427,13 @@ function PartidosContent() {
         .filter((m) => m.status === 'FINISHED')
         .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
 
-      // Partido destacado en rojo de la categoría: el partido en vivo, o si no hay ninguno en vivo, el próximo más cercano
-      const nextOrLiveMatch = live[0] || scheduled[0];
+      // Partido destacado en rojo de la categoría: el partido en vivo, o si no hay ninguno en vivo, el próximo programado que NO esté aplazado/cancelado
+      const upcomingPlayable = scheduled.filter((m) => {
+        if (m.status !== 'SCHEDULED') return false;
+        const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
+        return !isPast12h;
+      });
+      const nextOrLiveMatch = live[0] || upcomingPlayable[0];
 
       return {
         category: cat,
@@ -466,9 +471,13 @@ function PartidosContent() {
       <div
         key={m.id}
         id={`match-${m.id}`}
-        className={`bg-surface-container-high/80 p-3.5 sm:p-4 flex flex-col justify-between transition-all shadow-lg ${
+        className={`bg-surface-container-high/80 p-3.5 sm:p-4 flex flex-col justify-between transition-all shadow-lg relative overflow-hidden ${
           isRedBorder
             ? 'border-2 border-red-500 shadow-[0_0_18px_rgba(239,68,68,0.28)]'
+            : m.status === 'POSTPONED'
+            ? 'border border-amber-500/40 hover:border-amber-500/70'
+            : m.status === 'CANCELLED'
+            ? 'border border-red-500/40 hover:border-red-500/70'
             : 'border border-white/10 hover:border-primary-container/50'
         }`}
       >
@@ -490,7 +499,7 @@ function PartidosContent() {
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 relative z-30">
               {/* Botón actualizar: SOLO icono, a la izquierda del icono de casa/fuera, solo si NO ha finalizado */}
               {!isFinished && (
                 <button
@@ -505,7 +514,7 @@ function PartidosContent() {
                       ? 'bg-red-950/90 hover:bg-red-800 text-red-300 border-red-500/50'
                       : 'bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border-white/15'
                   }`}
-                  title="Actualizar marcador desde favoley.net"
+                  title={`Actualizar marcador desde ${m.id.startsWith('afade-') ? 'ligaafade.es' : 'favoley.net'}`}
                   aria-label="Actualizar marcador"
                 >
                   <span
@@ -550,6 +559,14 @@ function PartidosContent() {
                   </span>
                   <span>En Juego</span>
                 </span>
+              ) : m.status === 'POSTPONED' ? (
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                  Aplazado
+                </span>
+              ) : m.status === 'CANCELLED' ? (
+                <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">
+                  Cancelado
+                </span>
               ) : (
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
                   Finalizado
@@ -577,10 +594,15 @@ function PartidosContent() {
           </div>
 
           {/* 3. Filas de Equipos a la izquierda + Columnas de Sets y Total a la derecha (mismos colores que Inicio) */}
-          <div className="space-y-2 py-1">
+          <div className="space-y-2 py-1 relative">
             {/* Equipo Local */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0 flex-1" title={m.homeTeam}>
+              <div
+                className={`flex items-center gap-2 min-w-0 flex-1 ${
+                  m.status === 'POSTPONED' || m.status === 'CANCELLED' ? 'pr-28 sm:pr-32' : ''
+                }`}
+                title={m.homeTeam}
+              >
                 <Image
                   src={getTeamLogo(m.homeTeam)}
                   alt={m.homeTeam}
@@ -637,7 +659,12 @@ function PartidosContent() {
 
             {/* Equipo Visitante */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0 flex-1" title={m.awayTeam}>
+              <div
+                className={`flex items-center gap-2 min-w-0 flex-1 ${
+                  m.status === 'POSTPONED' || m.status === 'CANCELLED' ? 'pr-28 sm:pr-32' : ''
+                }`}
+                title={m.awayTeam}
+              >
                 <Image
                   src={getTeamLogo(m.awayTeam)}
                   alt={m.awayTeam}
@@ -691,6 +718,21 @@ function PartidosContent() {
                 </span>
               </div>
             </div>
+
+            {/* Cartel diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores */}
+            {(m.status === 'POSTPONED' || m.status === 'CANCELLED') && (
+              <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
+                <div
+                  className={`-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] ${
+                    m.status === 'CANCELLED'
+                      ? 'bg-red-950/95 text-red-200 border-red-500'
+                      : 'bg-amber-500/95 text-black border-amber-200'
+                  }`}
+                >
+                  {m.statusText?.toUpperCase() || (m.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -703,7 +745,7 @@ function PartidosContent() {
             <span className="truncate">{m.venue}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 relative z-30">
             <a
               href={getVenueMapsLink(m)}
               target="_blank"
@@ -722,13 +764,15 @@ function PartidosContent() {
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               className="w-6 h-6 bg-surface-container-highest hover:bg-primary-container text-primary hover:text-white flex items-center justify-center border border-white/10 transition-colors"
-              title="Ver acta oficial en favoley.net"
-              aria-label="Ver acta oficial en favoley.net"
+              title={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
+              aria-label={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
             >
               <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
             </a>
           </div>
         </div>
+
+
       </div>
     );
   };
@@ -805,7 +849,7 @@ function PartidosContent() {
             onClick={() => fetchFavbMatches(true)}
             disabled={syncing}
             className="flex w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
-            title={`Actualizar todos los marcadores desde favoley.net (Última: ${lastSyncTime})`}
+            title={`Actualizar marcadores oficiales (FAVB y Liga AFADE) (Última: ${lastSyncTime})`}
             aria-label="Actualizar resultados"
           >
             <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
@@ -1043,9 +1087,13 @@ function PartidosContent() {
                                     <div
                                       key={m.id}
                                       id={`match-${m.id}`}
-                                      className={`bg-surface-container-high/70 p-3.5 sm:p-4 flex flex-col justify-between transition-all relative shadow-md ${
+                                      className={`bg-surface-container-high/70 p-3.5 sm:p-4 flex flex-col justify-between transition-all relative overflow-hidden shadow-md ${
                                         isClosestRed
                                           ? 'border-2 border-red-500 shadow-[0_0_18px_rgba(239,68,68,0.25)]'
+                                          : m.status === 'POSTPONED'
+                                          ? 'border border-amber-500/40 hover:border-amber-500/70'
+                                          : m.status === 'CANCELLED'
+                                          ? 'border border-red-500/40 hover:border-red-500/70'
                                           : 'border border-white/10 hover:border-primary-container/60'
                                       }`}
                                     >
@@ -1055,14 +1103,24 @@ function PartidosContent() {
                                             <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold">
                                               J{m.round}
                                             </span>
-                                            {m.id === redHighlightedMatchId && (
+                                            {m.id === redHighlightedMatchId && m.status === 'SCHEDULED' && (
                                               <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] font-bold uppercase tracking-wider">
                                                 Próximo Partido
                                               </span>
                                             )}
+                                            {m.status === 'POSTPONED' && (
+                                              <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[9px] font-bold uppercase tracking-wider">
+                                                Aplazado
+                                              </span>
+                                            )}
+                                            {m.status === 'CANCELLED' && (
+                                              <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] font-bold uppercase tracking-wider">
+                                                Cancelado
+                                              </span>
+                                            )}
                                           </div>
 
-                                          <div className="flex items-center gap-1.5">
+                                          <div className="flex items-center gap-1.5 relative z-30">
                                             <button
                                               type="button"
                                               onClick={(e) => {
@@ -1103,51 +1161,75 @@ function PartidosContent() {
                                           </div>
                                         </div>
 
-                                        <div className="py-3 space-y-2.5">
-                                          <div className="flex items-center gap-2.5" title={m.homeTeam}>
-                                            <Image
-                                              src={getTeamLogo(m.homeTeam)}
-                                              alt={m.homeTeam}
-                                              width={30}
-                                              height={30}
-                                              className="w-7 h-7 object-contain shrink-0"
-                                            />
-                                            {m.isClubHome ? (
-                                              <Link
-                                                href={`/plantillas?categoria=${m.categoryId}`}
-                                                className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
-                                                title={`Ver plantilla de ${m.categoryName}`}
-                                              >
-                                                {m.homeTeam}
-                                              </Link>
-                                            ) : (
-                                              <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
-                                                {m.homeTeam}
-                                              </p>
-                                            )}
+                                        <div className="py-3 relative">
+                                          <div
+                                            className={`space-y-2.5 ${
+                                              m.status === 'POSTPONED' || m.status === 'CANCELLED'
+                                                ? 'pr-28 sm:pr-32'
+                                                : ''
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2.5 min-w-0" title={m.homeTeam}>
+                                              <Image
+                                                src={getTeamLogo(m.homeTeam)}
+                                                alt={m.homeTeam}
+                                                width={30}
+                                                height={30}
+                                                className="w-7 h-7 object-contain shrink-0"
+                                              />
+                                              {m.isClubHome ? (
+                                                <Link
+                                                  href={`/plantillas?categoria=${m.categoryId}`}
+                                                  className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
+                                                  title={`Ver plantilla de ${m.categoryName}`}
+                                                >
+                                                  {m.homeTeam}
+                                                </Link>
+                                              ) : (
+                                                <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
+                                                  {m.homeTeam}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2.5 min-w-0" title={m.awayTeam}>
+                                              <Image
+                                                src={getTeamLogo(m.awayTeam)}
+                                                alt={m.awayTeam}
+                                                width={30}
+                                                height={30}
+                                                className="w-7 h-7 object-contain shrink-0"
+                                              />
+                                              {!m.isClubHome ? (
+                                                <Link
+                                                  href={`/plantillas?categoria=${m.categoryId}`}
+                                                  className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
+                                                  title={`Ver plantilla de ${m.categoryName}`}
+                                                >
+                                                  {m.awayTeam}
+                                                </Link>
+                                              ) : (
+                                                <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
+                                                  {m.awayTeam}
+                                                </p>
+                                              )}
+                                            </div>
                                           </div>
-                                          <div className="flex items-center gap-2.5" title={m.awayTeam}>
-                                            <Image
-                                              src={getTeamLogo(m.awayTeam)}
-                                              alt={m.awayTeam}
-                                              width={30}
-                                              height={30}
-                                              className="w-7 h-7 object-contain shrink-0"
-                                            />
-                                            {!m.isClubHome ? (
-                                              <Link
-                                                href={`/plantillas?categoria=${m.categoryId}`}
-                                                className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
-                                                title={`Ver plantilla de ${m.categoryName}`}
+
+                                          {/* Cartel diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores */}
+                                          {(m.status === 'POSTPONED' || m.status === 'CANCELLED') && (
+                                            <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
+                                              <div
+                                                className={`-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] ${
+                                                  m.status === 'CANCELLED'
+                                                    ? 'bg-red-950/95 text-red-200 border-red-500'
+                                                    : 'bg-amber-500/95 text-black border-amber-200'
+                                                }`}
                                               >
-                                                {m.awayTeam}
-                                              </Link>
-                                            ) : (
-                                              <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
-                                                {m.awayTeam}
-                                              </p>
-                                            )}
-                                          </div>
+                                                {m.statusText?.toUpperCase() ||
+                                                  (m.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
 
@@ -1160,9 +1242,19 @@ function PartidosContent() {
                                               month: 'short',
                                             })}
                                           </span>
-                                          <span className="font-bold text-primary font-mono">
-                                            {m.timeStr}h
-                                          </span>
+                                          {m.status === 'POSTPONED' ? (
+                                            <span className="font-bold text-amber-400 font-mono uppercase">
+                                              Aplazado
+                                            </span>
+                                          ) : m.status === 'CANCELLED' ? (
+                                            <span className="font-bold text-red-400 font-mono uppercase">
+                                              Cancelado
+                                            </span>
+                                          ) : (
+                                            <span className="font-bold text-primary font-mono">
+                                              {m.timeStr}h
+                                            </span>
+                                          )}
                                         </div>
 
                                         <div className="flex items-center justify-between gap-2 pt-1">
@@ -1175,7 +1267,7 @@ function PartidosContent() {
                                             </span>
                                           </div>
 
-                                          <div className="flex items-center gap-1.5 shrink-0">
+                                          <div className="flex items-center gap-1.5 shrink-0 relative z-30">
                                             <a
                                               href={getGoogleCalendarLink(m)}
                                               target="_blank"
@@ -1216,6 +1308,8 @@ function PartidosContent() {
                                           </div>
                                         </div>
                                       </div>
+
+
                                     </div>
                                   );
                                 })}

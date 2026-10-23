@@ -17,7 +17,8 @@ export interface HeroCarouselMatchItem {
   isClubHome: boolean;
   matchDate: string;
   dateStr: string;
-  status: 'SCHEDULED' | 'FINISHED' | 'LIVE' | 'CANCELLED';
+  status: 'SCHEDULED' | 'FINISHED' | 'LIVE' | 'POSTPONED' | 'CANCELLED';
+  statusText?: string;
   homeScore?: number;
   awayScore?: number;
   setScores?: { home: number; away: number }[];
@@ -69,6 +70,7 @@ export default function HeroMatchesCarousel({
               ? {
                   ...m,
                   status: updated.status,
+                  statusText: updated.statusText ?? m.statusText,
                   homeScore: updated.homeScore ?? m.homeScore,
                   awayScore: updated.awayScore ?? m.awayScore,
                   setScores:
@@ -110,9 +112,14 @@ export default function HeroMatchesCarousel({
             matchDate: typeof live.matchDate === 'string' && live.matchDate ? live.matchDate : m.matchDate,
             dateStr: typeof live.dateStr === 'string' && live.dateStr ? live.dateStr : m.dateStr,
             status:
-              live.status === 'FINISHED' || live.status === 'LIVE' || live.status === 'SCHEDULED'
-                ? live.status
+              live.status === 'FINISHED' ||
+              live.status === 'LIVE' ||
+              live.status === 'SCHEDULED' ||
+              live.status === 'POSTPONED' ||
+              live.status === 'CANCELLED'
+                ? (live.status as HeroCarouselMatchItem['status'])
                 : m.status,
+            statusText: typeof live.statusText === 'string' ? live.statusText : m.statusText,
             homeScore: typeof live.homeScore === 'number' ? live.homeScore : m.homeScore,
             awayScore: typeof live.awayScore === 'number' ? live.awayScore : m.awayScore,
             setScores:
@@ -479,13 +486,17 @@ export default function HeroMatchesCarousel({
               <div
                 key={`${activeTab}-${match.id}`}
                 id={`hero-card-${activeTab}-${match.id}`}
-                className={`group relative shrink-0 ${
+                className={`group relative shrink-0 overflow-hidden ${
                   isSingleCard
                     ? 'w-full sm:w-[300px] snap-start'
                     : 'w-[calc(100%-3.5rem)] sm:w-[300px] snap-center first:snap-start last:snap-end'
                 } bg-surface-container-low/95 hover:bg-surface-container-high border p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 shadow-md hover:-translate-y-0.5 ${
                   isLive
                     ? 'border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.22)]'
+                    : match.status === 'POSTPONED'
+                    ? 'border-amber-500/40 hover:border-amber-500/70'
+                    : match.status === 'CANCELLED'
+                    ? 'border-red-500/40 hover:border-red-500/70'
                     : 'border-white/10 hover:border-primary-container'
                 }`}
                 title={`${match.categoryName}: ${match.homeTeamName} vs ${match.awayTeamName}`}
@@ -497,7 +508,7 @@ export default function HeroMatchesCarousel({
                 />
 
                 {/* 1. Cabecera: Jornada, Categoría y a la derecha [Botón Actualizar Icono] + [Icono Casa/Fuera] */}
-                <div className="relative z-10 flex items-center justify-between gap-1.5 pb-1.5 border-b border-white/10">
+                <div className="relative z-30 flex items-center justify-between gap-1.5 pb-1.5 border-b border-white/10">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[9px] sm:text-[10px] font-bold shrink-0">
                       J{match.round}
@@ -522,7 +533,7 @@ export default function HeroMatchesCarousel({
                             ? 'bg-red-950/90 hover:bg-red-800 text-red-300 border-red-500/50'
                             : 'bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border-white/15'
                         }`}
-                        title="Actualizar marcador desde favoley.net"
+                        title={`Actualizar marcador desde ${match.id.startsWith('afade-') ? 'ligaafade.es' : 'favoley.net'}`}
                         aria-label="Actualizar marcador"
                       >
                         <span
@@ -562,6 +573,14 @@ export default function HeroMatchesCarousel({
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                         </span>
                         <span>En Juego</span>
+                      </span>
+                    ) : match.status === 'POSTPONED' ? (
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                        Aplazado
+                      </span>
+                    ) : match.status === 'CANCELLED' ? (
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-red-400">
+                        Cancelado
                       </span>
                     ) : isFinished ? (
                       <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-400">
@@ -618,7 +637,9 @@ export default function HeroMatchesCarousel({
                   {/* Fila Equipo Local */}
                   <div className="flex items-center justify-between gap-2">
                     <div
-                      className="flex items-center gap-2 min-w-0 flex-1"
+                      className={`flex items-center gap-2 min-w-0 flex-1 ${
+                        match.status === 'POSTPONED' || match.status === 'CANCELLED' ? 'pr-24 sm:pr-28' : ''
+                      }`}
                       title={match.homeTeamName}
                     >
                       <Image
@@ -676,7 +697,9 @@ export default function HeroMatchesCarousel({
                   {/* Fila Equipo Visitante */}
                   <div className="flex items-center justify-between gap-2">
                     <div
-                      className="flex items-center gap-2 min-w-0 flex-1"
+                      className={`flex items-center gap-2 min-w-0 flex-1 ${
+                        match.status === 'POSTPONED' || match.status === 'CANCELLED' ? 'pr-24 sm:pr-28' : ''
+                      }`}
                       title={match.awayTeamName}
                     >
                       <Image
@@ -730,7 +753,24 @@ export default function HeroMatchesCarousel({
                       </div>
                     )}
                   </div>
+
+                  {/* Cartel diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores */}
+                  {(match.status === 'POSTPONED' || match.status === 'CANCELLED') && (
+                    <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
+                      <div
+                        className={`-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] ${
+                          match.status === 'CANCELLED'
+                            ? 'bg-red-950/95 text-red-200 border-red-500'
+                            : 'bg-amber-500/95 text-black border-amber-200'
+                        }`}
+                      >
+                        {match.statusText?.toUpperCase() || (match.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+
               </div>
             );
           })}

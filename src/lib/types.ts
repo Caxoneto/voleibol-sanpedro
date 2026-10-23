@@ -25,7 +25,7 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   TRAINER: 'Preparador Físico',
 };
 
-export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED';
+export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'POSTPONED' | 'CANCELLED';
 
 export interface SetScore {
   home: number;
@@ -38,6 +38,7 @@ export interface Category {
   slug: string;
   order: number;
   description?: string;
+  association?: 'FAVB' | 'AFADE';
 }
 
 export interface Team {
@@ -80,10 +81,13 @@ export interface Match {
   venueName: string;
   matchDate: string; // ISO string in UTC
   status: MatchStatus;
+  statusText?: string;
   setScores: SetScore[];
   homeScore?: number;
   awayScore?: number;
   favbMatchUrl?: string;
+  afadeMatchUrl?: string;
+  association?: 'FAVB' | 'AFADE';
   mvpPlayerId?: string;
   isFeatured?: boolean;
 }

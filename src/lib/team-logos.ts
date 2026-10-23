@@ -63,6 +63,24 @@ export const TEAM_LOGOS_MAP: Record<string, string> = {
   'MIJAS VOLEY AZUL': '/images/teams/mijas-voley.png',
   'AD ASUNCIÓN': '/images/teams/ad-asuncion.png',
   'CLUB NERJA ATLETISMO': '/images/teams/club-nerja.png',
+
+  // AFADE
+  'CD VOLEIBOL SAN PEDRO': '/images/logo.jpg',
+  'VAM': '/images/teams/vam.jpg',
+  'JUST VOLEY': '/images/teams/just-voley.png',
+  'JUST VOLEY B': '/images/teams/just-voley.png',
+  'JUST VOLEY C': '/images/teams/just-voley.png',
+  'CD SOHO MÁLAGA': '/images/teams/soho-malaga.jpg',
+  'FUNDACIÓN VICTORIA': '/images/teams/fundacion-victoria.jpg',
+  'FUNDACIÓN VICTORIA A': '/images/teams/fundacion-victoria.jpg',
+  'LA CORACHA B': '/images/teams/la-coracha.jpg',
+  'UDA BENALMÁDENA': '/images/teams/uda-benalmadena.jpg',
+  'ASUNCIÓN': '/images/teams/ad-asuncion.png',
+  'CD UNIÓN MALAGUEÑA VOLEIBOL': '/images/teams/union-malaguena.jpg',
+  'REAL Y CUBILES ASESORES': '/images/teams/real-cubiles.png',
+  'CD FORVOLEY': '/images/teams/forvoley-torremolinos.jpg',
+  'CV CÁRTAMA': '/images/teams/cartama.jpg',
+  'CD LA COLINA': '/images/teams/la-colina.png',
 };
 
 /**
@@ -128,6 +146,23 @@ export const TEAM_INITIALS_MAP: Record<string, string> = {
   'MIJAS VOLEY AZUL': 'MIV',
   'AD ASUNCIÓN': 'ADA',
   'CLUB NERJA ATLETISMO': 'CNA',
+
+  // AFADE
+  'CD VOLEIBOL SAN PEDRO': 'VSP',
+  'VAM': 'VAM',
+  'JUST VOLEY B': 'JVB',
+  'JUST VOLEY C': 'JVC',
+  'CD SOHO MÁLAGA': 'SOH',
+  'FUNDACIÓN VICTORIA': 'FVI',
+  'FUNDACIÓN VICTORIA A': 'FVI',
+  'LA CORACHA B': 'COR',
+  'UDA BENALMÁDENA': 'UDA',
+  'ASUNCIÓN': 'ASU',
+  'CD UNIÓN MALAGUEÑA VOLEIBOL': 'UMV',
+  'REAL Y CUBILES ASESORES': 'RYC',
+  'CD FORVOLEY': 'FOR',
+  'CV CÁRTAMA': 'CAR',
+  'CD LA COLINA': 'COL',
 };
 
 /**
@@ -174,6 +209,11 @@ export function getTeamInitials(teamName?: string | null): string {
   if (norm.includes('ALHAURIN')) return 'ADT';
   if (norm.includes('INTER PLAYAS')) return 'IPA';
   if (norm.includes('MIJAS')) return 'MIV';
+  if (norm.includes('VAM')) return 'VAM';
+  if (norm.includes('JUST VOLEY')) return norm.includes('B') ? 'JVB' : 'JVC';
+  if (norm.includes('FUNDACION VICTORIA')) return 'FVI';
+  if (norm.includes('CUBILES')) return 'RYC';
+  if (norm.includes('COLINA')) return 'COL';
 
   // Fallback automático a 3 letras significativas
   const words = norm
@@ -255,6 +295,11 @@ export function getTeamLogo(teamName?: string | null): string {
   if (norm.includes('ASUNCION')) return '/images/teams/ad-asuncion.png';
   if (norm.includes('NERJA')) return '/images/teams/club-nerja.png';
   if (norm.includes('CEV')) return '/images/teams/cev-juvenil.jpg';
+  if (norm.includes('VAM')) return '/images/teams/vam.jpg';
+  if (norm.includes('JUST VOLEY')) return '/images/teams/just-voley.png';
+  if (norm.includes('FUNDACION VICTORIA')) return '/images/teams/fundacion-victoria.jpg';
+  if (norm.includes('REAL Y CUBILES') || norm.includes('CUBILES')) return '/images/teams/real-cubiles.png';
+  if (norm.includes('COLINA')) return '/images/teams/la-colina.png';
 
   // Si no coincide con ninguno, escudo de San Pedro o genérico
   return '/images/logo.jpg';

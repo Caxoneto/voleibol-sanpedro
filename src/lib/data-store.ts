@@ -51,12 +51,21 @@ import {
   FAVB_STANDINGS,
 } from './favb-data';
 
-export const INITIAL_CATEGORIES: Category[] = FAVB_CATEGORIES;
-export const INITIAL_TEAMS: Team[] = FAVB_TEAMS;
-export const INITIAL_PLAYERS: Player[] = FAVB_PLAYERS;
-export const INITIAL_STAFF: Staff[] = FAVB_STAFF;
-export const INITIAL_MATCHES: Match[] = FAVB_MATCHES;
-export const INITIAL_STANDINGS: Standings[] = FAVB_STANDINGS;
+import {
+  AFADE_CATEGORIES,
+  AFADE_TEAMS,
+  AFADE_PLAYERS,
+  AFADE_STAFF,
+  AFADE_MATCHES,
+  AFADE_STANDINGS,
+} from './afade-data';
+
+export const INITIAL_CATEGORIES: Category[] = [...FAVB_CATEGORIES, ...AFADE_CATEGORIES];
+export const INITIAL_TEAMS: Team[] = [...FAVB_TEAMS, ...AFADE_TEAMS];
+export const INITIAL_PLAYERS: Player[] = [...FAVB_PLAYERS, ...AFADE_PLAYERS];
+export const INITIAL_STAFF: Staff[] = [...FAVB_STAFF, ...AFADE_STAFF];
+export const INITIAL_MATCHES: Match[] = [...FAVB_MATCHES, ...AFADE_MATCHES];
+export const INITIAL_STANDINGS: Standings[] = [...FAVB_STANDINGS, ...AFADE_STANDINGS];
 
 export const INITIAL_ARTICLES: Article[] = [
   {
@@ -143,12 +152,7 @@ Compartir este número es una de las tradiciones de nuestras familias, socios, j
 
 ### ¿Cómo adquirir tu décimo?
 
-Puedes hacerte con tus décimos del **15.586** de varias formas:
-
-1. **En el Pabellón Polideportivo Sergio Scariolo:** Preguntando directamente a los entrenadores o delegados durante los entrenamientos semanales de cantera y del primer equipo.
-2. **Reserva directa por WhatsApp:** Si prefieres coordinar tu reserva previamente con los responsables del club, puedes escribirnos directamente:
-
-[Reservar décimos por WhatsApp](https://wa.me/34657713771?text=Hola%2C%20estoy%20interesado%20en%20comprar%20decimos%20de%20Loteria%20de%20Navidad%20del%20Voleibol%20San%20Pedro%20(15.586))
+1. **En el Pabellón Polideportivo Sergio Scariolo:** Preguntando directamente a los entrenadores durante los entrenamientos semanales de cantera y del primer equipo (únicamente pago en efectivo).
 
 ¡Muchas gracias por apoyar al club y mucha suerte a todos con el **15.586**!`,
     categoryId: 'cat-club',

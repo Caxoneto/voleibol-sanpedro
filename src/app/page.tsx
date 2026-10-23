@@ -34,6 +34,7 @@ export default async function HomePage() {
       matchDate: live.matchDate || m.matchDate,
       venueName: live.venue || m.venueName,
       status: live.status,
+      statusText: live.statusText ?? m.statusText,
       homeScore: live.homeScore ?? m.homeScore,
       awayScore: live.awayScore ?? m.awayScore,
       setScores: live.setScores && live.setScores.length > 0 ? live.setScores : m.setScores,
@@ -41,9 +42,16 @@ export default async function HomePage() {
     };
   });
 
-  // Seleccionar el partido destacado entre los partidos EN JUEGO (LIVE) o el PRÓXIMO pendiente (SCHEDULED) más cercano
+  // Seleccionar el partido destacado entre los partidos EN JUEGO (LIVE) o el PRÓXIMO pendiente (SCHEDULED) más cercano (excluyendo aplazados)
   const pendingMatches = matches
-    .filter((m) => m.status === 'LIVE' || m.status === 'SCHEDULED')
+    .filter((m) => {
+      if (m.status === 'LIVE') return true;
+      if (m.status === 'SCHEDULED') {
+        const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
+        return !isPast12h;
+      }
+      return false;
+    })
     .sort((a, b) => {
       if (a.status === 'LIVE' && b.status !== 'LIVE') return -1;
       if (b.status === 'LIVE' && a.status !== 'LIVE') return 1;
@@ -78,6 +86,7 @@ export default async function HomePage() {
       matchDate: m.matchDate,
       dateStr: formatMadridDateString(m.matchDate),
       status: m.status,
+      statusText: m.statusText,
       homeScore: 'homeScore' in m ? (m.homeScore as number | undefined) : undefined,
       awayScore: 'awayScore' in m ? (m.awayScore as number | undefined) : undefined,
       setScores: m.setScores,
@@ -104,9 +113,9 @@ export default async function HomePage() {
         <div className="absolute -top-32 left-1/4 w-96 h-96 bg-primary-container/25 rounded-full blur-[140px] pointer-events-none animate-pulse-aura" />
 
         <div className="relative max-w-7xl mx-auto px-4 lg:px-8 pt-2 pb-2 sm:pt-3 sm:pb-4 flex flex-col justify-start w-full">
-          {/* Cabecera Hero + Emblema Oficial "Yo Voley... ¿y tú?" */}
+          {/* Cabecera Hero + Emblema Oficial "Yo Voley... ¿y tú?" + Promoción Lotería de Navidad */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
-            <div className="max-w-3xl">
+            <div className="max-w-2xl lg:max-w-3xl">
               <h1 className="font-display-xl text-[2.1rem] sm:text-5xl lg:text-6xl xl:text-7xl tracking-tight text-on-surface uppercase leading-[0.95]">
                 PASIÓN, CANTERA <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
@@ -115,63 +124,93 @@ export default async function HomePage() {
               </h1>
             </div>
 
-            {/* Emblema / Lema Oficial de la Temporada: "Yo Voley... ¿y tú?" (Recreación fiel de RRSS) */}
-            <div
-              className="self-start md:self-center shrink-0 select-none px-4 py-1 sm:px-6 sm:py-3 -rotate-6 transform transition-transform duration-300 hover:-rotate-3"
-              aria-label="Lema oficial: Yo Voley... ¿y tú?"
-            >
+            {/* Bloque interactivo: Slogan + Lotería Saltando */}
+            <div className="flex flex-row items-center justify-between sm:justify-end gap-3 sm:gap-6 lg:gap-8 self-start md:self-center shrink-0 w-full md:w-auto">
+              {/* Emblema / Lema Oficial de la Temporada: "Yo Voley... ¿y tú?" (Recreación fiel de RRSS) */}
               <div
-                className="flex flex-col items-center leading-none"
-                style={{ fontFamily: 'var(--font-brush), cursive' }}
+                className="shrink-0 select-none px-2 sm:px-4 py-1 -rotate-6 transform transition-transform duration-300 hover:-rotate-3"
+                aria-label="Lema oficial: Yo Voley... ¿y tú?"
               >
-                {/* Línea superior blanca: Yo Voley... */}
-                <span className="text-white text-3xl sm:text-4xl lg:text-5xl tracking-wide drop-shadow-[0_3px_10px_rgba(0,0,0,0.9)]">
-                  Yo Voley...
-                </span>
-
-                {/* Trazo de pincel rojo intenso debajo de Yo Voley... */}
-                <svg
-                  viewBox="0 0 240 22"
-                  className="w-40 sm:w-52 lg:w-60 h-4 sm:h-5 -my-1 overflow-visible"
-                  aria-hidden="true"
+                <div
+                  className="flex flex-col items-center leading-none"
+                  style={{ fontFamily: 'var(--font-brush), cursive' }}
                 >
-                  <path
-                    d="M4 15 C 65 8, 155 5, 236 3"
-                    stroke="#e10600"
-                    strokeWidth="4.5"
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-                  <path
-                    d="M14 19 C 80 13, 165 9, 226 7"
-                    stroke="#b80000"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    fill="none"
-                    opacity="0.85"
-                  />
-                </svg>
+                  {/* Línea superior blanca: Yo Voley... */}
+                  <span className="text-white text-3xl sm:text-4xl lg:text-5xl tracking-wide drop-shadow-[0_3px_10px_rgba(0,0,0,0.9)]">
+                    Yo Voley...
+                  </span>
 
-                {/* Línea inferior roja: ¿y tú? */}
-                <span className="text-[#ff1111] text-4xl sm:text-5xl lg:text-6xl tracking-wide -mt-1 drop-shadow-[0_3px_12px_rgba(225,6,0,0.45)]">
-                  ¿y tú?
-                </span>
+                  {/* Trazo de pincel rojo intenso debajo de Yo Voley... */}
+                  <svg
+                    viewBox="0 0 240 22"
+                    className="w-40 sm:w-52 lg:w-60 h-4 sm:h-5 -my-1 overflow-visible"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M4 15 C 65 8, 155 5, 236 3"
+                      stroke="#e10600"
+                      strokeWidth="4.5"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                    <path
+                      d="M14 19 C 80 13, 165 9, 226 7"
+                      stroke="#b80000"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      fill="none"
+                      opacity="0.85"
+                    />
+                  </svg>
 
-                {/* Corazón dibujado a mano en trazo blanco debajo */}
-                <svg
-                  viewBox="0 0 44 42"
-                  className="w-6 h-6 sm:w-7 sm:h-7 mt-1 -ml-4 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
-                  fill="none"
-                  aria-hidden="true"
+                  {/* Línea inferior roja: ¿y tú? */}
+                  <span className="text-[#ff1111] text-4xl sm:text-5xl lg:text-6xl tracking-wide -mt-1 drop-shadow-[0_3px_12px_rgba(225,6,0,0.45)]">
+                    ¿y tú?
+                  </span>
+
+                  {/* Corazón dibujado a mano en trazo blanco debajo */}
+                  <svg
+                    viewBox="0 0 44 42"
+                    className="w-6 h-6 sm:w-7 sm:h-7 mt-1 -ml-4 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M21 37 C 18 32, 6 23, 7 13 C 7.8 7, 13.5 5.5, 17.5 10.5 C 19.2 12.6, 20.4 15.2, 21 17 C 21.8 13.5, 24.5 6.5, 30 6.5 C 35 6.5, 37.5 11.5, 36 17.5 C 34 25.5, 24.5 33, 21 37 Z"
+                      stroke="currentColor"
+                      strokeWidth="2.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Promoción Lotería de Navidad 2026 - Animación de escala progresiva y color alternado */}
+              <div className="shrink-0 flex flex-col items-center pt-5 pb-2">
+                <Link
+                  href="/noticias/loteria-navidad-2026-voleibol-san-pedro-15586"
+                  aria-label="Lotería de Navidad 2026 del C.D. Voleibol San Pedro: Número 15.586. Haz clic para leer los detalles"
+                  title="Lotería de Navidad 2026: Número 15.586 - C.D. Voleibol San Pedro (Haz clic para ver cómo adquirir décimos)"
+                  className="group relative flex flex-col items-center cursor-pointer select-none"
                 >
-                  <path
-                    d="M21 37 C 18 32, 6 23, 7 13 C 7.8 7, 13.5 5.5, 17.5 10.5 C 19.2 12.6, 20.4 15.2, 21 17 C 21.8 13.5, 24.5 6.5, 30 6.5 C 35 6.5, 37.5 11.5, 36 17.5 C 34 25.5, 24.5 33, 21 37 Z"
-                    stroke="currentColor"
-                    strokeWidth="2.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                  {/* Etiqueta / Pill promocional festiva */}
+                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20 px-2.5 py-0.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black font-headline font-black text-[9px] sm:text-[10px] uppercase tracking-wider rounded-full shadow-[0_2px_10px_rgba(245,158,11,0.55)] whitespace-nowrap transition-transform duration-200 group-hover:scale-105 pointer-events-none border border-amber-100/70">
+                    Lotería · 15.586
+                  </span>
+
+                  {/* Décimo optimizado y sin márgenes con animación scaleAndColorChange */}
+                  <div className="animate-lottery-pulse relative w-28 sm:w-36 md:w-40 lg:w-44 aspect-[950/598] rounded-md overflow-hidden border-2 border-amber-400 bg-white">
+                    <Image
+                      src="/images/noticias/loteria-navidad-2026.png"
+                      alt="Décimo oficial de Lotería de Navidad 2026 del C.D. Voleibol San Pedro - Número 15.586"
+                      fill
+                      sizes="(max-width: 640px) 112px, (max-width: 768px) 144px, (max-width: 1024px) 160px, 176px"
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                </Link>
               </div>
             </div>
           </div>
@@ -213,7 +252,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Featured Match Card (Left 7 Cols) */}
             {featuredMatch && (
-              <div className="lg:col-span-7 bg-surface-container-low p-4 sm:p-8 flex flex-col justify-between border border-primary-container/30 shadow-[0px_0px_30px_rgba(217,4,41,0.15)] relative">
+              <div className="lg:col-span-7 bg-surface-container-low p-4 sm:p-8 flex flex-col justify-between border border-primary-container/30 shadow-[0px_0px_30px_rgba(217,4,41,0.15)] relative overflow-hidden">
                 <div>
                   <div className="flex items-center justify-between gap-2 pb-4 border-b border-white/5 flex-wrap">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[11px] font-bold uppercase tracking-wider">
@@ -369,6 +408,22 @@ export default async function HomePage() {
                     Cómo llegar al Pabellón
                   </a>
                 </div>
+
+                {/* Sello diagonal prominente de APLAZADO / CANCELADO */}
+                {(featuredMatch.status === 'POSTPONED' || featuredMatch.status === 'CANCELLED') && (
+                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden">
+                    <div
+                      className={`-rotate-12 transform px-8 py-2 border-2 font-display-xl text-2xl sm:text-3xl tracking-[0.2em] uppercase font-black shadow-[0_8px_32px_rgba(0,0,0,0.85)] select-none ${
+                        featuredMatch.status === 'CANCELLED'
+                          ? 'bg-red-950/95 text-red-200 border-red-500'
+                          : 'bg-amber-500/95 text-black border-amber-200'
+                      }`}
+                    >
+                      {featuredMatch.statusText?.toUpperCase() ||
+                        (featuredMatch.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

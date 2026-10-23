@@ -154,7 +154,7 @@ function parseArticleContent(content: string) {
                 Reserva de Décimos de Lotería
               </h4>
               <p className="text-tertiary text-xs sm:text-sm font-body-sm leading-relaxed">
-                Contacta directamente con los delegados del club para apartar tus décimos del número 15.586 y coordinar su entrega.
+                Contacta directamente con los entrenadores del club durante los entrenamientos para conseguir tus décimos del número 15.586.
               </p>
             </div>
             <a

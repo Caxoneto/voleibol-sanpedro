@@ -57,9 +57,14 @@ export default function CalendarioPage() {
         matchDate: typeof live.matchDate === 'string' && live.matchDate ? live.matchDate : m.matchDate,
         venueName: typeof live.venue === 'string' && live.venue ? live.venue : m.venueName,
         status:
-          live.status === 'FINISHED' || live.status === 'LIVE' || live.status === 'SCHEDULED'
-            ? live.status
+          live.status === 'FINISHED' ||
+          live.status === 'LIVE' ||
+          live.status === 'SCHEDULED' ||
+          live.status === 'POSTPONED' ||
+          live.status === 'CANCELLED'
+            ? (live.status as Match['status'])
             : m.status,
+        statusText: typeof live.statusText === 'string' ? live.statusText : m.statusText,
         setScores:
           Array.isArray(live.setScores) && live.setScores.length > 0
             ? (live.setScores as { home: number; away: number }[])
@@ -97,7 +102,10 @@ export default function CalendarioPage() {
         }
 
         if (force) {
-          setSyncFeedback('Calendario, horarios y resultados sincronizados con favoley.net');
+          const isAfade = selectedCategory.includes('afade');
+          setSyncFeedback(
+            `Calendario, horarios y resultados sincronizados con ${isAfade ? 'ligaafade.es' : 'las competiciones oficiales (FAVB y Liga AFADE)'}`
+          );
           setTimeout(() => setSyncFeedback(null), 3500);
         }
       }
@@ -177,6 +185,12 @@ export default function CalendarioPage() {
       const roundMatches = (byRound.get(roundNum) || []).sort(
         (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
       );
+      const playablePending = roundMatches.filter((m) => {
+        if (m.status === 'FINISHED' || m.status === 'POSTPONED' || m.status === 'CANCELLED') return false;
+        const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
+        if (m.status === 'SCHEDULED' && isPast12h) return false;
+        return true;
+      });
       const pending = roundMatches.filter((m) => m.status !== 'FINISHED');
       const firstMatch = roundMatches[0];
       const dateLabel = firstMatch
@@ -190,7 +204,9 @@ export default function CalendarioPage() {
         hasPending: pending.length > 0,
         allFinished: pending.length === 0 && roundMatches.length > 0,
         earliestPendingTime:
-          pending.length > 0
+          playablePending.length > 0
+            ? new Date(playablePending[0].matchDate).getTime()
+            : pending.length > 0
             ? new Date(pending[0].matchDate).getTime()
             : Number.POSITIVE_INFINITY,
       });
@@ -537,7 +553,7 @@ export default function CalendarioPage() {
               onClick={() => fetchLiveCalendarMatches(true)}
               disabled={syncing}
               className="w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
-              title={`Sincronizar calendario, horarios y resultados con favoley.net (Última: ${lastSyncTime})`}
+              title={`Sincronizar calendario, horarios y resultados oficiales (FAVB y Liga AFADE) (Última: ${lastSyncTime})`}
               aria-label="Sincronizar calendario"
             >
               <span className={`material-symbols-outlined text-[18px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
@@ -708,7 +724,7 @@ export default function CalendarioPage() {
               return (
                 <div
                   key={match.id}
-                  className={`bg-surface-container-low border p-3.5 sm:p-4 transition-all hover:border-primary-container/60 ${
+                  className={`bg-surface-container-low border p-3.5 sm:p-4 transition-all relative overflow-hidden hover:border-primary-container/60 ${
                     match.isClubHome
                       ? 'border-l-4 border-l-primary-container border-white/5'
                       : 'border-white/5'
@@ -735,9 +751,19 @@ export default function CalendarioPage() {
                               month: 'short',
                             })}
                           </span>
-                          <span className="font-display-xl text-xl text-primary leading-none mt-0.5">
-                            {formatMadridTime(match.matchDate)}h
-                          </span>
+                          {match.status === 'POSTPONED' ? (
+                            <span className="font-display-xl text-base sm:text-lg text-amber-400 leading-none mt-0.5">
+                              APLAZADO
+                            </span>
+                          ) : match.status === 'CANCELLED' ? (
+                            <span className="font-display-xl text-base sm:text-lg text-red-400 leading-none mt-0.5">
+                              CANCELADO
+                            </span>
+                          ) : (
+                            <span className="font-display-xl text-xl text-primary leading-none mt-0.5">
+                              {formatMadridTime(match.matchDate)}h
+                            </span>
+                          )}
                           <span className="text-[10px] text-tertiary uppercase mt-0.5">
                             {team?.name || 'Oficial FAVB'}
                           </span>
@@ -745,7 +771,7 @@ export default function CalendarioPage() {
                       </div>
 
                       {/* Iconos compactos en móvil a la derecha de la cabecera */}
-                      <div className="flex lg:hidden items-center gap-1.5 shrink-0">
+                      <div className="flex lg:hidden items-center gap-1.5 shrink-0 relative z-30">
                         <span
                           className={`w-7 h-7 flex items-center justify-center border ${
                             match.isClubHome
@@ -885,7 +911,7 @@ export default function CalendarioPage() {
                     </div>
 
                     {/* Right (Desktop): Compact Icon-Only Actions */}
-                    <div className="hidden lg:flex items-center gap-2 shrink-0">
+                    <div className="hidden lg:flex items-center gap-2 shrink-0 relative z-30">
                       <span
                         className={`w-8 h-8 flex items-center justify-center border ${
                           match.isClubHome
@@ -956,6 +982,22 @@ export default function CalendarioPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Sello diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores */}
+                  {(match.status === 'POSTPONED' || match.status === 'CANCELLED') && (
+                    <div className="pointer-events-none absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
+                      <div
+                        className={`-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] ${
+                          match.status === 'CANCELLED'
+                            ? 'bg-red-950/95 text-red-200 border-red-500'
+                            : 'bg-amber-500/95 text-black border-amber-200'
+                        }`}
+                      >
+                        {match.statusText?.toUpperCase() ||
+                          (match.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })

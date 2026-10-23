@@ -30,9 +30,63 @@ export default function PlantillasPage() {
       const res = await fetch(`/api/favb/rosters?force=${force}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success && Array.isArray(data.players) && data.players.length > 0) {
-        setPlayers(data.players);
+        setPlayers((prevPlayers) => {
+          // Fusión estrictamente aditiva: ningún jugador real existente en plantilla se borra si no jugó un partido
+          const mergedByTeam = new Map<string, Map<string, Player>>();
+          for (const p of prevPlayers) {
+            if (p.firstName !== 'Jugador' && p.firstName !== 'Jugadora') {
+              if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
+              const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
+              mergedByTeam.get(p.teamId)!.set(key, p);
+            }
+          }
+          for (const p of data.players) {
+            if (p.firstName !== 'Jugador' && p.firstName !== 'Jugadora') {
+              if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
+              const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
+              const existing = mergedByTeam.get(p.teamId)!.get(key);
+              if (existing) {
+                mergedByTeam.get(p.teamId)!.set(key, { ...existing, ...p });
+              } else {
+                mergedByTeam.get(p.teamId)!.set(key, p);
+              }
+            }
+          }
+
+          const result: Player[] = [];
+          for (const catTeam of INITIAL_TEAMS) {
+            const teamMap = mergedByTeam.get(catTeam.id);
+            const teamPlayers = teamMap ? Array.from(teamMap.values()) : [];
+            if (teamPlayers.length > 0) {
+              teamPlayers.sort((a, b) => a.number - b.number);
+              result.push(...teamPlayers);
+              if (teamPlayers.length < 6) {
+                const incomingPlaceholders = data.players.filter(
+                  (p: Player) =>
+                    p.teamId === catTeam.id &&
+                    (p.firstName === 'Jugador' || p.firstName === 'Jugadora')
+                );
+                result.push(...incomingPlaceholders);
+              }
+            } else {
+              const teamPlaceholders = data.players.filter((p: Player) => p.teamId === catTeam.id);
+              result.push(...teamPlaceholders);
+            }
+          }
+          return result;
+        });
+
         if (Array.isArray(data.staff) && data.staff.length > 0) {
-          setStaffList(data.staff);
+          setStaffList((prevStaff) => {
+            const staffMap = new Map<string, Staff>();
+            for (const s of prevStaff) {
+              staffMap.set(`${s.teamId}_${s.name.toLowerCase()}`, s);
+            }
+            for (const s of data.staff) {
+              staffMap.set(`${s.teamId}_${s.name.toLowerCase()}`, s);
+            }
+            return Array.from(staffMap.values());
+          });
         }
         const formattedTime = data.lastSync
           ? new Date(data.lastSync).toLocaleTimeString('es-ES', {
@@ -237,10 +291,23 @@ export default function PlantillasPage() {
 
           <button
             type="button"
-            onClick={() => fetchLiveRosters(true)}
+            onClick={() => {
+              if (activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE')) {
+                setSyncing(true);
+                fetch(`/api/afade/sync?force=true`, { cache: 'no-store' })
+                  .then(() => {
+                    setLastSyncTime(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
+                    setSyncFeedback('Competición sincronizada con ligaafade.es');
+                    setTimeout(() => setSyncFeedback(null), 3500);
+                  })
+                  .finally(() => setSyncing(false));
+              } else {
+                fetchLiveRosters(true);
+              }
+            }}
             disabled={syncing}
             className="w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
-            title={`Sincronizar plantillas y cuerpo técnico ahora con favoley.net (Última: ${lastSyncTime})`}
+            title={`Sincronizar plantillas y cuerpo técnico ahora con ${activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE') ? 'ligaafade.es' : 'favoley.net'} (Última: ${lastSyncTime})`}
             aria-label="Sincronizar plantillas"
           >
             <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
@@ -268,7 +335,7 @@ export default function PlantillasPage() {
               </span>
               <span className="text-tertiary">•</span>
               <span className="text-[11px] font-mono text-tertiary">
-                Sincronizado con favoley.net ({lastSyncTime})
+                Sincronizado con {activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE') ? 'ligaafade.es' : 'favoley.net'} ({lastSyncTime})
               </span>
             </div>
             <h2 className="font-display-xl text-3xl uppercase text-white mt-1">
@@ -307,23 +374,42 @@ export default function PlantillasPage() {
         {/* Grid de Jugadores con Placeholders en Grises y Negro */}
         <div className="py-6 sm:py-8">
           {filteredPlayers.length === 0 ? (
-            <div className="bg-surface-container-low border border-white/5 p-12 text-center flex flex-col items-center justify-center">
-              <span className="material-symbols-outlined text-4xl text-tertiary mb-2" aria-hidden="true">
-                sports_volleyball
-              </span>
-              <h3 className="font-headline-sm text-lg uppercase text-white font-bold">
-                No hay jugadores registrados en esta posición
-              </h3>
-              <p className="text-xs text-tertiary mt-1">
-                Selecciona otra demarcación o restablece el filtro para ver la plantilla completa.
-              </p>
-              <button
-                onClick={() => setSelectedPosition('ALL')}
-                className="mt-4 px-4 py-2 bg-primary-container text-white text-xs uppercase font-bold"
-              >
-                Ver todos los jugadores
-              </button>
-            </div>
+            (activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE')) && selectedPosition === 'ALL' ? (
+              <div className="bg-surface-container-low border border-white/5 p-8 sm:p-14 text-center flex flex-col items-center justify-center max-w-2xl mx-auto shadow-2xl">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-container/20 flex items-center justify-center mb-4 text-primary">
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl" aria-hidden="true">
+                    groups
+                  </span>
+                </div>
+                <span className="px-2.5 py-1 bg-surface-container-highest text-tertiary font-bold text-[10px] uppercase tracking-widest border border-white/10 mb-3">
+                  Competición Liga AFADE 26/27
+                </span>
+                <h3 className="font-display-xl text-xl sm:text-2xl uppercase text-white font-bold mb-2">
+                  Plantilla en fase de configuración
+                </h3>
+                <p className="text-xs sm:text-sm text-tertiary max-w-md leading-relaxed">
+                  Las licencias oficiales y la relación de jugadoras de esta categoría se publicarán en cuanto la organización valide las actas de juego.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-surface-container-low border border-white/5 p-12 text-center flex flex-col items-center justify-center">
+                <span className="material-symbols-outlined text-4xl text-tertiary mb-2" aria-hidden="true">
+                  sports_volleyball
+                </span>
+                <h3 className="font-headline-sm text-lg uppercase text-white font-bold">
+                  No hay jugadores registrados en esta posición
+                </h3>
+                <p className="text-xs text-tertiary mt-1">
+                  Selecciona otra demarcación o restablece el filtro para ver la plantilla completa.
+                </p>
+                <button
+                  onClick={() => setSelectedPosition('ALL')}
+                  className="mt-4 px-4 py-2 bg-primary-container text-white text-xs uppercase font-bold"
+                >
+                  Ver todos los jugadores
+                </button>
+              </div>
+            )
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {filteredPlayers.map((player) => {

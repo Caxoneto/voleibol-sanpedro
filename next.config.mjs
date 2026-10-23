@@ -21,6 +21,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'www.favoley.net',
       },
+      {
+        protocol: 'https',
+        hostname: 'ligaafade.es',
+      },
     ],
   },
   async headers() {
@@ -59,7 +63,7 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net; connect-src 'self' https://favoley.net https://www.favoley.net; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net https://ligaafade.es; connect-src 'self' https://favoley.net https://www.favoley.net https://ligaafade.es; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
           },
         ],
       },

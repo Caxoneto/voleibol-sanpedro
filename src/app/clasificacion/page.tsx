@@ -47,7 +47,10 @@ export default function ClasificacionPage() {
         }
 
         if (force) {
-          setSyncFeedback('Clasificación oficial sincronizada en directo con favoley.net');
+          const currentIsAfade = selectedCatId.includes('afade');
+          setSyncFeedback(
+            `Clasificación oficial sincronizada en directo con ${currentIsAfade ? 'ligaafade.es' : 'favoley.net'}`
+          );
           setTimeout(() => setSyncFeedback(null), 3500);
         }
       }
@@ -115,6 +118,7 @@ export default function ClasificacionPage() {
 
   const activeCategory =
     INITIAL_CATEGORIES.find((c) => c.id === selectedCatId) || INITIAL_CATEGORIES[0];
+  const isAfade = activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE');
 
   return (
     <div className="w-full min-h-screen bg-background">
@@ -166,7 +170,7 @@ export default function ClasificacionPage() {
             onClick={() => fetchLiveStandings(true)}
             disabled={syncing}
             className="w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
-            title={`Sincronizar clasificación ahora con favoley.net (Última: ${lastSyncTime})`}
+            title={`Sincronizar clasificación ahora con ${isAfade ? 'ligaafade.es' : 'favoley.net'} (Última: ${lastSyncTime})`}
             aria-label="Sincronizar clasificación"
           >
             <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
@@ -193,7 +197,7 @@ export default function ClasificacionPage() {
               </span>
               <span className="text-tertiary text-xs">·</span>
               <span className="text-[11px] font-mono text-tertiary">
-                Sincronizado con favoley.net ({lastSyncTime})
+                Sincronizado con {isAfade ? 'ligaafade.es' : 'favoley.net'} ({lastSyncTime})
               </span>
             </div>
             <h2 className="font-display-xl text-3xl uppercase text-white mt-0.5">
@@ -331,7 +335,7 @@ export default function ClasificacionPage() {
               <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">info</span>
               <div>
                 <h3 className="font-headline-sm text-sm uppercase text-white font-bold group-hover:text-primary transition-colors">
-                  Criterio Oficial de Puntuación FAVB / RFEVB
+                  Criterio Oficial de Puntuación {isAfade ? 'Liga AFADE / RFEVB' : 'FAVB / RFEVB'}
                 </h3>
                 <span className="text-xs text-tertiary">
                   Haz clic para ver cómo se calculan los puntos oficiales según sets ganados

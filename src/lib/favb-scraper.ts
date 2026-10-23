@@ -15,6 +15,8 @@ import {
   FAVB_PLAYERS,
   FAVB_STAFF,
 } from './favb-data';
+import { AFADE_CATEGORIES, AFADE_STANDINGS } from './afade-data';
+import { getConsolidatedAfadeMatches, syncAfadeData } from './afade-scraper';
 import { Standings, Player, Staff, Position, StaffRole } from './types';
 import { formatMadridDateString, formatMadridTime } from './date-utils';
 
@@ -192,7 +194,7 @@ export interface FavbMatch {
   dateStr: string;
   timeStr: string;
   venue: string;
-  status: 'SCHEDULED' | 'FINISHED' | 'LIVE';
+  status: 'SCHEDULED' | 'FINISHED' | 'LIVE' | 'POSTPONED' | 'CANCELLED';
   homeScore?: number;
   awayScore?: number;
   setScores?: { home: number; away: number }[];
@@ -201,6 +203,8 @@ export interface FavbMatch {
   favbUrl: string;
   statusText?: string;
   lastChecked?: string;
+  afadeId?: string | number;
+  association?: 'FAVB' | 'AFADE';
 }
 
 export interface FavbStanding {
@@ -217,7 +221,7 @@ export interface FavbStanding {
 
 export interface ScrapedMatchScore {
   favbId: string;
-  status: 'SCHEDULED' | 'FINISHED' | 'LIVE';
+  status: 'SCHEDULED' | 'FINISHED' | 'LIVE' | 'POSTPONED' | 'CANCELLED';
   statusText: string;
   homeScore?: number;
   awayScore?: number;
@@ -237,7 +241,7 @@ export interface FavbRawPersona {
 
 interface FavbJsonMatchDetails {
   favbId: string;
-  status: 'SCHEDULED' | 'FINISHED' | 'LIVE';
+  status: 'SCHEDULED' | 'FINISHED' | 'LIVE' | 'POSTPONED' | 'CANCELLED';
   statusText: string;
   homeTeam?: string;
   awayTeam?: string;
@@ -322,9 +326,25 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
 
     const p = json.datos.partido;
     const estadoRaw = String(p.estado || '').toLowerCase();
-    let status: 'SCHEDULED' | 'FINISHED' | 'LIVE' = 'SCHEDULED';
-    if (estadoRaw === 'finalizado') status = 'FINISHED';
-    else if (estadoRaw === 'en_juego') status = 'LIVE';
+    let status: 'SCHEDULED' | 'FINISHED' | 'LIVE' | 'POSTPONED' | 'CANCELLED' = 'SCHEDULED';
+    let statusText = 'Próximo';
+
+    if (estadoRaw.includes('aplaz')) {
+      status = 'POSTPONED';
+      statusText = 'Aplazado';
+    } else if (estadoRaw.includes('cancel') || estadoRaw.includes('anulad')) {
+      status = 'CANCELLED';
+      statusText = 'Cancelado';
+    } else if (estadoRaw.includes('suspend')) {
+      status = 'CANCELLED';
+      statusText = 'Suspendido';
+    } else if (estadoRaw === 'finalizado') {
+      status = 'FINISHED';
+      statusText = 'Finalizado';
+    } else if (estadoRaw === 'en_juego') {
+      status = 'LIVE';
+      statusText = 'En juego';
+    }
 
     const parcialesRaw = Array.isArray(json.datos.parciales) ? json.datos.parciales : [];
     const setScores = parcialesRaw.map(
@@ -336,11 +356,12 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
 
     if (status === 'SCHEDULED' && setScores.length > 0) {
       status = 'LIVE';
+      statusText = 'En juego';
     }
 
     let homeScore: number | undefined;
     let awayScore: number | undefined;
-    if (status !== 'SCHEDULED') {
+    if (status !== 'SCHEDULED' && status !== 'POSTPONED' && status !== 'CANCELLED') {
       if (p.sets_local !== null && p.sets_local !== undefined) {
         homeScore = Number(p.sets_local);
       } else if (setScores.length > 0) {
@@ -364,6 +385,15 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
           ? String(p.hora).slice(0, 5)
           : '12:00';
       matchDateIso = madridDateTimeToUtcIso(String(p.fecha), hora);
+    }
+
+    // Regla de 12 horas: si en favoley no se indica cambio de estado pasado 12h de la fecha programada y no hay parciales, marcar APLAZADO
+    if (status === 'SCHEDULED' && setScores.length === 0 && matchDateIso) {
+      const scheduledTime = new Date(matchDateIso).getTime();
+      if (scheduledTime > 0 && Date.now() - scheduledTime >= 12 * 60 * 60 * 1000) {
+        status = 'POSTPONED';
+        statusText = 'Aplazado';
+      }
     }
 
     let venue: string | undefined;
@@ -398,7 +428,7 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
     return {
       favbId: cleanNumId,
       status,
-      statusText: status === 'FINISHED' ? 'Finalizado' : status === 'LIVE' ? 'En juego' : 'Próximo',
+      statusText,
       homeTeam,
       awayTeam,
       isClubHome,
@@ -473,10 +503,16 @@ export async function fetchLiveMatchScore(
     const statusMatch = html.match(/class=\"portal-marcador-estado[^\"]*\">([\s\S]*?)<\/span>/i);
     const rawStatus = statusMatch ? statusMatch[1].replace(/<[^>]+>/g, '').trim() : '';
 
-    let status: 'SCHEDULED' | 'FINISHED' | 'LIVE' = 'SCHEDULED';
+    let status: 'SCHEDULED' | 'FINISHED' | 'LIVE' | 'POSTPONED' | 'CANCELLED' = 'SCHEDULED';
     const statusLower = rawStatus.toLowerCase();
 
-    if (statusLower.includes('finaliz') || html.includes('estado-finalizado')) {
+    if (statusLower.includes('aplaz')) {
+      status = 'POSTPONED';
+    } else if (statusLower.includes('cancel') || statusLower.includes('anulad')) {
+      status = 'CANCELLED';
+    } else if (statusLower.includes('suspend')) {
+      status = 'CANCELLED';
+    } else if (statusLower.includes('finaliz') || html.includes('estado-finalizado')) {
       status = 'FINISHED';
     } else if (
       statusLower.includes('juego') ||
@@ -537,7 +573,17 @@ export async function fetchLiveMatchScore(
     return {
       favbId: cleanFavbId,
       status,
-      statusText: rawStatus || (status === 'FINISHED' ? 'Finalizado' : status === 'LIVE' ? 'En juego' : 'Próximo'),
+      statusText:
+        rawStatus ||
+        (status === 'FINISHED'
+          ? 'Finalizado'
+          : status === 'LIVE'
+          ? 'En juego'
+          : status === 'POSTPONED'
+          ? 'Aplazado'
+          : status === 'CANCELLED'
+          ? 'Cancelado'
+          : 'Próximo'),
       homeScore,
       awayScore,
       currentSetScore,
@@ -616,6 +662,16 @@ export async function updateMatchLiveScore(
       match.setScores = scraped.setScores;
     }
     match.lastChecked = scraped.lastChecked;
+
+    // Regla de 12 horas si continúa figurando SCHEDULED sin parciales
+    if (match.status === 'SCHEDULED' && (!match.setScores || match.setScores.length === 0)) {
+      const scheduledTime = new Date(match.matchDate).getTime();
+      if (scheduledTime > 0 && Date.now() - scheduledTime >= 12 * 60 * 60 * 1000) {
+        match.status = 'POSTPONED';
+        match.statusText = 'Aplazado';
+      }
+    }
+
     return { success: true, match, rawScraped: scraped };
   }
 
@@ -628,7 +684,26 @@ export async function updateMatchLiveScore(
       match.setScores = jsonDetails.setScores;
     }
     match.lastChecked = new Date().toISOString();
+
+    // Regla de 12 horas si continúa figurando SCHEDULED sin parciales
+    if (match.status === 'SCHEDULED' && (!match.setScores || match.setScores.length === 0)) {
+      const scheduledTime = new Date(match.matchDate).getTime();
+      if (scheduledTime > 0 && Date.now() - scheduledTime >= 12 * 60 * 60 * 1000) {
+        match.status = 'POSTPONED';
+        match.statusText = 'Aplazado';
+      }
+    }
+
     return { success: true, match };
+  }
+
+  // Si no hay respuesta remota, aplicar regla de 12h sobre la versión existente
+  if (match.status === 'SCHEDULED' && (!match.setScores || match.setScores.length === 0)) {
+    const scheduledTime = new Date(match.matchDate).getTime();
+    if (scheduledTime > 0 && Date.now() - scheduledTime >= 12 * 60 * 60 * 1000) {
+      match.status = 'POSTPONED';
+      match.statusText = 'Aplazado';
+    }
   }
 
   return {
@@ -677,8 +752,9 @@ export async function syncFavbData(forceRefresh = false): Promise<{
   // 1. Partidos pasados o de los próximos 14 días para sincronizar resultados, horarios, sedes y actas vía JSON rápido
   const targetMatches = cache.matches.filter(
     (m) =>
-      (m.dateStr <= todayStr && (m.status !== 'FINISHED' || !m.setScores || m.setScores.length === 0)) ||
-      (m.dateStr >= todayStr && m.dateStr <= horizonStr)
+      !m.id.startsWith('afade-') &&
+      ((m.dateStr <= todayStr && (m.status !== 'FINISHED' || !m.setScores || m.setScores.length === 0)) ||
+      (m.dateStr >= todayStr && m.dateStr <= horizonStr))
   );
 
   if (targetMatches.length > 0) {
@@ -702,6 +778,15 @@ export async function syncFavbData(forceRefresh = false): Promise<{
           }
           if (details.venue) m.venue = details.venue;
           m.lastChecked = new Date().toISOString();
+
+          // Regla de 12 horas si continúa figurando SCHEDULED sin parciales
+          if (m.status === 'SCHEDULED' && (!m.setScores || m.setScores.length === 0)) {
+            const scheduledTime = new Date(m.matchDate).getTime();
+            if (scheduledTime > 0 && Date.now() - scheduledTime >= 12 * 60 * 60 * 1000) {
+              m.status = 'POSTPONED';
+              m.statusText = 'Aplazado';
+            }
+          }
 
           if (details.clubPersonas.length > 0) {
             recordTeamPersonas(m.teamId, details.clubPersonas);
@@ -728,6 +813,17 @@ export async function syncFavbData(forceRefresh = false): Promise<{
     );
   }
 
+  // 2. Sincronizar simultáneamente las categorías de Liga AFADE
+  try {
+    const afadeRes = await syncAfadeData(forceRefresh);
+    if (afadeRes.success && afadeRes.matches.length > 0) {
+      const afadeMap = new Map(afadeRes.matches.map((m) => [m.id, m]));
+      cache.matches = cache.matches.map((m) => afadeMap.get(m.id) || m);
+    }
+  } catch (err) {
+    console.error('Error sincronizando Liga AFADE:', err);
+  }
+
   cache.lastSync = Date.now();
   if (forceRefresh) {
     lastForceSyncTime = cache.lastSync;
@@ -750,7 +846,7 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
   const teamMap = new Map(FAVB_TEAMS.map((t) => [t.id, t]));
   const catMap = new Map(FAVB_CATEGORIES.map((c) => [c.id, c]));
 
-  return FAVB_MATCHES.map((m) => {
+  const favbMatches: FavbMatch[] = FAVB_MATCHES.map((m) => {
     const team = teamMap.get(m.teamId);
     const category = team ? catMap.get(team.categoryId) : undefined;
 
@@ -759,6 +855,18 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
     if (m.setScores && m.setScores.length > 0) {
       homeScore = m.setScores.filter((s) => s.home > s.away).length;
       awayScore = m.setScores.filter((s) => s.away > s.home).length;
+    }
+
+    let status = m.status;
+    let statusText = m.statusText;
+
+    // Regla de 12 horas: si un partido programado no tiene parciales y pasaron más de 12 horas sin estado de favoley, se marca APLAZADO
+    if (status === 'SCHEDULED' && (!m.setScores || m.setScores.length === 0)) {
+      const scheduledTime = new Date(m.matchDate).getTime();
+      if (scheduledTime > 0 && Date.now() - scheduledTime >= 12 * 60 * 60 * 1000) {
+        status = 'POSTPONED';
+        statusText = 'Aplazado';
+      }
     }
 
     return {
@@ -776,14 +884,19 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
       dateStr: formatMadridDateString(m.matchDate),
       timeStr: formatMadridTime(m.matchDate),
       venue: m.venueName,
-      status: m.status as 'SCHEDULED' | 'FINISHED' | 'LIVE',
+      status,
+      statusText,
       homeScore,
       awayScore,
       setScores: m.setScores,
       isClubHome: m.isClubHome,
       favbUrl: m.favbMatchUrl || 'https://favoley.net/publico/index.php',
+      association: 'FAVB' as const,
     };
   });
+
+  const afadeMatches = getConsolidatedAfadeMatches();
+  return [...favbMatches, ...afadeMatches];
 }
 
 // ============================================================================
@@ -974,11 +1087,21 @@ export async function syncFavbRosters(forceRefresh = false): Promise<{
       const baseYear = fallbackPlayers[0]?.birthYear || 2009;
       const baseHeight = fallbackPlayers[0]?.heightCm || (isFemale ? 168 : 176);
 
-      // Mapa de jugadores reales por clave de nombre normalizado
+      // Mapa de jugadores reales por clave de nombre normalizado (estrictamente aditivo)
       const realByKey = new Map<string, Player>();
+      // 1. Sembrar jugadores oficiales base
       for (const rp of existingRealPlayers) {
         const key = normalizeNameKey(`${rp.firstName} ${rp.lastName}`);
         realByKey.set(key, { ...rp });
+      }
+      // 2. Sembrar jugadores reales acumulados de actas previas (para no perder ningún jugador convocado con anterioridad)
+      for (const cp of rosterCache.players.filter((p) => p.teamId === teamId)) {
+        if (cp.firstName !== 'Jugador' && cp.firstName !== 'Jugadora') {
+          const key = normalizeNameKey(`${cp.firstName} ${cp.lastName}`);
+          if (!realByKey.has(key)) {
+            realByKey.set(key, { ...cp });
+          }
+        }
       }
 
       const scrapedMap = scrapedPersonasByTeam.get(teamId);
@@ -1065,6 +1188,14 @@ export async function syncFavbRosters(forceRefresh = false): Promise<{
           continue;
         }
         staffByKey.set(normalizeNameKey(st.name), { ...st });
+      }
+      for (const cs of rosterCache.staff.filter((s) => s.teamId === teamId)) {
+        if (!cs.name.toLowerCase().includes('entrenador/a oficial')) {
+          const key = normalizeNameKey(cs.name);
+          if (!staffByKey.has(key)) {
+            staffByKey.set(key, { ...cs });
+          }
+        }
       }
 
       if (hasRealScrapedStaff) {
@@ -1225,8 +1356,17 @@ export async function syncFavbStandings(forceRefresh = false): Promise<{
     byCategory.set(comp.categoryId, previous);
   }
 
-  await Promise.allSettled(
-    FAVB_COMPETITIONS.map(async (comp) => {
+  // Inicializar también las categorías de Liga AFADE
+  for (const cat of AFADE_CATEGORIES) {
+    const previous =
+      standingsCache.standings.length > 0
+        ? standingsCache.standings.filter((s) => s.categoryId === cat.id)
+        : AFADE_STANDINGS.filter((s) => s.categoryId === cat.id);
+    byCategory.set(cat.id, previous);
+  }
+
+  await Promise.allSettled([
+    ...FAVB_COMPETITIONS.map(async (comp) => {
       const url = `https://favoley.net/publico/seccion.php?seccion=competicion&id=${comp.favbId}&vista=clasificacion&grupo=${comp.grupo}&fase=${comp.fase}`;
       const res = await fetch(url, {
         headers: {
@@ -1244,13 +1384,38 @@ export async function syncFavbStandings(forceRefresh = false): Promise<{
       if (parsed.length > 0) {
         byCategory.set(comp.categoryId, parsed);
       }
-    })
-  );
+    }),
+    (async () => {
+      try {
+        const afadeRes = await syncAfadeData(forceRefresh);
+        if (afadeRes.success && afadeRes.standings) {
+          for (const [catId, rows] of Object.entries(afadeRes.standings)) {
+            const standingsRows: Standings[] = rows.map((r, idx) => ({
+              id: `st-${catId}-${idx + 1}`,
+              categoryId: catId,
+              teamName: r.team,
+              isCurrentClub: r.isCurrentClub,
+              played: r.pj,
+              won: r.pg,
+              lost: r.pp,
+              setsFor: r.sf,
+              setsAgainst: r.sc,
+              points: r.pts,
+            }));
+            byCategory.set(catId, standingsRows);
+          }
+        }
+      } catch (err) {
+        console.error('Error al sincronizar clasificaciones de AFADE:', err);
+      }
+    })(),
+  ]);
 
   const consolidated = Array.from(byCategory.values()).flat();
+  const baselineAll = [...FAVB_STANDINGS, ...AFADE_STANDINGS];
   standingsCache = {
     lastSync: Date.now(),
-    standings: consolidated.length > 0 ? consolidated : FAVB_STANDINGS,
+    standings: consolidated.length > 0 ? consolidated : baselineAll,
   };
 
   if (forceRefresh) {

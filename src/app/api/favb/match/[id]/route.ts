@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { updateMatchLiveScore } from '@/lib/favb-scraper';
+import { updateAfadeMatchLiveScore } from '@/lib/afade-scraper';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,34 @@ export async function GET(
   const simulate = searchParams.get('simulate') === 'true';
 
   try {
+    if (matchId.startsWith('afade-')) {
+      const afadeResult = await updateAfadeMatchLiveScore(matchId);
+      if (!afadeResult.success) {
+        return NextResponse.json(
+          { success: false, error: afadeResult.error || 'Partido no encontrado en ligaafade.es' },
+          {
+            status: 404,
+            headers: {
+              'X-Content-Type-Options': 'nosniff',
+            },
+          }
+        );
+      }
+      return NextResponse.json(
+        {
+          success: true,
+          match: afadeResult.match,
+          timestamp: new Date().toISOString(),
+          source: 'Liga AFADE (ligaafade.es)',
+        },
+        {
+          headers: {
+            'X-Content-Type-Options': 'nosniff',
+          },
+        }
+      );
+    }
+
     const result = await updateMatchLiveScore(matchId, simulate);
 
     if (!result.success) {
