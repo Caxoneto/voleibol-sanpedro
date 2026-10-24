@@ -328,6 +328,14 @@ export const CURRENT_SPONSORS: CurrentSponsor[] = [
     url: 'https://www.valledelsol.org/',
     bgClass: 'bg-white',
   },
+  {
+    id: 'sponsor-the-unit-fit',
+    name: 'The Unit Fit',
+    tagline: 'Gimnasio Personalizado • Marbella',
+    logoUrl: '/images/sponsors/the-unit-fit.png',
+    url: 'https://theunitfit.com/',
+    bgClass: 'bg-[#0b0a09]',
+  },
 ];
 
 export const INITIAL_CHANTS: Chant[] = [
