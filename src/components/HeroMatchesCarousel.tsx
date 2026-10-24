@@ -54,6 +54,106 @@ export default function HeroMatchesCarousel({
   const userChangedTabRef = useRef<boolean>(false);
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
+  // Estados de navegación y desplazamiento para Desktop
+  const [canScrollLeft, setCanScrollLeft] = useState<boolean>(false);
+  const [canScrollRight, setCanScrollRight] = useState<boolean>(true);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const startXRef = useRef<number>(0);
+  const scrollLeftStartRef = useRef<number>(0);
+  const hasDraggedRef = useRef<boolean>(false);
+
+  // Comprobar si se puede seguir haciendo scroll en los extremos
+  const checkScrollLimits = () => {
+    const el = carouselRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 6);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 6);
+  };
+
+  // Desplazar el carrusel una tarjeta o cantidad determinada
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const scrollAmount = 315; // Ancho aproximado de tarjeta (300px) + gap (10px-15px)
+    el.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+    setTimeout(checkScrollLimits, 320);
+  };
+
+  // Convertir el desplazamiento de rueda vertical (mouse wheel) a scroll horizontal en Desktop
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        const canScrollH =
+          (e.deltaY > 0 && el.scrollLeft < el.scrollWidth - el.clientWidth - 1) ||
+          (e.deltaY < 0 && el.scrollLeft > 0);
+        if (canScrollH) {
+          e.preventDefault();
+          el.scrollBy({ left: e.deltaY * 1.5, behavior: 'auto' });
+          checkScrollLimits();
+        }
+      }
+    };
+
+    const handleScroll = () => {
+      checkScrollLimits();
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
+
+    checkScrollLimits();
+
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, []);
+
+  // Reiniciar scroll horizontal al cambiar de pestaña y recalcular límites
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (el) {
+      el.scrollLeft = 0;
+      setTimeout(checkScrollLimits, 120);
+    }
+  }, [activeTab]);
+
+  // Manejo de arrastre con ratón (drag to scroll) en Desktop
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    setIsDragging(true);
+    hasDraggedRef.current = false;
+    startXRef.current = e.pageX - el.offsetLeft;
+    scrollLeftStartRef.current = el.scrollLeft;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const el = carouselRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    const walk = x - startXRef.current;
+    if (Math.abs(walk) > 6) {
+      hasDraggedRef.current = true;
+    }
+    el.scrollLeft = scrollLeftStartRef.current - walk;
+    checkScrollLimits();
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   // Actualizar un partido individual desde favoley.net
   const refreshSingleMatch = async (matchId: string, silent = false) => {
     if (!silent) {
@@ -61,8 +161,9 @@ export default function HeroMatchesCarousel({
     }
     try {
       const res = await fetch(`/api/favb/match/${matchId}?force=true`, { cache: 'no-store' });
+      if (!res.ok) return;
       const data = await res.json();
-      if (data.success && data.match) {
+      if (data && data.success && data.match) {
         const updated = data.match;
         setMatches((prev) =>
           prev.map((m) =>
@@ -439,18 +540,51 @@ export default function HeroMatchesCarousel({
           </button>
         </div>
 
-        <Link
-          href="/partidos"
-          className="text-[11px] sm:text-xs text-tertiary hover:text-white uppercase font-bold flex items-center gap-1 group transition-colors"
-        >
-          <span>Ver todos</span>
-          <span className="material-symbols-outlined text-[15px] group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
-            arrow_forward
-          </span>
-        </Link>
+        <div className="flex items-center gap-2.5 sm:gap-3.5">
+          {/* Controles de flechas izquierda/derecha para Desktop */}
+          {currentList.length > 1 && (
+            <div className="hidden sm:flex items-center gap-1 bg-surface-container-high/90 border border-white/10 rounded-xs p-0.5 shadow-sm">
+              <button
+                type="button"
+                onClick={() => scrollCarousel('left')}
+                disabled={!canScrollLeft}
+                aria-label="Desplazar partidos hacia la izquierda"
+                title="Partidos anteriores"
+                className="w-7 h-7 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-tertiary transition-all rounded-xs cursor-pointer disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+                  chevron_left
+                </span>
+              </button>
+              <span className="w-px h-3.5 bg-white/10" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => scrollCarousel('right')}
+                disabled={!canScrollRight}
+                aria-label="Desplazar partidos hacia la derecha"
+                title="Siguientes partidos"
+                className="w-7 h-7 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-tertiary transition-all rounded-xs cursor-pointer disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+                  chevron_right
+                </span>
+              </button>
+            </div>
+          )}
+
+          <Link
+            href="/partidos"
+            className="text-[11px] sm:text-xs text-tertiary hover:text-white uppercase font-bold flex items-center gap-1 group transition-colors"
+          >
+            <span>Ver todos</span>
+            <span className="material-symbols-outlined text-[15px] group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
+              arrow_forward
+            </span>
+          </Link>
+        </div>
       </div>
 
-      {/* Carrusel horizontal de tarjetas (Mobile peek a ambos lados + 3 iniciales con carrusel de nombre completo) */}
+      {/* Carrusel horizontal de tarjetas con botones flotantes y soporte drag en Desktop */}
       {currentList.length === 0 ? (
         <div className="bg-surface-container-low/80 border border-white/10 p-4 text-center flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-tertiary">
@@ -468,10 +602,47 @@ export default function HeroMatchesCarousel({
           </button>
         </div>
       ) : (
-        <div
-          ref={carouselRef}
-          className="flex gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory"
-        >
+        <div className="relative group/carousel">
+          {/* Botón flotante Izquierda en Desktop */}
+          {canScrollLeft && currentList.length > 1 && (
+            <button
+              type="button"
+              onClick={() => scrollCarousel('left')}
+              aria-label="Desplazar partidos a la izquierda"
+              title="Anterior"
+              className="hidden sm:flex absolute -left-2 top-1/2 -translate-y-1/2 z-40 w-9 h-14 bg-black/85 hover:bg-primary-container text-white items-center justify-center border border-white/20 hover:border-primary-container/80 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.6)] transition-all rounded-r cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">
+                chevron_left
+              </span>
+            </button>
+          )}
+
+          {/* Botón flotante Derecha en Desktop */}
+          {canScrollRight && currentList.length > 1 && (
+            <button
+              type="button"
+              onClick={() => scrollCarousel('right')}
+              aria-label="Desplazar partidos a la derecha"
+              title="Siguiente"
+              className="hidden sm:flex absolute -right-2 top-1/2 -translate-y-1/2 z-40 w-9 h-14 bg-black/85 hover:bg-primary-container text-white items-center justify-center border border-white/20 hover:border-primary-container/80 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.6)] transition-all rounded-l cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">
+                chevron_right
+              </span>
+            </button>
+          )}
+
+          <div
+            ref={carouselRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            className={`flex gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory ${
+              isDragging ? 'cursor-grabbing select-none' : 'sm:cursor-grab'
+            }`}
+          >
           {currentList.map((match) => {
             const isLive = match.status === 'LIVE';
             const isFinished = match.status === 'FINISHED';
@@ -503,6 +674,11 @@ export default function HeroMatchesCarousel({
               >
                 <Link
                   href={`/partidos?cat=${match.categoryId}#match-${match.id}`}
+                  onClick={(e) => {
+                    if (hasDraggedRef.current) {
+                      e.preventDefault();
+                    }
+                  }}
                   aria-label={`Ver detalles del partido ${match.homeTeamName} contra ${match.awayTeamName}`}
                   className="absolute inset-0 z-0 rounded-sm"
                 />
@@ -774,6 +950,7 @@ export default function HeroMatchesCarousel({
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </div>

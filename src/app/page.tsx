@@ -7,6 +7,7 @@ import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 import HeroMatchesCarousel, { HeroCarouselMatchItem } from '@/components/HeroMatchesCarousel';
+import HeroLiveBlock from '@/components/HeroLiveBlock';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -124,95 +125,8 @@ export default async function HomePage() {
               </h1>
             </div>
 
-            {/* Bloque interactivo: Slogan + Lotería Saltando */}
-            <div className="flex flex-row items-center justify-between sm:justify-end gap-3 sm:gap-6 lg:gap-8 self-start md:self-center shrink-0 w-full md:w-auto">
-              {/* Emblema / Lema Oficial de la Temporada: "Yo Voley... ¿y tú?" (Recreación fiel de RRSS) */}
-              <div
-                className="shrink-0 select-none px-2 sm:px-4 py-1 -rotate-6 transform transition-transform duration-300 hover:-rotate-3"
-                aria-label="Lema oficial: Yo Voley... ¿y tú?"
-              >
-                <div
-                  className="flex flex-col items-center leading-none"
-                  style={{ fontFamily: 'var(--font-brush), cursive' }}
-                >
-                  {/* Línea superior blanca: Yo Voley... */}
-                  <span className="text-white text-3xl sm:text-4xl lg:text-5xl tracking-wide drop-shadow-[0_3px_10px_rgba(0,0,0,0.9)]">
-                    Yo Voley...
-                  </span>
-
-                  {/* Trazo de pincel rojo intenso debajo de Yo Voley... */}
-                  <svg
-                    viewBox="0 0 240 22"
-                    className="w-40 sm:w-52 lg:w-60 h-4 sm:h-5 -my-1 overflow-visible"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M4 15 C 65 8, 155 5, 236 3"
-                      stroke="#e10600"
-                      strokeWidth="4.5"
-                      strokeLinecap="round"
-                      fill="none"
-                    />
-                    <path
-                      d="M14 19 C 80 13, 165 9, 226 7"
-                      stroke="#b80000"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      fill="none"
-                      opacity="0.85"
-                    />
-                  </svg>
-
-                  {/* Línea inferior roja: ¿y tú? */}
-                  <span className="text-[#ff1111] text-4xl sm:text-5xl lg:text-6xl tracking-wide -mt-1 drop-shadow-[0_3px_12px_rgba(225,6,0,0.45)]">
-                    ¿y tú?
-                  </span>
-
-                  {/* Corazón dibujado a mano en trazo blanco debajo */}
-                  <svg
-                    viewBox="0 0 44 42"
-                    className="w-6 h-6 sm:w-7 sm:h-7 mt-1 -ml-4 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M21 37 C 18 32, 6 23, 7 13 C 7.8 7, 13.5 5.5, 17.5 10.5 C 19.2 12.6, 20.4 15.2, 21 17 C 21.8 13.5, 24.5 6.5, 30 6.5 C 35 6.5, 37.5 11.5, 36 17.5 C 34 25.5, 24.5 33, 21 37 Z"
-                      stroke="currentColor"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Promoción Lotería de Navidad 2026 - Animación de escala progresiva y color alternado */}
-              <div className="shrink-0 flex flex-col items-center pt-5 pb-2">
-                <Link
-                  href="/noticias/loteria-navidad-2026-voleibol-san-pedro-15586"
-                  aria-label="Lotería de Navidad 2026 del C.D. Voleibol San Pedro: Número 15.586. Haz clic para leer los detalles"
-                  title="Lotería de Navidad 2026: Número 15.586 - C.D. Voleibol San Pedro (Haz clic para ver cómo adquirir décimos)"
-                  className="group relative flex flex-col items-center cursor-pointer select-none"
-                >
-                  {/* Etiqueta / Pill promocional festiva */}
-                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20 px-2.5 py-0.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black font-headline font-black text-[9px] sm:text-[10px] uppercase tracking-wider rounded-full shadow-[0_2px_10px_rgba(245,158,11,0.55)] whitespace-nowrap transition-transform duration-200 group-hover:scale-105 pointer-events-none border border-amber-100/70">
-                    Lotería · 15.586
-                  </span>
-
-                  {/* Décimo optimizado y sin márgenes con animación scaleAndColorChange */}
-                  <div className="animate-lottery-pulse relative w-28 sm:w-36 md:w-40 lg:w-44 aspect-[950/598] rounded-md overflow-hidden border-2 border-amber-400 bg-white">
-                    <Image
-                      src="/images/noticias/loteria-navidad-2026.png"
-                      alt="Décimo oficial de Lotería de Navidad 2026 del C.D. Voleibol San Pedro - Número 15.586"
-                      fill
-                      sizes="(max-width: 640px) 112px, (max-width: 768px) 144px, (max-width: 1024px) 160px, 176px"
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
-                </Link>
-              </div>
-            </div>
+            {/* Bloque interactivo: Slogan + YouTube Live (si activo) + Lotería Saltando */}
+            <HeroLiveBlock />
           </div>
 
           {/* Carrusel Interactivo: Finalizados | Hoy (predeterminado) | Próximos */}

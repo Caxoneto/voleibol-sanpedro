@@ -6,10 +6,15 @@ import Image from 'next/image';
 import { CLUB_INFO, CURRENT_SPONSORS } from '@/lib/data-store';
 import CookieSettingsButton from '@/components/CookieSettingsButton';
 import { InstagramIcon, FacebookIcon, WhatsAppIcon } from '@/components/SocialIcons';
+import { useStreaming } from '@/lib/use-streaming';
+import StreamingModal from '@/components/StreamingModal';
 
 type FooterSectionKey = 'club' | 'sede' | 'enlaces' | 'apoya';
 
 export default function Footer() {
+  const { status: streamingStatus, updateLocalStatus } = useStreaming();
+  const [isStreamingModalOpen, setIsStreamingModalOpen] = useState(false);
+
   const [openSections, setOpenSections] = useState<Record<FooterSectionKey, boolean>>({
     club: false,
     sede: false,
@@ -126,6 +131,34 @@ export default function Footer() {
                 <p>
                   <span className="text-on-surface font-semibold">Presidente:</span> {CLUB_INFO.president}
                 </p>
+                <div className="pt-2 mt-2 border-t border-white/5 flex items-center justify-between">
+                  <span className="text-on-surface font-semibold flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[15px] text-red-500" aria-hidden="true">sensors</span>
+                    <span>Retransmisión:</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsStreamingModalOpen(true)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                      streamingStatus.active
+                        ? 'bg-red-600/90 hover:bg-red-700 text-white border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                        : 'bg-white/5 text-tertiary border-white/10 hover:text-white hover:bg-white/10 hover:border-white/20'
+                    }`}
+                    title={streamingStatus.active ? 'Retransmisión activa (Clic para finalizar)' : 'Configurar streaming de YouTube'}
+                  >
+                    {streamingStatus.active ? (
+                      <>
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                        </span>
+                        <span>Streaming</span>
+                      </>
+                    ) : (
+                      <span>Streaming</span>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -391,6 +424,14 @@ export default function Footer() {
           </div>
         </div>
       </div>
+
+      <StreamingModal
+        isOpen={isStreamingModalOpen}
+        onClose={() => setIsStreamingModalOpen(false)}
+        isLive={streamingStatus.active}
+        currentUrl={streamingStatus.url}
+        onSuccess={(newStatus) => updateLocalStatus(newStatus)}
+      />
     </footer>
   );
 }
