@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const NEON_CONNECTION_STRING =
-  process.env.DATABASE_URL ||
-  'postgresql://neondb_owner:npg_k0EHphS8VUcP@ep-dark-term-b40s456o-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require';
-
 const FIXED_PASSWORD = process.env.STREAMING_ADMIN_PASSWORD || 'yovoley2026';
 
 interface StreamingPayload {
@@ -14,7 +10,7 @@ interface StreamingPayload {
   startedAt?: string;
 }
 
-// Fallback en memoria en caso de desconexión momentánea de base de datos
+// Fallback en memoria en caso de no disponer de DATABASE_URL o desconexión
 let memoryFallbackState: StreamingPayload = {
   active: false,
   url: null,
@@ -24,14 +20,22 @@ async function queryNeon<T = Record<string, unknown>>(
   query: string,
   params: unknown[] = []
 ): Promise<T[]> {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    return [];
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-    const res = await fetch('https://ep-dark-term-b40s456o-pooler.c-6.us-east-2.aws.neon.tech/sql', {
+    const hostMatch = connectionString.match(/@([^/:]+)/);
+    const host = hostMatch ? hostMatch[1] : 'ep-dark-term-b40s456o-pooler.c-6.us-east-2.aws.neon.tech';
+
+    const res = await fetch(`https://${host}/sql`, {
       method: 'POST',
       headers: {
-        'Neon-Connection-String': NEON_CONNECTION_STRING,
+        'Neon-Connection-String': connectionString,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ query, params }),
