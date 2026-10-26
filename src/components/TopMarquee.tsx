@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { INITIAL_MATCHES } from '@/lib/data-store';
 import { formatMadridDate, formatMadridTime } from '@/lib/date-utils';
+import { isRestMatch } from '@/lib/match-utils';
 
 export default function TopMarquee() {
   const [isPaused, setIsPaused] = useState(false);
 
   const nextPending = INITIAL_MATCHES.filter((m) => {
+    if (isRestMatch(m)) return false;
     if (m.status === 'FINISHED' || m.status === 'POSTPONED' || m.status === 'CANCELLED') return false;
     const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
     if (m.status === 'SCHEDULED' && isPast12h) return false;

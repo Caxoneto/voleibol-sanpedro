@@ -22,6 +22,8 @@ import {
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo, getTeamInitials } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
+import { isRestMatch } from '@/lib/match-utils';
+import { useStreaming } from '@/lib/use-streaming';
 
 interface DisplaySetColumn {
   label: string;
@@ -33,6 +35,7 @@ interface DisplaySetColumn {
 type CategorySubTab = 'pending' | 'finished';
 
 function PartidosContent() {
+  const { recordings } = useStreaming();
   const searchParams = useSearchParams();
   const initialMatchParam = searchParams.get('match') || searchParams.get('partido');
   const rawCategoryParam = searchParams.get('categoria') || searchParams.get('cat');
@@ -78,6 +81,12 @@ function PartidosContent() {
 
   // Estado del acordeón: categoría expandida
   const [expandedCatId, setExpandedCatId] = useState<string | null>(resolvedInitialCategory);
+
+  // Estado de montaje en el cliente para evitar mismatch de hidratación con grabaciones dinámicas
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Referencia al contenedor de scroll horizontal de categorías
   const catScrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -466,6 +475,7 @@ function PartidosContent() {
     const totalSets = getTotalSetsDisplay(m);
     const isRefreshing = refreshingMatchIds.has(m.id);
     const compactCols = setColumns.length >= 4;
+    const recordingUrl = (mounted ? recordings[m.id] : null) || m.videoUrl;
 
     return (
       <div
@@ -736,16 +746,38 @@ function PartidosContent() {
           </div>
         </div>
 
-        {/* Pie de tarjeta con sede y botones de SOLO icono (Ubicación Maps + Acta FAVB) */}
-        <div className="pt-2.5 mt-2 border-t border-white/5 flex items-center justify-between gap-2 text-[11px] text-tertiary">
-          <div className="flex items-center gap-1 min-w-0">
+        {/* Pie de tarjeta con sede (marquee continuo) y botones de SOLO icono (Ubicación Maps + Acta FAVB) + Ver partido diferido si existe */}
+        <div className="pt-2.5 mt-2 border-t border-white/5 flex items-center justify-between gap-2 text-[11px] text-tertiary flex-wrap">
+          <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
             <span className="material-symbols-outlined text-[14px] text-primary shrink-0" aria-hidden="true">
               pin_drop
             </span>
-            <span className="truncate">{m.venue}</span>
+            <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
+              <div className="animate-venue-marquee items-center whitespace-nowrap text-[11px] text-tertiary">
+                <span className="pr-8">{m.venue}</span>
+                <span className="pr-8" aria-hidden="true">{m.venue}</span>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0 relative z-30">
+            {recordingUrl && (
+              <a
+                href={recordingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-[2px] transition-colors shadow-sm"
+                title="Ver partido en diferido en YouTube"
+                aria-label="Ver partido en diferido"
+              >
+                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+                <span>Ver partido</span>
+              </a>
+            )}
+
             <a
               href={getVenueMapsLink(m)}
               target="_blank"
@@ -1079,9 +1111,67 @@ function PartidosContent() {
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                                 {scheduled.map((m) => {
+                                  if (isRestMatch(m)) {
+                                    const clubTeam = m.homeTeam?.toLowerCase().includes('san pedro') ? m.homeTeam : m.awayTeam;
+                                    return (
+                                      <div
+                                        key={m.id}
+                                        id={`match-${m.id}`}
+                                        className="bg-surface-container-high/70 border border-sky-500/40 hover:border-sky-500/70 p-3.5 sm:p-4 flex flex-col justify-between transition-all relative overflow-hidden shadow-md"
+                                      >
+                                        <div>
+                                          <div className="flex items-center justify-between pb-2 border-b border-white/10 text-xs">
+                                            <div className="flex items-center gap-2">
+                                              <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold">
+                                                J{m.round}
+                                              </span>
+                                              <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 border border-sky-500/40 text-[9px] font-bold uppercase tracking-wider">
+                                                Descanso
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          <div className="py-4 relative flex items-center gap-3">
+                                            <Image
+                                              src={getTeamLogo(clubTeam)}
+                                              alt={clubTeam}
+                                              width={30}
+                                              height={30}
+                                              className="w-7 h-7 object-contain shrink-0"
+                                            />
+                                            <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold text-white truncate pr-28 sm:pr-32">
+                                              {clubTeam}
+                                            </p>
+
+                                            {/* Cartel diagonal de DESCANSO estilo aplazado */}
+                                            <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
+                                              <div className="-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] bg-sky-500/95 text-black border-sky-200">
+                                                DESCANSO
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-tertiary">
+                                          <span className="text-tertiary font-semibold">
+                                            {formatMadridDate(m.matchDate, {
+                                              weekday: 'short',
+                                              day: 'numeric',
+                                              month: 'short',
+                                            })}
+                                          </span>
+                                          <span className="font-bold text-sky-400 font-mono text-[11px] uppercase">
+                                            Descanso
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
                                   const isRefreshing = refreshingMatchIds.has(m.id);
                                   const isClosestRed =
                                     m.id === redHighlightedMatchId || m.id === highlightedMatchId;
+                                  const recordingUrl = (mounted ? recordings[m.id] : null) || m.videoUrl;
 
                                   return (
                                     <div
@@ -1258,16 +1348,36 @@ function PartidosContent() {
                                         </div>
 
                                         <div className="flex items-center justify-between gap-2 pt-1">
-                                          <div className="flex items-center gap-1 text-[11px] text-tertiary min-w-0">
+                                          <div className="flex items-center gap-1 text-[11px] text-tertiary min-w-0 flex-1 overflow-hidden">
                                             <span className="material-symbols-outlined text-[14px] text-primary shrink-0" aria-hidden="true">
                                               pin_drop
                                             </span>
-                                            <span className="truncate" title={m.venue}>
-                                              {m.venue}
-                                            </span>
+                                            <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
+                                              <div className="animate-venue-marquee items-center whitespace-nowrap text-[11px] text-tertiary">
+                                                <span className="pr-8">{m.venue}</span>
+                                                <span className="pr-8" aria-hidden="true">{m.venue}</span>
+                                              </div>
+                                            </div>
                                           </div>
 
                                           <div className="flex items-center gap-1.5 shrink-0 relative z-30">
+                                            {recordingUrl && (
+                                              <a
+                                                href={recordingUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-[2px] transition-colors shadow-sm"
+                                                title="Ver partido en diferido en YouTube"
+                                                aria-label="Ver partido en diferido"
+                                              >
+                                                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                                                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                                </svg>
+                                                <span className="hidden sm:inline">Ver partido</span>
+                                              </a>
+                                            )}
+
                                             <a
                                               href={getGoogleCalendarLink(m)}
                                               target="_blank"

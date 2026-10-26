@@ -205,6 +205,7 @@ export interface FavbMatch {
   lastChecked?: string;
   afadeId?: string | number;
   association?: 'FAVB' | 'AFADE';
+  videoUrl?: string;
 }
 
 export interface FavbStanding {

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { formatMadridDate } from '@/lib/date-utils';
 import { getTeamLogo, getTeamInitials } from '@/lib/team-logos';
+import { isRestMatch } from '@/lib/match-utils';
+import { useStreaming } from '@/lib/use-streaming';
 
 export interface HeroCarouselMatchItem {
   id: string;
@@ -23,6 +25,7 @@ export interface HeroCarouselMatchItem {
   awayScore?: number;
   setScores?: { home: number; away: number }[];
   currentSetScore?: { set: string; home: number; away: number };
+  videoUrl?: string;
 }
 
 interface HeroMatchesCarouselProps {
@@ -43,12 +46,24 @@ export default function HeroMatchesCarousel({
   initialMatches,
   todayStr,
 }: HeroMatchesCarouselProps) {
-  const initialHasToday = useMemo(
-    () => initialMatches.some((m) => m.dateStr === todayStr),
-    [initialMatches, todayStr]
+  const { status: streamingStatus, recordings } = useStreaming();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const filteredInitial = useMemo(
+    () => initialMatches.filter((m) => !isRestMatch(m)),
+    [initialMatches]
   );
 
-  const [matches, setMatches] = useState<HeroCarouselMatchItem[]>(initialMatches);
+  const initialHasToday = useMemo(
+    () => filteredInitial.some((m) => m.dateStr === todayStr),
+    [filteredInitial, todayStr]
+  );
+
+  const [matches, setMatches] = useState<HeroCarouselMatchItem[]>(filteredInitial);
   const [activeTab, setActiveTab] = useState<FilterTab>(initialHasToday ? 'today' : 'upcoming');
   const [refreshingIds, setRefreshingIds] = useState<Set<string>>(new Set());
   const userChangedTabRef = useRef<boolean>(false);
@@ -202,37 +217,39 @@ export default function HeroMatchesCarousel({
     const mergeSyncedMatches = (liveList: Array<Record<string, unknown>>) => {
       const liveMap = new Map(liveList.map((lm) => [String(lm.id), lm]));
       setMatches((prev) =>
-        prev.map((m) => {
-          const live = liveMap.get(m.id);
-          if (!live) return m;
-          return {
-            ...m,
-            homeTeamName: typeof live.homeTeam === 'string' && live.homeTeam ? live.homeTeam : m.homeTeamName,
-            awayTeamName: typeof live.awayTeam === 'string' && live.awayTeam ? live.awayTeam : m.awayTeamName,
-            isClubHome: typeof live.isClubHome === 'boolean' ? live.isClubHome : m.isClubHome,
-            matchDate: typeof live.matchDate === 'string' && live.matchDate ? live.matchDate : m.matchDate,
-            dateStr: typeof live.dateStr === 'string' && live.dateStr ? live.dateStr : m.dateStr,
-            status:
-              live.status === 'FINISHED' ||
-              live.status === 'LIVE' ||
-              live.status === 'SCHEDULED' ||
-              live.status === 'POSTPONED' ||
-              live.status === 'CANCELLED'
-                ? (live.status as HeroCarouselMatchItem['status'])
-                : m.status,
-            statusText: typeof live.statusText === 'string' ? live.statusText : m.statusText,
-            homeScore: typeof live.homeScore === 'number' ? live.homeScore : m.homeScore,
-            awayScore: typeof live.awayScore === 'number' ? live.awayScore : m.awayScore,
-            setScores:
-              Array.isArray(live.setScores) && live.setScores.length > 0
-                ? (live.setScores as { home: number; away: number }[])
-                : m.setScores,
-            currentSetScore:
-              live.currentSetScore && typeof live.currentSetScore === 'object'
-                ? (live.currentSetScore as { set: string; home: number; away: number })
-                : m.currentSetScore,
-          };
-        })
+        prev
+          .map((m) => {
+            const live = liveMap.get(m.id);
+            if (!live) return m;
+            return {
+              ...m,
+              homeTeamName: typeof live.homeTeam === 'string' && live.homeTeam ? live.homeTeam : m.homeTeamName,
+              awayTeamName: typeof live.awayTeam === 'string' && live.awayTeam ? live.awayTeam : m.awayTeamName,
+              isClubHome: typeof live.isClubHome === 'boolean' ? live.isClubHome : m.isClubHome,
+              matchDate: typeof live.matchDate === 'string' && live.matchDate ? live.matchDate : m.matchDate,
+              dateStr: typeof live.dateStr === 'string' && live.dateStr ? live.dateStr : m.dateStr,
+              status:
+                live.status === 'FINISHED' ||
+                live.status === 'LIVE' ||
+                live.status === 'SCHEDULED' ||
+                live.status === 'POSTPONED' ||
+                live.status === 'CANCELLED'
+                  ? (live.status as HeroCarouselMatchItem['status'])
+                  : m.status,
+              statusText: typeof live.statusText === 'string' ? live.statusText : m.statusText,
+              homeScore: typeof live.homeScore === 'number' ? live.homeScore : m.homeScore,
+              awayScore: typeof live.awayScore === 'number' ? live.awayScore : m.awayScore,
+              setScores:
+                Array.isArray(live.setScores) && live.setScores.length > 0
+                  ? (live.setScores as { home: number; away: number }[])
+                  : m.setScores,
+              currentSetScore:
+                live.currentSetScore && typeof live.currentSetScore === 'object'
+                  ? (live.currentSetScore as { set: string; home: number; away: number })
+                  : m.currentSetScore,
+            };
+          })
+          .filter((m) => !isRestMatch(m))
       );
     };
 
@@ -292,7 +309,7 @@ export default function HeroMatchesCarousel({
   // 1. Pestaña "Finalizados": partidos de hoy finalizados + completando con anteriores hasta 4
   const finishedMatches = useMemo(() => {
     const todayFinished = matches
-      .filter((m) => m.status === 'FINISHED' && m.dateStr === todayStr)
+      .filter((m) => !isRestMatch(m) && m.status === 'FINISHED' && m.dateStr === todayStr)
       .sort((a, b) => {
         const tDiff = new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime();
         if (tDiff !== 0) return tDiff;
@@ -300,7 +317,7 @@ export default function HeroMatchesCarousel({
       });
 
     const pastFinished = matches
-      .filter((m) => m.status === 'FINISHED' && m.dateStr < todayStr)
+      .filter((m) => !isRestMatch(m) && m.status === 'FINISHED' && m.dateStr < todayStr)
       .sort((a, b) => {
         const tDiff = new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime();
         if (tDiff !== 0) return tDiff;
@@ -314,7 +331,7 @@ export default function HeroMatchesCarousel({
   // 2. Pestaña "Hoy": partidos del día de hoy ordenados por hora y categoría
   const todayMatches = useMemo(() => {
     return matches
-      .filter((m) => m.dateStr === todayStr)
+      .filter((m) => !isRestMatch(m) && m.dateStr === todayStr)
       .sort((a, b) => {
         const timeA = new Date(a.matchDate).getTime();
         const timeB = new Date(b.matchDate).getTime();
@@ -323,12 +340,12 @@ export default function HeroMatchesCarousel({
       });
   }, [matches, todayStr]);
 
-  // 3. Pestaña "Próximos": próximo partido programado por categoría
+  // 3. Pestaña "Próximos": próximo partido programado por categoría (excluyendo descanso)
   const upcomingMatches = useMemo(() => {
     const byCategory = new Map<string, HeroCarouselMatchItem>();
 
     const scheduledSorted = matches
-      .filter((m) => m.status === 'SCHEDULED' && m.dateStr > todayStr)
+      .filter((m) => !isRestMatch(m) && m.status === 'SCHEDULED' && m.dateStr > todayStr)
       .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
     for (const m of scheduledSorted) {
@@ -338,7 +355,7 @@ export default function HeroMatchesCarousel({
     }
 
     const allScheduledByCat = matches
-      .filter((m) => m.status === 'SCHEDULED')
+      .filter((m) => !isRestMatch(m) && m.status === 'SCHEDULED')
       .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
     for (const m of allScheduledByCat) {
@@ -652,6 +669,13 @@ export default function HeroMatchesCarousel({
             const isRefreshing = refreshingIds.has(match.id);
             const compactCols = setColumns.length >= 4;
             const isSingleCard = currentList.length === 1;
+            const isStreamingThisMatch = Boolean(
+              mounted && streamingStatus.active && streamingStatus.matchId === match.id
+            );
+            const videoTargetUrl = isStreamingThisMatch
+              ? streamingStatus.url
+              : ((mounted ? recordings[match.id] : null) || match.videoUrl);
+            const isLiveVideo = isStreamingThisMatch;
 
             return (
               <div
@@ -777,6 +801,30 @@ export default function HeroMatchesCarousel({
                       </span>
                     )}
                   </div>
+
+                  {/* Zona central marcada en azul: Botón Icono YouTube + 'Ver partido' */}
+                  {videoTargetUrl && (
+                    <a
+                      href={videoTargetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      className={`pointer-events-auto relative z-30 inline-flex items-center gap-1 px-2 py-0.5 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider rounded-[2px] transition-all shadow-sm ${
+                        isLiveVideo
+                          ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                          : 'bg-red-600/90 hover:bg-red-600 text-white hover:scale-105'
+                      }`}
+                      title={isLiveVideo ? 'Ver retransmisión en directo en YouTube' : 'Ver partido en diferido en YouTube'}
+                      aria-label={isLiveVideo ? 'Ver partido en directo en YouTube' : 'Ver partido en diferido en YouTube'}
+                    >
+                      <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                      <span>Ver partido</span>
+                    </a>
+                  )}
 
                   {hasScoreboard ? (
                     <div className="flex items-center gap-1 shrink-0">
@@ -945,7 +993,6 @@ export default function HeroMatchesCarousel({
                     </div>
                   )}
                 </div>
-
 
               </div>
             );

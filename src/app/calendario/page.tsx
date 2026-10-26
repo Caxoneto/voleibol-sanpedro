@@ -18,6 +18,8 @@ import {
 } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
+import { isRestMatch } from '@/lib/match-utils';
+import { useStreaming } from '@/lib/use-streaming';
 import jsPDF from 'jspdf';
 
 interface RoundSummary {
@@ -32,6 +34,7 @@ interface RoundSummary {
 const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v1';
 
 export default function CalendarioPage() {
+  const { recordings } = useStreaming();
   const [allMatches, setAllMatches] = useState<Match[]>(INITIAL_MATCHES);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [conditionFilter, setConditionFilter] = useState<'ALL' | 'LOCAL' | 'VISITANTE'>('ALL');
@@ -40,6 +43,11 @@ export default function CalendarioPage() {
   const [syncing, setSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const roundsScrollRef = useRef<HTMLDivElement | null>(null);
   const catScrollRef = useRef<HTMLDivElement | null>(null);
@@ -705,6 +713,66 @@ export default function CalendarioPage() {
           ) : (
             displayedMatches.map((match) => {
               const team = INITIAL_TEAMS.find((t) => t.id === match.teamId);
+              const isRest = isRestMatch(match);
+              const recordingUrl = (mounted ? recordings[match.id] : null) || match.videoUrl;
+
+              if (isRest) {
+                const clubTeamName = match.homeTeamName.includes('San Pedro') ? match.homeTeamName : match.awayTeamName;
+                return (
+                  <div
+                    key={match.id}
+                    className="bg-surface-container-low/70 border border-sky-500/30 hover:border-sky-500/60 p-3.5 sm:p-4 transition-all relative overflow-hidden"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 bg-white/5 flex flex-col items-center justify-center border border-white/10 shrink-0">
+                          <span className="font-display-xl text-lg text-tertiary leading-none">
+                            J{match.round}
+                          </span>
+                          <span className="text-[8px] uppercase tracking-wider text-tertiary/70">
+                            Jornada
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs uppercase font-bold text-white/80">
+                            {formatMadridDate(match.matchDate, {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                          </span>
+                          <span className="text-[10px] text-tertiary uppercase mt-0.5">
+                            {team?.name || 'Oficial FAVB/AFADE'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:px-4">
+                        <div className="flex items-center gap-2.5">
+                          <Image
+                            src={getTeamLogo(clubTeamName)}
+                            alt={clubTeamName}
+                            width={28}
+                            height={28}
+                            className="w-7 h-7 object-contain shrink-0"
+                          />
+                          <span className="font-headline-sm text-sm sm:text-base uppercase font-bold text-white">
+                            {clubTeamName}
+                          </span>
+                        </div>
+
+                        {/* Cartel DESCANSO del estilo de aplazado */}
+                        <div className="flex items-center">
+                          <div className="-rotate-3 sm:-rotate-6 transform px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_4px_16px_rgba(0,0,0,0.6)] select-none rounded-[2px] bg-sky-500/95 text-black border-sky-200">
+                            DESCANSO
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               const isFinished = match.status === 'FINISHED';
               const scoreResult =
                 isFinished && match.setScores && match.setScores.length > 0
@@ -772,6 +840,20 @@ export default function CalendarioPage() {
 
                       {/* Iconos compactos en móvil a la derecha de la cabecera */}
                       <div className="flex lg:hidden items-center gap-1.5 shrink-0 relative z-30">
+                        {recordingUrl && (
+                          <a
+                            href={recordingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white flex items-center gap-1 text-[10px] font-bold uppercase rounded shadow-sm"
+                            title="Ver partido en YouTube"
+                          >
+                            <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                            </svg>
+                            <span>Ver</span>
+                          </a>
+                        )}
                         <span
                           className={`w-7 h-7 flex items-center justify-center border ${
                             match.isClubHome
@@ -901,17 +983,36 @@ export default function CalendarioPage() {
                         </div>
                       </div>
 
-                      {/* Venue */}
-                      <div className="flex items-center gap-1.5 text-xs text-tertiary mt-1.5">
+                      {/* Venue con ticker/marquee continuo */}
+                      <div className="flex items-center gap-1.5 text-xs text-tertiary mt-1.5 min-w-0 flex-1 overflow-hidden max-w-md">
                         <span className="material-symbols-outlined text-[15px] text-primary shrink-0" aria-hidden="true">
                           pin_drop
                         </span>
-                        <span className="truncate">{match.venueName}</span>
+                        <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
+                          <div className="animate-venue-marquee items-center whitespace-nowrap text-xs text-tertiary">
+                            <span className="pr-8">{match.venueName}</span>
+                            <span className="pr-8" aria-hidden="true">{match.venueName}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
                     {/* Right (Desktop): Compact Icon-Only Actions */}
                     <div className="hidden lg:flex items-center gap-2 shrink-0 relative z-30">
+                      {recordingUrl && (
+                        <a
+                          href={recordingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider rounded transition-all shadow-sm hover:shadow-[0_0_12px_rgba(239,68,68,0.5)] cursor-pointer mr-1"
+                          title="Ver retransmisión completa del partido en YouTube"
+                        >
+                          <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                          </svg>
+                          <span>Ver partido</span>
+                        </a>
+                      )}
                       <span
                         className={`w-8 h-8 flex items-center justify-center border ${
                           match.isClubHome

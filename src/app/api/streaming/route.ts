@@ -1,108 +1,66 @@
 import { NextResponse } from 'next/server';
+import {
+  getStreamingStatus,
+  getMatchRecordings,
+  setStreamingStatus,
+  saveMatchRecording,
+  StreamingPayload,
+} from '@/lib/streaming-store';
+import { getConsolidatedOfficialMatches } from '@/lib/favb-scraper';
+import { isRestMatch } from '@/lib/match-utils';
+import { formatMadridDateString, formatMadridTime } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
-const FIXED_PASSWORD = process.env.STREAMING_ADMIN_PASSWORD || 'yovoley2026';
+const FIXED_PASSWORD = process.env.STREAMING_ADMIN_PASSWORD;
 
-interface StreamingPayload {
-  active: boolean;
-  url: string | null;
-  startedAt?: string;
-}
-
-// Fallback en memoria en caso de no disponer de DATABASE_URL o desconexión
-let memoryFallbackState: StreamingPayload = {
-  active: false,
-  url: null,
-};
-
-async function queryNeon<T = Record<string, unknown>>(
-  query: string,
-  params: unknown[] = []
-): Promise<T[]> {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    return [];
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-    const hostMatch = connectionString.match(/@([^/:]+)/);
-    const host = hostMatch ? hostMatch[1] : 'ep-dark-term-b40s456o-pooler.c-6.us-east-2.aws.neon.tech';
-
-    const res = await fetch(`https://${host}/sql`, {
-      method: 'POST',
-      headers: {
-        'Neon-Connection-String': connectionString,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query, params }),
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      console.warn('[Streaming API] Fallo al consultar Neon HTTP:', res.status);
-      return [];
-    }
-
-    const data = await res.json();
-    return (data.rows as T[]) || [];
-  } catch (err) {
-    console.warn('[Streaming API] Aviso conectando con Neon (usando fallback en memoria):', err);
-    return [];
-  }
-}
-
-// GET: Obtener estado actual del streaming
+// GET: Obtener estado actual del streaming, grabaciones diferidas y partidos elegibles
 export async function GET() {
   try {
-    const rows = await queryNeon<{ key: string; value: unknown }>(
-      'SELECT value FROM club_settings WHERE key = $1 LIMIT 1;',
-      ['streaming']
-    );
+    const streaming = await getStreamingStatus();
+    const recordings = await getMatchRecordings();
 
-    if (rows.length > 0 && rows[0].value) {
-      try {
-        const val = rows[0].value;
-        const parsed =
-          typeof val === 'string'
-            ? (JSON.parse(val) as StreamingPayload)
-            : (val as StreamingPayload);
+    const todayStr = formatMadridDateString(new Date());
+    const allMatches = getConsolidatedOfficialMatches().filter((m) => !isRestMatch(m));
 
-        if (parsed && typeof parsed === 'object') {
-          memoryFallbackState = parsed;
-          return NextResponse.json(
-            {
-              success: true,
-              active: !!parsed.active,
-              url: parsed.url || null,
-              startedAt: parsed.startedAt,
-            },
-            {
-              headers: {
-                'Cache-Control': 'no-store, no-cache, must-revalidate',
-                'X-Content-Type-Options': 'nosniff',
-              },
-            }
-          );
-        }
-      } catch (parseErr) {
-        console.error('[Streaming API] Error parseando JSON de Neon:', parseErr);
-      }
-    }
+    const todayMatches = allMatches
+      .filter((m) => m.dateStr === todayStr)
+      .map((m) => ({
+        id: m.id,
+        round: m.round,
+        categoryName: m.categoryName,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        timeStr: m.timeStr || formatMadridTime(m.matchDate),
+        dateStr: m.dateStr,
+        venue: m.venue,
+      }));
 
-    // Fallback a memoria
+    const upcomingMatches = allMatches
+      .filter((m) => m.dateStr >= todayStr && m.status === 'SCHEDULED' && m.dateStr !== todayStr)
+      .slice(0, 15)
+      .map((m) => ({
+        id: m.id,
+        round: m.round,
+        categoryName: m.categoryName,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        timeStr: m.timeStr || formatMadridTime(m.matchDate),
+        dateStr: m.dateStr,
+        venue: m.venue,
+      }));
+
     return NextResponse.json(
       {
         success: true,
-        active: memoryFallbackState.active,
-        url: memoryFallbackState.url,
-        startedAt: memoryFallbackState.startedAt,
+        active: streaming.active,
+        url: streaming.url,
+        matchId: streaming.matchId || null,
+        matchTitle: streaming.matchTitle || null,
+        startedAt: streaming.startedAt,
+        recordings,
+        todayMatches,
+        upcomingMatches,
       },
       {
         headers: {
@@ -112,12 +70,15 @@ export async function GET() {
       }
     );
   } catch (error) {
-    console.warn('[Streaming API] Error en GET recuperado con fallback:', error);
+    console.warn('[Streaming API] Error en GET:', error);
     return NextResponse.json(
       {
-        success: true,
-        active: memoryFallbackState.active,
-        url: memoryFallbackState.url,
+        success: false,
+        active: false,
+        url: null,
+        recordings: {},
+        todayMatches: [],
+        upcomingMatches: [],
       },
       {
         headers: {
@@ -129,14 +90,26 @@ export async function GET() {
   }
 }
 
-// POST: Iniciar o detener la retransmisión
+// POST: Iniciar, finalizar retransmisión o gestionar grabaciones
 export async function POST(request: Request) {
   try {
+    if (!FIXED_PASSWORD) {
+      console.error('STREAMING_ADMIN_PASSWORD no está configurada en las variables de entorno del servidor.');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Servicio de streaming no configurado en las variables de entorno del servidor.',
+        },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const action = body.action || (body.url ? 'start' : 'stop');
 
+    // 1. INICIAR RETRANSMISIÓN
     if (action === 'start') {
-      const { url, password } = body;
+      const { url, password, matchId, matchTitle } = body;
 
       // Validación de contraseña fija
       if (!password || password !== FIXED_PASSWORD) {
@@ -176,31 +149,36 @@ export async function POST(request: Request) {
         );
       }
 
+      let resolvedTitle = matchTitle || null;
+      if (matchId && matchId !== 'general' && !resolvedTitle) {
+        const found = getConsolidatedOfficialMatches().find((m) => m.id === matchId);
+        if (found) {
+          resolvedTitle = `${found.categoryName}: ${found.homeTeam} vs ${found.awayTeam}`;
+        }
+      }
+
       const newState: StreamingPayload = {
         active: true,
         url: trimmedUrl,
+        matchId: matchId && matchId !== 'general' ? matchId : null,
+        matchTitle: resolvedTitle,
         startedAt: new Date().toISOString(),
       };
 
-      // Guardar en Neon
-      await queryNeon(
-        `INSERT INTO club_settings (key, value, updated_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();`,
-        ['streaming', JSON.stringify(newState)]
-      );
-
-      memoryFallbackState = newState;
+      await setStreamingStatus(newState);
 
       return NextResponse.json({
         success: true,
         message: 'Retransmisión iniciada correctamente.',
         active: true,
         url: trimmedUrl,
+        matchId: newState.matchId,
+        matchTitle: newState.matchTitle,
         startedAt: newState.startedAt,
       });
     }
 
+    // 2. FINALIZAR RETRANSMISIÓN (Y GUARDAR ENLACE EN EL PARTIDO SELECCIONADO)
     if (action === 'stop') {
       const { password } = body;
 
@@ -215,26 +193,60 @@ export async function POST(request: Request) {
         );
       }
 
-      const newState: StreamingPayload = {
+      const current = await getStreamingStatus();
+      let updatedRecordings = await getMatchRecordings();
+      let recordedMatchId: string | null = null;
+
+      // Si había un partido asociado y una URL de emisión, guardar en diferido
+      if (current.matchId && current.matchId !== 'general' && current.url) {
+        recordedMatchId = current.matchId;
+        updatedRecordings = await saveMatchRecording(current.matchId, current.url);
+      }
+
+      const finishedState: StreamingPayload = {
         active: false,
         url: null,
+        matchId: null,
+        matchTitle: null,
       };
 
-      // Guardar en Neon
-      await queryNeon(
-        `INSERT INTO club_settings (key, value, updated_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();`,
-        ['streaming', JSON.stringify(newState)]
-      );
-
-      memoryFallbackState = newState;
+      await setStreamingStatus(finishedState);
 
       return NextResponse.json({
         success: true,
-        message: 'Retransmisión finalizada correctamente.',
+        message: recordedMatchId
+          ? 'Retransmisión finalizada y enlace guardado para ver en diferido.'
+          : 'Retransmisión finalizada correctamente.',
         active: false,
         url: null,
+        recordedMatchId,
+        recordings: updatedRecordings,
+      });
+    }
+
+    // 3. GUARDAR O ACTUALIZAR GRABACIÓN DIRECTAMENTE
+    if (action === 'save_recording') {
+      const { password, matchId, url } = body;
+
+      if (!password || password !== FIXED_PASSWORD) {
+        return NextResponse.json(
+          { success: false, error: 'Contraseña de autorización incorrecta.' },
+          { status: 401 }
+        );
+      }
+
+      if (!matchId || !url) {
+        return NextResponse.json(
+          { success: false, error: 'Se requiere ID de partido y URL de grabación.' },
+          { status: 400 }
+        );
+      }
+
+      const updatedRecordings = await saveMatchRecording(matchId, url.trim());
+      return NextResponse.json({
+        success: true,
+        message: 'Grabación de partido guardada correctamente.',
+        recordings: updatedRecordings,
       });
     }
 

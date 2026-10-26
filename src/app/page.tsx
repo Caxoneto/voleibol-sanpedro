@@ -8,6 +8,8 @@ import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 import HeroMatchesCarousel, { HeroCarouselMatchItem } from '@/components/HeroMatchesCarousel';
 import HeroLiveBlock from '@/components/HeroLiveBlock';
+import { isRestMatch } from '@/lib/match-utils';
+import { getMatchRecordings } from '@/lib/streaming-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -15,6 +17,7 @@ export const revalidate = 0;
 export default async function HomePage() {
   const syncedData = await syncFavbData();
   const liveMap = new Map(syncedData.matches.map((m) => [m.id, m]));
+  const recordings = await getMatchRecordings();
 
   const articles = store.getArticles().slice(0, 3);
   const categories = store.getCategories();
@@ -26,7 +29,8 @@ export default async function HomePage() {
 
   const matches = store.getMatches().map((m) => {
     const live = liveMap.get(m.id);
-    if (!live) return m;
+    const videoUrl = recordings[m.id] || m.videoUrl;
+    if (!live) return { ...m, videoUrl };
     return {
       ...m,
       homeTeamName: live.homeTeam || m.homeTeamName,
@@ -40,12 +44,14 @@ export default async function HomePage() {
       awayScore: live.awayScore ?? m.awayScore,
       setScores: live.setScores && live.setScores.length > 0 ? live.setScores : m.setScores,
       currentSetScore: live.currentSetScore,
+      videoUrl,
     };
   });
 
-  // Seleccionar el partido destacado entre los partidos EN JUEGO (LIVE) o el PRÓXIMO pendiente (SCHEDULED) más cercano (excluyendo aplazados)
+  // Seleccionar el partido destacado entre los partidos EN JUEGO (LIVE) o el PRÓXIMO pendiente (SCHEDULED) más cercano (excluyendo descanso y aplazados)
   const pendingMatches = matches
     .filter((m) => {
+      if (isRestMatch(m)) return false;
       if (m.status === 'LIVE') return true;
       if (m.status === 'SCHEDULED') {
         const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
@@ -68,35 +74,39 @@ export default async function HomePage() {
   const featuredCat = featuredTeam ? catMap.get(featuredTeam.categoryId) : undefined;
 
   const recentMatches = matches
-    .filter((m) => m.status === 'FINISHED')
+    .filter((m) => !isRestMatch(m) && m.status === 'FINISHED')
     .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime())
     .slice(0, 3);
 
-  const carouselMatches: HeroCarouselMatchItem[] = matches.map((m) => {
-    const team = teamMap.get(m.teamId);
-    const cat = team ? catMap.get(team.categoryId) : undefined;
-    return {
-      id: m.id,
-      round: m.round,
-      categoryId: cat?.id || 'cat-senior-fem',
-      categoryName: cat?.name || 'Categoría FAVB',
-      categoryOrder: cat?.order ?? 99,
-      homeTeamName: m.homeTeamName,
-      awayTeamName: m.awayTeamName,
-      isClubHome: m.isClubHome,
-      matchDate: m.matchDate,
-      dateStr: formatMadridDateString(m.matchDate),
-      status: m.status,
-      statusText: m.statusText,
-      homeScore: 'homeScore' in m ? (m.homeScore as number | undefined) : undefined,
-      awayScore: 'awayScore' in m ? (m.awayScore as number | undefined) : undefined,
-      setScores: m.setScores,
-      currentSetScore:
-        'currentSetScore' in m
-          ? (m.currentSetScore as { set: string; home: number; away: number } | undefined)
-          : undefined,
-    };
-  });
+  // Excluir rigurosamente partidos donde el equipo descansa del carrusel de Inicio
+  const carouselMatches: HeroCarouselMatchItem[] = matches
+    .filter((m) => !isRestMatch(m))
+    .map((m) => {
+      const team = teamMap.get(m.teamId);
+      const cat = team ? catMap.get(team.categoryId) : undefined;
+      return {
+        id: m.id,
+        round: m.round,
+        categoryId: cat?.id || 'cat-senior-fem',
+        categoryName: cat?.name || 'Categoría FAVB',
+        categoryOrder: cat?.order ?? 99,
+        homeTeamName: m.homeTeamName,
+        awayTeamName: m.awayTeamName,
+        isClubHome: m.isClubHome,
+        matchDate: m.matchDate,
+        dateStr: formatMadridDateString(m.matchDate),
+        status: m.status,
+        statusText: m.statusText,
+        homeScore: 'homeScore' in m ? (m.homeScore as number | undefined) : undefined,
+        awayScore: 'awayScore' in m ? (m.awayScore as number | undefined) : undefined,
+        setScores: m.setScores,
+        currentSetScore:
+          'currentSetScore' in m
+            ? (m.currentSetScore as { set: string; home: number; away: number } | undefined)
+            : undefined,
+        videoUrl: m.videoUrl,
+      };
+    });
 
   return (
     <div className="w-full flex flex-col">

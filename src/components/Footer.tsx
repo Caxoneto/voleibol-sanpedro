@@ -429,7 +429,9 @@ export default function Footer() {
         onClose={() => setIsStreamingModalOpen(false)}
         isLive={streamingStatus.active}
         currentUrl={streamingStatus.url}
-        onSuccess={(newStatus) => updateLocalStatus(newStatus)}
+        matchId={streamingStatus.matchId}
+        matchTitle={streamingStatus.matchTitle}
+        onSuccess={(newStatus, recordings) => updateLocalStatus(newStatus, recordings)}
       />
     </footer>
   );

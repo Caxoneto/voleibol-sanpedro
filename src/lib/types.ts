@@ -87,6 +87,7 @@ export interface Match {
   awayScore?: number;
   favbMatchUrl?: string;
   afadeMatchUrl?: string;
+  videoUrl?: string;
   association?: 'FAVB' | 'AFADE';
   mvpPlayerId?: string;
   isFeatured?: boolean;

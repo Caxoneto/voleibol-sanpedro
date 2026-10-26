@@ -153,6 +153,17 @@
   animation-play-state: paused;
 }
 
+.animate-venue-marquee {
+  display: inline-flex;
+  width: max-content;
+  animation: marquee 16s linear infinite;
+}
+.group:hover .animate-venue-marquee,
+:hover > .animate-venue-marquee,
+.animate-venue-marquee:hover {
+  animation-play-state: paused;
+}
+
 .mask-fade-edges {
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 90%, transparent 100%);
   mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 90%, transparent 100%);
@@ -254,6 +265,7 @@
 
   .animate-marquee-smooth,
   .animate-team-marquee,
+  .animate-venue-marquee,
   .animate-hero-bg,
   .animate-pulse-aura,
   .shimmer-effect::after {
