@@ -402,18 +402,17 @@ export default function Footer() {
               <CookieSettingsButton />
             </nav>
 
-            {/* Lema y Colaborador */}
-            <div className="flex items-center gap-3">
+            {/* Lema y Créditos de Desarrollo */}
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-start sm:justify-end sm:ml-auto">
               <span className="italic hidden md:inline">«{CLUB_INFO.motto}»</span>
               <span className="text-white/20 select-none hidden md:inline">•</span>
               <a
-                href="https://feelsports.es/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-primary transition-colors flex items-center gap-1 font-semibold"
+                href="mailto:caxon2@gmail.com"
+                className="hover:text-primary transition-colors flex items-center gap-1 font-medium text-xs text-tertiary hover:text-white"
+                title="Contacto de desarrollo web"
               >
-                <span>FeelSports</span>
-                <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
+                <span className="material-symbols-outlined text-[14px] text-primary" aria-hidden="true">code</span>
+                <span>Web por <strong className="text-white/90 font-semibold">caxon2@gmail.com</strong></span>
               </a>
             </div>
           </div>
