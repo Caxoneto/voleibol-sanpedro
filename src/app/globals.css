@@ -263,9 +263,7 @@
     scroll-behavior: auto !important;
   }
 
-  .animate-marquee-smooth,
-  .animate-team-marquee,
-  .animate-venue-marquee,
+  /* Solo pausar animaciones decorativas de fondo; las marquesinas informativas se mantienen activas y se pausan al pasar el cursor (:hover) */
   .animate-hero-bg,
   .animate-pulse-aura,
   .shimmer-effect::after {

@@ -147,7 +147,7 @@ export default function AccesibilidadPage() {
                   <span>Reducción de Movimiento (Prefers-Reduced-Motion)</span>
                 </div>
                 <p className="text-xs text-tertiary leading-relaxed">
-                  Respeto estricto de las preferencias del sistema operativo (<code className="text-primary font-mono">prefers-reduced-motion: reduce</code>) desactivando marquesinas continuas, pulsos de luz o efectos de brillo, y proveyendo botones interactivos para pausar animaciones conforme al criterio WCAG 2.2.2.
+                  Pausa interactiva automática al situar el cursor (<code className="text-primary font-mono">:hover</code>) o enfocar elementos en movimiento para una lectura cómoda y accesible, junto a la desactivación de efectos de brillo o zooms ambientales decorativos bajo <code className="text-primary font-mono">prefers-reduced-motion: reduce</code>.
                 </p>
               </div>
 
