@@ -194,12 +194,18 @@ export default function CalendarioPage() {
         (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
       );
       const playablePending = roundMatches.filter((m) => {
+        if (isRestMatch(m)) return false;
         if (m.status === 'FINISHED' || m.status === 'POSTPONED' || m.status === 'CANCELLED') return false;
         const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
         if (m.status === 'SCHEDULED' && isPast12h) return false;
         return true;
       });
-      const pending = roundMatches.filter((m) => m.status !== 'FINISHED');
+      const upcomingAny = roundMatches.filter((m) => {
+        if (m.status === 'FINISHED' || m.status === 'POSTPONED' || m.status === 'CANCELLED') return false;
+        const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
+        return !isPast12h;
+      });
+      const effectiveUpcoming = playablePending.length > 0 ? playablePending : upcomingAny;
       const firstMatch = roundMatches[0];
       const dateLabel = firstMatch
         ? formatMadridDate(firstMatch.matchDate, { day: 'numeric', month: 'short' })
@@ -209,13 +215,11 @@ export default function CalendarioPage() {
         round: roundNum,
         matches: roundMatches,
         dateLabel,
-        hasPending: pending.length > 0,
-        allFinished: pending.length === 0 && roundMatches.length > 0,
+        hasPending: effectiveUpcoming.length > 0,
+        allFinished: effectiveUpcoming.length === 0 && roundMatches.length > 0,
         earliestPendingTime:
-          playablePending.length > 0
-            ? new Date(playablePending[0].matchDate).getTime()
-            : pending.length > 0
-            ? new Date(pending[0].matchDate).getTime()
+          effectiveUpcoming.length > 0
+            ? new Date(effectiveUpcoming[0].matchDate).getTime()
             : Number.POSITIVE_INFINITY,
       });
     }
@@ -223,9 +227,20 @@ export default function CalendarioPage() {
     return summaries;
   }, [filteredMatches]);
 
-  // 3. Jornada recomendada por defecto: la jornada del próximo partido pendiente más cercano
+  // 3. Jornada recomendada por defecto: la jornada del próximo partido pendiente más cercano cuya fecha de inicio sea actual o futura
   const recommendedRound = useMemo<number | null>(() => {
     if (roundsData.length === 0) return null;
+    const now = Date.now();
+    // Jornada próxima/en curso: aquella con partidos pendientes cuya fecha oficial de inicio no pertenezca a semanas pasadas
+    const upcomingRounds = roundsData.filter((r) => {
+      const firstMatchTime = r.matches[0] ? new Date(r.matches[0].matchDate).getTime() : 0;
+      return r.hasPending && firstMatchTime >= now - 48 * 3600 * 1000;
+    });
+
+    if (upcomingRounds.length > 0) {
+      return upcomingRounds[0].round;
+    }
+
     const withPending = roundsData
       .filter((r) => r.hasPending)
       .sort((a, b) => a.earliestPendingTime - b.earliestPendingTime);
@@ -498,13 +513,13 @@ export default function CalendarioPage() {
         </div>
       </section>
 
-      {/* Filter Toolbar (Categorías + Condición) */}
+      {/* Filter Toolbar (Categorías) */}
       <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5">
           {/* Categorías */}
           <div
             ref={catScrollRef}
-            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory w-full md:flex-1"
+            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory w-full"
           >
             <button
               id="cal-cat-pill-ALL"
@@ -534,9 +549,22 @@ export default function CalendarioPage() {
               </button>
             ))}
           </div>
+        </div>
+      </section>
 
-          {/* Condición */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 shrink-0 w-full md:w-auto">
+      {syncFeedback && (
+        <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
+          <span className="material-symbols-outlined text-emerald-400 text-[18px]" aria-hidden="true">check_circle</span>
+          <span>{syncFeedback}</span>
+        </div>
+      )}
+
+      {/* Selector de Jornadas (J1, J2, J3...) + Listado de Partidos de la Jornada */}
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-4 sm:py-6 space-y-4 relative z-10">
+        {/* Contenedor de filtros de condición + Jornadas */}
+        <div className="bg-surface-container-lowest border border-white/10 p-3 sm:p-4 space-y-3">
+          {/* Condición + Sincronización */}
+          <div className="flex items-center justify-between gap-2 sm:gap-3 pb-2.5 border-b border-white/10">
             <div className="flex items-center bg-surface-container-high p-0.5 border border-white/5 flex-1 sm:flex-initial">
               <button
                 onClick={() => setConditionFilter('ALL')}
@@ -556,7 +584,7 @@ export default function CalendarioPage() {
                     : 'text-tertiary hover:text-white'
                 }`}
               >
-                Local (Scariolo)
+                Local
               </button>
               <button
                 onClick={() => setConditionFilter('VISITANTE')}
@@ -583,113 +611,103 @@ export default function CalendarioPage() {
               </span>
             </button>
           </div>
-        </div>
-      </section>
 
-      {syncFeedback && (
-        <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
-          <span className="material-symbols-outlined text-emerald-400 text-[18px]" aria-hidden="true">check_circle</span>
-          <span>{syncFeedback}</span>
-        </div>
-      )}
+          {roundsData.length > 0 && (
+            <>
+              {/* Fila Seleccionar Jornada */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="material-symbols-outlined text-primary text-[18px] shrink-0" aria-hidden="true">
+                    calendar_view_week
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-white truncate">
+                    Seleccionar Jornada
+                  </span>
+                  {recommendedRound !== null && activeRound !== recommendedRound && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRound(recommendedRound)}
+                      className="ml-1 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
+                    >
+                      Ir a J{recommendedRound} (Próxima)
+                    </button>
+                  )}
+                </div>
 
-      {/* Selector de Jornadas (J1, J2, J3...) + Listado de Partidos de la Jornada */}
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-4 sm:py-6 space-y-4 relative z-10">
-        {/* Barra / Calendario de Jornadas (J1, J2, J3...) */}
-        {roundsData.length > 0 && (
-          <div className="bg-surface-container-lowest border border-white/10 p-3 sm:p-4 space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="material-symbols-outlined text-primary text-[18px] shrink-0" aria-hidden="true">
-                  calendar_view_week
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-white truncate">
-                  Seleccionar Jornada
-                </span>
-                {recommendedRound !== null && activeRound !== recommendedRound && (
+                {/* Flechas de navegación rápida entre jornadas */}
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setSelectedRound(recommendedRound)}
-                    className="ml-1 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
+                    disabled={!prevRoundObj}
+                    onClick={() => prevRoundObj && setSelectedRound(prevRoundObj.round)}
+                    className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
+                    title={prevRoundObj ? `Jornada anterior (J${prevRoundObj.round})` : 'Primera jornada'}
+                    aria-label="Jornada anterior"
                   >
-                    Ir a J{recommendedRound} (Próxima)
+                    <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_left</span>
                   </button>
-                )}
-              </div>
-
-              {/* Flechas de navegación rápida entre jornadas */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  disabled={!prevRoundObj}
-                  onClick={() => prevRoundObj && setSelectedRound(prevRoundObj.round)}
-                  className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
-                  title={prevRoundObj ? `Jornada anterior (J${prevRoundObj.round})` : 'Primera jornada'}
-                  aria-label="Jornada anterior"
-                >
-                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_left</span>
-                </button>
-                <button
-                  type="button"
-                  disabled={!nextRoundObj}
-                  onClick={() => nextRoundObj && setSelectedRound(nextRoundObj.round)}
-                  className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
-                  title={nextRoundObj ? `Siguiente jornada (J${nextRoundObj.round})` : 'Última jornada'}
-                  aria-label="Siguiente jornada"
-                >
-                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_right</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Píldoras horizontales J1, J2, J3... */}
-            <div
-              ref={roundsScrollRef}
-              className="flex items-center gap-1.5 overflow-x-auto category-scrollbar scroll-smooth pt-0.5 pb-1.5"
-            >
-              {roundsData.map((r) => {
-                const isSelected = r.round === currentRoundObj?.round;
-                const isRecommended = r.round === recommendedRound;
-                return (
                   <button
-                    key={r.round}
-                    id={`round-pill-${r.round}`}
                     type="button"
-                    onClick={() => setSelectedRound(r.round)}
-                    className={`relative px-3 py-1.5 min-w-[58px] sm:min-w-[64px] flex flex-col items-center justify-center border transition-all shrink-0 ${
-                      isSelected
-                        ? 'bg-primary-container text-white border-white/40 shadow-[2px_2px_0px_0px_#0e0e0e] -translate-y-0.5'
-                        : isRecommended
-                        ? 'bg-surface-container-high text-white border-red-500/60 hover:border-red-500'
-                        : r.allFinished
-                        ? 'bg-surface-container-low/70 text-tertiary/70 border-white/5 hover:text-white hover:border-white/20'
-                        : 'bg-surface-container-high text-tertiary border-white/10 hover:text-white hover:border-white/25'
-                    }`}
+                    disabled={!nextRoundObj}
+                    onClick={() => nextRoundObj && setSelectedRound(nextRoundObj.round)}
+                    className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
+                    title={nextRoundObj ? `Siguiente jornada (J${nextRoundObj.round})` : 'Última jornada'}
+                    aria-label="Siguiente jornada"
                   >
-                    {isRecommended && (
-                      <span
-                        className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${
-                          isSelected ? 'bg-white' : 'bg-red-500 animate-pulse'
-                        }`}
-                        title="Jornada en curso / próxima"
-                      />
-                    )}
-                    <span className="font-display-xl text-base sm:text-lg leading-none">
-                      J{r.round}
-                    </span>
-                    <span
-                      className={`text-[9px] uppercase tracking-tighter mt-0.5 whitespace-nowrap ${
-                        isSelected ? 'text-white/90 font-semibold' : 'text-tertiary'
+                    <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Píldoras horizontales J1, J2, J3... */}
+              <div
+                ref={roundsScrollRef}
+                className="flex items-center gap-1.5 overflow-x-auto category-scrollbar scroll-smooth pt-0.5 pb-1.5"
+              >
+                {roundsData.map((r) => {
+                  const isSelected = r.round === currentRoundObj?.round;
+                  const isRecommended = r.round === recommendedRound;
+                  return (
+                    <button
+                      key={r.round}
+                      id={`round-pill-${r.round}`}
+                      type="button"
+                      onClick={() => setSelectedRound(r.round)}
+                      className={`relative px-3 py-1.5 min-w-[58px] sm:min-w-[64px] flex flex-col items-center justify-center border transition-all shrink-0 ${
+                        isSelected
+                          ? 'bg-primary-container text-white border-white/40 shadow-[2px_2px_0px_0px_#0e0e0e] -translate-y-0.5'
+                          : isRecommended
+                          ? 'bg-surface-container-high text-white border-red-500/60 hover:border-red-500'
+                          : r.allFinished
+                          ? 'bg-surface-container-low/70 text-tertiary/70 border-white/5 hover:text-white hover:border-white/20'
+                          : 'bg-surface-container-high text-tertiary border-white/10 hover:text-white hover:border-white/25'
                       }`}
                     >
-                      {r.dateLabel}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                      {isRecommended && (
+                        <span
+                          className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${
+                            isSelected ? 'bg-white' : 'bg-red-500 animate-pulse'
+                          }`}
+                          title="Jornada en curso / próxima"
+                        />
+                      )}
+                      <span className="font-display-xl text-base sm:text-lg leading-none">
+                        J{r.round}
+                      </span>
+                      <span
+                        className={`text-[9px] uppercase tracking-tighter mt-0.5 whitespace-nowrap ${
+                          isSelected ? 'text-white/90 font-semibold' : 'text-tertiary'
+                        }`}
+                      >
+                        {r.dateLabel}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Cabecera de la Jornada seleccionada */}
         {currentRoundObj && (
@@ -967,8 +985,26 @@ export default function CalendarioPage() {
                         </div>
 
                         {scoreResult ? (
-                          <span className="px-2 py-0.5 bg-white/10 border border-white/15 font-display-xl text-sm text-white tracking-wider">
-                            {scoreResult.homeSetsWon} - {scoreResult.awaySetsWon}
+                          <span className="px-2.5 py-0.5 bg-white/10 border border-white/15 font-display-xl text-sm tracking-wider inline-flex items-center gap-1">
+                            <span
+                              className={
+                                scoreResult.homeSetsWon > scoreResult.awaySetsWon
+                                  ? 'text-emerald-400 font-bold'
+                                  : 'text-white'
+                              }
+                            >
+                              {scoreResult.homeSetsWon}
+                            </span>
+                            <span className="text-white/50">-</span>
+                            <span
+                              className={
+                                scoreResult.awaySetsWon > scoreResult.homeSetsWon
+                                  ? 'text-emerald-400 font-bold'
+                                  : 'text-white'
+                              }
+                            >
+                              {scoreResult.awaySetsWon}
+                            </span>
                           </span>
                         ) : (
                           <span className="text-xs text-tertiary font-mono">vs</span>
