@@ -32,26 +32,103 @@ export interface StreamingPayloadEvent {
   recordings?: MatchRecordingsMap;
 }
 
-export function useStreaming() {
-  const [status, setStatus] = useState<StreamingStatus>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem(STORAGE_KEY_STATUS);
-        if (cached) return JSON.parse(cached);
-      } catch {}
+export function isValidYouTubeUrl(urlStr?: string | null): boolean {
+  if (!urlStr || typeof urlStr !== 'string') return false;
+  try {
+    const parsed = new URL(urlStr.trim());
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    if (!['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(host)) {
+      return false;
     }
-    return { active: false, url: null, matchId: null, matchTitle: null };
-  });
+    if (host === 'youtu.be') {
+      return parsed.pathname.length > 1;
+    }
+    return (
+      parsed.pathname.startsWith('/watch') ||
+      parsed.pathname.startsWith('/live') ||
+      parsed.pathname.startsWith('/embed') ||
+      parsed.pathname.startsWith('/shorts')
+    );
+  } catch {
+    return false;
+  }
+}
 
-  const [recordings, setRecordings] = useState<MatchRecordingsMap>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem(STORAGE_KEY_RECORDINGS);
-        if (cached) return JSON.parse(cached);
-      } catch {}
-    }
+export function sanitizeRecordings(raw: unknown): MatchRecordingsMap {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return {};
-  });
+  }
+  const clean: MatchRecordingsMap = {};
+  const keyRegex = /^[a-zA-Z0-9_-]{1,64}$/;
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (keyRegex.test(key) && typeof val === 'string' && isValidYouTubeUrl(val)) {
+      clean[key] = val.trim();
+    }
+  }
+  return clean;
+}
+
+export function sanitizeStatus(raw: unknown): StreamingStatus {
+  const fallback: StreamingStatus = { active: false, url: null, matchId: null, matchTitle: null };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return fallback;
+  }
+  const obj = raw as Record<string, unknown>;
+  const active = typeof obj.active === 'boolean' ? obj.active : false;
+  const rawUrl = typeof obj.url === 'string' ? obj.url : null;
+  const validUrl = rawUrl && isValidYouTubeUrl(rawUrl) ? rawUrl.trim() : null;
+
+  if (!validUrl) {
+    return {
+      active: false,
+      url: null,
+      matchId: typeof obj.matchId === 'string' ? obj.matchId : null,
+      matchTitle: typeof obj.matchTitle === 'string' ? obj.matchTitle : null,
+      startedAt: typeof obj.startedAt === 'string' ? obj.startedAt : undefined,
+    };
+  }
+
+  return {
+    active: active,
+    url: validUrl,
+    matchId: typeof obj.matchId === 'string' ? obj.matchId : null,
+    matchTitle: typeof obj.matchTitle === 'string' ? obj.matchTitle : null,
+    startedAt: typeof obj.startedAt === 'string' ? obj.startedAt : undefined,
+  };
+}
+
+export function loadFromStorage(): StreamingStatus {
+  if (typeof window === 'undefined') {
+    return { active: false, url: null, matchId: null, matchTitle: null };
+  }
+  try {
+    const cached = localStorage.getItem(STORAGE_KEY_STATUS);
+    if (!cached) return { active: false, url: null, matchId: null, matchTitle: null };
+    const parsed = JSON.parse(cached);
+    return sanitizeStatus(parsed);
+  } catch {
+    return { active: false, url: null, matchId: null, matchTitle: null };
+  }
+}
+
+export function loadRecordingsFromStorage(): MatchRecordingsMap {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  try {
+    const cached = localStorage.getItem(STORAGE_KEY_RECORDINGS);
+    if (!cached) return {};
+    const parsed = JSON.parse(cached);
+    return sanitizeRecordings(parsed);
+  } catch {
+    return {};
+  }
+}
+
+export function useStreaming() {
+  const [status, setStatus] = useState<StreamingStatus>(() => loadFromStorage());
+  const [recordings, setRecordings] = useState<MatchRecordingsMap>(() => loadRecordingsFromStorage());
 
   const [todayMatches, setTodayMatches] = useState<StreamingMatchOption[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<StreamingMatchOption[]>([]);
@@ -62,19 +139,20 @@ export function useStreaming() {
       const res = await fetch('/api/streaming', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        const newStatus: StreamingStatus = {
+        const newStatus = sanitizeStatus({
           active: !!data.active,
           url: data.url || null,
           matchId: data.matchId || null,
           matchTitle: data.matchTitle || null,
           startedAt: data.startedAt,
-        };
+        });
         setStatus(newStatus);
 
-        if (data.recordings && typeof data.recordings === 'object') {
-          setRecordings(data.recordings);
+        if (data.recordings) {
+          const cleanRecordings = sanitizeRecordings(data.recordings);
+          setRecordings(cleanRecordings);
           try {
-            localStorage.setItem(STORAGE_KEY_RECORDINGS, JSON.stringify(data.recordings));
+            localStorage.setItem(STORAGE_KEY_RECORDINGS, JSON.stringify(cleanRecordings));
           } catch {}
         }
 
@@ -111,15 +189,17 @@ export function useStreaming() {
       if (customEvent.detail) {
         const detail = customEvent.detail;
         if ('status' in detail) {
-          setStatus(detail.status);
+          const cleanStatus = sanitizeStatus(detail.status);
+          setStatus(cleanStatus);
           if (detail.recordings) {
-            setRecordings(detail.recordings);
+            const cleanRecs = sanitizeRecordings(detail.recordings);
+            setRecordings(cleanRecs);
             try {
-              localStorage.setItem(STORAGE_KEY_RECORDINGS, JSON.stringify(detail.recordings));
+              localStorage.setItem(STORAGE_KEY_RECORDINGS, JSON.stringify(cleanRecs));
             } catch {}
           }
         } else {
-          setStatus(detail);
+          setStatus(sanitizeStatus(detail));
         }
       }
     };
@@ -133,20 +213,22 @@ export function useStreaming() {
   }, [fetchStatus]);
 
   const updateLocalStatus = (newStatus: StreamingStatus, updatedRecordings?: MatchRecordingsMap) => {
-    setStatus(newStatus);
-    if (updatedRecordings) {
-      setRecordings(updatedRecordings);
+    const cleanStatus = sanitizeStatus(newStatus);
+    setStatus(cleanStatus);
+    const cleanRecs = updatedRecordings ? sanitizeRecordings(updatedRecordings) : undefined;
+    if (cleanRecs) {
+      setRecordings(cleanRecs);
       try {
-        localStorage.setItem(STORAGE_KEY_RECORDINGS, JSON.stringify(updatedRecordings));
+        localStorage.setItem(STORAGE_KEY_RECORDINGS, JSON.stringify(cleanRecs));
       } catch {}
     }
     try {
-      localStorage.setItem(STORAGE_KEY_STATUS, JSON.stringify(newStatus));
+      localStorage.setItem(STORAGE_KEY_STATUS, JSON.stringify(cleanStatus));
     } catch {}
 
     window.dispatchEvent(
       new CustomEvent(STREAMING_EVENT, {
-        detail: { status: newStatus, recordings: updatedRecordings },
+        detail: { status: cleanStatus, recordings: cleanRecs },
       })
     );
   };
@@ -158,6 +240,7 @@ export function useStreaming() {
     upcomingMatches,
     loading,
     refetch: fetchStatus,
+    refreshStatus: fetchStatus,
     updateLocalStatus,
   };
 }

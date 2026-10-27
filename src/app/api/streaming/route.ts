@@ -1,9 +1,12 @@
+import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import {
   getStreamingStatus,
   getMatchRecordings,
   setStreamingStatus,
   saveMatchRecording,
+  isValidYouTubeUrl,
+  isValidMatchId,
   StreamingPayload,
 } from '@/lib/streaming-store';
 import { getConsolidatedOfficialMatches } from '@/lib/favb-scraper';
@@ -13,6 +16,67 @@ import { formatMadridDateString, formatMadridTime } from '@/lib/date-utils';
 export const dynamic = 'force-dynamic';
 
 const FIXED_PASSWORD = process.env.STREAMING_ADMIN_PASSWORD;
+
+/**
+ * Verificación de contraseña en tiempo constante para mitigar ataques de temporización (timing attacks).
+ */
+function verifyAdminPassword(input: unknown, expected: string): boolean {
+  if (typeof input !== 'string' || !expected) {
+    return false;
+  }
+  const hashInput = crypto.createHash('sha256').update(input).digest();
+  const hashExpected = crypto.createHash('sha256').update(expected).digest();
+  return crypto.timingSafeEqual(hashInput, hashExpected);
+}
+
+interface FailedAttemptInfo {
+  count: number;
+  firstAttemptAt: number;
+}
+
+const failedAttemptsByIp = new Map<string, FailedAttemptInfo>();
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutos
+const MAX_FAILED_ATTEMPTS = 5;
+
+function getClientIp(request: Request): string {
+  const nfIp = request.headers.get('x-nf-client-connection-ip');
+  if (nfIp) return nfIp.trim();
+
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const firstIp = forwarded.split(',')[0].trim();
+    if (firstIp) return firstIp;
+  }
+
+  return 'unknown';
+}
+
+function isIpRateLimited(ip: string): boolean {
+  const info = failedAttemptsByIp.get(ip);
+  if (!info) return false;
+
+  const now = Date.now();
+  if (now - info.firstAttemptAt > RATE_LIMIT_WINDOW_MS) {
+    failedAttemptsByIp.delete(ip);
+    return false;
+  }
+
+  return info.count >= MAX_FAILED_ATTEMPTS;
+}
+
+function recordFailedAttempt(ip: string): void {
+  const now = Date.now();
+  const info = failedAttemptsByIp.get(ip);
+  if (!info || now - info.firstAttemptAt > RATE_LIMIT_WINDOW_MS) {
+    failedAttemptsByIp.set(ip, { count: 1, firstAttemptAt: now });
+  } else {
+    info.count += 1;
+  }
+}
+
+function clearFailedAttempts(ip: string): void {
+  failedAttemptsByIp.delete(ip);
+}
 
 // GET: Obtener estado actual del streaming, grabaciones diferidas y partidos elegibles
 export async function GET() {
@@ -104,15 +168,37 @@ export async function POST(request: Request) {
       );
     }
 
+    const clientIp = getClientIp(request);
+
+    if (isIpRateLimited(clientIp)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Demasiados intentos fallidos. Espera 10 minutos.',
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const action = body.action || (body.url ? 'start' : 'stop');
+
+    const authenticate = (passwordInput: unknown): boolean => {
+      const isValid = verifyAdminPassword(passwordInput, FIXED_PASSWORD);
+      if (!isValid) {
+        recordFailedAttempt(clientIp);
+      } else {
+        clearFailedAttempts(clientIp);
+      }
+      return isValid;
+    };
 
     // 1. INICIAR RETRANSMISIÓN
     if (action === 'start') {
       const { url, password, matchId, matchTitle } = body;
 
-      // Validación de contraseña fija
-      if (!password || password !== FIXED_PASSWORD) {
+      // Validación de contraseña fija con tiempo constante y rate limiting
+      if (!authenticate(password)) {
         return NextResponse.json(
           {
             success: false,
@@ -122,28 +208,25 @@ export async function POST(request: Request) {
         );
       }
 
-      // Validación de URL de YouTube
-      if (!url || typeof url !== 'string') {
+      // Validación estricta de URL de YouTube
+      if (!isValidYouTubeUrl(url)) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Debes proporcionar una URL válida de YouTube.',
+            error: 'El enlace debe pertenecer a una emisión o vídeo de YouTube válido.',
           },
           { status: 400 }
         );
       }
 
-      const trimmedUrl = url.trim();
-      const isYoutube =
-        trimmedUrl.includes('youtube.com') ||
-        trimmedUrl.includes('youtu.be') ||
-        trimmedUrl.startsWith('https://');
+      const trimmedUrl = (url as string).trim();
 
-      if (!isYoutube) {
+      // Validación estricta de matchId
+      if (matchId && matchId !== 'general' && !isValidMatchId(matchId)) {
         return NextResponse.json(
           {
             success: false,
-            error: 'El enlace debe pertenecer a una emisión o vídeo de YouTube.',
+            error: 'Identificador de partido inválido.',
           },
           { status: 400 }
         );
@@ -183,7 +266,7 @@ export async function POST(request: Request) {
       const { password } = body;
 
       // Validación de contraseña para finalizar
-      if (!password || password !== FIXED_PASSWORD) {
+      if (!authenticate(password)) {
         return NextResponse.json(
           {
             success: false,
@@ -197,8 +280,14 @@ export async function POST(request: Request) {
       let updatedRecordings = await getMatchRecordings();
       let recordedMatchId: string | null = null;
 
-      // Si había un partido asociado y una URL de emisión, guardar en diferido
-      if (current.matchId && current.matchId !== 'general' && current.url) {
+      // Si había un partido asociado y una URL de emisión válida, guardar en diferido
+      if (
+        current.matchId &&
+        current.matchId !== 'general' &&
+        current.url &&
+        isValidMatchId(current.matchId) &&
+        isValidYouTubeUrl(current.url)
+      ) {
         recordedMatchId = current.matchId;
         updatedRecordings = await saveMatchRecording(current.matchId, current.url);
       }
@@ -228,21 +317,28 @@ export async function POST(request: Request) {
     if (action === 'save_recording') {
       const { password, matchId, url } = body;
 
-      if (!password || password !== FIXED_PASSWORD) {
+      if (!authenticate(password)) {
         return NextResponse.json(
           { success: false, error: 'Contraseña de autorización incorrecta.' },
           { status: 401 }
         );
       }
 
-      if (!matchId || !url) {
+      if (!matchId || !isValidMatchId(matchId)) {
         return NextResponse.json(
-          { success: false, error: 'Se requiere ID de partido y URL de grabación.' },
+          { success: false, error: 'Identificador de partido inválido.' },
           { status: 400 }
         );
       }
 
-      const updatedRecordings = await saveMatchRecording(matchId, url.trim());
+      if (!isValidYouTubeUrl(url)) {
+        return NextResponse.json(
+          { success: false, error: 'Debes proporcionar una URL válida de YouTube.' },
+          { status: 400 }
+        );
+      }
+
+      const updatedRecordings = await saveMatchRecording(matchId, (url as string).trim());
       return NextResponse.json({
         success: true,
         message: 'Grabación de partido guardada correctamente.',

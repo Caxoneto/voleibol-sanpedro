@@ -23,7 +23,7 @@ export async function GET(
   }
 
   const { searchParams } = new URL(request.url);
-  const simulate = searchParams.get('simulate') === 'true';
+  const simulate = process.env.NODE_ENV !== 'production' && searchParams.get('simulate') === 'true';
 
   try {
     if (matchId.startsWith('afade-')) {

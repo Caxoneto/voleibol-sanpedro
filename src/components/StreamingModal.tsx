@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { StreamingStatus, MatchRecordingsMap, useStreaming } from '@/lib/use-streaming';
+import { StreamingStatus, MatchRecordingsMap, useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
 
 interface StreamingModalProps {
   isOpen: boolean;
@@ -78,8 +78,8 @@ export default function StreamingModal({
     }
 
     const trimmedUrl = url.trim();
-    if (!trimmedUrl.includes('youtube.com') && !trimmedUrl.includes('youtu.be')) {
-      setError('La dirección debe ser un enlace válido de YouTube (ej. youtube.com/watch?v=... o youtu.be/...)');
+    if (!isValidYouTubeUrl(trimmedUrl)) {
+      setError('La dirección debe ser un enlace válido de YouTube (ej. https://www.youtube.com/watch?v=... o https://youtu.be/...)');
       return;
     }
 
@@ -284,7 +284,7 @@ export default function StreamingModal({
                 </div>
               )}
 
-              {currentUrl && (
+              {currentUrl && isValidYouTubeUrl(currentUrl) && (
                 <div className="p-3 bg-black/50 border border-white/10 rounded flex items-center justify-between gap-2 overflow-hidden">
                   <div className="min-w-0">
                     <span className="text-[10px] text-tertiary uppercase tracking-wider block">

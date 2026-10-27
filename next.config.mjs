@@ -1,4 +1,20 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === 'development';
+
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "img-src 'self' data: blob: https://images.unsplash.com https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net https://ligaafade.es",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "upgrade-insecure-requests",
+].join('; ');
+
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -54,16 +70,24 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
+            value:
+              'camera=(), microphone=(), geolocation=(), browsing-topics=(), payment=(), usb=(), display-capture=()',
           },
           {
             key: 'Cross-Origin-Opener-Policy',
             value: 'same-origin-allow-popups',
           },
           {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
+          },
+          {
             key: 'Content-Security-Policy',
-            value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net https://ligaafade.es; connect-src 'self' https://favoley.net https://www.favoley.net https://ligaafade.es; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
+            value: contentSecurityPolicy,
           },
         ],
       },

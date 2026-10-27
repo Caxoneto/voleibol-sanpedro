@@ -19,7 +19,7 @@ import {
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
 import { isRestMatch } from '@/lib/match-utils';
-import { useStreaming } from '@/lib/use-streaming';
+import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
 import jsPDF from 'jspdf';
 
 interface RoundSummary {
@@ -714,7 +714,8 @@ export default function CalendarioPage() {
             displayedMatches.map((match) => {
               const team = INITIAL_TEAMS.find((t) => t.id === match.teamId);
               const isRest = isRestMatch(match);
-              const recordingUrl = (mounted ? recordings[match.id] : null) || match.videoUrl;
+              const rawRecordingUrl = (mounted ? recordings[match.id] : null) || match.videoUrl;
+              const recordingUrl = isValidYouTubeUrl(rawRecordingUrl) ? rawRecordingUrl : null;
 
               if (isRest) {
                 const clubTeamName = match.homeTeamName.includes('San Pedro') ? match.homeTeamName : match.awayTeamName;
@@ -840,7 +841,7 @@ export default function CalendarioPage() {
 
                       {/* Iconos compactos en móvil a la derecha de la cabecera */}
                       <div className="flex lg:hidden items-center gap-1.5 shrink-0 relative z-30">
-                        {recordingUrl && (
+                        {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
                           <a
                             href={recordingUrl}
                             target="_blank"
@@ -999,7 +1000,7 @@ export default function CalendarioPage() {
 
                     {/* Right (Desktop): Compact Icon-Only Actions */}
                     <div className="hidden lg:flex items-center gap-2 shrink-0 relative z-30">
-                      {recordingUrl && (
+                      {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
                         <a
                           href={recordingUrl}
                           target="_blank"

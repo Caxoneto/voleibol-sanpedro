@@ -13,6 +13,50 @@ export interface StreamingPayload {
 
 export type MatchRecordingsMap = Record<string, string>;
 
+const MATCH_ID_REGEX = /^[a-zA-Z0-9_-]{1,64}$/;
+
+/**
+ * Valida de forma estricta identificadores de partidos para evitar inyecciones o claves anómalas.
+ */
+export function isValidMatchId(matchId: unknown): matchId is string {
+  return typeof matchId === 'string' && MATCH_ID_REGEX.test(matchId);
+}
+
+/**
+ * Valida de forma estricta que una URL corresponda a una emisión o vídeo de YouTube válido.
+ */
+export function isValidYouTubeUrl(urlStr?: string | null): boolean {
+  if (!urlStr || typeof urlStr !== 'string') {
+    return false;
+  }
+  const trimmed = urlStr.trim();
+  if (!trimmed) {
+    return false;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+    const host = parsed.hostname.toLowerCase();
+    const validHosts = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'];
+    if (!validHosts.includes(host)) {
+      return false;
+    }
+    if (host === 'youtu.be') {
+      return parsed.pathname.length > 1;
+    }
+    return (
+      parsed.pathname.startsWith('/watch') ||
+      parsed.pathname.startsWith('/live') ||
+      parsed.pathname.startsWith('/embed') ||
+      parsed.pathname.startsWith('/shorts')
+    );
+  } catch {
+    return false;
+  }
+}
+
 // Fallback en memoria en caso de desconexión o entorno local sin DATABASE_URL
 let memoryStreamingState: StreamingPayload = {
   active: false,
@@ -37,7 +81,11 @@ export async function queryNeon<T = Record<string, unknown>>(
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     const hostMatch = connectionString.match(/@([^/:]+)/);
-    const host = hostMatch ? hostMatch[1] : 'ep-dark-term-b40s456o-pooler.c-6.us-east-2.aws.neon.tech';
+    if (!hostMatch || !hostMatch[1]) {
+      console.warn('[StreamingStore] Host no válido en DATABASE_URL');
+      return [];
+    }
+    const host = hostMatch[1];
 
     const res = await fetch(`https://${host}/sql`, {
       method: 'POST',
@@ -83,21 +131,28 @@ export async function getStreamingStatus(): Promise<StreamingPayload> {
           : (val as StreamingPayload);
 
       if (parsed && typeof parsed === 'object') {
-        memoryStreamingState = parsed;
-        return {
-          active: !!parsed.active,
-          url: parsed.url || null,
+        const safeUrl = isValidYouTubeUrl(parsed.url) ? parsed.url : null;
+        const safeState: StreamingPayload = {
+          active: !!parsed.active && !!safeUrl,
+          url: safeUrl,
           matchId: parsed.matchId || null,
           matchTitle: parsed.matchTitle || null,
           startedAt: parsed.startedAt,
         };
+        memoryStreamingState = safeState;
+        return safeState;
       }
     }
   } catch (err) {
     console.warn('[StreamingStore] Error leyendo streaming:', err);
   }
 
-  return { ...memoryStreamingState };
+  const fallbackUrl = isValidYouTubeUrl(memoryStreamingState.url) ? memoryStreamingState.url : null;
+  return {
+    ...memoryStreamingState,
+    active: !!memoryStreamingState.active && !!fallbackUrl,
+    url: fallbackUrl,
+  };
 }
 
 /**
@@ -136,39 +191,59 @@ export async function getMatchRecordings(): Promise<MatchRecordingsMap> {
           : (val as MatchRecordingsMap);
 
       if (parsed && typeof parsed === 'object') {
-        memoryRecordingsState = parsed;
-        return { ...parsed };
+        const cleaned: MatchRecordingsMap = {};
+        for (const [k, v] of Object.entries(parsed)) {
+          if (isValidMatchId(k) && typeof v === 'string' && isValidYouTubeUrl(v)) {
+            cleaned[k] = v;
+          }
+        }
+        memoryRecordingsState = cleaned;
+        return { ...cleaned };
       }
     }
   } catch (err) {
     console.warn('[StreamingStore] Error leyendo match_recordings:', err);
   }
 
-  return { ...memoryRecordingsState };
+  const cleanedFallback: MatchRecordingsMap = {};
+  for (const [k, v] of Object.entries(memoryRecordingsState)) {
+    if (isValidMatchId(k) && typeof v === 'string' && isValidYouTubeUrl(v)) {
+      cleanedFallback[k] = v;
+    }
+  }
+  return cleanedFallback;
 }
 
 /**
  * Asocia y persiste de forma permanente una grabación de YouTube a un partido.
+ * Utiliza actualización atómica JSONB para evitar condiciones de carrera.
  */
 export async function saveMatchRecording(matchId: string, url: string): Promise<MatchRecordingsMap> {
-  const current = await getMatchRecordings();
-  const updated = {
-    ...current,
-    [matchId]: url,
-  };
+  if (!isValidMatchId(matchId)) {
+    console.warn('[StreamingStore] matchId inválido para grabación:', matchId);
+    return getMatchRecordings();
+  }
 
-  memoryRecordingsState = updated;
+  if (!isValidYouTubeUrl(url)) {
+    console.warn('[StreamingStore] URL inválida de YouTube para grabación:', url);
+    return getMatchRecordings();
+  }
+
+  const cleanUrl = url.trim();
 
   try {
     await queryNeon(
       `INSERT INTO club_settings (key, value, updated_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();`,
-      ['match_recordings', JSON.stringify(updated)]
+       VALUES ($1, jsonb_build_object($2::text, $3::text)::text, NOW())
+       ON CONFLICT (key) DO UPDATE
+       SET value = (COALESCE(club_settings.value::jsonb, '{}'::jsonb) || jsonb_build_object($2::text, $3::text))::text,
+           updated_at = NOW();`,
+      ['match_recordings', matchId, cleanUrl]
     );
   } catch (err) {
     console.warn('[StreamingStore] Error persistiendo grabación en Neon:', err);
   }
 
-  return updated;
+  memoryRecordingsState[matchId] = cleanUrl;
+  return { ...memoryRecordingsState };
 }

@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useStreaming } from '@/lib/use-streaming';
+import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
 
 export default function HeroLiveBlock() {
   const { status: streamingStatus } = useStreaming();
-  const isLive = streamingStatus.active && !!streamingStatus.url;
+  const isLive = streamingStatus.active && !!streamingStatus.url && isValidYouTubeUrl(streamingStatus.url);
 
   return (
     <div
@@ -99,7 +99,7 @@ export default function HeroLiveBlock() {
       </div>
 
       {/* Botón oficial de YouTube En Directo! (Aparece cuando el streaming está activo) */}
-      {isLive && streamingStatus.url && (
+      {isLive && streamingStatus.url && isValidYouTubeUrl(streamingStatus.url) && (
         <div className="shrink-0 flex items-center animate-fade-in">
           <a
             href={streamingStatus.url}

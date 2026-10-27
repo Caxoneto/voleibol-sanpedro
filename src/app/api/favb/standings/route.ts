@@ -5,15 +5,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const force = searchParams.get('force') === 'true';
+  let force = searchParams.get('force') === 'true';
 
   if (force) {
     const secFetchSite = req.headers.get('sec-fetch-site');
-    if (secFetchSite === 'cross-site') {
-      return NextResponse.json(
-        { success: false, error: 'Acceso denegado a peticiones entre sitios para forzar sincronización' },
-        { status: 403, headers: { 'X-Content-Type-Options': 'nosniff' } }
-      );
+    if (secFetchSite !== 'same-origin' && secFetchSite !== 'same-site') {
+      force = false;
     }
   }
 

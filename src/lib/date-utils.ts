@@ -87,22 +87,81 @@ export function generateGoogleCalendarUrl(
 }
 
 /**
- * Genera el contenido del archivo .ics estándar para Apple Calendar / Outlook / iCal.
+ * Escapa texto plano para valores RFC 5545 en iCalendar, eliminando inyecciones CRLF
+ * y escapando barras invertidas, punto y coma y comas.
  */
-export function generateIcsContent(
-  title: string,
-  venue: string,
-  startDateUtc: string | Date,
-  matchId: string,
-  durationMinutes = 120
-): string {
-  const start = typeof startDateUtc === 'string' ? new Date(startDateUtc) : startDateUtc;
-  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+export function escapeIcsText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .trim();
+}
+
+export interface IcsEventInput {
+  title: string;
+  venue: string;
+  startDateUtc: string | Date;
+  matchId: string;
+  durationMinutes?: number;
+  description?: string;
+}
+
+/**
+ * Genera un bloque individual VEVENT cumpliendo la especificación RFC 5545 y saneando campos.
+ */
+export function generateVEventBlock(event: IcsEventInput): string {
+  const start = typeof event.startDateUtc === 'string' ? new Date(event.startDateUtc) : event.startDateUtc;
+  const duration = event.durationMinutes ?? 120;
+  const end = new Date(start.getTime() + duration * 60 * 1000);
 
   const formatUtcIsoBasic = (d: Date) =>
     d.toISOString().replace(/-|:|\.\d\d\d/g, '');
 
   const now = new Date();
+  const safeUid = escapeIcsText(event.matchId);
+  const safeTitle = escapeIcsText(event.title);
+  const defaultDesc = 'Partido oficial del C.D. Voleibol San Pedro. Pabellón Polideportivo Sergio Scariolo.';
+  const safeDesc = escapeIcsText(event.description ?? defaultDesc);
+  const safeVenue = escapeIcsText(event.venue);
+
+  return [
+    'BEGIN:VEVENT',
+    `UID:match-${safeUid}@voleibolsanpedro.es`,
+    `DTSTAMP:${formatUtcIsoBasic(now)}`,
+    `DTSTART:${formatUtcIsoBasic(start)}`,
+    `DTEND:${formatUtcIsoBasic(end)}`,
+    `SUMMARY:${safeTitle}`,
+    `DESCRIPTION:${safeDesc}`,
+    `LOCATION:${safeVenue}`,
+    'STATUS:CONFIRMED',
+    'END:VEVENT',
+  ].join('\r\n');
+}
+
+/**
+ * Genera el contenido del archivo .ics estándar para Apple Calendar / Outlook / iCal.
+ * Mantiene compatibilidad hacia atrás con la firma original o acepta IcsEventInput.
+ */
+export function generateIcsContent(
+  titleOrEvent: string | IcsEventInput,
+  venue?: string,
+  startDateUtc?: string | Date,
+  matchId?: string,
+  durationMinutes = 120
+): string {
+  const event: IcsEventInput =
+    typeof titleOrEvent === 'object' && titleOrEvent !== null
+      ? titleOrEvent
+      : {
+          title: titleOrEvent,
+          venue: venue || '',
+          startDateUtc: startDateUtc || new Date(),
+          matchId: matchId || 'unknown',
+          durationMinutes,
+        };
 
   return [
     'BEGIN:VCALENDAR',
@@ -110,16 +169,25 @@ export function generateIcsContent(
     'PRODID:-//CD Voleibol San Pedro//Calendario Oficial//ES',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'BEGIN:VEVENT',
-    `UID:match-${matchId}@voleibolsanpedro.es`,
-    `DTSTAMP:${formatUtcIsoBasic(now)}`,
-    `DTSTART:${formatUtcIsoBasic(start)}`,
-    `DTEND:${formatUtcIsoBasic(end)}`,
-    `SUMMARY:${title}`,
-    `DESCRIPTION:Partido oficial del C.D. Voleibol San Pedro. Pabellón Polideportivo Sergio Scariolo.`,
-    `LOCATION:${venue}`,
-    'STATUS:CONFIRMED',
-    'END:VEVENT',
+    generateVEventBlock(event),
+    'END:VCALENDAR',
+  ].join('\r\n');
+}
+
+/**
+ * Genera el contenido de un archivo .ics estándar RFC 5545 con múltiples eventos
+ * englobados en un único bloque VCALENDAR.
+ */
+export function generateMultipleIcsContent(events: IcsEventInput[]): string {
+  const vEvents = events.map((e) => generateVEventBlock(e)).join('\r\n');
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//CD Voleibol San Pedro//Calendario Oficial//ES',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    vEvents,
     'END:VCALENDAR',
   ].join('\r\n');
 }

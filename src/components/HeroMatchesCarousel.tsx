@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { formatMadridDate } from '@/lib/date-utils';
 import { getTeamLogo, getTeamInitials } from '@/lib/team-logos';
 import { isRestMatch } from '@/lib/match-utils';
-import { useStreaming } from '@/lib/use-streaming';
+import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
 
 export interface HeroCarouselMatchItem {
   id: string;
@@ -672,9 +672,10 @@ export default function HeroMatchesCarousel({
             const isStreamingThisMatch = Boolean(
               mounted && streamingStatus.active && streamingStatus.matchId === match.id
             );
-            const videoTargetUrl = isStreamingThisMatch
+            const candidateUrl = isStreamingThisMatch
               ? streamingStatus.url
               : ((mounted ? recordings[match.id] : null) || match.videoUrl);
+            const videoTargetUrl = isValidYouTubeUrl(candidateUrl) ? candidateUrl : null;
             const isLiveVideo = isStreamingThisMatch;
 
             return (
@@ -803,7 +804,7 @@ export default function HeroMatchesCarousel({
                   </div>
 
                   {/* Zona central marcada en azul: Botón Icono YouTube + 'Ver partido' */}
-                  {videoTargetUrl && (
+                  {videoTargetUrl && isValidYouTubeUrl(videoTargetUrl) && (
                     <a
                       href={videoTargetUrl}
                       target="_blank"

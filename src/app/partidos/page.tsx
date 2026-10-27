@@ -23,7 +23,7 @@ import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo, getTeamInitials } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 import { isRestMatch } from '@/lib/match-utils';
-import { useStreaming } from '@/lib/use-streaming';
+import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
 
 interface DisplaySetColumn {
   label: string;
@@ -475,7 +475,8 @@ function PartidosContent() {
     const totalSets = getTotalSetsDisplay(m);
     const isRefreshing = refreshingMatchIds.has(m.id);
     const compactCols = setColumns.length >= 4;
-    const recordingUrl = (mounted ? recordings[m.id] : null) || m.videoUrl;
+    const rawRecordingUrl = (mounted ? recordings[m.id] : null) || m.videoUrl;
+    const recordingUrl = isValidYouTubeUrl(rawRecordingUrl) ? rawRecordingUrl : null;
 
     return (
       <div
@@ -761,7 +762,7 @@ function PartidosContent() {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0 relative z-30">
-            {recordingUrl && (
+            {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
               <a
                 href={recordingUrl}
                 target="_blank"
@@ -1171,7 +1172,8 @@ function PartidosContent() {
                                   const isRefreshing = refreshingMatchIds.has(m.id);
                                   const isClosestRed =
                                     m.id === redHighlightedMatchId || m.id === highlightedMatchId;
-                                  const recordingUrl = (mounted ? recordings[m.id] : null) || m.videoUrl;
+                                  const rawRecordingUrl = (mounted ? recordings[m.id] : null) || m.videoUrl;
+                                  const recordingUrl = isValidYouTubeUrl(rawRecordingUrl) ? rawRecordingUrl : null;
 
                                   return (
                                     <div
@@ -1361,7 +1363,7 @@ function PartidosContent() {
                                           </div>
 
                                           <div className="flex items-center gap-1.5 shrink-0 relative z-30">
-                                            {recordingUrl && (
+                                            {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
                                               <a
                                                 href={recordingUrl}
                                                 target="_blank"
