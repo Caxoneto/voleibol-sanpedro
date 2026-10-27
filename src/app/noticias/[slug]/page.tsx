@@ -327,7 +327,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
   const shareUrl =
     typeof window !== 'undefined'
       ? window.location.href
-      : `https://cdvoleibolsanpedro.es/noticias/${article.slug}`;
+      : `https://voleibolsanpedro.es/noticias/${article.slug}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);

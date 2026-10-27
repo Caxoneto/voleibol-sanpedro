@@ -111,7 +111,7 @@ export function generateIcsContent(
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
-    `UID:match-${matchId}@cdvoleibolsanpedro.es`,
+    `UID:match-${matchId}@voleibolsanpedro.es`,
     `DTSTAMP:${formatUtcIsoBasic(now)}`,
     `DTSTART:${formatUtcIsoBasic(start)}`,
     `DTEND:${formatUtcIsoBasic(end)}`,

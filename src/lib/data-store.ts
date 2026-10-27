@@ -33,7 +33,7 @@ export const CLUB_INFO: ClubInfo = {
   venueMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Pabell%C3%B3n+Polideportivo+Sergio+Scariolo,+Diseminado+Ensanche+Sur+I,+16S,+29670+Marbella,+M%C3%A1laga',
   federationName: 'Federación Andaluza de Voleibol (FAVB)',
   federationUrl: 'https://favoley.net/publico/index.php',
-  contactEmail: 'voleibolsanpedro@hotmail.es',
+  contactEmail: 'info@voleibolsanpedro.es',
   contactPhone: '+34 657 71 37 71',
   whatsappUrl: 'https://wa.me/34657713771?text=Hola%2C%20me%20gustar%C3%ADa%20informaci%C3%B3n%20sobre%20el%20C.D.%20Voleibol%20San%20Pedro',
   instagramUrl: 'https://www.instagram.com/voleibolsanpedro/',

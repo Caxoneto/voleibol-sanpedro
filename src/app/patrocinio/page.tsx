@@ -611,11 +611,11 @@ export default function PatrocinioPage() {
                     <span>M. 657 71 37 71</span>
                   </a>
                   <a
-                    href="mailto:voleibolsanpedro@hotmail.es"
+                    href={`mailto:${CLUB_INFO.contactEmail}`}
                     className="flex items-center gap-2.5 text-white hover:underline font-medium text-xs sm:text-sm break-all"
                   >
                     <span className="material-symbols-outlined text-[18px]" aria-hidden="true">mail</span>
-                    <span>voleibolsanpedro@hotmail.es</span>
+                    <span>{CLUB_INFO.contactEmail}</span>
                   </a>
                 </div>
               </div>

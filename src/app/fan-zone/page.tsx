@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   INITIAL_PLAYERS,
@@ -29,12 +29,6 @@ export default function FanZonePage() {
   const mvpCandidates = INITIAL_PLAYERS.filter(
     (p) => p.teamId === 'team-sf' && SENIOR_ADULT_NUMBERS.has(p.number) && p.birthYear <= 2006
   );
-
-  // Estado del himno del club / audio
-  const [isPlayingAnthem, setIsPlayingAnthem] = useState<boolean>(false);
-  const [audioProgress, setAudioProgress] = useState<number>(0);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const anthemIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Muro social de fotos
   const [socialPhotos, setSocialPhotos] = useState<
@@ -120,76 +114,6 @@ export default function FanZonePage() {
       });
     } catch (e) {
       // Ignorar si el navegador bloquea canvas
-    }
-  };
-
-  // Reproductor del Himno con Web Audio API (síntesis de fanfarria / himno de estadio)
-  const toggleAnthem = () => {
-    if (isPlayingAnthem) {
-      // Detener
-      setIsPlayingAnthem(false);
-      setAudioProgress(0);
-      if (anthemIntervalRef.current) clearInterval(anthemIntervalRef.current);
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
-    } else {
-      // Iniciar síntesis musical de himno deportivo
-      setIsPlayingAnthem(true);
-      setAudioProgress(0);
-
-      try {
-        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ctx = new AudioCtx();
-        audioContextRef.current = ctx;
-
-        // Notas del himno deportivo sampedreño: Do, Mi, Sol, Do alto, Sol, Do alto...
-        const melody = [
-          { note: 261.63, dur: 0.4 }, // C4
-          { note: 329.63, dur: 0.4 }, // E4
-          { note: 392.00, dur: 0.4 }, // G4
-          { note: 523.25, dur: 0.8 }, // C5
-          { note: 392.00, dur: 0.4 }, // G4
-          { note: 523.25, dur: 1.0 }, // C5
-          { note: 440.00, dur: 0.4 }, // A4
-          { note: 523.25, dur: 0.6 }, // C5
-          { note: 392.00, dur: 0.8 }, // G4
-        ];
-
-        let startTime = ctx.currentTime + 0.1;
-
-        melody.forEach((item) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(item.note, startTime);
-
-          gain.gain.setValueAtTime(0.18, startTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + item.dur);
-
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-
-          osc.start(startTime);
-          osc.stop(startTime + item.dur);
-          startTime += item.dur;
-        });
-
-        // Simular progreso de reproducción
-        let prog = 0;
-        anthemIntervalRef.current = setInterval(() => {
-          prog += 10;
-          if (prog >= 100) {
-            prog = 100;
-            setIsPlayingAnthem(false);
-            if (anthemIntervalRef.current) clearInterval(anthemIntervalRef.current);
-          }
-          setAudioProgress(prog);
-        }, 500);
-      } catch (err) {
-        setIsPlayingAnthem(false);
-      }
     }
   };
 
@@ -373,93 +297,36 @@ export default function FanZonePage() {
           )}
         </section>
 
-        {/* BLOQUE 2: Himno Oficial y Cánticos de la Grada */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Himno Player (5 cols) */}
-          <div className="lg:col-span-5 bg-surface-container-low border border-white/5 p-6 sm:p-8 space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-primary-container text-white flex items-center justify-center">
-                <span className="material-symbols-outlined text-[24px]" aria-hidden="true">music_note</span>
-              </div>
-              <div>
-                <span className="text-[10px] uppercase tracking-widest text-primary font-bold block">
-                  Banda Sonora Rojinegra
-                </span>
-                <h3 className="font-display-xl text-xl sm:text-2xl uppercase text-white">
-                  Himno Oficial del Club
-                </h3>
-              </div>
-            </div>
-
-            <p className="font-body-sm text-xs text-tertiary leading-relaxed">
-              La marcha deportiva tradicional con la que el Sergio Scariolo recibe a nuestros equipos en los partidos de gala.
-            </p>
-
-            {/* Audio Widget Simulado con Web Audio */}
-            <div className="p-4 bg-surface-container-lowest border border-white/10 space-y-3">
-              <div className="flex items-center justify-between text-xs text-tertiary">
-                <span className="font-bold text-white uppercase">«¡Vamos San Pedro!»</span>
-                <span>{isPlayingAnthem ? 'Reproduciendo en directo...' : '0:35'}</span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-surface-container-high h-2 overflow-hidden">
-                <div
-                  className="bg-primary-container h-full transition-all duration-300"
-                  style={{ width: `${audioProgress}%` }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  onClick={toggleAnthem}
-                  className="px-4 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs uppercase font-bold flex items-center gap-2 transition-all shadow"
-                >
-                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
-                    {isPlayingAnthem ? 'pause' : 'play_arrow'}
-                  </span>
-                  <span>{isPlayingAnthem ? 'Pausar Himno' : 'Escuchar Himno'}</span>
-                </button>
-
-                <span className="text-[11px] text-tertiary flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]" aria-hidden="true">volume_up</span>
-                  Sintetizador Web Audio
-                </span>
-              </div>
-            </div>
+        {/* BLOQUE 2: Cánticos de la Grada */}
+        <section className="bg-surface-container-low border border-white/5 p-6 sm:p-8 space-y-6">
+          <div>
+            <span className="text-xs text-primary font-bold uppercase tracking-wider block">
+              Letras de la Grada
+            </span>
+            <h3 className="font-display-xl text-2xl uppercase text-white mt-1">
+              Cánticos del Pabellón Sergio Scariolo
+            </h3>
           </div>
 
-          {/* Cánticos Tradicionales (7 cols) */}
-          <div className="lg:col-span-7 bg-surface-container-low border border-white/5 p-6 sm:p-8 space-y-6">
-            <div>
-              <span className="text-xs text-primary font-bold uppercase tracking-wider block">
-                Letras de la Grada
-              </span>
-              <h3 className="font-display-xl text-2xl uppercase text-white mt-1">
-                Cánticos del Pabellón Sergio Scariolo
-              </h3>
-            </div>
-
-            <div className="space-y-4">
-              {INITIAL_CHANTS.map((chant) => (
-                <div
-                  key={chant.id}
-                  className="bg-surface-container-lowest border border-white/5 p-4 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-headline-sm text-sm uppercase text-primary font-bold">
-                      {chant.title}
-                    </h4>
-                    <span className="text-[10px] text-tertiary uppercase font-mono">
-                      {chant.rhythm}
-                    </span>
-                  </div>
-                  <pre className="font-body-sm text-xs text-on-surface whitespace-pre-wrap leading-relaxed font-sans">
-                    {chant.lyrics}
-                  </pre>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {INITIAL_CHANTS.map((chant) => (
+              <div
+                key={chant.id}
+                className="bg-surface-container-lowest border border-white/5 p-5 space-y-3 flex flex-col justify-between"
+              >
+                <div className="flex items-start justify-between gap-2 border-b border-white/5 pb-2.5">
+                  <h4 className="font-headline-sm text-sm uppercase text-primary font-bold">
+                    {chant.title}
+                  </h4>
+                  <span className="text-[10px] text-tertiary uppercase font-mono text-right shrink-0">
+                    {chant.rhythm}
+                  </span>
                 </div>
-              ))}
-            </div>
+                <pre className="font-body-sm text-xs text-on-surface whitespace-pre-wrap leading-relaxed font-sans flex-1">
+                  {chant.lyrics}
+                </pre>
+              </div>
+            ))}
           </div>
         </section>
 

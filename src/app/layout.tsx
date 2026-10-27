@@ -28,6 +28,7 @@ const caveatBrush = Caveat_Brush({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://voleibolsanpedro.es'),
   title: 'C.D. Voleibol San Pedro | Web Oficial',
   description:
     'Portal oficial del C.D. Voleibol San Pedro (San Pedro Alcántara, Málaga). Pabellón Polideportivo Sergio Scariolo. Deporte base, plantillas, calendarios y resultados oficiales FAVB.',
