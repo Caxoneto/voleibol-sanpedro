@@ -336,9 +336,20 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background">
+    <div className="relative w-full min-h-screen bg-background overflow-hidden">
+      {/* Ambient Background Image (Pabellón Sergio Scariolo) */}
+      <div className="pointer-events-none absolute top-0 inset-x-0 h-[540px] sm:h-[640px] overflow-hidden z-0">
+        <div
+          className="absolute inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-35 blur-[2px] scale-105 animate-hero-bg transition-transform duration-1000"
+          style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
+        <div className="absolute -top-32 left-1/4 w-96 h-96 bg-primary-container/20 rounded-full blur-[140px]" />
+      </div>
+
       {/* Article Header */}
-      <article className="max-w-4xl mx-auto px-4 lg:px-8 py-10">
+      <article className="relative z-10 max-w-4xl mx-auto px-4 lg:px-8 py-10">
         <div className="mb-8">
           <Link
             href="/noticias"
@@ -383,7 +394,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
             alt={article.title}
             fill
             priority
-            className="object-contain"
+            className={article.coverImageUrl.includes('loteria') ? 'object-contain' : 'object-cover'}
           />
         </div>
 
@@ -504,7 +515,9 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
         </div>
       </article>
 
-      <SponsorBanner />
+      <div className="relative z-10">
+        <SponsorBanner />
+      </div>
     </div>
   );
 }

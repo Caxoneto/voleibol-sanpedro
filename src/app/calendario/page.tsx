@@ -425,9 +425,23 @@ export default function CalendarioPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background">
+    <div className="w-full min-h-screen bg-background relative overflow-hidden">
+      {/* Subtle Page-Wide Ambient Background */}
+      <div
+        className="pointer-events-none fixed inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-[0.14] blur-[3px] z-0"
+        style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
+      />
+
       {/* Top Strip */}
       <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-5 sm:py-8 border-b border-white/5 overflow-hidden">
+        {/* Background Image (Pabellón Sergio Scariolo) with slight blur */}
+        <div
+          className="pointer-events-none absolute inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-40 blur-[2px] scale-105 animate-hero-bg transition-transform duration-1000"
+          style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
+
         <div className="absolute -right-20 -top-24 w-96 h-96 rounded-full bg-primary-container/10 blur-3xl pointer-events-none" />
         <div className="max-w-7xl mx-auto relative z-10 flex items-end justify-between gap-4">
           <div className="flex flex-col gap-1 max-w-3xl min-w-0">
@@ -580,7 +594,7 @@ export default function CalendarioPage() {
       )}
 
       {/* Selector de Jornadas (J1, J2, J3...) + Listado de Partidos de la Jornada */}
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-4 sm:py-6 space-y-4">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-4 sm:py-6 space-y-4 relative z-10">
         {/* Barra / Calendario de Jornadas (J1, J2, J3...) */}
         {roundsData.length > 0 && (
           <div className="bg-surface-container-lowest border border-white/10 p-3 sm:p-4 space-y-2.5">

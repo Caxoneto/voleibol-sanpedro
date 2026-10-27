@@ -811,9 +811,23 @@ function PartidosContent() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background relative">
+    <div className="w-full min-h-screen bg-background relative overflow-hidden">
+      {/* Subtle Page-Wide Ambient Background */}
+      <div
+        className="pointer-events-none fixed inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-[0.14] blur-[3px] z-0"
+        style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
+      />
+
       {/* Top Hero Banner Compacto */}
       <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-4 sm:py-6 border-b border-white/5 overflow-hidden">
+        {/* Background Image (Pabellón Sergio Scariolo) with slight blur */}
+        <div
+          className="pointer-events-none absolute inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-40 blur-[2px] scale-105 animate-hero-bg transition-transform duration-1000"
+          style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
+
         <div className="absolute -right-20 -top-24 w-96 h-96 rounded-full bg-primary-container/10 blur-3xl pointer-events-none" />
         <div className="max-w-7xl mx-auto relative z-10 flex flex-row items-center justify-between gap-4">
           <div>
@@ -892,7 +906,7 @@ function PartidosContent() {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 sm:py-5 space-y-5">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 sm:py-5 space-y-5 relative z-10">
         {/* MÓDULO DESTACADO: PARTIDOS EN DIRECTO AHORA */}
         {allLiveMatches.length > 0 && (
           <section className="bg-red-950/20 border-2 border-red-500 p-3.5 sm:p-5 shadow-2xl relative animate-fadeIn">
@@ -1554,7 +1568,9 @@ function PartidosContent() {
         )}
       </div>
 
-      <SponsorBanner customText="APOYA AL C.D. VOLEIBOL SAN PEDRO EN TODAS SUS CATEGORÍAS" />
+      <div className="relative z-10">
+        <SponsorBanner customText="APOYA AL C.D. VOLEIBOL SAN PEDRO EN TODAS SUS CATEGORÍAS" />
+      </div>
     </div>
   );
 }

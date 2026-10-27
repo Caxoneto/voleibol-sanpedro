@@ -549,7 +549,7 @@ export default async function HomePage() {
                       src={art.coverImageUrl}
                       alt={art.title}
                       fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      className={`${art.coverImageUrl.includes('loteria') ? 'object-contain p-2' : 'object-cover'} transition-transform duration-500 group-hover:scale-105`}
                     />
                     <div className="absolute top-3 left-3 px-2 py-1 bg-primary-container text-white text-[10px] font-bold uppercase tracking-wider shadow">
                       {art.categoryName}

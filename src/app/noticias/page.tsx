@@ -91,9 +91,20 @@ export default function NoticiasPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-surface font-body-md text-on-surface antialiased">
+    <div className="relative overflow-hidden w-full min-h-screen bg-surface pb-20 font-body-md text-on-surface antialiased">
+      {/* Ambient Background Image (Pabellón Sergio Scariolo) */}
+      <div className="pointer-events-none absolute top-0 inset-x-0 h-[620px] sm:h-[720px] overflow-hidden z-0">
+        <div
+          className="absolute inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-40 blur-[2px] scale-105 animate-hero-bg transition-transform duration-1000"
+          style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-surface via-surface/85 to-transparent" />
+        <div className="absolute -top-32 left-1/4 w-96 h-96 bg-primary-container/20 rounded-full blur-[140px]" />
+      </div>
+
       {/* Dynamic Atmospheric Header Ticker */}
-      <section className="w-full bg-surface-container-lowest px-4 lg:px-12 py-2.5 border-b border-white/5 overflow-hidden">
+      <section className="relative z-10 w-full bg-surface-container-lowest px-4 lg:px-12 py-2.5 border-b border-white/5 overflow-hidden">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs min-w-0">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white font-label-sm text-label-sm uppercase tracking-wider shrink-0">
@@ -119,7 +130,7 @@ export default function NoticiasPage() {
       </section>
 
       {/* Editorial Title & Interactive Tag Filter Bar */}
-      <section className="w-full px-4 lg:px-12 pt-6 sm:pt-10 pb-4 sm:pb-6 bg-surface">
+      <section className="relative z-10 w-full px-4 lg:px-12 pt-6 sm:pt-10 pb-4 sm:pb-6 bg-transparent">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
             <div>
@@ -168,7 +179,7 @@ export default function NoticiasPage() {
 
       {/* Big Hero Feature Card (Main Story) */}
       {featuredArticle && (
-        <section className="w-full px-4 lg:px-12 pb-12 bg-surface">
+        <section className="relative z-10 w-full px-4 lg:px-12 pb-12 bg-transparent">
           <div className="max-w-7xl mx-auto">
             <Link
               href={`/noticias/${featuredArticle.slug}`}
@@ -182,7 +193,7 @@ export default function NoticiasPage() {
                     alt={featuredArticle.title}
                     fill
                     priority
-                    className="object-contain lg:object-cover transition-transform duration-700 group-hover:scale-105"
+                    className={`${featuredArticle.coverImageUrl.includes('loteria') ? 'object-contain' : 'object-cover'} transition-transform duration-700 group-hover:scale-105`}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-surface-container-low/30 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-surface-container-low/30 lg:to-surface-container-low pointer-events-none" />
 
@@ -264,7 +275,7 @@ export default function NoticiasPage() {
       )}
 
       {/* Editorial Main Body: 3-Column News Mosaic + Media / Press Sidebar */}
-      <section className="w-full px-4 lg:px-12 pb-16 bg-surface">
+      <section className="relative z-10 w-full px-4 lg:px-12 pb-16 bg-surface">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Primary Feed: Articles Grid (span 8 or 9) */}
           <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-6">
@@ -293,7 +304,7 @@ export default function NoticiasPage() {
                       src={art.coverImageUrl}
                       alt={art.title}
                       fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      className={`${art.coverImageUrl.includes('loteria') ? 'object-contain p-2' : 'object-cover'} transition-transform duration-500 group-hover:scale-105`}
                     />
                     <span className="absolute top-3 left-3 px-2.5 py-1 bg-surface-container-lowest/90 font-label-sm text-label-sm text-primary uppercase font-bold tracking-wider">
                       {art.categoryName}
@@ -744,7 +755,9 @@ export default function NoticiasPage() {
         </div>
       )}
 
-      <SponsorBanner />
+      <div className="relative z-10">
+        <SponsorBanner />
+      </div>
     </div>
   );
 }

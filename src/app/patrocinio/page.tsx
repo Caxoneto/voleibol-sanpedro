@@ -136,9 +136,23 @@ export default function PatrocinioPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background">
+    <div className="w-full min-h-screen bg-background relative overflow-hidden">
+      {/* Subtle Page-Wide Ambient Background */}
+      <div
+        className="pointer-events-none fixed inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-[0.14] blur-[3px] z-0"
+        style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
+      />
+
       {/* Cabecera Hero — Proyecto de Patrocinio 2026 / 2027 (Pág. 1 del Dossier) */}
       <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-12 sm:py-16 border-b border-white/5 overflow-hidden">
+        {/* Background Image (Pabellón Sergio Scariolo) with slight blur */}
+        <div
+          className="pointer-events-none absolute inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-40 blur-[2px] scale-105 animate-hero-bg transition-transform duration-1000"
+          style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
+
         <div className="absolute -right-20 -top-24 w-96 h-96 rounded-full bg-primary-container/15 blur-3xl pointer-events-none" />
         <div className="max-w-7xl mx-auto relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
           <div className="max-w-3xl">
@@ -182,7 +196,7 @@ export default function PatrocinioPage() {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-12 space-y-16 sm:space-y-20">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-12 space-y-16 sm:space-y-20 relative z-10">
         {/* 1. EMPRESAS QUE YA FORMAN PARTE DEL EQUIPO (Pág. 11 del Dossier) */}
         <section aria-labelledby="current-sponsors-heading" className="relative bg-surface-container-low border border-primary-container/30 p-6 sm:p-10 shadow-[0_0_40px_rgba(217,4,41,0.08)]">
           <div className="pb-6 border-b border-white/10">

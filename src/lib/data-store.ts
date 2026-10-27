@@ -128,7 +128,7 @@ Nuestros conjuntos juveniles han afrontado un calendario inicial de máxima exig
 Completan la puesta en marcha de nuestras once categorías los estrenos de **Cadete Masculino** (ante 3stevoley), **Infantil Femenino Blanco** (frente a Fuengirola CV B), **Júnior Masculino** y **Senior Masculino**, cuyas actas, marcadores en directo y clasificaciones pueden seguirse jornada a jornada desde nuestra web oficial.`,
     categoryId: 'cat-competicion',
     categoryName: 'Competición y Resultados',
-    coverImageUrl: '/images/hero-spike.png',
+    coverImageUrl: '/images/pabellon-sergio-scariolo.jpg',
     publishedAt: '2026-10-18T08:00:00.000Z',
     isFeatured: true,
     readingTimeMinutes: 3,
@@ -396,8 +396,8 @@ export const INITIAL_WALLPAPERS: WallpaperDownload[] = [
     title: 'Cartel Oficial de Partido - Sergio Scariolo',
     type: 'POSTER',
     dimensions: 'A3 Formato PDF Alta Resolución',
-    imageUrl: 'https://images.unsplash.com/photo-1666901356149-93f2eb3ba5a2?w=1200&auto=format&fit=crop&q=80',
-    downloadUrl: '/images/hero-spike.png',
+    imageUrl: '/images/pabellon-sergio-scariolo.jpg',
+    downloadUrl: '/images/pabellon-sergio-scariolo.jpg',
   },
 ];
 
