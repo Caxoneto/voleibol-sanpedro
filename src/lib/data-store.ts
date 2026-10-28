@@ -336,6 +336,14 @@ export const CURRENT_SPONSORS: CurrentSponsor[] = [
     url: 'https://theunitfit.com/',
     bgClass: 'bg-[#0b0a09]',
   },
+  {
+    id: 'sponsor-ayuntamiento-marbella',
+    name: 'Tenencia de Alcaldía de San Pedro Alcántara • Ayuntamiento de Marbella',
+    tagline: 'Ayuntamiento de Marbella',
+    logoUrl: '/images/sponsors/ayuntamiento-marbella.png',
+    url: 'https://www.marbella.es/',
+    bgClass: 'bg-[#0074BD]',
+  },
 ];
 
 export const INITIAL_CHANTS: Chant[] = [

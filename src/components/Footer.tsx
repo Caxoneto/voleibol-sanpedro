@@ -335,9 +335,9 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Banda Armónica de Empresas Colaboradoras (+15% en mobile, +25% en desktop y efecto zoom hover) */}
+        {/* Banda Armónica de Empresas Colaboradoras (cuadrícula 4x2 en mobile y fila limpia de 8 columnas en desktop) */}
         <div className="py-5 border-t border-white/5">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
+          <div className="flex flex-col gap-3.5">
             <div className="flex items-center gap-2.5 shrink-0">
               <span className="w-1.5 h-1.5 bg-primary-container" aria-hidden="true" />
               <span className="font-label-sm text-[11px] uppercase tracking-widest text-tertiary font-bold">
@@ -345,7 +345,7 @@ export default function Footer() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 items-center gap-2 sm:gap-2.5 w-full">
               {CURRENT_SPONSORS.map((sponsor) => (
                 <a
                   key={sponsor.id}
@@ -354,7 +354,7 @@ export default function Footer() {
                   rel="noopener noreferrer"
                   title={sponsor.name}
                   aria-label={`Visitar web o perfil de ${sponsor.name}`}
-                  className={`group relative h-[56px] sm:h-[70px] sm:min-w-[120px] px-3 sm:px-3.5 py-1.5 sm:py-2 flex items-center justify-center rounded-sm border border-white/15 hover:border-primary-container transition-all duration-300 ease-out hover:scale-105 hover:z-10 hover:shadow-[0_8px_22px_rgba(217,4,41,0.28)] shadow-sm overflow-hidden ${
+                  className={`group relative h-[56px] sm:h-[66px] px-2 py-1.5 flex items-center justify-center rounded-sm border border-white/15 hover:border-primary-container transition-all duration-300 ease-out hover:scale-105 hover:z-10 hover:shadow-[0_8px_22px_rgba(217,4,41,0.28)] shadow-sm overflow-hidden ${
                     sponsor.bgClass || 'bg-white'
                   }`}
                 >
@@ -363,13 +363,13 @@ export default function Footer() {
                     alt={sponsor.name}
                     width={160}
                     height={60}
-                    className="h-[42px] sm:h-[50px] w-auto max-w-[125px] sm:max-w-[138px] object-contain opacity-95 group-hover:opacity-100 transition-transform duration-300 ease-out group-hover:scale-[1.15]"
+                    className="h-[38px] sm:h-[46px] w-auto max-w-full object-contain opacity-95 group-hover:opacity-100 transition-transform duration-300 ease-out group-hover:scale-[1.12]"
                   />
                 </a>
               ))}
               <Link
                 href="/patrocinio"
-                className="h-[56px] sm:h-[70px] px-3.5 flex items-center justify-center gap-1 border border-dashed border-white/15 hover:border-primary text-[11px] font-bold uppercase tracking-wider text-tertiary hover:text-primary transition-colors rounded-sm"
+                className="h-[56px] sm:h-[66px] px-2 flex flex-col sm:flex-row items-center justify-center gap-1 border border-dashed border-white/15 hover:border-primary text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-tertiary hover:text-primary transition-colors rounded-sm text-center"
               >
                 <span>¿Hacemos equipo?</span>
                 <span className="material-symbols-outlined text-[14px]" aria-hidden="true">arrow_forward</span>
