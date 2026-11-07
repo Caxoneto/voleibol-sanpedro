@@ -12,7 +12,7 @@ import {
 import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS, Player, Staff } from '@/lib/types';
 import SponsorBanner from '@/components/SponsorBanner';
 
-const ROSTERS_STORAGE_KEY = 'cdv_synced_rosters_v1';
+const ROSTERS_STORAGE_KEY = 'cdv_synced_rosters_v2';
 
 export default function PlantillasPage() {
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('senior-femenino');
@@ -24,70 +24,75 @@ export default function PlantillasPage() {
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const catScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchLiveRosters = async (force = false) => {
+  const applyMergedRosters = (incomingPlayers: Player[], incomingStaff?: Staff[]) => {
+    setPlayers((prevPlayers) => {
+      // Fusión estrictamente aditiva: ningún jugador real existente en plantilla se borra si no jugó un partido
+      const mergedByTeam = new Map<string, Map<string, Player>>();
+      for (const p of [...INITIAL_PLAYERS, ...prevPlayers]) {
+        if (p.firstName !== 'Jugador' && p.firstName !== 'Jugadora') {
+          if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
+          const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
+          mergedByTeam.get(p.teamId)!.set(key, p);
+        }
+      }
+      for (const p of incomingPlayers) {
+        if (p.firstName !== 'Jugador' && p.firstName !== 'Jugadora') {
+          if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
+          const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
+          const existing = mergedByTeam.get(p.teamId)!.get(key);
+          if (existing) {
+            mergedByTeam.get(p.teamId)!.set(key, { ...existing, ...p });
+          } else {
+            mergedByTeam.get(p.teamId)!.set(key, p);
+          }
+        }
+      }
+
+      const result: Player[] = [];
+      for (const catTeam of INITIAL_TEAMS) {
+        const teamMap = mergedByTeam.get(catTeam.id);
+        const teamPlayers = teamMap ? Array.from(teamMap.values()) : [];
+        if (teamPlayers.length > 0) {
+          teamPlayers.sort((a, b) => a.number - b.number);
+          result.push(...teamPlayers);
+          if (teamPlayers.length < 6) {
+            const incomingPlaceholders = incomingPlayers.filter(
+              (p: Player) =>
+                p.teamId === catTeam.id &&
+                (p.firstName === 'Jugador' || p.firstName === 'Jugadora')
+            );
+            result.push(...incomingPlaceholders);
+          }
+        } else {
+          const teamPlaceholders = incomingPlayers.filter((p: Player) => p.teamId === catTeam.id);
+          result.push(...teamPlaceholders);
+        }
+      }
+      return result;
+    });
+
+    if (Array.isArray(incomingStaff) && incomingStaff.length > 0) {
+      setStaffList((prevStaff) => {
+        const staffMap = new Map<string, Staff>();
+        for (const s of [...INITIAL_STAFF, ...prevStaff]) {
+          staffMap.set(`${s.teamId}_${s.name.toLowerCase()}`, s);
+        }
+        for (const s of incomingStaff) {
+          staffMap.set(`${s.teamId}_${s.name.toLowerCase()}`, s);
+        }
+        return Array.from(staffMap.values());
+      });
+    }
+  };
+
+  const fetchLiveRosters = async (force = false, targetTeamId?: string) => {
     if (force) setSyncing(true);
     try {
-      const res = await fetch(`/api/favb/rosters?force=${force}`, { cache: 'no-store' });
+      const teamQuery = targetTeamId ? `&teamId=${encodeURIComponent(targetTeamId)}` : '';
+      const res = await fetch(`/api/favb/rosters?force=${force}${teamQuery}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success && Array.isArray(data.players) && data.players.length > 0) {
-        setPlayers((prevPlayers) => {
-          // Fusión estrictamente aditiva: ningún jugador real existente en plantilla se borra si no jugó un partido
-          const mergedByTeam = new Map<string, Map<string, Player>>();
-          for (const p of prevPlayers) {
-            if (p.firstName !== 'Jugador' && p.firstName !== 'Jugadora') {
-              if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
-              const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
-              mergedByTeam.get(p.teamId)!.set(key, p);
-            }
-          }
-          for (const p of data.players) {
-            if (p.firstName !== 'Jugador' && p.firstName !== 'Jugadora') {
-              if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
-              const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
-              const existing = mergedByTeam.get(p.teamId)!.get(key);
-              if (existing) {
-                mergedByTeam.get(p.teamId)!.set(key, { ...existing, ...p });
-              } else {
-                mergedByTeam.get(p.teamId)!.set(key, p);
-              }
-            }
-          }
-
-          const result: Player[] = [];
-          for (const catTeam of INITIAL_TEAMS) {
-            const teamMap = mergedByTeam.get(catTeam.id);
-            const teamPlayers = teamMap ? Array.from(teamMap.values()) : [];
-            if (teamPlayers.length > 0) {
-              teamPlayers.sort((a, b) => a.number - b.number);
-              result.push(...teamPlayers);
-              if (teamPlayers.length < 6) {
-                const incomingPlaceholders = data.players.filter(
-                  (p: Player) =>
-                    p.teamId === catTeam.id &&
-                    (p.firstName === 'Jugador' || p.firstName === 'Jugadora')
-                );
-                result.push(...incomingPlaceholders);
-              }
-            } else {
-              const teamPlaceholders = data.players.filter((p: Player) => p.teamId === catTeam.id);
-              result.push(...teamPlaceholders);
-            }
-          }
-          return result;
-        });
-
-        if (Array.isArray(data.staff) && data.staff.length > 0) {
-          setStaffList((prevStaff) => {
-            const staffMap = new Map<string, Staff>();
-            for (const s of prevStaff) {
-              staffMap.set(`${s.teamId}_${s.name.toLowerCase()}`, s);
-            }
-            for (const s of data.staff) {
-              staffMap.set(`${s.teamId}_${s.name.toLowerCase()}`, s);
-            }
-            return Array.from(staffMap.values());
-          });
-        }
+        applyMergedRosters(data.players, data.staff);
         const formattedTime = data.lastSync
           ? new Date(data.lastSync).toLocaleTimeString('es-ES', {
               hour: '2-digit',
@@ -160,10 +165,7 @@ export default function PlantillasPage() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.players) && parsed.players.length > 0) {
-          setPlayers(parsed.players);
-        }
-        if (Array.isArray(parsed.staff) && parsed.staff.length > 0) {
-          setStaffList(parsed.staff);
+          applyMergedRosters(parsed.players, parsed.staff);
         }
         if (parsed.lastSync) {
           setLastSyncTime(
@@ -316,7 +318,7 @@ export default function PlantillasPage() {
                   })
                   .finally(() => setSyncing(false));
               } else {
-                fetchLiveRosters(true);
+                fetchLiveRosters(true, activeTeam.id);
               }
             }}
             disabled={syncing}

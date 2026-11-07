@@ -254,7 +254,7 @@ export default function HeroMatchesCarousel({
     };
 
     try {
-      const cached = localStorage.getItem('cdv_synced_matches_v1');
+      const cached = localStorage.getItem('cdv_synced_matches_v2');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
@@ -272,7 +272,7 @@ export default function HeroMatchesCarousel({
           mergeSyncedMatches(data.matches);
           try {
             localStorage.setItem(
-              'cdv_synced_matches_v1',
+              'cdv_synced_matches_v2',
               JSON.stringify({
                 matches: data.matches,
                 lastSync: data.lastSync || new Date().toISOString(),

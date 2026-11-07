@@ -47,6 +47,19 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     gender: 'FEMENINO',
     season: '2026/2027',
   },
+  // 2ª División Andaluza Senior Masculina
+  {
+    code: 'AN2AM26-1365',
+    categoryId: 'cat-senior-masc',
+    teamId: 'team-sm',
+    favbId: 1365,
+    grupo: 127,
+    fase: 179,
+    name: '2ª DIVISIÓN ANDALUZA MASCULINA - GRUPO 4B',
+    category: 'Senior Masculino (2ª Andaluza)',
+    gender: 'MASCULINO',
+    season: '2026/2027',
+  },
   // Juvenil Masculino
   {
     code: 'MAJM26-1321',
@@ -166,14 +179,27 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
   },
   // Infantil Femenino Blanco
   {
-    code: 'MAIF26-1299-PROM',
+    code: 'MAIF26-1299-PROM-BLANCO',
     categoryId: 'cat-infantil-fem-blanco',
     teamId: 'team-if-blanco',
     favbId: 1299,
     grupo: 101,
     fase: 134,
-    name: 'INFANTIL FEMENINO MÁLAGA - PROMOCIÓN',
+    name: 'INFANTIL FEMENINO MÁLAGA - PROMOCIÓN G2',
     category: 'Infantil Femenino Blanco',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Infantil Femenino Gris
+  {
+    code: 'MAIF26-1299-PROM-GRIS',
+    categoryId: 'cat-infantil-fem-gris',
+    teamId: 'team-if-gris',
+    favbId: 1299,
+    grupo: 101,
+    fase: 133,
+    name: 'INFANTIL FEMENINO MÁLAGA - PROMOCIÓN G1',
+    category: 'Infantil Femenino Gris',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
@@ -267,7 +293,7 @@ const ROSTER_CACHE_TTL_MS = 60 * 1000; // 60 segundos para plantillas salvo forc
 let lastForceSyncTime = 0;
 let lastForceStandingsTime = 0;
 let lastForceRostersTime = 0;
-const MIN_FORCE_COOLDOWN_MS = 45 * 1000;
+const MIN_FORCE_COOLDOWN_MS = 3 * 1000;
 
 let cache: CacheState = {
   lastSync: 0,
@@ -747,14 +773,16 @@ export async function syncFavbData(forceRefresh = false): Promise<{
   }
 
   const todayStr = formatMadridDateString(new Date());
+  const recent3DaysStr = formatMadridDateString(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000));
   const horizonDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   const horizonStr = formatMadridDateString(horizonDate);
 
-  // 1. Partidos pasados o de los próximos 14 días para sincronizar resultados, horarios, sedes y actas vía JSON rápido
+  // 1. Partidos pasados sin cerrar, de los últimos 3 días (si forceRefresh) o de los próximos 14 días para sincronizar resultados, horarios, sedes y actas vía JSON rápido
   const targetMatches = cache.matches.filter(
     (m) =>
       !m.id.startsWith('afade-') &&
       ((m.dateStr <= todayStr && (m.status !== 'FINISHED' || !m.setScores || m.setScores.length === 0)) ||
+      (forceRefresh && m.dateStr >= recent3DaysStr && m.dateStr <= todayStr) ||
       (m.dateStr >= todayStr && m.dateStr <= horizonStr))
   );
 
@@ -977,10 +1005,13 @@ function isStaffPersona(p: FavbRawPersona): boolean {
 }
 
 /**
- * Sincroniza en tiempo real las plantillas de jugadores/as y cuerpo técnico de los 11 equipos
+ * Sincroniza en tiempo real las plantillas de jugadores/as y cuerpo técnico de los 13 equipos
  * consultando las actas publicadas en favoley.net (`competicion_partido_datos.php`).
  */
-export async function syncFavbRosters(forceRefresh = false): Promise<{
+export async function syncFavbRosters(
+  forceRefresh = false,
+  targetTeamId?: string
+): Promise<{
   success: boolean;
   players: Player[];
   staff: Staff[];
@@ -988,7 +1019,12 @@ export async function syncFavbRosters(forceRefresh = false): Promise<{
   fromCache: boolean;
 }> {
   const now = Date.now();
-  if (forceRefresh && now - lastForceRostersTime < MIN_FORCE_COOLDOWN_MS && rosterCache.players.length > 0) {
+  if (
+    forceRefresh &&
+    !targetTeamId &&
+    now - lastForceRostersTime < MIN_FORCE_COOLDOWN_MS &&
+    rosterCache.players.length > 0
+  ) {
     return {
       success: true,
       players: rosterCache.players,
@@ -999,6 +1035,7 @@ export async function syncFavbRosters(forceRefresh = false): Promise<{
   }
   if (
     !forceRefresh &&
+    !targetTeamId &&
     rosterCache.lastSync > 0 &&
     now - rosterCache.lastSync < ROSTER_CACHE_TTL_MS &&
     rosterCache.players.length > 0
@@ -1017,6 +1054,7 @@ export async function syncFavbRosters(forceRefresh = false): Promise<{
       processedFinishedRosterMatchIds.clear();
     }
     const tomorrowStr = formatMadridDateString(new Date(Date.now() + 36 * 60 * 60 * 1000));
+    const recent14DaysStr = formatMadridDateString(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000));
     const matchesByTeam = new Map<string, typeof FAVB_MATCHES>();
 
     for (const m of FAVB_MATCHES) {
@@ -1026,14 +1064,28 @@ export async function syncFavbRosters(forceRefresh = false): Promise<{
     }
 
     const matchesToInspect: typeof FAVB_MATCHES = [];
-    for (const [, teamMatches] of Array.from(matchesByTeam.entries())) {
+    for (const [tId, teamMatches] of Array.from(matchesByTeam.entries())) {
       const sorted = [...teamMatches].sort(
         (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
       );
-      // Inspeccionar todos los partidos hasta mañana + al menos los 2 primeros partidos del equipo
+      const isTargetTeam = Boolean(targetTeamId && tId === targetTeamId);
+      const baseRealPlayersCount = FAVB_PLAYERS.filter(
+        (p) => p.teamId === tId && p.firstName !== 'Jugador' && p.firstName !== 'Jugadora'
+      ).length;
+
+      // Inspeccionar:
+      // - Todos los partidos hasta mañana si es el equipo objetivo pulsado por el usuario (o si el equipo aún tenía < 6 jugadores base)
+      // - O los partidos de los últimos 14 días / pendientes hasta mañana para el resto de equipos (evitando saturar con 60+ peticiones de octubre ya consolidadas en FAVB_PLAYERS)
       sorted.forEach((m, idx) => {
         const dStr = formatMadridDateString(m.matchDate);
-        if (dStr <= tomorrowStr || idx < 2) {
+        const isRecentOrPending =
+          (dStr >= recent14DaysStr && dStr <= tomorrowStr) ||
+          (dStr <= tomorrowStr && m.status !== 'FINISHED');
+        if (
+          (isTargetTeam && (dStr <= tomorrowStr || idx < 2)) ||
+          (baseRealPlayersCount < 6 && (dStr <= tomorrowStr || idx < 2)) ||
+          isRecentOrPending
+        ) {
           if (!processedFinishedRosterMatchIds.has(m.id)) {
             matchesToInspect.push(m);
           }
@@ -1200,9 +1252,19 @@ export async function syncFavbRosters(forceRefresh = false): Promise<{
       }
 
       if (hasRealScrapedStaff) {
+        const staffAccentMap: Record<string, string> = {
+          Vazquez: 'Vázquez',
+          Alcantara: 'Alcántara',
+          Martinez: 'Martínez',
+          Gomez: 'Gómez',
+          Rodriguez: 'Rodríguez',
+          Galan: 'Galán',
+          Garcia: 'García',
+        };
         let stIdx = staffByKey.size;
         for (const sp of scrapedStaffList) {
-          const cleanName = titleCase(sp.nombre);
+          let cleanName = titleCase(sp.nombre.replace(/,[a-zA-Z]+$/, ''));
+          if (staffAccentMap[cleanName]) cleanName = staffAccentMap[cleanName];
           const key = normalizeNameKey(cleanName);
           if (!key || staffByKey.has(key)) continue;
 

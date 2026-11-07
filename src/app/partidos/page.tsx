@@ -99,11 +99,12 @@ function PartidosContent() {
   // Hidratar inmediatamente desde localStorage y sincronizar en segundo plano al montar
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('cdv_synced_matches_v1');
+      const cached = localStorage.getItem('cdv_synced_matches_v2');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
-          setMatches(parsed.matches);
+          const cachedMap = new Map((parsed.matches as FavbMatch[]).map((m) => [m.id, m]));
+          setMatches(initialConsolidated.map((m) => cachedMap.get(m.id) || m));
         }
         if (parsed.lastSync) {
           setLastSyncTime(
@@ -206,7 +207,7 @@ function PartidosContent() {
         );
         try {
           localStorage.setItem(
-            'cdv_synced_matches_v1',
+            'cdv_synced_matches_v2',
             JSON.stringify({
               matches: data.matches,
               lastSync: data.lastSync || new Date().toISOString(),

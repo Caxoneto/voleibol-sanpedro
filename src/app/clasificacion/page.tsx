@@ -8,7 +8,7 @@ import { Standings } from '@/lib/types';
 import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 
-const STANDINGS_STORAGE_KEY = 'cdv_synced_standings_v1';
+const STANDINGS_STORAGE_KEY = 'cdv_synced_standings_v2';
 
 export default function ClasificacionPage() {
   const [selectedCatId, setSelectedCatId] = useState<string>('cat-senior-fem');
@@ -72,7 +72,9 @@ export default function ClasificacionPage() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.standings) && parsed.standings.length > 0) {
-          setAllStandings(parsed.standings);
+          const cachedCats = new Set((parsed.standings as Standings[]).map((s) => s.categoryId));
+          const missingInitial = INITIAL_STANDINGS.filter((s) => !cachedCats.has(s.categoryId));
+          setAllStandings([...parsed.standings, ...missingInitial]);
         }
         if (parsed.lastSync) {
           setLastSyncTime(

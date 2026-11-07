@@ -41,7 +41,7 @@ export const AFADE_CATEGORIES: Category[] = [
     "id": "cat-senior-fem-afade",
     "name": "Senior Femenino AFADE",
     "slug": "senior-femenino-afade",
-    "order": 12,
+    "order": 16,
     "description": "Liga AFADE Málaga - Senior Fem Grupo B",
     "association": "AFADE"
   },
@@ -49,7 +49,7 @@ export const AFADE_CATEGORIES: Category[] = [
     "id": "cat-juvenil-fem-afade",
     "name": "Juvenil Femenino AFADE",
     "slug": "juvenil-femenino-afade",
-    "order": 13,
+    "order": 15,
     "description": "Liga AFADE Málaga - Juvenil Fem Grupo B",
     "association": "AFADE"
   },

@@ -9,8 +9,16 @@ export const TEAM_LOGOS_MAP: Record<string, string> = {
   'VOLEIBOL SAN PEDRO ROJO': '/images/logo.jpg',
   'VOLEIBOL SAN PEDRO NEGRO': '/images/logo.jpg',
   'VOLEIBOL SAN PEDRO BLANCO': '/images/logo.jpg',
+  'VOLEIBOL SAN PEDRO GRIS': '/images/logo.jpg',
 
   // Rivales oficiales descargados de favoley.net
+  'CD VOLEYPLAYA LINENSE 2X2': '/images/teams/cd-voleyplaya-linense-2x2.jpg',
+  'JUST VOLEY CV A': '/images/teams/just-voley.png',
+  'EMV ALHAURIN EL GRANDE ROJO': '/images/teams/emv-alh-grande.jpg',
+  'COSTA DEL VOLEY NEGRO': '/images/teams/costa-del-voley.png',
+  'MIJAS VOLEY BLANCO': '/images/teams/mijas-voley.png',
+  'UDA BENALMADENA B': '/images/teams/uda-benalmadena.jpg',
+  'INFANTIL NEGRO': '/images/teams/infantil-blanco.jpg',
   'ACADEMIA VC ISONDA': '/images/teams/academia-vc-isonda.jpg',
   'CDU ATARFE': '/images/teams/cdu-atarfe.jpg',
   'CV CIUDAD DE MÁLAGA': '/images/teams/cv-ciudad-de-malaga.jpg',
@@ -92,8 +100,16 @@ export const TEAM_INITIALS_MAP: Record<string, string> = {
   'VOLEIBOL SAN PEDRO ROJO': 'VSP',
   'VOLEIBOL SAN PEDRO NEGRO': 'VSP',
   'VOLEIBOL SAN PEDRO BLANCO': 'VSP',
+  'VOLEIBOL SAN PEDRO GRIS': 'VSP',
 
   // Rivales oficiales según nomenclatura interna de favoley.net
+  'CD VOLEYPLAYA LINENSE 2X2': 'LIN',
+  'JUST VOLEY CV A': 'JVC',
+  'EMV ALHAURIN EL GRANDE ROJO': 'EAG',
+  'COSTA DEL VOLEY NEGRO': 'CDV',
+  'MIJAS VOLEY BLANCO': 'MIV',
+  'UDA BENALMADENA B': 'UDA',
+  'INFANTIL NEGRO': 'INE',
   'ACADEMIA VC ISONDA': 'AVC',
   'CDU ATARFE': 'CDU',
   'CV CIUDAD DE MÁLAGA': 'CDM',

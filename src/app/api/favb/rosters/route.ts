@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   let force = searchParams.get('force') === 'true';
+  const teamId = searchParams.get('teamId') || undefined;
 
   if (force) {
     const secFetchSite = req.headers.get('sec-fetch-site');
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await syncFavbRosters(force);
+    const result = await syncFavbRosters(force, teamId);
     return NextResponse.json(
       {
         success: result.success,

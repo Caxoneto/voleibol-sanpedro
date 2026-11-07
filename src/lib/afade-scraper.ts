@@ -25,7 +25,7 @@ interface CacheState {
 
 const CACHE_TTL_MS = 30 * 1000; // 30s de caché en memoria
 let lastForceSyncTime = 0;
-const MIN_FORCE_COOLDOWN_MS = 30 * 1000;
+const MIN_FORCE_COOLDOWN_MS = 3 * 1000;
 
 let cache: CacheState = {
   lastSync: 0,
