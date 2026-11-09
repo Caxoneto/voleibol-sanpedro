@@ -123,7 +123,7 @@ export default function NoticiasPage() {
             <span className="text-outline">/</span>
             <span className="flex items-center gap-1">
               <span className="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">calendar_month</span>
-              OCTUBRE 2026
+              NOVIEMBRE 2026
             </span>
           </div>
         </div>
@@ -187,13 +187,13 @@ export default function NoticiasPage() {
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[460px]">
                 {/* Hero Visual Presentation */}
-                <div className="lg:col-span-7 relative h-72 lg:h-auto overflow-hidden bg-surface-container-lowest">
+                <div className="lg:col-span-7 relative h-72 sm:h-96 lg:h-auto overflow-hidden bg-surface-container-lowest">
                   <Image
                     src={featuredArticle.coverImageUrl}
                     alt={featuredArticle.title}
                     fill
                     priority
-                    className={`${featuredArticle.coverImageUrl.includes('loteria') ? 'object-contain' : 'object-cover'} transition-transform duration-700 group-hover:scale-105`}
+                    className={`${featuredArticle.coverImageUrl.includes('loteria') ? 'object-contain' : 'object-cover object-center'} transition-transform duration-700 group-hover:scale-105`}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-surface-container-low/30 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-surface-container-low/30 lg:to-surface-container-low pointer-events-none" />
 
@@ -299,12 +299,12 @@ export default function NoticiasPage() {
                   href={`/noticias/${art.slug}`}
                   className="news-item flex flex-col bg-surface-container-low group overflow-hidden transition-all hover:bg-surface-container border border-white/5 hover:border-primary-container block shadow-lg hover:-translate-y-1"
                 >
-                  <div className="relative h-48 w-full overflow-hidden bg-surface-container-lowest">
+                  <div className="relative h-52 w-full overflow-hidden bg-surface-container-lowest">
                     <Image
                       src={art.coverImageUrl}
                       alt={art.title}
                       fill
-                      className={`${art.coverImageUrl.includes('loteria') ? 'object-contain p-2' : 'object-cover'} transition-transform duration-500 group-hover:scale-105`}
+                      className={`${art.coverImageUrl.includes('loteria') ? 'object-contain p-2' : 'object-cover object-center'} transition-transform duration-500 group-hover:scale-105`}
                     />
                     <span className="absolute top-3 left-3 px-2.5 py-1 bg-surface-container-lowest/90 font-label-sm text-label-sm text-primary uppercase font-bold tracking-wider">
                       {art.categoryName}

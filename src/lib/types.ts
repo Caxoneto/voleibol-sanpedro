@@ -49,6 +49,28 @@ export interface Team {
   season: string;
 }
 
+export interface PlayerCallUpSplit {
+  teamId: string;
+  teamName: string;
+  count: number;
+}
+
+export interface MatchReferee {
+  role: string;
+  name: string;
+  isTrainee?: boolean;
+}
+
+export interface MatchRosterPerson {
+  name: string;
+  dorsal?: string;
+  isCaptain?: boolean;
+  isLibero?: boolean;
+  isStaff?: boolean;
+  staffRole?: string;
+  originCategory?: string;
+}
+
 export interface Player {
   id: string;
   teamId: string;
@@ -61,6 +83,10 @@ export interface Player {
   photoUrl: string;
   isCaptain: boolean;
   isHomegrown: boolean;
+  matchesCalledUp?: number;
+  totalClubCallUps?: number;
+  licenseCategory?: string;
+  otherTeamCallUps?: PlayerCallUpSplit[];
 }
 
 export interface Staff {
@@ -79,6 +105,9 @@ export interface Match {
   awayTeamName: string;
   isClubHome: boolean;
   venueName: string;
+  court?: string;
+  locality?: string;
+  googleMapsUrl?: string;
   matchDate: string; // ISO string in UTC
   status: MatchStatus;
   statusText?: string;
@@ -91,6 +120,9 @@ export interface Match {
   association?: 'FAVB' | 'AFADE';
   mvpPlayerId?: string;
   isFeatured?: boolean;
+  referees?: MatchReferee[];
+  homeRoster?: MatchRosterPerson[];
+  awayRoster?: MatchRosterPerson[];
 }
 
 export interface Standings {
@@ -101,8 +133,16 @@ export interface Standings {
   played: number;
   won: number;
   lost: number;
+  pg3?: number;
+  pg2?: number;
+  pp1?: number;
+  pp0?: number;
   setsFor: number;
   setsAgainst: number;
+  setCoef?: number;
+  pointsFor?: number;
+  pointsAgainst?: number;
+  pointCoef?: number;
   points: number;
 }
 

@@ -22,8 +22,10 @@ import {
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo, getTeamInitials } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
+import MatchActaModal from '@/components/MatchActaModal';
 import { isRestMatch } from '@/lib/match-utils';
 import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
+import { Scale, FileText, Navigation } from 'lucide-react';
 
 interface DisplaySetColumn {
   label: string;
@@ -82,6 +84,9 @@ function PartidosContent() {
   // Estado del acordeón: categoría expandida
   const [expandedCatId, setExpandedCatId] = useState<string | null>(resolvedInitialCategory);
 
+  // Partido seleccionado para abrir el modal de Acta Oficial / Convocatorias
+  const [selectedActaMatch, setSelectedActaMatch] = useState<FavbMatch | null>(null);
+
   // Estado de montaje en el cliente para evitar mismatch de hidratación con grabaciones dinámicas
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -99,12 +104,17 @@ function PartidosContent() {
   // Hidratar inmediatamente desde localStorage y sincronizar en segundo plano al montar
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('cdv_synced_matches_v2');
+      const cached = localStorage.getItem('cdv_synced_matches_v5');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
           const cachedMap = new Map((parsed.matches as FavbMatch[]).map((m) => [m.id, m]));
-          setMatches(initialConsolidated.map((m) => cachedMap.get(m.id) || m));
+          setMatches(
+            initialConsolidated.map((m) => {
+              const c = cachedMap.get(m.id);
+              return c ? { ...m, ...c } : m;
+            })
+          );
         }
         if (parsed.lastSync) {
           setLastSyncTime(
@@ -207,7 +217,7 @@ function PartidosContent() {
         );
         try {
           localStorage.setItem(
-            'cdv_synced_matches_v2',
+            'cdv_synced_matches_v5',
             JSON.stringify({
               matches: data.matches,
               lastSync: data.lastSync || new Date().toISOString(),
@@ -256,10 +266,27 @@ function PartidosContent() {
       );
       const data = await res.json();
       if (data.success && data.match) {
-        setMatches((prev) =>
-          prev.map((m) =>
-            m.id === data.match.id || m.favbId === data.match.favbId ? data.match : m
-          )
+        setMatches((prev) => {
+          const next = prev.map((m) =>
+            m.id === data.match.id || m.favbId === data.match.favbId ? { ...m, ...data.match } : m
+          );
+          try {
+            localStorage.setItem(
+              'cdv_synced_matches_v5',
+              JSON.stringify({
+                matches: next,
+                lastSync: new Date().toISOString(),
+              })
+            );
+          } catch {
+            // Ignorar cuota de localStorage
+          }
+          return next;
+        });
+        setSelectedActaMatch((prev) =>
+          prev && (prev.id === data.match.id || prev.favbId === data.match.favbId)
+            ? { ...prev, ...data.match }
+            : prev
         );
         if (!silent) {
           const statusMsg =
@@ -336,8 +363,51 @@ function PartidosContent() {
 
   // Enlace directo de Google Maps para el pabellón del partido
   const getVenueMapsLink = (m: FavbMatch) => {
+    if (m.googleMapsUrl) return m.googleMapsUrl;
     if (m.isClubHome) return CLUB_INFO.venueMapsUrl;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.venue)}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      `${m.venue} ${m.locality || ''}`.trim()
+    )}`;
+  };
+
+  // Callback cuando el modal de Acta Oficial actualiza los datos de un partido en vivo
+  const handleActaMatchUpdated = (updated: Partial<FavbMatch>) => {
+    if (!updated) return;
+    setMatches((prev) => {
+      const next = prev.map((m) =>
+        m.id === updated.id || (updated.favbId && m.favbId === updated.favbId)
+          ? { ...m, ...updated }
+          : m
+      );
+      try {
+        localStorage.setItem(
+          'cdv_synced_matches_v5',
+          JSON.stringify({
+            matches: next,
+            lastSync: new Date().toISOString(),
+          })
+        );
+      } catch {
+        // Ignorar cuota de localStorage
+      }
+      return next;
+    });
+    setSelectedActaMatch((prev) =>
+      prev && (prev.id === updated.id || (updated.favbId && prev.favbId === updated.favbId))
+        ? { ...prev, ...updated }
+        : prev
+    );
+  };
+
+  // Número de jugadores/as convocados en acta (priorizando nuestro club o el total)
+  const getCalledUpCount = (m: FavbMatch): number => {
+    const clubSide = m.isClubHome ? m.homeRoster : m.awayRoster;
+    if (Array.isArray(clubSide) && clubSide.length > 0) {
+      return clubSide.filter((p) => !p.isStaff).length;
+    }
+    const homeCount = Array.isArray(m.homeRoster) ? m.homeRoster.filter((p) => !p.isStaff).length : 0;
+    const awayCount = Array.isArray(m.awayRoster) ? m.awayRoster.filter((p) => !p.isStaff).length : 0;
+    return homeCount + awayCount;
   };
 
   // Regla de colores unificada con la página de inicio: verde ganando, blanco perdiendo, amarillo empate
@@ -748,28 +818,106 @@ function PartidosContent() {
           </div>
         </div>
 
-        {/* Pie de tarjeta con sede (marquee continuo) y botones de SOLO icono (Ubicación Maps + Acta FAVB) + Ver partido diferido si existe */}
-        <div className="pt-2.5 mt-2 border-t border-white/5 flex items-center justify-between gap-2 text-[11px] text-tertiary flex-wrap">
-          <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
-            <span className="material-symbols-outlined text-[14px] text-primary shrink-0" aria-hidden="true">
-              pin_drop
-            </span>
-            <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
-              <div className="animate-venue-marquee items-center whitespace-nowrap text-[11px] text-tertiary">
-                <span className="pr-8">{m.venue}</span>
-                <span className="pr-8" aria-hidden="true">{m.venue}</span>
+        {/* Pie de tarjeta con sede, pista exacta, localidad, árbitros y botón de Acta / Convocatoria */}
+        <div className="pt-2.5 mt-2 border-t border-white/5 space-y-2 text-[11px] text-tertiary">
+          {/* Funcionalidad 2: Pabellón + Badge Pista Exacta + Localidad + Cómo llegar */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+              <span className="material-symbols-outlined text-[14px] text-primary shrink-0" aria-hidden="true">
+                pin_drop
+              </span>
+              {m.court && (
+                <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
+                  {m.court}
+                </span>
+              )}
+              {m.locality && !m.venue.toLowerCase().includes(m.locality.toLowerCase()) && (
+                <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 text-white/80 text-[10px] font-semibold shrink-0">
+                  {m.locality}
+                </span>
+              )}
+              <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
+                <div className="animate-venue-marquee items-center whitespace-nowrap text-[11px] text-tertiary">
+                  <span className="pr-8">{m.venue}</span>
+                  <span className="pr-8" aria-hidden="true">{m.venue}</span>
+                </div>
               </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0 relative z-30">
+              <a
+                href={getVenueMapsLink(m)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/10 text-[10px] font-bold uppercase tracking-wider transition-colors"
+                title={`Cómo llegar a ${m.venue}`}
+              >
+                <Navigation className="w-3 h-3 text-primary group-hover:text-white shrink-0" />
+                <span>Cómo llegar</span>
+              </a>
+
+              <a
+                href={m.favbUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="w-6 h-6 bg-surface-container-highest hover:bg-primary-container text-primary hover:text-white flex items-center justify-center border border-white/10 transition-colors"
+                title={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
+                aria-label={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
+              >
+                <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
+              </a>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0 relative z-30">
+          {/* Funcionalidad 1: Equipo Arbitral Designado */}
+          {m.referees && m.referees.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-white/5 text-[10px]">
+              <span className="inline-flex items-center gap-1 text-primary font-bold uppercase tracking-wider shrink-0">
+                <Scale className="w-3 h-3" />
+                <span>Árbitros:</span>
+              </span>
+              {m.referees.map((ref, rIdx) => (
+                <span
+                  key={`${m.id}-ref-${rIdx}`}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/[0.04] border border-white/10 text-white/90 font-medium"
+                >
+                  <strong className="text-tertiary font-mono">{ref.role}:</strong> {ref.name}
+                  {ref.isTrainee && (
+                    <span className="text-amber-300 font-bold">(Prácticas)</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Funcionalidad 3: Botón Ver Acta / Convocatoria + Vídeo Diferido */}
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedActaMatch(m);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors"
+            >
+              <FileText className="w-3 h-3 shrink-0" />
+              <span>Ver Acta / Convocatoria</span>
+              {getCalledUpCount(m) > 0 && (
+                <span className="px-1.5 py-0.2 bg-black/40 text-white font-mono text-[9px]">
+                  {getCalledUpCount(m)} conv.
+                </span>
+              )}
+            </button>
+
             {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
               <a
                 href={recordingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-[2px] transition-colors shadow-sm"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-[2px] transition-colors shadow-sm"
                 title="Ver partido en diferido en YouTube"
                 aria-label="Ver partido en diferido"
               >
@@ -779,30 +927,6 @@ function PartidosContent() {
                 <span>Ver partido</span>
               </a>
             )}
-
-            <a
-              href={getVenueMapsLink(m)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="w-6 h-6 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white flex items-center justify-center border border-white/10 transition-colors"
-              title={`Cómo llegar a ${m.venue}`}
-              aria-label="Cómo llegar al pabellón"
-            >
-              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">directions</span>
-            </a>
-
-            <a
-              href={m.favbUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="w-6 h-6 bg-surface-container-highest hover:bg-primary-container text-primary hover:text-white flex items-center justify-center border border-white/10 transition-colors"
-              title={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
-              aria-label={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
-            >
-              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
-            </a>
           </div>
         </div>
 
@@ -1364,11 +1488,22 @@ function PartidosContent() {
                                           )}
                                         </div>
 
-                                        <div className="flex items-center justify-between gap-2 pt-1">
-                                          <div className="flex items-center gap-1 text-[11px] text-tertiary min-w-0 flex-1 overflow-hidden">
+                                        {/* Funcionalidad 2: Pabellón + Pista Exacta + Localidad + Cómo llegar */}
+                                        <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                                          <div className="flex items-center gap-1.5 text-[11px] text-tertiary min-w-0 flex-1 overflow-hidden">
                                             <span className="material-symbols-outlined text-[14px] text-primary shrink-0" aria-hidden="true">
                                               pin_drop
                                             </span>
+                                            {m.court && (
+                                              <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                                {m.court}
+                                              </span>
+                                            )}
+                                            {m.locality && !m.venue.toLowerCase().includes(m.locality.toLowerCase()) && (
+                                              <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 text-white/80 text-[10px] font-semibold shrink-0">
+                                                {m.locality}
+                                              </span>
+                                            )}
                                             <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
                                               <div className="animate-venue-marquee items-center whitespace-nowrap text-[11px] text-tertiary">
                                                 <span className="pr-8">{m.venue}</span>
@@ -1424,15 +1559,55 @@ function PartidosContent() {
                                               href={getVenueMapsLink(m)}
                                               target="_blank"
                                               rel="noopener noreferrer"
-                                              className="w-7 h-7 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white flex items-center justify-center transition-all border border-white/10"
+                                              className="inline-flex items-center gap-1 px-2 h-7 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all border border-white/10"
                                               title={`Cómo llegar a ${m.venue}`}
                                               aria-label="Cómo llegar al pabellón"
                                             >
-                                              <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
-                                                directions
-                                              </span>
+                                              <Navigation className="w-3 h-3 text-primary shrink-0" />
+                                              <span>Cómo llegar</span>
                                             </a>
                                           </div>
+                                        </div>
+
+                                        {/* Funcionalidad 1: Equipo Arbitral Designado */}
+                                        {m.referees && m.referees.length > 0 && (
+                                          <div className="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-white/5 text-[10px]">
+                                            <span className="inline-flex items-center gap-1 text-primary font-bold uppercase tracking-wider shrink-0">
+                                              <Scale className="w-3 h-3" />
+                                              <span>Árbitros:</span>
+                                            </span>
+                                            {m.referees.map((ref, rIdx) => (
+                                              <span
+                                                key={`${m.id}-sched-ref-${rIdx}`}
+                                                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/[0.04] border border-white/10 text-white/90 font-medium"
+                                              >
+                                                <strong className="text-tertiary font-mono">{ref.role}:</strong> {ref.name}
+                                                {ref.isTrainee && (
+                                                  <span className="text-amber-300 font-bold">(Prácticas)</span>
+                                                )}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+
+                                        {/* Funcionalidad 3: Botón Ver Acta / Convocatoria */}
+                                        <div className="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedActaMatch(m);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors"
+                                          >
+                                            <FileText className="w-3 h-3 shrink-0" />
+                                            <span>Ver Acta / Convocatoria</span>
+                                            {getCalledUpCount(m) > 0 && (
+                                              <span className="px-1.5 py-0.2 bg-black/40 text-white font-mono text-[9px]">
+                                                {getCalledUpCount(m)} conv.
+                                              </span>
+                                            )}
+                                          </button>
                                         </div>
                                       </div>
 
@@ -1572,6 +1747,15 @@ function PartidosContent() {
       <div className="relative z-10">
         <SponsorBanner customText="APOYA AL C.D. VOLEIBOL SAN PEDRO EN TODAS SUS CATEGORÍAS" />
       </div>
+
+      {/* Modal de Acta Oficial y Convocatorias */}
+      {selectedActaMatch && (
+        <MatchActaModal
+          match={selectedActaMatch}
+          onClose={() => setSelectedActaMatch(null)}
+          onMatchUpdated={handleActaMatchUpdated}
+        />
+      )}
     </div>
   );
 }

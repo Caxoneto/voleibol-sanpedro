@@ -12,7 +12,7 @@ import {
 import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS, Player, Staff } from '@/lib/types';
 import SponsorBanner from '@/components/SponsorBanner';
 
-const ROSTERS_STORAGE_KEY = 'cdv_synced_rosters_v2';
+const ROSTERS_STORAGE_KEY = 'cdv_synced_rosters_v4';
 
 export default function PlantillasPage() {
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('senior-femenino');
@@ -27,12 +27,31 @@ export default function PlantillasPage() {
   const applyMergedRosters = (incomingPlayers: Player[], incomingStaff?: Staff[]) => {
     setPlayers((prevPlayers) => {
       // Fusión estrictamente aditiva: ningún jugador real existente en plantilla se borra si no jugó un partido
+      const mergePlayerFields = (existing: Player, incoming: Player): Player => ({
+        ...existing,
+        ...incoming,
+        matchesCalledUp:
+          Math.max(existing.matchesCalledUp ?? 0, incoming.matchesCalledUp ?? 0) ||
+          existing.matchesCalledUp ||
+          incoming.matchesCalledUp,
+        totalClubCallUps:
+          Math.max(existing.totalClubCallUps ?? 0, incoming.totalClubCallUps ?? 0) ||
+          existing.totalClubCallUps ||
+          incoming.totalClubCallUps,
+        licenseCategory: incoming.licenseCategory ?? existing.licenseCategory,
+        otherTeamCallUps:
+          incoming.otherTeamCallUps && incoming.otherTeamCallUps.length > 0
+            ? incoming.otherTeamCallUps
+            : existing.otherTeamCallUps,
+      });
+
       const mergedByTeam = new Map<string, Map<string, Player>>();
       for (const p of [...INITIAL_PLAYERS, ...prevPlayers]) {
         if (p.firstName !== 'Jugador' && p.firstName !== 'Jugadora') {
           if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
           const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
-          mergedByTeam.get(p.teamId)!.set(key, p);
+          const existing = mergedByTeam.get(p.teamId)!.get(key);
+          mergedByTeam.get(p.teamId)!.set(key, existing ? mergePlayerFields(existing, p) : p);
         }
       }
       for (const p of incomingPlayers) {
@@ -40,11 +59,7 @@ export default function PlantillasPage() {
           if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
           const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
           const existing = mergedByTeam.get(p.teamId)!.get(key);
-          if (existing) {
-            mergedByTeam.get(p.teamId)!.set(key, { ...existing, ...p });
-          } else {
-            mergedByTeam.get(p.teamId)!.set(key, p);
-          }
+          mergedByTeam.get(p.teamId)!.set(key, existing ? mergePlayerFields(existing, p) : p);
         }
       }
 
@@ -431,6 +446,10 @@ export default function PlantillasPage() {
               {filteredPlayers.map((player) => {
                 const isPlaceholderSlot =
                   player.firstName === 'Jugador' || player.firstName === 'Jugadora';
+                const callUps = player.matchesCalledUp ?? 0;
+                const totalClubCallUps = player.totalClubCallUps ?? callUps;
+                const hasOtherCallUps =
+                  Array.isArray(player.otherTeamCallUps) && player.otherTeamCallUps.length > 0;
 
                 return (
                   <div
@@ -497,30 +516,112 @@ export default function PlantillasPage() {
                             </>
                           )}
                         </h3>
-                        {isPlaceholderSlot && (
+                        {isPlaceholderSlot ? (
                           <span className="text-[10px] sm:text-[11px] text-tertiary block mt-1 leading-snug">
                             Pendiente de acta en favoley.net
                           </span>
+                        ) : (
+                          player.licenseCategory && (
+                            <div className="mt-1.5">
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-amber-500/15 border border-amber-400/40 text-amber-300 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider leading-tight"
+                                title={`Promoción de cantera: compite con licencia oficial de categoría ${player.licenseCategory}`}
+                              >
+                                <span
+                                  className="material-symbols-outlined text-[11px] sm:text-[12px] text-amber-400 shrink-0"
+                                  aria-hidden="true"
+                                >
+                                  workspace_premium
+                                </span>
+                                <span>Promoción · Lic. {player.licenseCategory}</span>
+                              </span>
+                            </div>
+                          )
                         )}
                       </div>
 
-                      {/* Physical Stats */}
-                      <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/5 grid grid-cols-2 gap-1.5 sm:gap-2 text-xs">
-                        <div>
-                          <span className="text-tertiary block text-[9px] sm:text-[10px] uppercase">Dorsal</span>
-                          <span className="font-headline-sm text-xs sm:text-sm text-white font-bold">
-                            #{player.number}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-tertiary block text-[9px] sm:text-[10px] uppercase">Estado FAVB</span>
-                          <span
-                            className={`font-headline-sm text-xs sm:text-sm font-bold ${
-                              isPlaceholderSlot ? 'text-tertiary' : 'text-emerald-400'
-                            }`}
-                          >
-                            {isPlaceholderSlot ? 'Pendiente' : 'Inscrito'}
-                          </span>
+                      {/* Official Participation & Physical Stats */}
+                      <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/5 flex flex-col gap-2">
+                        {!isPlaceholderSlot && (
+                          <div className="flex flex-col gap-1.5">
+                            {/* Convocatorias Oficiales en este equipo */}
+                            <div
+                              className="px-2 sm:px-2.5 py-1.5 bg-surface-container-highest/70 border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-2"
+                              title={`Convocado/a en ${callUps} ${callUps === 1 ? 'partido oficial' : 'partidos oficiales'} con ${activeCategory.name}`}
+                            >
+                              <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-tertiary font-semibold">
+                                Actas Oficiales
+                              </span>
+                              <span className="text-[11px] sm:text-xs font-bold text-white flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                                {callUps > 0
+                                  ? `${callUps} ${callUps === 1 ? 'Convocatoria' : 'Convocatorias'}`
+                                  : 'Inscrito/a'}
+                              </span>
+                            </div>
+
+                            {/* Doble Dinámica / Otros Equipos del Club */}
+                            {hasOtherCallUps && (
+                              <div
+                                className="px-2 sm:px-2.5 py-1.5 bg-violet-500/10 border border-violet-400/25 flex flex-col gap-1"
+                                title={`Participación en doble dinámica: ${totalClubCallUps} partidos oficiales acumulados en el club`}
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5">
+                                  <span className="text-[9px] uppercase tracking-wider text-violet-300 font-bold">
+                                    Doble Dinámica
+                                  </span>
+                                  <span className="text-[9px] sm:text-[10px] font-mono text-violet-200 font-bold">
+                                    Total Club: {totalClubCallUps}{' '}
+                                    {totalClubCallUps === 1 ? 'partido' : 'partidos'}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  {player.otherTeamCallUps!.map((split) => {
+                                    const rawSplitLabel =
+                                      split.teamName ||
+                                      (split as { categoryName?: string }).categoryName ||
+                                      split.teamId;
+                                    const splitLabel = rawSplitLabel
+                                      .replace(/\s*·\s*Grupo Único/gi, '')
+                                      .replace(/\s*\(?Grupo Único\)?/gi, '')
+                                      .replace(/\bGrupo\s+([A-Za-z0-9]+)/gi, 'G$1')
+                                      .trim();
+                                    return (
+                                      <span
+                                        key={split.teamId}
+                                        title={`+${split.count} ${split.count === 1 ? 'convocatoria oficial' : 'convocatorias oficiales'} en ${splitLabel} · Total Club: ${totalClubCallUps} partidos`}
+                                        className="text-[10px] sm:text-[11px] text-white/90 leading-snug bg-black/30 border border-white/10 px-1.5 py-0.5 block"
+                                      >
+                                        <strong className="text-violet-300">
+                                          +{split.count} conv.
+                                        </strong>{' '}
+                                        en {splitLabel}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-xs">
+                          <div>
+                            <span className="text-tertiary block text-[9px] sm:text-[10px] uppercase">Dorsal</span>
+                            <span className="font-headline-sm text-xs sm:text-sm text-white font-bold">
+                              #{player.number}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-tertiary block text-[9px] sm:text-[10px] uppercase">Estado FAVB</span>
+                            <span
+                              className={`font-headline-sm text-xs sm:text-sm font-bold ${
+                                isPlaceholderSlot ? 'text-tertiary' : 'text-emerald-400'
+                              }`}
+                            >
+                              {isPlaceholderSlot ? 'Pendiente' : 'Inscrito'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>

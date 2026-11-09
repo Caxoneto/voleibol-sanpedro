@@ -17,7 +17,7 @@ import {
 } from './favb-data';
 import { AFADE_CATEGORIES, AFADE_STANDINGS } from './afade-data';
 import { getConsolidatedAfadeMatches, syncAfadeData } from './afade-scraper';
-import { Standings, Player, Staff, Position, StaffRole } from './types';
+import { Standings, Player, Staff, Position, StaffRole, MatchReferee, MatchRosterPerson } from './types';
 import { formatMadridDateString, formatMadridTime } from './date-utils';
 
 export interface FavbCompetitionMeta {
@@ -55,8 +55,8 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     favbId: 1365,
     grupo: 127,
     fase: 179,
-    name: '2ª DIVISIÓN ANDALUZA MASCULINA - GRUPO 4B',
-    category: 'Senior Masculino (2ª Andaluza)',
+    name: '2ª DIVISIÓN ANDALUZA MASCULINA - G4B',
+    category: 'Senior Masculino (2ª Andaluza · G4B)',
     gender: 'MASCULINO',
     season: '2026/2027',
   },
@@ -68,8 +68,8 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     favbId: 1321,
     grupo: 35,
     fase: 36,
-    name: 'JUVENIL MASCULINO MÁLAGA LIGA PROVINCIAL',
-    category: 'Juvenil Masculino',
+    name: 'JUVENIL MASCULINO MÁLAGA - G2',
+    category: 'Juvenil Masculino (G2)',
     gender: 'MASCULINO',
     season: '2026/2027',
   },
@@ -81,8 +81,8 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     favbId: 1330,
     grupo: 43,
     fase: 44,
-    name: 'JUVENIL FEMENINO MÁLAGA - GRUPO ORO',
-    category: 'Juvenil Femenino Rojo',
+    name: 'JUVENIL FEMENINO MÁLAGA - LIGA ORO · G1',
+    category: 'Juvenil Femenino Rojo (Oro · G1)',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
@@ -94,8 +94,8 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     favbId: 1330,
     grupo: 99,
     fase: 128,
-    name: 'JUVENIL FEMENINO MÁLAGA - GRUPO PLATA',
-    category: 'Juvenil Femenino Negro',
+    name: 'JUVENIL FEMENINO MÁLAGA - LIGA PLATA · G1',
+    category: 'Juvenil Femenino Negro (Plata · G1)',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
@@ -107,8 +107,8 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     favbId: 1313,
     grupo: 72,
     fase: 94,
-    name: 'CADETE MASCULINO MÁLAGA LIGA PROVINCIAL',
-    category: 'Cadete Masculino',
+    name: 'CADETE MASCULINO MÁLAGA - G2',
+    category: 'Cadete Masculino (G2)',
     gender: 'MASCULINO',
     season: '2026/2027',
   },
@@ -120,8 +120,8 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     favbId: 1304,
     grupo: 76,
     fase: 100,
-    name: 'CADETE FEMENINO MÁLAGA - GRUPO ORO',
-    category: 'Cadete Femenino Rojo',
+    name: 'CADETE FEMENINO MÁLAGA - LIGA ORO · G2',
+    category: 'Cadete Femenino Rojo (Oro · G2)',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
@@ -133,8 +133,8 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     favbId: 1304,
     grupo: 100,
     fase: 132,
-    name: 'CADETE FEMENINO MÁLAGA - GRUPO PLATA',
-    category: 'Cadete Femenino Negro',
+    name: 'CADETE FEMENINO MÁLAGA - LIGA PLATA · G3',
+    category: 'Cadete Femenino Negro (Plata · G3)',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
@@ -146,8 +146,8 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     favbId: 1288,
     grupo: 71,
     fase: 92,
-    name: 'INFANTIL MASCULINO MÁLAGA LIGA PROVINCIAL',
-    category: 'Infantil Masculino',
+    name: 'INFANTIL MASCULINO MÁLAGA - G1',
+    category: 'Infantil Masculino (G1)',
     gender: 'MASCULINO',
     season: '2026/2027',
   },
@@ -159,47 +159,47 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     favbId: 1299,
     grupo: 75,
     fase: 97,
-    name: 'INFANTIL FEMENINO MÁLAGA - GRUPO ORO',
-    category: 'Infantil Femenino Rojo',
+    name: 'INFANTIL FEMENINO MÁLAGA - LIGA ORO · G1',
+    category: 'Infantil Femenino Rojo (Oro · G1)',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
   // Infantil Femenino Negro
   {
-    code: 'MAIF26-1299-PLATA',
+    code: 'MAIF26-1299-ORO-2',
     categoryId: 'cat-infantil-fem-negro',
     teamId: 'team-if-negro',
     favbId: 1299,
     grupo: 75,
     fase: 98,
-    name: 'INFANTIL FEMENINO MÁLAGA - GRUPO PLATA',
-    category: 'Infantil Femenino Negro',
+    name: 'INFANTIL FEMENINO MÁLAGA - LIGA ORO · G2',
+    category: 'Infantil Femenino Negro (Oro · G2)',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
   // Infantil Femenino Blanco
   {
-    code: 'MAIF26-1299-PROM-BLANCO',
+    code: 'MAIF26-1299-PLATA-BLANCO',
     categoryId: 'cat-infantil-fem-blanco',
     teamId: 'team-if-blanco',
     favbId: 1299,
     grupo: 101,
     fase: 134,
-    name: 'INFANTIL FEMENINO MÁLAGA - PROMOCIÓN G2',
-    category: 'Infantil Femenino Blanco',
+    name: 'INFANTIL FEMENINO MÁLAGA - LIGA PLATA · G2',
+    category: 'Infantil Femenino Blanco (Plata · G2)',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
   // Infantil Femenino Gris
   {
-    code: 'MAIF26-1299-PROM-GRIS',
+    code: 'MAIF26-1299-PLATA-GRIS',
     categoryId: 'cat-infantil-fem-gris',
     teamId: 'team-if-gris',
     favbId: 1299,
     grupo: 101,
     fase: 133,
-    name: 'INFANTIL FEMENINO MÁLAGA - PROMOCIÓN G1',
-    category: 'Infantil Femenino Gris',
+    name: 'INFANTIL FEMENINO MÁLAGA - LIGA PLATA · G1',
+    category: 'Infantil Femenino Gris (Plata · G1)',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
@@ -220,6 +220,9 @@ export interface FavbMatch {
   dateStr: string;
   timeStr: string;
   venue: string;
+  court?: string;
+  locality?: string;
+  googleMapsUrl?: string;
   status: 'SCHEDULED' | 'FINISHED' | 'LIVE' | 'POSTPONED' | 'CANCELLED';
   homeScore?: number;
   awayScore?: number;
@@ -232,6 +235,9 @@ export interface FavbMatch {
   afadeId?: string | number;
   association?: 'FAVB' | 'AFADE';
   videoUrl?: string;
+  referees?: MatchReferee[];
+  homeRoster?: MatchRosterPerson[];
+  awayRoster?: MatchRosterPerson[];
 }
 
 export interface FavbStanding {
@@ -241,8 +247,16 @@ export interface FavbStanding {
   pj: number;
   pg: number;
   pp: number;
+  pg3?: number;
+  pg2?: number;
+  pp1?: number;
+  pp0?: number;
   sf: number;
   sc: number;
+  cs?: number;
+  pf?: number;
+  pc?: number;
+  cp?: number;
   isCurrentClub: boolean;
 }
 
@@ -275,9 +289,15 @@ interface FavbJsonMatchDetails {
   isClubHome?: boolean;
   matchDateIso?: string;
   venue?: string;
+  court?: string;
+  locality?: string;
+  googleMapsUrl?: string;
   homeScore?: number;
   awayScore?: number;
   setScores: { home: number; away: number }[];
+  referees?: MatchReferee[];
+  homeRoster?: MatchRosterPerson[];
+  awayRoster?: MatchRosterPerson[];
   clubPersonas: FavbRawPersona[];
 }
 
@@ -424,12 +444,98 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
     }
 
     let venue: string | undefined;
+    let court: string | undefined;
+    let locality: string | undefined;
+    let googleMapsUrl: string | undefined;
+
+    const rawEsp = p.espacio ? String(p.espacio).trim() : '';
+    const rawLoc = p.localidad ? String(p.localidad).trim() : '';
+    if (rawEsp) {
+      court = rawEsp.toLowerCase().startsWith('pista') ? rawEsp : `Pista ${rawEsp}`;
+    }
+    if (rawLoc) {
+      locality = rawLoc;
+    }
+
     if (p.instalacion && String(p.instalacion).trim() !== '') {
       const inst = String(p.instalacion).trim();
-      const esp = p.espacio ? String(p.espacio).trim() : '';
-      const loc = p.localidad ? String(p.localidad).trim() : '';
-      venue = `${inst}${esp ? ` – ${esp}` : ''}${loc ? ` (${loc})` : ''}`;
+      venue = `${inst}${rawEsp ? ` – ${rawEsp}` : ''}${rawLoc ? ` (${rawLoc})` : ''}`;
+      if (p.google_maps_url && String(p.google_maps_url).trim()) {
+        googleMapsUrl = String(p.google_maps_url).trim();
+      } else if (!inst.toLowerCase().includes('descansa')) {
+        googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${inst} ${rawLoc}`.trim())}`;
+      }
     }
+
+    const referees: MatchReferee[] = [];
+    if (Array.isArray(json.datos.designaciones)) {
+      for (const ref of json.datos.designaciones) {
+        const arb = String(ref.arbitro || '').trim();
+        if (!arb) continue;
+        const t = String(ref.tipo || '').toUpperCase().trim();
+        let role = titleCase(t);
+        if (t.includes('1º ACOMPAÑADO') || t.includes('1º ARBITRO') || t === '1º') role = '1º Árbitro';
+        else if (t.includes('1º SOLO')) role = 'Árbitro Principal';
+        else if (t.includes('2º')) role = '2º Árbitro';
+        else if (t.includes('ANOTADOR')) role = 'Anotador/a';
+        referees.push({
+          role,
+          name: titleCase(arb),
+          ...(Number(ref.practicas) === 1 ? { isTrainee: true } : {}),
+        });
+      }
+    }
+
+    const parseSideRoster = (rawList: unknown): MatchRosterPerson[] | undefined => {
+      if (!Array.isArray(rawList) || rawList.length === 0) return undefined;
+      const staffCodes = new Set(['C', 'AC1', 'AC2', 'T', 'M', 'D']);
+      const list: MatchRosterPerson[] = [];
+      for (const item of rawList) {
+        const rawName = String(item?.nombre || '').replace(/,[a-zA-Z]+$/, '').trim();
+        if (!rawName) continue;
+        const rawTipo = String(item?.tipo || '').trim();
+        const tUpper = rawTipo.toUpperCase();
+        const dorsal = String(item?.dorsal ?? '').trim();
+        const isStaff = !dorsal && (staffCodes.has(tUpper) || tUpper.includes('ENTRENADOR'));
+        if (isStaff) {
+          let staffRole = 'Cuerpo Técnico';
+          if (tUpper === 'C' || (tUpper.includes('ENTRENADOR') && !tUpper.includes('2'))) staffRole = '1º Entrenador/a';
+          else if (tUpper === 'AC1' || tUpper === 'E2' || tUpper.includes('2')) staffRole = '2º Entrenador/a';
+          else if (tUpper === 'AC2') staffRole = 'Asistente Técnico';
+          else if (tUpper === 'M') staffRole = 'Médico / Fisio';
+          else if (tUpper === 'D') staffRole = 'Delegado/a';
+          list.push({ name: titleCase(rawName), isStaff: true, staffRole });
+        } else {
+          const isCaptain = Number(item?.capitan) === 1 || tUpper.includes('CAPIT');
+          const isLibero = Number(item?.libero) === 1 || tUpper.includes('LÍBERO') || tUpper.includes('LIBERO');
+          const cleanOrigin = tUpper
+            .replace(/·\s*CAPIT[AÁ]N/g, '')
+            .replace(/·\s*L[IÍ]BERO/g, '')
+            .replace(/CAPIT[AÁ]N/g, '')
+            .replace(/L[IÍ]BERO/g, '')
+            .replace(/·/g, '')
+            .trim();
+          const originCategory = cleanOrigin && !staffCodes.has(cleanOrigin) ? titleCase(cleanOrigin) : undefined;
+          list.push({
+            name: titleCase(rawName),
+            dorsal: dorsal || undefined,
+            isCaptain: isCaptain || undefined,
+            isLibero: isLibero || undefined,
+            originCategory,
+          });
+        }
+      }
+      list.sort((a, b) => {
+        if (a.isStaff && !b.isStaff) return 1;
+        if (!a.isStaff && b.isStaff) return -1;
+        if (a.isStaff && b.isStaff) return 0;
+        return (parseInt(a.dorsal || '999', 10) || 999) - (parseInt(b.dorsal || '999', 10) || 999);
+      });
+      return list.length > 0 ? list : undefined;
+    };
+
+    const homeRoster = parseSideRoster(json.datos.plantilla_local);
+    const awayRoster = parseSideRoster(json.datos.plantilla_visitante);
 
     // Extraer convocatoria de nuestro club si está publicada
     const clubPersonas: FavbRawPersona[] = [];
@@ -461,9 +567,15 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
       isClubHome,
       matchDateIso,
       venue,
+      court,
+      locality,
+      googleMapsUrl,
       homeScore,
       awayScore,
       setScores,
+      referees: referees.length > 0 ? referees : undefined,
+      homeRoster,
+      awayRoster,
       clubPersonas,
     };
   } catch {
@@ -674,6 +786,12 @@ export async function updateMatchLiveScore(
       match.timeStr = formatMadridTime(jsonDetails.matchDateIso);
     }
     if (jsonDetails.venue) match.venue = jsonDetails.venue;
+    if (jsonDetails.court) match.court = jsonDetails.court;
+    if (jsonDetails.locality) match.locality = jsonDetails.locality;
+    if (jsonDetails.googleMapsUrl) match.googleMapsUrl = jsonDetails.googleMapsUrl;
+    if (jsonDetails.referees) match.referees = jsonDetails.referees;
+    if (jsonDetails.homeRoster) match.homeRoster = jsonDetails.homeRoster;
+    if (jsonDetails.awayRoster) match.awayRoster = jsonDetails.awayRoster;
     if (jsonDetails.clubPersonas.length > 0) {
       recordTeamPersonas(match.teamId, jsonDetails.clubPersonas);
     }
@@ -687,6 +805,20 @@ export async function updateMatchLiveScore(
     match.currentSetScore = scraped.currentSetScore;
     if (scraped.setScores.length > 0) {
       match.setScores = scraped.setScores;
+    }
+    if (
+      jsonDetails?.status === 'FINISHED' &&
+      jsonDetails.homeScore !== undefined &&
+      jsonDetails.awayScore !== undefined
+    ) {
+      match.status = 'FINISHED';
+      match.statusText = 'Finalizado';
+      match.homeScore = jsonDetails.homeScore;
+      match.awayScore = jsonDetails.awayScore;
+      match.currentSetScore = undefined;
+      if (jsonDetails.setScores.length > 0 && jsonDetails.setScores.length >= scraped.setScores.length) {
+        match.setScores = jsonDetails.setScores;
+      }
     }
     match.lastChecked = scraped.lastChecked;
 
@@ -806,6 +938,12 @@ export async function syncFavbData(forceRefresh = false): Promise<{
             m.timeStr = formatMadridTime(details.matchDateIso);
           }
           if (details.venue) m.venue = details.venue;
+          if (details.court) m.court = details.court;
+          if (details.locality) m.locality = details.locality;
+          if (details.googleMapsUrl) m.googleMapsUrl = details.googleMapsUrl;
+          if (details.referees) m.referees = details.referees;
+          if (details.homeRoster) m.homeRoster = details.homeRoster;
+          if (details.awayRoster) m.awayRoster = details.awayRoster;
           m.lastChecked = new Date().toISOString();
 
           // Regla de 12 horas si continúa figurando SCHEDULED sin parciales
@@ -879,8 +1017,8 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
     const team = teamMap.get(m.teamId);
     const category = team ? catMap.get(team.categoryId) : undefined;
 
-    let homeScore: number | undefined;
-    let awayScore: number | undefined;
+    let homeScore: number | undefined = m.homeScore;
+    let awayScore: number | undefined = m.awayScore;
     if (m.setScores && m.setScores.length > 0) {
       homeScore = m.setScores.filter((s) => s.home > s.away).length;
       awayScore = m.setScores.filter((s) => s.away > s.home).length;
@@ -913,6 +1051,9 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
       dateStr: formatMadridDateString(m.matchDate),
       timeStr: formatMadridTime(m.matchDate),
       venue: m.venueName,
+      court: m.court,
+      locality: m.locality,
+      googleMapsUrl: m.googleMapsUrl,
       status,
       statusText,
       homeScore,
@@ -921,6 +1062,9 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
       isClubHome: m.isClubHome,
       favbUrl: m.favbMatchUrl || 'https://favoley.net/publico/index.php',
       association: 'FAVB' as const,
+      referees: m.referees,
+      homeRoster: m.homeRoster,
+      awayRoster: m.awayRoster,
     };
   });
 
@@ -1177,6 +1321,8 @@ export async function syncFavbRosters(
             if (!Number.isNaN(dorsalNum) && dorsalNum > 0) existing.number = dorsalNum;
             if (isCaptain) existing.isCaptain = true;
             if (isLibero) existing.position = 'LIBERO';
+            if (!existing.matchesCalledUp) existing.matchesCalledUp = 1;
+            if (!existing.totalClubCallUps) existing.totalClubCallUps = existing.matchesCalledUp;
           } else {
             const { firstName, lastName } = splitFullName(sp.nombre);
             realByKey.set(key, {
@@ -1191,6 +1337,8 @@ export async function syncFavbRosters(
               photoUrl: '/images/player-placeholder.svg',
               isCaptain,
               isHomegrown: true,
+              matchesCalledUp: 1,
+              totalClubCallUps: 1,
             });
             addIdx++;
           }
@@ -1340,6 +1488,12 @@ function cleanHtmlText(str: string): string {
     .trim();
 }
 
+function parseSpanishDecimal(val?: string): number {
+  if (!val) return 0;
+  const num = parseFloat(val.replace(',', '.'));
+  return Number.isFinite(num) ? num : 0;
+}
+
 function parseFavbStandingsHtml(html: string, catId: string): Standings[] {
   const tbodyMatch = html.match(
     /<table class="portal-clasificacion-tabla">[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i
@@ -1360,6 +1514,10 @@ function parseFavbStandingsHtml(html: string, catId: string): Standings[] {
     if (cells.length >= 12) {
       const teamName = cells[1];
       const isCurrentClub = teamName.toUpperCase().includes('SAN PEDRO');
+      const setsFor = parseInt(cells[10], 10) || 0;
+      const setsAgainst = parseInt(cells[11], 10) || 0;
+      const pointsFor = parseInt(cells[13], 10) || 0;
+      const pointsAgainst = parseInt(cells[14], 10) || 0;
       rows.push({
         id: `st-${catId}-${idx}`,
         categoryId: catId,
@@ -1368,8 +1526,16 @@ function parseFavbStandingsHtml(html: string, catId: string): Standings[] {
         played: parseInt(cells[3], 10) || 0,
         won: parseInt(cells[4], 10) || 0,
         lost: parseInt(cells[5], 10) || 0,
-        setsFor: parseInt(cells[10], 10) || 0,
-        setsAgainst: parseInt(cells[11], 10) || 0,
+        pg3: parseInt(cells[6], 10) || 0,
+        pg2: parseInt(cells[7], 10) || 0,
+        pp1: parseInt(cells[8], 10) || 0,
+        pp0: parseInt(cells[9], 10) || 0,
+        setsFor,
+        setsAgainst,
+        setCoef: cells[12] !== undefined ? parseSpanishDecimal(cells[12]) : (setsAgainst > 0 ? Number((setsFor / setsAgainst).toFixed(3)) : setsFor),
+        pointsFor,
+        pointsAgainst,
+        pointCoef: cells[15] !== undefined ? parseSpanishDecimal(cells[15]) : (pointsAgainst > 0 ? Number((pointsFor / pointsAgainst).toFixed(3)) : pointsFor),
         isCurrentClub,
       });
       idx++;
@@ -1461,8 +1627,16 @@ export async function syncFavbStandings(forceRefresh = false): Promise<{
               played: r.pj,
               won: r.pg,
               lost: r.pp,
+              pg3: r.pg3 ?? 0,
+              pg2: r.pg2 ?? 0,
+              pp1: r.pp1 ?? 0,
+              pp0: r.pp0 ?? 0,
               setsFor: r.sf,
               setsAgainst: r.sc,
+              setCoef: r.cs ?? (r.sc > 0 ? Number((r.sf / r.sc).toFixed(3)) : r.sf),
+              pointsFor: r.pf ?? 0,
+              pointsAgainst: r.pc ?? 0,
+              pointCoef: r.cp ?? ((r.pc ?? 0) > 0 ? Number(((r.pf ?? 0) / (r.pc ?? 1)).toFixed(3)) : (r.pf ?? 0)),
               points: r.pts,
             }));
             byCategory.set(catId, standingsRows);

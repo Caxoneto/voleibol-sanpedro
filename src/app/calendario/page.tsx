@@ -20,6 +20,8 @@ import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
 import { isRestMatch } from '@/lib/match-utils';
 import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
+import MatchActaModal from '@/components/MatchActaModal';
+import { Scale, FileText, Navigation } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 interface RoundSummary {
@@ -31,7 +33,7 @@ interface RoundSummary {
   earliestPendingTime: number;
 }
 
-const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v2';
+const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v5';
 
 export default function CalendarioPage() {
   const { recordings } = useStreaming();
@@ -40,6 +42,7 @@ export default function CalendarioPage() {
   const [conditionFilter, setConditionFilter] = useState<'ALL' | 'LOCAL' | 'VISITANTE'>('ALL');
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [showVenueModal, setShowVenueModal] = useState(false);
+  const [selectedActaMatch, setSelectedActaMatch] = useState<Match | null>(null);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
@@ -64,6 +67,12 @@ export default function CalendarioPage() {
         isClubHome: typeof live.isClubHome === 'boolean' ? live.isClubHome : m.isClubHome,
         matchDate: typeof live.matchDate === 'string' && live.matchDate ? live.matchDate : m.matchDate,
         venueName: typeof live.venue === 'string' && live.venue ? live.venue : m.venueName,
+        court: (live.court as string | undefined) ?? m.court,
+        locality: (live.locality as string | undefined) ?? m.locality,
+        googleMapsUrl: (live.googleMapsUrl as string | undefined) ?? m.googleMapsUrl,
+        referees: (live.referees as Match['referees']) ?? m.referees,
+        homeRoster: (live.homeRoster as Match['homeRoster']) ?? m.homeRoster,
+        awayRoster: (live.awayRoster as Match['awayRoster']) ?? m.awayRoster,
         status:
           live.status === 'FINISHED' ||
           live.status === 'LIVE' ||
@@ -80,6 +89,65 @@ export default function CalendarioPage() {
       };
     });
     setAllMatches(merged);
+  };
+
+  const handleActaMatchUpdated = (updated: Record<string, any>) => {
+    if (!updated) return;
+    const matchId = updated.id || (updated.favbId ? `favb-${updated.favbId}` : '');
+    setAllMatches((prev) =>
+      prev.map((m) => {
+        if (m.id !== matchId && m.id !== updated.id) return m;
+        return {
+          ...m,
+          homeTeamName: updated.homeTeam || updated.homeTeamName || m.homeTeamName,
+          awayTeamName: updated.awayTeam || updated.awayTeamName || m.awayTeamName,
+          venueName: updated.venue || updated.venueName || m.venueName,
+          court: updated.court ?? m.court,
+          locality: updated.locality ?? m.locality,
+          googleMapsUrl: updated.googleMapsUrl ?? m.googleMapsUrl,
+          referees: updated.referees ?? m.referees,
+          homeRoster: updated.homeRoster ?? m.homeRoster,
+          awayRoster: updated.awayRoster ?? m.awayRoster,
+          status: updated.status ?? m.status,
+          statusText: updated.statusText ?? m.statusText,
+          setScores:
+            Array.isArray(updated.setScores) && updated.setScores.length > 0
+              ? updated.setScores
+              : m.setScores,
+        };
+      })
+    );
+    setSelectedActaMatch((prev) => {
+      if (!prev || (prev.id !== matchId && prev.id !== updated.id)) return prev;
+      return {
+        ...prev,
+        homeTeamName: updated.homeTeam || updated.homeTeamName || prev.homeTeamName,
+        awayTeamName: updated.awayTeam || updated.awayTeamName || prev.awayTeamName,
+        venueName: updated.venue || updated.venueName || prev.venueName,
+        court: updated.court ?? prev.court,
+        locality: updated.locality ?? prev.locality,
+        googleMapsUrl: updated.googleMapsUrl ?? prev.googleMapsUrl,
+        referees: updated.referees ?? prev.referees,
+        homeRoster: updated.homeRoster ?? prev.homeRoster,
+        awayRoster: updated.awayRoster ?? prev.awayRoster,
+        status: updated.status ?? prev.status,
+        statusText: updated.statusText ?? prev.statusText,
+        setScores:
+          Array.isArray(updated.setScores) && updated.setScores.length > 0
+            ? updated.setScores
+            : prev.setScores,
+      };
+    });
+  };
+
+  const getCalledUpCount = (m: Match): number => {
+    const clubSide = m.isClubHome ? m.homeRoster : m.awayRoster;
+    if (Array.isArray(clubSide) && clubSide.length > 0) {
+      return clubSide.filter((p) => !p.isStaff).length;
+    }
+    const homeCount = Array.isArray(m.homeRoster) ? m.homeRoster.filter((p) => !p.isStaff).length : 0;
+    const awayCount = Array.isArray(m.awayRoster) ? m.awayRoster.filter((p) => !p.isStaff).length : 0;
+    return homeCount + awayCount;
   };
 
   const fetchLiveCalendarMatches = async (force = false) => {
@@ -816,11 +884,13 @@ export default function CalendarioPage() {
                 match.venueName,
                 match.matchDate
               );
-              const mapsUrl = match.isClubHome
-                ? CLUB_INFO.venueMapsUrl
-                : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                    match.venueName
-                  )}`;
+              const mapsUrl =
+                match.googleMapsUrl ||
+                (match.isClubHome
+                  ? CLUB_INFO.venueMapsUrl
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      `${match.venueName} ${match.locality || ''}`.trim()
+                    )}`);
 
               return (
                 <div
@@ -1034,22 +1104,94 @@ export default function CalendarioPage() {
                         </div>
                       </div>
 
-                      {/* Venue con ticker/marquee continuo */}
-                      <div className="flex items-center gap-1.5 text-xs text-tertiary mt-1.5 min-w-0 flex-1 overflow-hidden max-w-md">
+                      {/* Funcionalidad 2: Venue con badge de Pista exacta, Localidad y enlace Cómo llegar */}
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-tertiary mt-1.5 min-w-0">
                         <span className="material-symbols-outlined text-[15px] text-primary shrink-0" aria-hidden="true">
                           pin_drop
                         </span>
-                        <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
+                        {match.court && (
+                          <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
+                            {match.court}
+                          </span>
+                        )}
+                        {match.locality && !match.venueName.toLowerCase().includes(match.locality.toLowerCase()) && (
+                          <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 text-white/80 text-[10px] font-semibold shrink-0">
+                            {match.locality}
+                          </span>
+                        )}
+                        <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges max-w-md">
                           <div className="animate-venue-marquee items-center whitespace-nowrap text-xs text-tertiary">
                             <span className="pr-8">{match.venueName}</span>
                             <span className="pr-8" aria-hidden="true">{match.venueName}</span>
                           </div>
                         </div>
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/10 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
+                          title={`Cómo llegar a ${match.venueName}`}
+                        >
+                          <Navigation className="w-3 h-3 text-primary shrink-0" />
+                          <span>Cómo llegar</span>
+                        </a>
+                      </div>
+
+                      {/* Funcionalidad 1: Árbitros designados */}
+                      {match.referees && match.referees.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap mt-2 pt-1.5 border-t border-white/5 text-[10px]">
+                          <span className="inline-flex items-center gap-1 text-primary font-bold uppercase tracking-wider shrink-0">
+                            <Scale className="w-3 h-3" />
+                            <span>Árbitros:</span>
+                          </span>
+                          {match.referees.map((ref, rIdx) => (
+                            <span
+                              key={`${match.id}-cal-ref-${rIdx}`}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/[0.04] border border-white/10 text-white/90 font-medium"
+                            >
+                              <strong className="text-tertiary font-mono">{ref.role}:</strong> {ref.name}
+                              {ref.isTrainee && (
+                                <span className="text-amber-300 font-bold">(Prácticas)</span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Funcionalidad 3 (Móvil): Botón Acta / Convocatoria */}
+                      <div className="mt-2 pt-1.5 border-t border-white/5 flex lg:hidden items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedActaMatch(match)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors"
+                        >
+                          <FileText className="w-3 h-3 shrink-0" />
+                          <span>Acta / Convocatoria</span>
+                          {getCalledUpCount(match) > 0 && (
+                            <span className="px-1.5 py-0.2 bg-black/40 text-white font-mono text-[9px]">
+                              {getCalledUpCount(match)} conv.
+                            </span>
+                          )}
+                        </button>
                       </div>
                     </div>
 
-                    {/* Right (Desktop): Compact Icon-Only Actions */}
+                    {/* Right (Desktop): Compact Icon-Only Actions + Botón Acta / Convocatoria */}
                     <div className="hidden lg:flex items-center gap-2 shrink-0 relative z-30">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedActaMatch(match)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-xs font-bold uppercase tracking-wider transition-colors mr-1"
+                        title="Ver Acta Oficial, Árbitros y Convocatorias"
+                      >
+                        <FileText className="w-3.5 h-3.5 shrink-0" />
+                        <span>Acta / Convocatoria</span>
+                        {getCalledUpCount(match) > 0 && (
+                          <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[10px]">
+                            {getCalledUpCount(match)}
+                          </span>
+                        )}
+                      </button>
                       {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
                         <a
                           href={recordingUrl}
@@ -1255,6 +1397,15 @@ export default function CalendarioPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: Acta Oficial y Convocatorias */}
+      {selectedActaMatch && (
+        <MatchActaModal
+          match={selectedActaMatch}
+          onClose={() => setSelectedActaMatch(null)}
+          onMatchUpdated={handleActaMatchUpdated}
+        />
       )}
     </div>
   );

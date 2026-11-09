@@ -388,13 +388,13 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
         </div>
 
         {/* Cover Image */}
-        <div className="relative h-[320px] sm:h-[460px] w-full overflow-hidden border border-white/10 mb-10 shadow-2xl bg-surface-container-lowest flex items-center justify-center">
+        <div className="relative h-[320px] sm:h-[480px] lg:h-[520px] w-full overflow-hidden border border-white/10 mb-10 shadow-2xl bg-surface-container-lowest flex items-center justify-center">
           <Image
             src={article.coverImageUrl}
             alt={article.title}
             fill
             priority
-            className={article.coverImageUrl.includes('loteria') ? 'object-contain' : 'object-cover'}
+            className={article.coverImageUrl.includes('loteria') ? 'object-contain' : 'object-cover object-center'}
           />
         </div>
 
@@ -495,7 +495,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
                     src={rel.coverImageUrl}
                     alt={rel.title}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform"
+                    className="object-cover object-center group-hover:scale-105 transition-transform"
                   />
                 </div>
                 <div className="flex flex-col justify-between">

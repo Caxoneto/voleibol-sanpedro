@@ -57,6 +57,8 @@ export function getConsolidatedAfadeMatches(): FavbMatch[] {
       dateStr: formatMadridDateString(m.matchDate),
       timeStr: formatMadridTime(m.matchDate),
       venue: m.venueName,
+      locality: m.locality,
+      googleMapsUrl: m.googleMapsUrl,
       status: m.status,
       statusText: m.statusText,
       homeScore: m.homeScore,
@@ -80,8 +82,16 @@ export function getConsolidatedAfadeStandings(): Record<string, FavbStanding[]> 
       pj: r.played,
       pg: r.won,
       pp: r.lost,
+      pg3: r.pg3 ?? 0,
+      pg2: r.pg2 ?? 0,
+      pp1: r.pp1 ?? 0,
+      pp0: r.pp0 ?? 0,
       sf: r.setsFor,
       sc: r.setsAgainst,
+      cs: r.setCoef ?? (r.setsAgainst > 0 ? Number((r.setsFor / r.setsAgainst).toFixed(3)) : r.setsFor),
+      pf: r.pointsFor ?? 0,
+      pc: r.pointsAgainst ?? 0,
+      cp: r.pointCoef ?? ((r.pointsAgainst ?? 0) > 0 ? Number(((r.pointsFor ?? 0) / (r.pointsAgainst ?? 1)).toFixed(3)) : (r.pointsFor ?? 0)),
       isCurrentClub: r.isCurrentClub,
     }));
   }
@@ -132,6 +142,8 @@ interface RawAfadeStanding {
   p: number;
   favor: number;
   contra: number;
+  pf?: number;
+  pc?: number;
   puntos: number;
 }
 
@@ -171,31 +183,77 @@ export async function syncAfadeData(force = false): Promise<{
   const syncedStandings: Record<string, FavbStanding[]> = {};
 
   for (const group of AFADE_GROUPS_META) {
-    // 1. Clasificaciones
-    const rawClasif = await fetchAfadeJson<RawAfadeStanding[]>(
-      `/open/api/clasificaciones/grupo/${group.gid}`
-    );
+    // Consultar simultáneamente clasificaciones y partidos del grupo
+    const [rawClasif, rawMatches] = await Promise.all([
+      fetchAfadeJson<RawAfadeStanding[]>(`/open/api/clasificaciones/grupo/${group.gid}`),
+      fetchAfadeJson<RawAfadeMatch[]>(`/open/api/partidos/resultados/${group.gid}`),
+    ]);
+
+    // Calcular desglose PG3, PG2, PP1, PP0 por equipo a partir de los resultados del grupo
+    const splitByTeam = new Map<string, { pg3: number; pg2: number; pp1: number; pp0: number }>();
+    if (Array.isArray(rawMatches)) {
+      for (const m of rawMatches) {
+        const ml = m.marcador_local;
+        const mv = m.marcador_visitante;
+        const loc = (m.equipo_local_nombre_publico || '').trim().toLowerCase();
+        const vis = (m.equipo_visitante_nombre_publico || '').trim().toLowerCase();
+        if (loc && vis && ml !== null && ml !== undefined && mv !== null && mv !== undefined && (ml > 0 || mv > 0)) {
+          if (!splitByTeam.has(loc)) splitByTeam.set(loc, { pg3: 0, pg2: 0, pp1: 0, pp0: 0 });
+          if (!splitByTeam.has(vis)) splitByTeam.set(vis, { pg3: 0, pg2: 0, pp1: 0, pp0: 0 });
+          const sLoc = splitByTeam.get(loc)!;
+          const sVis = splitByTeam.get(vis)!;
+          if (ml > mv) {
+            if (mv <= 1) {
+              sLoc.pg3++;
+              sVis.pp0++;
+            } else {
+              sLoc.pg2++;
+              sVis.pp1++;
+            }
+          } else if (mv > ml) {
+            if (ml <= 1) {
+              sVis.pg3++;
+              sLoc.pp0++;
+            } else {
+              sVis.pg2++;
+              sLoc.pp1++;
+            }
+          }
+        }
+      }
+    }
 
     if (Array.isArray(rawClasif) && rawClasif.length > 0) {
-      syncedStandings[group.categoryId] = rawClasif.map((r, idx) => ({
-        pos: r.posicion || idx + 1,
-        team: (r.equipo_nombre || '').trim(),
-        pts: r.puntos ?? 0,
-        pj: r.j ?? 0,
-        pg: r.g ?? 0,
-        pp: r.p ?? 0,
-        sf: r.favor ?? 0,
-        sc: r.contra ?? 0,
-        isCurrentClub: (r.equipo_nombre || '').toLowerCase().includes('san pedro'),
-      }));
+      syncedStandings[group.categoryId] = rawClasif.map((r, idx) => {
+        const cleanTeam = (r.equipo_nombre || '').trim();
+        const split = splitByTeam.get(cleanTeam.toLowerCase()) || { pg3: 0, pg2: 0, pp1: 0, pp0: 0 };
+        const sf = r.favor ?? 0;
+        const sc = r.contra ?? 0;
+        const pf = r.pf ?? 0;
+        const pc = r.pc ?? 0;
+        return {
+          pos: r.posicion || idx + 1,
+          team: cleanTeam,
+          pts: r.puntos ?? 0,
+          pj: r.j ?? 0,
+          pg: r.g ?? 0,
+          pp: r.p ?? 0,
+          pg3: split.pg3,
+          pg2: split.pg2,
+          pp1: split.pp1,
+          pp0: split.pp0,
+          sf,
+          sc,
+          cs: sc > 0 ? Number((sf / sc).toFixed(3)) : sf,
+          pf,
+          pc,
+          cp: pc > 0 ? Number((pf / pc).toFixed(3)) : pf,
+          isCurrentClub: cleanTeam.toLowerCase().includes('san pedro'),
+        };
+      });
     } else {
       syncedStandings[group.categoryId] = baselineStandings[group.categoryId] || [];
     }
-
-    // 2. Partidos
-    const rawMatches = await fetchAfadeJson<RawAfadeMatch[]>(
-      `/open/api/partidos/resultados/${group.gid}`
-    );
 
     if (Array.isArray(rawMatches) && rawMatches.length > 0) {
       const spMatches = rawMatches.filter((p) => {
@@ -247,6 +305,11 @@ export async function syncAfadeData(force = false): Promise<{
         if (p.sede_direccion) {
           venue = `${venue} (${p.sede_direccion})`;
         }
+        const baseMatch = baselineMatches.find((bm) => bm.id === matchId);
+        const locality = baseMatch?.locality || (isClubHome ? 'Marbella' : 'Málaga');
+        const googleMapsUrl =
+          baseMatch?.googleMapsUrl ||
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue}, ${locality}`)}`;
 
         syncedMatches.push({
           id: matchId,
@@ -264,6 +327,8 @@ export async function syncAfadeData(force = false): Promise<{
           dateStr: formatMadridDateString(matchDateIso),
           timeStr: formatMadridTime(matchDateIso),
           venue,
+          locality,
+          googleMapsUrl,
           status,
           statusText,
           homeScore: ml ?? undefined,
@@ -380,6 +445,11 @@ export async function updateAfadeMatchLiveScore(matchId: string): Promise<{
   if (targetRaw.sede_direccion) {
     venue = `${venue} (${targetRaw.sede_direccion})`;
   }
+  const baseMatch = getConsolidatedAfadeMatches().find((bm) => bm.id === matchId);
+  const locality = baseMatch?.locality || (isClubHome ? 'Marbella' : 'Málaga');
+  const googleMapsUrl =
+    baseMatch?.googleMapsUrl ||
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue}, ${locality}`)}`;
 
   const updatedMatch: FavbMatch = {
     id: matchId,
@@ -397,6 +467,8 @@ export async function updateAfadeMatchLiveScore(matchId: string): Promise<{
     dateStr: formatMadridDateString(matchDateIso),
     timeStr: formatMadridTime(matchDateIso),
     venue,
+    locality,
+    googleMapsUrl,
     status,
     statusText,
     homeScore: ml ?? undefined,

@@ -69,6 +69,49 @@ export const INITIAL_STANDINGS: Standings[] = [...FAVB_STANDINGS, ...AFADE_STAND
 
 export const INITIAL_ARTICLES: Article[] = [
   {
+    id: 'art-debut-epico-senior-masculino-jornada-noviembre-26-27',
+    title: 'Debut Épico con Remontada del Senior Masculino (3-2) y Grandes Triunfos de Cantera en un Fin de Semana Vibrante',
+    slug: 'debut-epico-remontada-senior-masculino-resultados-jornada-26-27',
+    excerpt: 'El Senior Masculino firma un estreno inolvidable en el Pabellón Sergio Scariolo venciendo 3-2 al CD Voleyplaya Linense 2x2 tras levantar por dos veces el marcador. Completan la jornada las victorias a domicilio de Juvenil Femenino Rojo (2-3) y Juvenil Femenino Negro (1-3), el punto en el tie-break del Cadete Femenino Negro y el doble triunfo de cantera en Liga AFADE.',
+    contentMarkdown: `El fin de semana del **sábado 7 y domingo 8 de noviembre de 2026** quedará grabado como una de las jornadas más intensas y emocionantes de la temporada para el **C.D. Voleibol San Pedro**. El esperado debut oficial de nuestro **Senior Masculino** culminó con una remontada épica en cinco sets ante nuestra afición en el Pabellón Polideportivo Sergio Scariolo, encabezando un fin de semana repleto de carácter, tie-breaks y triunfos en las competiciones de la Federación Andaluza de Voleibol (FAVB) y la Liga AFADE Málaga.
+
+### Estreno y remontada épica del Senior Masculino (2ª Andaluza · G4B)
+
+El gran protagonista del fin de semana fue el conjunto **Senior Masculino (2ª División Andaluza · G4B)**, que afrontaba su primer partido oficial de la temporada 2026/2027 en el **Pabellón Polideportivo Sergio Scariolo (Pista P3)** frente al **CD Voleyplaya Linense 2x2**.
+
+En un duelo de máxima intensidad emocional y alternativas constantes, el bloque dirigido desde el banquillo por **Nadeau** y capitaneado en pista por **Javier Rodríguez Gadea** firmó una victoria memorable por **3 - 2** con parciales de **22-25, 25-15, 23-25, 25-20 y 15-8**. El cuadro sampedreño supo sobreponerse hasta en dos ocasiones a un marcador adverso: tras ceder un ajustado primer set (22-25), reaccionó con autoridad en el segundo parcial (25-15) y, pese a ver cómo el conjunto linense se adelantaba de nuevo en el tercer juego (23-25), dominó con temple la cuarta manga (25-20) para forzar el desempate. En el tie-break definitivo, la solidez en bloqueo, el empuje del saque y la comunión con la grada sampedreña desataron la euforia local con un contundente **15-8** que sella la primera victoria del curso.
+
+- **Marcador oficial (Jornada 1):** **VOLEIBOL SAN PEDRO 3 - 2 CD VOLEYPLAYA LINENSE 2X2** (22-25, 25-15, 23-25, 25-20, 15-8)
+- **Plantilla protagonista en el acta inaugural:** **Pablo Vázquez (#1)**, **Przemyslaw Krenczyk (#3)**, **Fernando Vázquez (#5, líbero)**, **Salvador Martínez (#7)**, **Juan Eufrasio Martínez (#10)**, **José Benítez (#14)**, **Alejandro Hurtado (#18)**, **Javier Rodríguez Gadea (#22, capitán)**, **Christopher Martín (#47, líbero)**, **Sacha Schapovaloff (#81)** y **Luis Miguel Marrugo (#98)**, junto a los canteranos juveniles en promoción **Mateo Pérez (#19)** y **Gonzalo Galán (#99)**.
+
+### Resto de la jornada federada FAVB (7 y 8 de noviembre)
+
+Nuestros equipos federados protagonizaron grandes actuaciones tanto a domicilio como en el Sergio Scariolo, destacando dos triunfos visitantes en categoría Juvenil Femenina y un valioso punto en cinco sets del Cadete Femenino Negro:
+
+- **Juvenil Femenino Rojo (Oro · G1) — ¡Remontada y triunfo en el tie-break a domicilio!:** **NUEVA OLA 2 - 3 VOLEIBOL SAN PEDRO ROJO** en el Polideportivo Fernando Ruiz Hierro de Vélez-Málaga (Jornada 5). Victoria de enorme mérito en cinco sets de las pupilas de **Nadeau**, lideradas en pista por su capitana **Marta Sánchez**, en una de las canchas más exigentes del grupo Oro.
+- **Juvenil Femenino Negro (Plata · G1) — ¡Victoria por 1-3 en Fuengirola!:** **FUENGIROLA CV B 1 - 3 VOLEIBOL SAN PEDRO NEGRO** (14-25, 25-11, 23-25, 15-25) en el Complejo Polideportivo Elola (Jornada 2). Gran actuación coral del bloque dirigido por **García** y capitaneado por **Paola López**, que supo adjudicarse el igualado tercer set (23-25) y cerrar con firmeza el cuarto parcial para sumar los 3 puntos a domicilio.
+- **Cadete Femenino Negro (Plata · G3) — Punto de orgullo tras levantar un 0-2:** **VOLEIBOL SAN PEDRO NEGRO 2 - 3 C.V. CIUDAD DE MÁLAGA** (19-25, 23-25, 25-23, 25-16, 8-15) en el Pabellón Sergio Scariolo (Jornada 2). Las jugadoras dirigidas por **Renouard** demostraron una gran capacidad de reacción igualando un 0-2 adverso con dos grandes sets (25-23 y 25-16) para sumar un valioso punto en casa.
+- **Senior Femenino (1ª Andaluza):** **VOLEIBOL SAN PEDRO 1 - 3 LAS FLORES SEVILLA** (21-25, 16-25, 25-22, 17-25) en la Jornada 6 disputada en el Sergio Scariolo. Nuestro primer equipo femenino compitió de tú a tú y se adjudicó el tercer parcial (25-22) ante un sólido conjunto hispalense.
+- **Infantil Femenino Gris (Plata · G1):** **VOLEIBOL SAN PEDRO GRIS 1 - 3 3STEVOLEY B** (17-25, 25-15, 17-25, 24-26) en el Sergio Scariolo. Nuestras infantiles ganaron con claridad el segundo set (25-15) y rozaron el tie-break en un emocionante cuarto parcial decidido por detalles (24-26).
+- **Cadete Masculino (G2) e Infantil Masculino (G1):** Estreno liguero del **Cadete Masculino** a domicilio en el Pabellón Rubén Ruzafa de Rincón de la Victoria (**3STEVOLEY 3 - 0 VOLEIBOL SAN PEDRO**, 25-21, 25-14, 25-22) compitiendo a gran nivel en el primer y tercer set, y duelo del **Infantil Masculino** en casa (**VOLEIBOL SAN PEDRO 0 - 3 COSTA DEL VOLEY**, 14-25, 16-25, 23-25) con un tercer parcial muy disputado hasta el final.
+
+### Pleno de victorias de cantera en Liga AFADE Málaga
+
+En la competición provincial de **Liga AFADE Málaga**, nuestros equipos de cantera firmaron un excelente doblete de victorias por 3-1, acompañado del compromiso de nuestro conjunto Senior Femenino AFADE:
+
+- **Juvenil Femenino AFADE (GB):** **CD Voleibol San Pedro 3 - 1 Fundación Victoria A** (25-18, 25-20, 21-25, 25-19) — Triunfo muy sólido de nuestras juveniles para seguir en la zona noble del Grupo B.
+- **Infantil Femenino AFADE (GB):** **CD Voleibol San Pedro 3 - 1 CD Forvoley** (25-18, 25-20, 21-25, 25-19) — Gran victoria en cuatro mangas de la cantera infantil rojinegra.
+- **Senior Femenino AFADE (GB):** **CD Voleibol San Pedro 0 - 3 VAM** (18-25, 15-25, 19-25).
+
+¡Enhorabuena a nuestro **Senior Masculino** por su histórico estreno con remontada y a todos los equipos, cuerpo técnico y familias que hacen vibrar cada fin de semana al **C.D. Voleibol San Pedro**!`,
+    categoryId: 'cat-competicion',
+    categoryName: 'Competición y Resultados',
+    coverImageUrl: '/images/noticias/senior-masculino-debut-epico-26-27.jpg',
+    publishedAt: '2026-11-08T21:30:00.000Z',
+    isFeatured: true,
+    readingTimeMinutes: 4,
+  },
+  {
     id: 'art-resultados-primeras-jornadas-26-27',
     title: 'Resultados de las Primeras Jornadas: Victorias de Cantera y Estreno Competitivo en las Ligas FAVB 26/27',
     slug: 'resultados-primeras-jornadas-ligas-favb-26-27',
