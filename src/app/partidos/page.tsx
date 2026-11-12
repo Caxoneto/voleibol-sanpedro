@@ -104,7 +104,7 @@ function PartidosContent() {
   // Hidratar inmediatamente desde localStorage y sincronizar en segundo plano al montar
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('cdv_synced_matches_v5');
+      const cached = localStorage.getItem('cdv_synced_matches_v6');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
@@ -217,7 +217,7 @@ function PartidosContent() {
         );
         try {
           localStorage.setItem(
-            'cdv_synced_matches_v5',
+            'cdv_synced_matches_v6',
             JSON.stringify({
               matches: data.matches,
               lastSync: data.lastSync || new Date().toISOString(),
@@ -272,7 +272,7 @@ function PartidosContent() {
           );
           try {
             localStorage.setItem(
-              'cdv_synced_matches_v5',
+              'cdv_synced_matches_v6',
               JSON.stringify({
                 matches: next,
                 lastSync: new Date().toISOString(),
@@ -381,7 +381,7 @@ function PartidosContent() {
       );
       try {
         localStorage.setItem(
-          'cdv_synced_matches_v5',
+          'cdv_synced_matches_v6',
           JSON.stringify({
             matches: next,
             lastSync: new Date().toISOString(),

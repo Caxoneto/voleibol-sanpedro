@@ -12,7 +12,7 @@ import {
 import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS, Player, Staff } from '@/lib/types';
 import SponsorBanner from '@/components/SponsorBanner';
 
-const ROSTERS_STORAGE_KEY = 'cdv_synced_rosters_v4';
+const ROSTERS_STORAGE_KEY = 'cdv_synced_rosters_v5';
 
 export default function PlantillasPage() {
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('senior-femenino');

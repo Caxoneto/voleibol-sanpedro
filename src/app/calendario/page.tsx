@@ -33,7 +33,7 @@ interface RoundSummary {
   earliestPendingTime: number;
 }
 
-const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v5';
+const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v6';
 
 export default function CalendarioPage() {
   const { recordings } = useStreaming();
