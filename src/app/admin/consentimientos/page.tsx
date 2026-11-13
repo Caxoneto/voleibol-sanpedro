@@ -29,9 +29,35 @@ import {
   X,
   Save,
   FileText,
+  CheckSquare,
+  Square,
+  Users,
+  Layers,
+  SendHorizontal,
+  ClipboardCheck,
+  FileDown,
 } from 'lucide-react';
 import { CLUB_INFO } from '@/lib/data-store';
 import { generateConsentPdf } from '@/lib/pdf-consent';
+
+interface BatchDirectConsentItem {
+  playerId: string;
+  playerName: string;
+  teamId: string;
+  teamName: string;
+  birthYear: number | null;
+  isMinor: boolean;
+  isSigned: boolean;
+  signerName: string;
+  signerDni: string;
+  signerRelationship: string;
+  signerPhone: string;
+  signerEmail: string;
+  directToken: string;
+  directUrl: string;
+  whatsappText: string;
+  whatsappUrl: string;
+}
 
 interface PlayerDashboardItem {
   playerId: string;
@@ -247,6 +273,145 @@ export default function AdminConsentimientosPage() {
 
     const safeName = directLinkPlayer.playerName.toLowerCase().replace(/[^a-z0-9]/g, '_');
     doc.save(`modelo_oficial_junta_andalucia_${safeName}_prerellenado.pdf`);
+  };
+
+  // Estados para selección múltiple y gestión por lotes
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [isLoadingBatch, setIsLoadingBatch] = useState(false);
+  const [batchItems, setBatchItems] = useState<BatchDirectConsentItem[]>([]);
+  const [batchSearchQuery, setBatchSearchQuery] = useState('');
+  const [copiedBatchId, setCopiedBatchId] = useState<string | null>(null);
+  const [copiedAllBatch, setCopiedAllBatch] = useState(false);
+  const [batchNotice, setBatchNotice] = useState<string | null>(null);
+
+  // Filtrar elementos dentro del modal de lote
+  const filteredBatchItems = useMemo(() => {
+    if (!batchSearchQuery.trim()) return batchItems;
+    const q = batchSearchQuery.toLowerCase().trim();
+    return batchItems.filter(
+      (it) =>
+        it.playerName.toLowerCase().includes(q) ||
+        it.teamName.toLowerCase().includes(q) ||
+        (it.signerName && it.signerName.toLowerCase().includes(q)) ||
+        (it.signerPhone && it.signerPhone.includes(q))
+    );
+  }, [batchItems, batchSearchQuery]);
+
+  // Seleccionar o deseleccionar un jugador individual
+  const handleToggleSelectPlayer = (playerId: string) => {
+    setSelectedPlayerIds((prev) =>
+      prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId]
+    );
+  };
+
+  // Seleccionar o deseleccionar todos los jugadores de la vista filtrada actual
+  const handleToggleSelectAll = () => {
+    if (selectedPlayerIds.length === filteredPlayers.length && filteredPlayers.length > 0) {
+      setSelectedPlayerIds([]);
+    } else {
+      setSelectedPlayerIds(filteredPlayers.map((p) => p.playerId));
+    }
+  };
+
+  // Abrir modal de generación por lotes (para selección o para equipo filtrado)
+  const handleOpenBatchModal = async (customIds?: string[]) => {
+    const idsToFetch = customIds && customIds.length > 0
+      ? customIds
+      : selectedPlayerIds.length > 0
+      ? selectedPlayerIds
+      : filteredPlayers.map((p) => p.playerId);
+
+    if (idsToFetch.length === 0) {
+      alert('Por favor, selecciona al menos un deportista o filtra por un equipo.');
+      return;
+    }
+
+    setShowBatchModal(true);
+    setIsLoadingBatch(true);
+    setBatchItems([]);
+    setBatchSearchQuery('');
+    setCopiedAllBatch(false);
+    setBatchNotice(null);
+
+    try {
+      const res = await fetch('/api/admin/direct-link-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerIds: idsToFetch }),
+      });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.items)) {
+        setBatchItems(json.items);
+      } else {
+        alert(json.error || 'Error al generar los enlaces por lote.');
+      }
+    } catch {
+      alert('Error de conexión al generar lote de enlaces directos.');
+    } finally {
+      setIsLoadingBatch(false);
+    }
+  };
+
+  // Exportar el lote completo a archivo Excel / CSV
+  const handleExportBatchCsv = () => {
+    if (batchItems.length === 0) return;
+
+    const headers = [
+      'Equipo',
+      'Deportista',
+      'Condición',
+      'Estado Firma',
+      'Firmante / Tutor',
+      'DNI Firmante',
+      'Parentesco',
+      'Teléfono Móvil',
+      'Correo Electrónico',
+      'Enlace Directo Oficial',
+      'Mensaje WhatsApp',
+    ];
+
+    const rows = batchItems.map((item) => [
+      `"${item.teamName}"`,
+      `"${item.playerName}"`,
+      item.isMinor ? 'Menor' : 'Mayor (+18)',
+      item.isSigned ? 'FIRMADO' : 'PENDIENTE',
+      `"${item.signerName || ''}"`,
+      `"${item.signerDni || ''}"`,
+      `"${item.signerRelationship || ''}"`,
+      `"${item.signerPhone || ''}"`,
+      `"${item.signerEmail || ''}"`,
+      `"${item.directUrl}"`,
+      `"${item.whatsappText.replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `lote_enlaces_autorizaciones_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Copiar todos los enlaces y mensajes del lote al portapapeles
+  const handleCopyAllBatchMessages = () => {
+    if (batchItems.length === 0) return;
+
+    const text = batchItems
+      .map(
+        (it) =>
+          `📌 *${it.playerName}* (${it.teamName}) - ${it.isSigned ? '🟢 FIRMADO' : '🔴 PENDIENTE'}\n` +
+          `Destinatario: ${it.signerName || 'Familia'} (${it.signerRelationship})\n` +
+          (it.signerPhone ? `Tel: ${it.signerPhone}\n` : '') +
+          `Enlace directo: ${it.directUrl}\n`
+      )
+      .join('\n────────────────────────────\n\n');
+
+    navigator.clipboard.writeText(text);
+    setCopiedAllBatch(true);
+    setTimeout(() => setCopiedAllBatch(false), 3000);
   };
 
   // Cargar datos
@@ -643,32 +808,40 @@ export default function AdminConsentimientosPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 self-stretch sm:self-auto">
+        <div className="flex items-center gap-2 self-stretch sm:self-auto flex-wrap sm:flex-nowrap">
           <button
             onClick={() => loadDashboardData()}
             disabled={isLoading}
-            className="p-2.5 bg-surface-container-high hover:bg-surface-container-highest border border-white/10 rounded-lg text-white/80 hover:text-white transition-colors"
+            className="p-2.5 bg-surface-container-high hover:bg-surface-container-highest border border-white/10 rounded-lg text-white/80 hover:text-white transition-colors cursor-pointer"
             title="Refrescar datos"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <button
+            onClick={() => handleOpenBatchModal()}
+            className="inline-flex items-center gap-2 px-3 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-primary/30 transition-colors shadow-lg shadow-primary/20 cursor-pointer"
+            title="Generar enlaces directos por lote para varios deportistas o equipo completo"
+          >
+            <Layers className="w-4 h-4" />
+            <span>Generar Lote {selectedPlayerIds.length > 0 ? `(${selectedPlayerIds.length})` : ''}</span>
+          </button>
+          <button
             onClick={handleExportCsv}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-emerald-500/30 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-emerald-500/30 transition-colors cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>Exportar CSV</span>
           </button>
           <button
             onClick={() => setShowBulkModal(true)}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-white/10 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-white/10 transition-colors cursor-pointer"
           >
             <Edit2 className="w-4 h-4" />
             <span>Gestión Fichas DNI</span>
           </button>
           <button
             onClick={handleLogout}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-200 text-xs font-bold uppercase tracking-wider rounded-lg border border-red-500/30 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-200 text-xs font-bold uppercase tracking-wider rounded-lg border border-red-500/30 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             <span>Salir</span>
@@ -867,12 +1040,72 @@ export default function AdminConsentimientosPage() {
           )}
         </div>
 
+        {/* Barra Contextual de Acciones por Lote */}
+        {selectedPlayerIds.length > 0 ? (
+          <div className="bg-primary/15 border border-primary/40 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg shadow-primary/10">
+            <div className="flex items-center gap-2 text-xs font-bold text-white">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+              <span>{selectedPlayerIds.length} deportistas seleccionados para acción múltiple</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleOpenBatchModal()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-md transition-colors cursor-pointer"
+              >
+                <Layers className="w-4 h-4" />
+                <span>Generar Enlaces ({selectedPlayerIds.length})</span>
+              </button>
+              <button
+                onClick={() => setSelectedPlayerIds([])}
+                className="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white/80 hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                Deseleccionar todos
+              </button>
+            </div>
+          </div>
+        ) : selectedTeamFilter !== 'ALL' ? (
+          <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs text-tertiary">
+              ¿Quieres generar o consultar los enlaces de todo el equipo{' '}
+              <strong className="text-white">
+                {data?.teams.find((t) => t.teamId === selectedTeamFilter)?.teamName}
+              </strong>{' '}
+              ({filteredPlayers.length} deportistas)?
+            </div>
+            <button
+              onClick={() => handleOpenBatchModal(filteredPlayers.map((p) => p.playerId))}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 hover:bg-primary text-primary hover:text-white border border-primary/30 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Generar Lote del Equipo Completo</span>
+            </button>
+          </div>
+        ) : null}
+
         {/* Tabla de Jugadores */}
         <div className="bg-surface-container-lowest border border-white/10 rounded-xl overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-container-low border-b border-white/10 text-[11px] font-bold text-white uppercase tracking-wider">
                 <tr>
+                  <th className="py-3 px-3 w-10 text-center">
+                    <button
+                      type="button"
+                      onClick={handleToggleSelectAll}
+                      className="p-1 hover:text-primary transition-colors cursor-pointer"
+                      title={
+                        selectedPlayerIds.length === filteredPlayers.length && filteredPlayers.length > 0
+                          ? 'Deseleccionar todos'
+                          : 'Seleccionar todos'
+                      }
+                    >
+                      {selectedPlayerIds.length === filteredPlayers.length && filteredPlayers.length > 0 ? (
+                        <CheckSquare className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Square className="w-4 h-4 text-tertiary" />
+                      )}
+                    </button>
+                  </th>
                   <th className="py-3 px-4">Deportista</th>
                   <th className="py-3 px-3">Equipo</th>
                   <th className="py-3 px-3">Ficha DNI</th>
@@ -889,13 +1122,36 @@ export default function AdminConsentimientosPage() {
               <tbody className="divide-y divide-white/5 text-on-surface">
                 {filteredPlayers.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center text-sm text-tertiary">
+                    <td colSpan={12} className="py-12 text-center text-sm text-tertiary">
                       No se han encontrado deportistas con los filtros seleccionados.
                     </td>
                   </tr>
                 ) : (
-                  filteredPlayers.map((p) => (
-                    <tr key={p.playerId} className="hover:bg-white/[0.02] transition-colors">
+                  filteredPlayers.map((p) => {
+                    const isRowSelected = selectedPlayerIds.includes(p.playerId);
+                    return (
+                    <tr
+                      key={p.playerId}
+                      className={`hover:bg-white/[0.02] transition-colors ${
+                        isRowSelected ? 'bg-primary/[0.08]' : ''
+                      }`}
+                    >
+                      {/* Checkbox selector */}
+                      <td className="py-3.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSelectPlayer(p.playerId)}
+                          className="p-1 cursor-pointer transition-colors"
+                          title={isRowSelected ? 'Deseleccionar' : 'Seleccionar'}
+                        >
+                          {isRowSelected ? (
+                            <CheckSquare className="w-4 h-4 text-primary" />
+                          ) : (
+                            <Square className="w-4 h-4 text-white/30 hover:text-white" />
+                          )}
+                        </button>
+                      </td>
+
                       {/* Deportista */}
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-white text-sm">{p.playerName}</div>
@@ -1101,7 +1357,8 @@ export default function AdminConsentimientosPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -1461,6 +1718,223 @@ export default function AdminConsentimientosPage() {
                   setDirectLinkData(null);
                 }}
                 className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white/80 text-xs font-bold uppercase rounded-lg cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* MODAL DE GENERACIÓN MÚLTIPLE DE ENLACES DIRECTOS (POR LOTE O EQUIPO)      */}
+      {/* ========================================================================= */}
+      {showBatchModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-surface-container-lowest border border-white/10 rounded-2xl max-w-4xl w-full p-5 sm:p-6 space-y-4 shadow-2xl my-6 max-h-[92vh] flex flex-col">
+            {/* Cabecera */}
+            <div className="flex justify-between items-center border-b border-white/10 pb-3 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold uppercase rounded">
+                  LOTE DE ENLACES
+                </span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Generación Múltiple de Enlaces Directos Oficiales
+                </h3>
+                {batchItems.length > 0 && (
+                  <span className="px-2 py-0.5 bg-white/10 text-white/90 text-xs font-semibold rounded-full">
+                    {batchItems.length} deportistas
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setShowBatchModal(false);
+                  setBatchItems([]);
+                  setBatchSearchQuery('');
+                }}
+                className="text-tertiary hover:text-white p-1 cursor-pointer transition-colors"
+                title="Cerrar modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {isLoadingBatch ? (
+              <div className="py-16 text-center text-xs text-tertiary space-y-3 shrink-0">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-primary" />
+                <p className="text-sm text-white font-semibold">Generando enlaces directos con tokens criptográficos HMAC...</p>
+                <p className="text-xs text-tertiary">Recuperando datos del censo y estado de firmas de cada deportista seleccionado.</p>
+              </div>
+            ) : batchItems.length === 0 ? (
+              <div className="py-12 text-center text-xs text-tertiary">
+                No se obtuvieron deportistas para generar enlaces.
+              </div>
+            ) : (
+              <>
+                {/* Barra de utilidades del lote */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-surface-container-low rounded-xl border border-white/5 shrink-0">
+                  {/* Buscador interno */}
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-tertiary absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por jugador, equipo, tutor o teléfono en este lote..."
+                      value={batchSearchQuery}
+                      onChange={(e) => setBatchSearchQuery(e.target.value)}
+                      className="w-full bg-surface-container-high border border-white/15 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCopyAllBatchMessages}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-white/10 transition-colors cursor-pointer"
+                      title="Copiar lista resumida con enlaces directos para enviar por canales privados"
+                    >
+                      {copiedAllBatch ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          <span>¡Copiados!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>Copiar Todos</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleExportBatchCsv}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700/90 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-emerald-500/30 transition-colors cursor-pointer shadow-md"
+                      title="Descargar hoja Excel/CSV con los datos, teléfonos y enlaces directos"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      <span>Descargar Excel / CSV</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Lista scrolleable de tarjetas individuales */}
+                <div className="overflow-y-auto space-y-2.5 pr-1 flex-1 min-h-[300px]">
+                  {filteredBatchItems.map((item) => (
+                    <div
+                      key={item.playerId}
+                      className="p-3.5 bg-surface-container-low/70 border border-white/10 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 hover:border-white/20 transition-colors"
+                    >
+                      {/* Info del deportista */}
+                      <div className="space-y-1 min-w-[220px]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-white">{item.playerName}</span>
+                          <span className="px-1.5 py-0.5 bg-white/10 text-white/80 text-[10px] font-semibold rounded">
+                            {item.teamName}
+                          </span>
+                        </div>
+                        <div className="text-xs text-tertiary flex items-center gap-2">
+                          <span>{item.isMinor ? 'Menor' : 'Mayor (+18)'}</span>
+                          <span>•</span>
+                          {item.isSigned ? (
+                            <span className="text-emerald-400 font-semibold inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Firmado
+                            </span>
+                          ) : (
+                            <span className="text-amber-400 font-semibold inline-flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> Pendiente
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-white/70">
+                          {item.signerName ? (
+                            <span>
+                              {item.signerName} ({item.signerRelationship})
+                              {item.signerPhone ? ` · Tel: ${item.signerPhone}` : ''}
+                            </span>
+                          ) : (
+                            <span className="text-white/40 italic">Sin datos de contacto en censo</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Enlace y acciones */}
+                      <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={item.directUrl}
+                          className="flex-1 bg-surface-container-high border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-white/80 select-all"
+                        />
+
+                        <div className="flex items-center gap-1.5 shrink-0 justify-end">
+                          {/* Copiar enlace individual */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(item.directUrl);
+                              setCopiedBatchId(item.playerId);
+                              setTimeout(() => setCopiedBatchId(null), 2000);
+                            }}
+                            className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 cursor-pointer ${
+                              copiedBatchId === item.playerId
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-surface-container-high hover:bg-surface-container-highest text-white/90'
+                            }`}
+                            title="Copiar enlace directo"
+                          >
+                            {copiedBatchId === item.playerId ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                            <span className="hidden sm:inline">
+                              {copiedBatchId === item.playerId ? 'Copiado' : 'Copiar'}
+                            </span>
+                          </button>
+
+                          {/* Enviar WhatsApp individual */}
+                          <a
+                            href={item.whatsappUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#25D366] hover:bg-[#20ba59] text-black text-xs font-bold uppercase rounded-lg transition-colors cursor-pointer shadow-sm"
+                            title="Abrir WhatsApp para enviar a la familia"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
+                          </a>
+
+                          {/* Abrir en pestaña nueva */}
+                          <a
+                            href={item.directUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 bg-surface-container-high hover:bg-surface-container-highest text-white/80 hover:text-white rounded-lg transition-colors cursor-pointer"
+                            title="Abrir y probar formulario oficial"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Pie del modal */}
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between shrink-0">
+              <span className="text-xs text-tertiary">
+                Los enlaces son válidos durante 30 días con firma criptográfica HMAC sin requerir DNI.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBatchModal(false);
+                  setBatchItems([]);
+                  setBatchSearchQuery('');
+                }}
+                className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white/80 text-xs font-bold uppercase rounded-lg cursor-pointer transition-colors"
               >
                 Cerrar
               </button>

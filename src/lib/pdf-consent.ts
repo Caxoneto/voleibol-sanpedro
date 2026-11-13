@@ -69,15 +69,15 @@ export function generateConsentPdf(data: ConsentPdfData): jsPDF {
 
     // Subtítulo oficial
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(80, 80, 85);
     doc.text(
-      `CIF: ${CLUB_INFO.cif} | Domicilio: ${CLUB_INFO.officialAddress} | Sede Deportiva: Pabellón Sergio Scariolo`,
+      `CIF: ${CLUB_INFO.cif} · Sede: Pabellón Polideportivo Sergio Scariolo`,
       margin + 7,
       y + 9.5
     );
     doc.text(
-      `Email: ${CLUB_INFO.contactEmail} | Web: voleibolsanpedro.es | Inscrito en Registro Andaluz de Entidades Deportivas`,
+      `Email: ${CLUB_INFO.contactEmail} · Web: voleibolsanpedro.es · Reg. Entidades Deportivas`,
       margin + 7,
       y + 13.5
     );
@@ -85,7 +85,7 @@ export function generateConsentPdf(data: ConsentPdfData): jsPDF {
     // Indicador de normativa Junta de Andalucía en la esquina superior derecha
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.setTextColor(100, 100, 110);
+    doc.setTextColor(90, 90, 100);
     doc.text('JUNTA DE ANDALUCÍA', margin + contentWidth, y + 4.5, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     doc.text('Consejería de Cultura y Deporte', margin + contentWidth, y + 8, { align: 'right' });
@@ -188,44 +188,71 @@ export function generateConsentPdf(data: ConsentPdfData): jsPDF {
   doc.text(signerBlockTitle, margin, y);
   y += 3;
 
+  const signerBoxH = 22;
   doc.setFillColor(252, 252, 254);
   doc.setDrawColor(220, 222, 228);
-  doc.roundedRect(margin, y, contentWidth, 20, 1, 1, 'FD');
+  doc.roundedRect(margin, y, contentWidth, signerBoxH, 1, 1, 'FD');
 
+  doc.setFontSize(7.5);
+
+  // Columna Izquierda: Identidad y Representación
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(70, 70, 75);
-
+  doc.setTextColor(75, 75, 80);
   doc.text('Nombre del Firmante:', margin + 4, y + 5.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 15, 15);
-  doc.text(data.signerName, margin + 35, y + 5.5);
+  doc.text(data.signerName || 'Deportista / Tutor', margin + 34, y + 5.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(70, 70, 75);
+  doc.setTextColor(75, 75, 80);
   doc.text('DNI / NIE:', margin + 4, y + 11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 15, 15);
-  doc.text(data.signerDni, margin + 35, y + 11);
+  doc.text(data.signerDni || 'No facilitado', margin + 34, y + 11);
 
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(70, 70, 75);
+  doc.setTextColor(75, 75, 80);
   doc.text('Condición / Relación:', margin + 4, y + 16.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 15, 15);
-  doc.text(data.signerRelationship, margin + 35, y + 16.5);
+  doc.text(data.signerRelationship || 'TUTOR_LEGAL', margin + 34, y + 16.5);
 
-  if (data.signerPhone || data.signerEmail) {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(70, 70, 75);
-    doc.text('Teléfono / Email:', margin + 98, y + 11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 15, 15);
-    const contactStr = `${data.signerPhone || ''} ${data.signerEmail ? `· ${data.signerEmail}` : ''}`.trim();
-    doc.text(contactStr || 'Facilitado en ficha', margin + 125, y + 11);
+  // Columna Derecha: Canales de Contacto (Teléfono y Correo en filas separadas sin desbordamiento)
+  const colRightLabelX = margin + 92;
+  const colRightValX = margin + 118;
+  const maxEmailWidth = contentWidth - 120; // Espacio libre antes del margen derecho
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(75, 75, 80);
+  doc.text('Teléfono Móvil:', colRightLabelX, y + 5.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 15, 15);
+  doc.text(data.signerPhone || 'Facilitado en censo', colRightValX, y + 5.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(75, 75, 80);
+  doc.text('Correo Electrónico:', colRightLabelX, y + 11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 15, 15);
+  if (data.signerEmail) {
+    if (data.signerEmail.length > 25) {
+      doc.setFontSize(6.5);
+    }
+    const truncatedEmail = doc.splitTextToSize(data.signerEmail, maxEmailWidth)[0];
+    doc.text(truncatedEmail, colRightValX, y + 11);
+    doc.setFontSize(7.5);
+  } else {
+    doc.text('Facilitado en censo', colRightValX, y + 11);
   }
 
-  y += 24;
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(75, 75, 80);
+  doc.text('Canal de Registro:', colRightLabelX, y + 16.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(20, 20, 20);
+  doc.text('Firma Digital / Web Oficial', colRightValX, y + 16.5);
+
+  y += signerBoxH + 4;
 
   // 3. Bloque: Alcance de las autorizaciones de imagen (Anexo 05)
   doc.setFont('helvetica', 'bold');

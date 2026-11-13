@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { queryNeon } from './streaming-store';
 import { FAVB_TEAMS, FAVB_PLAYERS } from './favb-data';
 import { encryptData, decryptData, generateBlindIndex, maskDni } from './encryption';
+import { CLUB_INFO } from './data-store';
 
 export interface PlayerCensusRecord {
   playerId: string;
@@ -1026,4 +1027,150 @@ export async function updatePlayerCensusParentInfo(
     console.error('[ConsentStore] Error updating parent info:', err);
     return { success: false, error: 'Error al actualizar los datos en el censo' };
   }
+}
+
+export interface BatchDirectConsentItem {
+  playerId: string;
+  playerName: string;
+  teamId: string;
+  teamName: string;
+  birthYear: number | null;
+  isMinor: boolean;
+  isSigned: boolean;
+  signerName: string;
+  signerDni: string;
+  signerRelationship: string;
+  signerPhone: string;
+  signerEmail: string;
+  directToken: string;
+  directUrl: string;
+  whatsappText: string;
+  whatsappUrl: string;
+}
+
+/**
+ * Generación masiva o por lotes de Enlaces Directos Oficiales con tokens HMAC y datos pre-rellenados.
+ * Permite seleccionar un conjunto de deportistas o un equipo completo y genera instantáneamente
+ * los enlaces individuales, mensajes de WhatsApp y resúmenes para exportación a Excel / CSV.
+ */
+export async function getBatchDirectConsentData(
+  playerIds: string[],
+  baseUrl: string,
+  daysValid = 30
+): Promise<BatchDirectConsentItem[]> {
+  if (!playerIds || playerIds.length === 0) return [];
+
+  const rows = await queryNeon<{
+    player_id: string;
+    player_name: string;
+    team_id: string;
+    birth_year: number | null;
+    dni_last5: string | null;
+    dni_encrypted: string | null;
+    parent_name?: string | null;
+    parent_dni?: string | null;
+    parent_relationship?: string | null;
+    contact_phone?: string | null;
+    contact_email?: string | null;
+    consent_id?: string | null;
+    c_signer_name?: string | null;
+    c_signer_dni?: string | null;
+    c_signer_relationship?: string | null;
+    c_signer_phone?: string | null;
+    c_signer_email?: string | null;
+  }>(
+    `SELECT c.player_id, c.player_name, c.team_id, c.birth_year, c.dni_last5, c.dni_encrypted,
+            c.parent_name, c.parent_dni, c.parent_relationship, c.contact_phone, c.contact_email,
+            p.id AS consent_id, p.signer_name AS c_signer_name, p.signer_dni AS c_signer_dni,
+            p.signer_relationship AS c_signer_relationship, p.signer_phone AS c_signer_phone,
+            p.signer_email AS c_signer_email
+     FROM player_census c
+     LEFT JOIN player_consents p ON c.player_id = p.player_id
+     WHERE c.player_id = ANY($1)
+     ORDER BY c.team_id ASC, c.player_name ASC;`,
+    [playerIds]
+  );
+
+  const currentYear = 2026;
+  const items: BatchDirectConsentItem[] = [];
+
+  for (const r of rows) {
+    const isMinor = (r.birth_year || 2008) > currentYear - 18;
+    const teamName = getTeamNameById(r.team_id);
+
+    let signerName = '';
+    let signerDni = '';
+    let signerRelationship: 'PADRE' | 'MADRE' | 'TUTOR_LEGAL' | 'PROPIO_JUGADOR' = isMinor ? 'MADRE' : 'PROPIO_JUGADOR';
+    let signerPhone = r.contact_phone || r.c_signer_phone || '';
+    let signerEmail = r.contact_email || r.c_signer_email || '';
+
+    if (isMinor) {
+      signerName = r.c_signer_name || r.parent_name || '';
+      signerDni = r.c_signer_dni || r.parent_dni || '';
+      const relCandidate = r.c_signer_relationship || r.parent_relationship || 'MADRE';
+      if (['PADRE', 'MADRE', 'TUTOR_LEGAL', 'PROPIO_JUGADOR'].includes(relCandidate)) {
+        signerRelationship = relCandidate as 'PADRE' | 'MADRE' | 'TUTOR_LEGAL' | 'PROPIO_JUGADOR';
+      } else {
+        signerRelationship = 'MADRE';
+      }
+    } else {
+      signerName = r.player_name;
+      signerRelationship = 'PROPIO_JUGADOR';
+      if (r.c_signer_dni) {
+        signerDni = r.c_signer_dni;
+      } else if (r.dni_encrypted) {
+        const decrypted = decryptData(r.dni_encrypted);
+        if (decrypted) signerDni = decrypted;
+      }
+    }
+
+    const prefill: DirectConsentPrefill = {
+      signerName: signerName || undefined,
+      signerDni: signerDni || undefined,
+      signerRelationship: signerRelationship || undefined,
+      signerPhone: signerPhone || undefined,
+      signerEmail: signerEmail || undefined,
+    };
+
+    const directToken = createDirectConsentToken(r.player_id, prefill, daysValid);
+    const directUrl = `${baseUrl}/autorizaciones?directToken=${directToken}`;
+
+    // Mensaje de WhatsApp personalizado adaptado al deportista o familia
+    let whatsappText = '';
+    const recipientGreeting = signerName ? `*${signerName}*` : 'estimada familia';
+
+    if (isMinor) {
+      whatsappText = `Hola ${recipientGreeting}, te escribimos desde el ${CLUB_INFO.name}.\n\nPor favor, accede al siguiente enlace oficial para firmar digitalmente las autorizaciones de la temporada 2026/2027 (Cesión de Imagen y Desplazamientos) de *${r.player_name}* (${teamName}):\n\n👉 ${directUrl}\n\nHemos auto-rellenado los datos de los que disponemos para tu comodidad; solo debes revisarlos y trazar la firma en pantalla. ¡Muchas gracias por tu colaboración!`;
+    } else {
+      whatsappText = `Hola *${r.player_name}*, te escribimos desde el ${CLUB_INFO.name}.\n\nPor favor, accede al siguiente enlace oficial para formalizar tus autorizaciones oficiales de la temporada 2026/2027 (${teamName}):\n\n👉 ${directUrl}\n\nTus datos federativos ya están pre-rellenados; solo debes revisarlos y firmar. ¡Muchas gracias!`;
+    }
+
+    // URL de WhatsApp con teléfono directo si está disponible
+    const cleanDigits = signerPhone.replace(/\D/g, '');
+    const phoneParam = cleanDigits.length >= 9 ? (cleanDigits.startsWith('34') ? cleanDigits : `34${cleanDigits}`) : '';
+    const whatsappUrl = phoneParam
+      ? `https://wa.me/${phoneParam}?text=${encodeURIComponent(whatsappText)}`
+      : `https://wa.me/?text=${encodeURIComponent(whatsappText)}`;
+
+    items.push({
+      playerId: r.player_id,
+      playerName: r.player_name,
+      teamId: r.team_id,
+      teamName,
+      birthYear: r.birth_year,
+      isMinor,
+      isSigned: !!r.consent_id,
+      signerName,
+      signerDni,
+      signerRelationship,
+      signerPhone,
+      signerEmail,
+      directToken,
+      directUrl,
+      whatsappText,
+      whatsappUrl,
+    });
+  }
+
+  return items;
 }
