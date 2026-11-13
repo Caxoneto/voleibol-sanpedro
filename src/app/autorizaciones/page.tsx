@@ -23,6 +23,9 @@ import {
   Ban,
   Info,
   X,
+  Bus,
+  Activity,
+  HeartPulse,
 } from 'lucide-react';
 import { FAVB_TEAMS, FAVB_PLAYERS } from '@/lib/favb-data';
 import { CLUB_INFO } from '@/lib/data-store';
@@ -36,13 +39,17 @@ function AutorizacionesContent() {
   // Paso actual (1: Selección y Verificación, 2: Formulario y Firma, 3: Éxito)
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Paso 1: Selección y verificación
+  // Paso 1: Selección y verificación manual
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
   const [birthInput, setBirthInput] = useState<string>('');
   const [dniLast5Input, setDniLast5Input] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  // Flag si se accedió mediante enlace directo emitido por administración
+  const [isDirectAccess, setIsDirectAccess] = useState(false);
+  const [loadingDirectAccess, setLoadingDirectAccess] = useState(false);
 
   // Datos del jugador verificado
   const [verifiedPlayer, setVerifiedPlayer] = useState<{
@@ -65,20 +72,28 @@ function AutorizacionesContent() {
     consentSocialMedia: boolean;
     consentStreaming: boolean;
     consentPress: boolean;
+    consentTravel?: boolean;
+    medicalNotes?: string;
   } | null>(null);
 
-  // Paso 2: Formulario de consentimiento
+  // Paso 2: Formulario de consentimiento oficial (Modelos Junta de Andalucía)
   const [signerName, setSignerName] = useState('');
   const [signerDni, setSignerDni] = useState('');
   const [signerRelationship, setSignerRelationship] = useState<'PADRE' | 'MADRE' | 'TUTOR_LEGAL' | 'PROPIO_JUGADOR'>('MADRE');
   const [signerEmail, setSignerEmail] = useState('');
   const [signerPhone, setSignerPhone] = useState('');
 
-  // Casillas de consentimiento granulares
-  const [consentSocialMedia, setConsentSocialMedia] = useState(false);
-  const [consentStreaming, setConsentStreaming] = useState(false);
-  const [consentPress, setConsentPress] = useState(false);
+  // Anexo 05: Casillas de consentimiento de imagen
+  const [consentSocialMedia, setConsentSocialMedia] = useState(true);
+  const [consentStreaming, setConsentStreaming] = useState(true);
+  const [consentPress, setConsentPress] = useState(true);
   const [denyAllConsents, setDenyAllConsents] = useState(false);
+
+  // Anexo 06: Desplazamientos y viajes oficiales + cobertura médica
+  const [consentTravel, setConsentTravel] = useState(true);
+  const [medicalNotes, setMedicalNotes] = useState('');
+
+  // Declaración responsable y firma
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [patriaPotestadAccepted, setPatriaPotestadAccepted] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
@@ -91,8 +106,63 @@ function AutorizacionesContent() {
   const [confirmedHash, setConfirmedHash] = useState<string | null>(null);
   const [confirmedTimestamp, setConfirmedTimestamp] = useState<string | null>(null);
 
-  // Preselección por URL param ?equipo=...
+  // 1. Detección de Enlace Directo (Magic Link) o preselección por URL param ?directToken=...
   useEffect(() => {
+    const directTokenParam = searchParams.get('directToken') || searchParams.get('token');
+    if (directTokenParam) {
+      setLoadingDirectAccess(true);
+      fetch('/api/consent/verify-direct-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ directToken: directTokenParam }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.player) {
+            setVerifiedPlayer(data.player);
+            setVerificationToken(data.verificationToken || '');
+            setIsDirectAccess(true);
+
+            // Auto-rellenar campos con los datos disponibles del deportista o tutor
+            if (data.prefilledData) {
+              if (data.prefilledData.signerName) setSignerName(data.prefilledData.signerName);
+              if (data.prefilledData.signerDni) setSignerDni(data.prefilledData.signerDni);
+              if (data.prefilledData.signerRelationship) {
+                setSignerRelationship(data.prefilledData.signerRelationship);
+              }
+              if (data.prefilledData.signerPhone) setSignerPhone(data.prefilledData.signerPhone);
+              if (data.prefilledData.signerEmail) setSignerEmail(data.prefilledData.signerEmail);
+              if (data.player.isMinor && data.prefilledData.signerName) {
+                setPatriaPotestadAccepted(true);
+              }
+            } else {
+              if (!data.player.isMinor) {
+                setSignerRelationship('PROPIO_JUGADOR');
+                setSignerName(data.player.name);
+              } else {
+                setSignerRelationship('MADRE');
+              }
+            }
+
+            if (data.alreadySigned && data.existingConsent) {
+              setAlreadySignedData(data.existingConsent);
+            } else {
+              setStep(2);
+            }
+          } else {
+            setVerifyError(data.error || 'El enlace directo no es válido o ha caducado.');
+          }
+        })
+        .catch(() => {
+          setVerifyError('Error al validar el enlace directo.');
+        })
+        .finally(() => {
+          setLoadingDirectAccess(false);
+        });
+      return;
+    }
+
+    // Preselección habitual por equipo si no hay directToken
     const teamParam = searchParams.get('equipo') || searchParams.get('team');
     if (teamParam) {
       const match = FAVB_TEAMS.find(
@@ -117,7 +187,7 @@ function AutorizacionesContent() {
     setAlreadySignedData(null);
   };
 
-  // Manejar verificación de identidad (Paso 1)
+  // Manejar verificación de identidad manual (Paso 1)
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setVerifyError(null);
@@ -164,7 +234,6 @@ function AutorizacionesContent() {
       if (data.alreadySigned && data.existingConsent) {
         setAlreadySignedData(data.existingConsent);
       } else {
-        // Si no es menor (Senior), preseleccionar propio jugador
         if (!data.player.isMinor) {
           setSignerRelationship('PROPIO_JUGADOR');
           setSignerName(data.player.name);
@@ -197,11 +266,13 @@ function AutorizacionesContent() {
       consentSocialMedia: alreadySignedData.consentSocialMedia,
       consentStreaming: alreadySignedData.consentStreaming,
       consentPress: alreadySignedData.consentPress,
+      consentTravel: alreadySignedData.consentTravel !== false,
+      medicalNotes: alreadySignedData.medicalNotes,
       signedAt: alreadySignedData.signedAt,
     });
 
     const safeName = verifiedPlayer.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    doc.save(`autorizacion_cdv_${safeName}.pdf`);
+    doc.save(`autorizaciones_junta_andalucia_${safeName}.pdf`);
   };
 
   const handleToggleDenyAll = (checked: boolean) => {
@@ -261,7 +332,7 @@ function AutorizacionesContent() {
           playerName: verifiedPlayer.name,
           teamId: verifiedPlayer.teamId,
           isMinor: verifiedPlayer.isMinor,
-          dniLast5: cleanDni5,
+          dniLast5: cleanDni5 || '0000X',
           signerType: verifiedPlayer.isMinor ? 'PARENT' : 'SELF_ADULT',
           signerName: signerName.trim(),
           signerDni: cleanDni,
@@ -271,6 +342,8 @@ function AutorizacionesContent() {
           consentSocialMedia,
           consentStreaming,
           consentPress,
+          consentTravel,
+          medicalNotes: medicalNotes.trim(),
           signatureData,
         }),
       });
@@ -293,7 +366,7 @@ function AutorizacionesContent() {
     }
   };
 
-  // Descarga del PDF generado al completar el registro
+  // Descarga del PDF oficial generado al completar el registro
   const handleDownloadSuccessPdf = () => {
     if (!verifiedPlayer) return;
 
@@ -311,14 +384,22 @@ function AutorizacionesContent() {
       consentSocialMedia,
       consentStreaming,
       consentPress,
+      consentTravel,
+      medicalNotes: medicalNotes.trim(),
       signatureData: signatureData || undefined,
       documentHash: confirmedHash || undefined,
       signedAt: confirmedTimestamp || undefined,
     });
 
     const safeName = verifiedPlayer.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    doc.save(`autorizacion_cdv_${safeName}.pdf`);
+    doc.save(`autorizaciones_junta_andalucia_${safeName}.pdf`);
   };
+
+  // Determinar edad estimada para mostrar explicaciones precisas de la Junta de Andalucía
+  const currentYear = 2026;
+  const playerAge = verifiedPlayer ? currentYear - verifiedPlayer.birthYear : 14;
+  const isPlayerUnder14 = verifiedPlayer?.isMinor && playerAge < 14;
+  const isPlayer14to18 = verifiedPlayer?.isMinor && playerAge >= 14;
 
   return (
     <div className="w-full min-h-screen bg-background text-on-surface relative py-12 px-4 sm:px-6 lg:px-8">
@@ -328,51 +409,97 @@ function AutorizacionesContent() {
         style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
       />
 
-      <div className="max-w-2xl mx-auto relative z-10 space-y-8">
-        {/* Cabecera */}
+      <div className="max-w-3xl mx-auto relative z-10 space-y-8">
+        {/* Cabecera Principal */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-container text-white text-xs font-bold uppercase tracking-wider rounded">
             <ShieldCheck className="w-4 h-4" />
-            <span>Portal Oficial de Autorizaciones</span>
+            <span>Portal Oficial de Autorizaciones · Junta de Andalucía</span>
           </div>
           <h1 className="font-display-xl text-3xl sm:text-4xl text-white uppercase tracking-tight">
-            Cesión de Imagen y Protección de Datos
+            Autorizaciones Oficiales y Cesión de Imagen
           </h1>
-          <p className="text-sm text-tertiary max-w-lg mx-auto">
-            Trámite digital oficial para deportistas y familias del {CLUB_INFO.name}. Conforme al RGPD (UE 2016/679) y LOPDGDD 3/2018.
+          <p className="text-sm text-tertiary max-w-xl mx-auto">
+            Trámite digital oficial para deportistas y familias del {CLUB_INFO.name}. Modelos Anexo 05 y Anexo 06 conforme al Protocolo de Menores de la Junta de Andalucía, RGPD y LOPDGDD.
           </p>
         </div>
 
+        {/* Indicador de carga de acceso directo */}
+        {loadingDirectAccess && (
+          <div className="p-6 bg-surface-container-lowest border border-white/10 rounded-xl text-center space-y-3">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-sm text-white/80">Validando enlace directo emitido por el Club...</p>
+          </div>
+        )}
+
         {/* Indicador de pasos */}
-        <div className="flex items-center justify-center gap-3">
-          <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${step === 1 ? 'bg-primary text-white' : 'bg-surface-container-high text-tertiary'}`}>
-            <span>1</span>
-            <span>Identificación</span>
+        {!loadingDirectAccess && (
+          <div className="flex items-center justify-center gap-3">
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                step === 1 ? 'bg-primary text-white' : 'bg-surface-container-high text-tertiary'
+              }`}
+            >
+              <span>1</span>
+              <span>Identificación</span>
+            </div>
+            <div className="w-8 h-px bg-white/20" />
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                step === 2 ? 'bg-primary text-white' : 'bg-surface-container-high text-tertiary'
+              }`}
+            >
+              <span>2</span>
+              <span>Anexos Oficiales y Firma</span>
+            </div>
+            <div className="w-8 h-px bg-white/20" />
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                step === 3 ? 'bg-primary text-white' : 'bg-surface-container-high text-tertiary'
+              }`}
+            >
+              <span>3</span>
+              <span>Resguardo Oficial</span>
+            </div>
           </div>
-          <div className="w-6 h-0.5 bg-white/10" />
-          <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${step === 2 ? 'bg-primary text-white' : 'bg-surface-container-high text-tertiary'}`}>
-            <span>2</span>
-            <span>Consentimiento</span>
+        )}
+
+        {/* Banner de Acceso Directo por Administrador */}
+        {isDirectAccess && verifiedPlayer && step === 2 && (
+          <div className="p-4 bg-emerald-950/60 border border-emerald-500/40 rounded-xl space-y-2 shadow-lg">
+            <div className="flex items-center justify-between gap-3 text-xs text-emerald-200">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <strong className="text-white block text-sm">
+                    Acceso directo verificado para {verifiedPlayer.name}
+                  </strong>
+                  <span>
+                    Equipo: {verifiedPlayer.teamName} · Identificación oficial validada por el Club.
+                  </span>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-bold uppercase text-[10px] rounded tracking-wider shrink-0">
+                Datos Pre-cargados
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-300/80 bg-emerald-900/30 p-2 rounded border border-emerald-500/20">
+              ✨ <strong>Comodidad:</strong> Hemos auto-rellenado los campos con los datos disponibles del deportista y su tutor. Por favor, revísalos, traza tu firma abajo y confirma el documento.
+            </p>
           </div>
-          <div className="w-6 h-0.5 bg-white/10" />
-          <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${step === 3 ? 'bg-primary text-white' : 'bg-surface-container-high text-tertiary'}`}>
-            <span>3</span>
-            <span>Resguardo</span>
-          </div>
-        </div>
+        )}
 
         {/* ========================================================================= */}
-        {/* PASO 1: SELECCIÓN Y VERIFICACIÓN                                           */}
+        {/* PASO 1: SELECCIÓN Y VERIFICACIÓN DE IDENTIDAD MANUAL                       */}
         {/* ========================================================================= */}
-        {step === 1 && (
+        {step === 1 && !loadingDirectAccess && (
           <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-6 sm:p-8 space-y-6 shadow-2xl">
-            <div className="border-b border-white/10 pb-4">
-              <h2 className="text-lg font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                <Lock className="w-5 h-5 text-primary" />
-                <span>Paso 1: Identificación del Deportista</span>
+            <div className="border-b border-white/10 pb-4 space-y-1">
+              <h2 className="text-lg font-bold text-white uppercase tracking-wide">
+                Paso 1: Identificación del Deportista
               </h2>
-              <p className="text-xs text-tertiary mt-1">
-                Para proteger la privacidad de la cantera, introducimos dos factores de verificación de la ficha federativa oficial.
+              <p className="text-xs text-tertiary">
+                Para garantizar la seguridad y privacidad, verifica los datos del deportista federado antes de acceder a la firma.
               </p>
             </div>
 
@@ -380,24 +507,24 @@ function AutorizacionesContent() {
               {/* Selector de Equipo */}
               <div>
                 <label className="block text-xs font-bold text-white uppercase tracking-wider mb-2">
-                  1. Equipo o Categoría <span className="text-primary">*</span>
+                  1. Selecciona el Equipo <span className="text-primary">*</span>
                 </label>
                 <select
                   value={selectedTeamId}
                   onChange={(e) => handleTeamChange(e.target.value)}
                   required
-                  className="w-full bg-surface-container-low border border-white/15 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-primary transition-colors"
+                  className="w-full bg-surface-container-low border border-white/15 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary"
                 >
-                  <option value="">-- Selecciona el equipo del club --</option>
-                  {FAVB_TEAMS.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
+                  <option value="">-- Elige tu equipo --</option>
+                  {FAVB_TEAMS.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.division})
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Selector de Jugador */}
+              {/* Selector de Deportista */}
               <div>
                 <label className="block text-xs font-bold text-white uppercase tracking-wider mb-2">
                   2. Nombre del Deportista <span className="text-primary">*</span>
@@ -411,29 +538,29 @@ function AutorizacionesContent() {
                   }}
                   disabled={!selectedTeamId}
                   required
-                  className="w-full bg-surface-container-low border border-white/15 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-primary transition-colors disabled:opacity-40"
+                  className="w-full bg-surface-container-low border border-white/15 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary disabled:opacity-40"
                 >
                   <option value="">
-                    {selectedTeamId ? '-- Selecciona el deportista --' : 'Primero selecciona el equipo'}
+                    {!selectedTeamId ? '-- Primero selecciona un equipo --' : '-- Elige al deportista --'}
                   </option>
-                  {teamPlayers.map((player) => (
-                    <option key={player.id} value={player.id}>
-                      {player.number ? `#${player.number} · ` : ''}{player.firstName} {player.lastName}
+                  {teamPlayers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.firstName} {p.lastName} {p.number ? `(#${p.number})` : ''}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Dos Factores de Verificación */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
+              {/* Doble Verificación: Año de Nacimiento + 4 últimos dígitos y letra DNI/NIE */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div>
-                  <label className="block text-xs font-bold text-white uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-white uppercase tracking-wider mb-2">
                     Año o Fecha de Nacimiento <span className="text-primary">*</span>
                   </label>
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Ej. 2008 o 15/04/2008"
+                      placeholder="Ej. 2012 o 15/04/2012"
                       value={birthInput}
                       onChange={(e) => setBirthInput(e.target.value)}
                       required
@@ -441,12 +568,12 @@ function AutorizacionesContent() {
                     />
                     <Calendar className="w-4 h-4 text-tertiary absolute left-3 top-3" />
                   </div>
-                  <span className="text-[11px] text-tertiary">Año o fecha registrada en el club.</span>
+                  <span className="text-[11px] text-tertiary">Año o fecha registrada en su ficha.</span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-white uppercase tracking-wider mb-1.5">
-                    Últimos 4 dígitos y letra DNI/NIE <span className="text-primary">*</span>
+                  <label className="block text-xs font-bold text-white uppercase tracking-wider mb-2">
+                    Últimos 4 dígitos + Letra DNI/NIE <span className="text-primary">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -487,7 +614,7 @@ function AutorizacionesContent() {
                     <button
                       type="button"
                       onClick={handleDownloadExisting}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded transition-colors"
+                      className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded transition-colors cursor-pointer"
                     >
                       <Download className="w-4 h-4" />
                       <span>Descargar copia en PDF</span>
@@ -498,7 +625,7 @@ function AutorizacionesContent() {
                         setAlreadySignedData(null);
                         setStep(2);
                       }}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white/80 font-bold text-xs uppercase tracking-wider rounded transition-colors"
+                      className="inline-flex items-center gap-2 px-3.5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white/80 font-bold text-xs uppercase tracking-wider rounded transition-colors cursor-pointer"
                     >
                       <RotateCcw className="w-4 h-4" />
                       <span>Modificar autorización</span>
@@ -511,13 +638,13 @@ function AutorizacionesContent() {
                 <button
                   type="submit"
                   disabled={isVerifying || !selectedPlayerId}
-                  className="w-full py-3.5 bg-primary hover:bg-primary/90 text-white font-bold text-sm uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-40 shadow-lg shadow-primary/20"
+                  className="w-full py-3.5 bg-primary hover:bg-primary/90 text-white font-bold text-sm uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-40 shadow-lg shadow-primary/20 cursor-pointer"
                 >
                   {isVerifying ? (
-                    <span>Verificando datos...</span>
+                    <span>Verificando datos federativos...</span>
                   ) : (
                     <>
-                      <span>Continuar al Consentimiento</span>
+                      <span>Continuar al Formulario Oficial</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -528,28 +655,40 @@ function AutorizacionesContent() {
         )}
 
         {/* ========================================================================= */}
-        {/* PASO 2: FORMULARIO DE CONSENTIMIENTO Y FIRMA                               */}
+        {/* PASO 2: ANEXOS OFICIALES DE LA JUNTA DE ANDALUCÍA Y FIRMA                   */}
         {/* ========================================================================= */}
         {step === 2 && verifiedPlayer && (
-          <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-6 sm:p-8 space-y-6 shadow-2xl">
+          <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-6 sm:p-8 space-y-7 shadow-2xl">
             {/* Cabecera del paso */}
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="inline-flex items-center gap-1.5 text-xs text-tertiary hover:text-white mb-2 transition-colors"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Volver a identificación</span>
-                </button>
+                {!isDirectAccess && (
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="inline-flex items-center gap-1.5 text-xs text-tertiary hover:text-white mb-2 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Volver a identificación</span>
+                  </button>
+                )}
                 <h2 className="text-lg font-bold text-white uppercase tracking-wide">
-                  Paso 2: Declaración y Firma
+                  Paso 2: Declaración Oficial y Firma Digital
                 </h2>
+                <span className="text-xs text-tertiary">
+                  Modelos oficiales Anexo 05 y 06 adaptados a la normativa de la Junta de Andalucía
+                </span>
               </div>
               <div className="text-right">
                 <span className="text-[11px] font-bold text-primary block">{verifiedPlayer.teamName}</span>
                 <span className="text-sm font-bold text-white">{verifiedPlayer.name}</span>
+                <span className="text-[11px] text-tertiary block">
+                  {verifiedPlayer.isMinor
+                    ? isPlayerUnder14
+                      ? 'Menor de 14 años'
+                      : 'Menor de 14 a 18 años'
+                    : 'Mayor de edad (+18)'}
+                </span>
               </div>
             </div>
 
@@ -559,7 +698,7 @@ function AutorizacionesContent() {
                 <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 text-primary">
                   <User className="w-4 h-4" />
                   <span>
-                    {verifiedPlayer.isMinor ? 'Datos del Padre / Madre o Tutor/a Legal' : 'Datos del Firmante (Mayor de Edad)'}
+                    {verifiedPlayer.isMinor ? 'Datos del Padre / Madre o Tutor/a Legal' : 'Datos del Deportista (Mayor de Edad)'}
                   </span>
                 </h3>
 
@@ -570,7 +709,7 @@ function AutorizacionesContent() {
                     </label>
                     <input
                       type="text"
-                      placeholder="Nombre del tutor firmante"
+                      placeholder="Nombre del firmante"
                       value={signerName}
                       onChange={(e) => setSignerName(e.target.value)}
                       required
@@ -615,7 +754,7 @@ function AutorizacionesContent() {
                       <input
                         type="text"
                         disabled
-                        value="Propio Jugador/a (+18)"
+                        value="Propio Deportista (+18)"
                         className="w-full bg-surface-container-low border border-white/15 rounded-lg px-3 py-2.5 text-sm text-white/50"
                       />
                     </div>
@@ -655,24 +794,31 @@ function AutorizacionesContent() {
                 </div>
               </div>
 
-              {/* Sección: Casillas Granulares de Consentimiento */}
-              <div className="space-y-3 pt-4 border-t border-white/10">
+              {/* ========================================================================= */}
+              {/* ANEXO 05: MODELO DE TRATAMIENTO DE DATOS E IMÁGENES (JUNTA DE ANDALUCÍA)   */}
+              {/* ========================================================================= */}
+              <div className="space-y-3 pt-5 border-t border-white/10">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="space-y-0.5">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider text-primary">
-                      Alcance de la Autorización (Opciones Independientes)
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-primary/20 text-primary border border-primary/40 rounded text-[10px] font-bold uppercase tracking-wider">
+                        Anexo 05
+                      </span>
+                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                        Tratamiento de Datos e Imágenes de Menores / Deportistas
+                      </h3>
+                    </div>
                     <p className="text-[11px] text-tertiary">
-                      Conforme al RGPD, puedes autorizar finalidades específicas o denegar todas:
+                      Conforme al Protocolo Marco de la Junta de Andalucía (Orden de 18 de nov. de 2024), RGPD y LOPDGDD:
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowInfoModal(true)}
-                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-white underline font-semibold self-start sm:self-auto"
+                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-white underline font-semibold self-start sm:self-auto cursor-pointer"
                   >
                     <Info className="w-3.5 h-3.5" />
-                    <span>Leer condiciones y alcance legal</span>
+                    <span>Ver normativa oficial</span>
                   </button>
                 </div>
 
@@ -697,10 +843,10 @@ function AutorizacionesContent() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 font-bold text-sm text-white">
                         <Camera className="w-4 h-4 text-primary" />
-                        <span>1. Páginas Web y Redes Sociales Oficiales del Club</span>
+                        <span>A. Sitio Web Oficial y Redes Sociales del Club</span>
                       </div>
                       <p className="text-xs text-tertiary leading-relaxed">
-                        Autorizo la toma y publicación de fotografías de equipo, celebraciones de partidos oficiales y crónicas deportivas en la web oficial ({CLUB_INFO.name}) y redes oficiales del club (Instagram, Facebook).
+                        Autorizo la captación y publicación de fotografías de equipo, convocatorias deportivas y logros en la web oficial y redes oficiales del {CLUB_INFO.name} (Instagram, Facebook, Twitter/X).
                       </p>
                     </div>
                   </div>
@@ -727,10 +873,10 @@ function AutorizacionesContent() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 font-bold text-sm text-white">
                         <Tv className="w-4 h-4 text-primary" />
-                        <span>2. Retransmisión en Directo de Partidos (Streaming / YouTube)</span>
+                        <span>B. Retransmisión y Streaming en Directo de Partidos Oficiales</span>
                       </div>
                       <p className="text-xs text-tertiary leading-relaxed">
-                        Autorizo la aparición del deportista en las emisiones de partidos oficiales en directo organizadas por el club a través de plataformas audiovisuales (YouTube/streaming deportivo).
+                        Autorizo la difusión audiovisual del deportista en las emisiones de partidos oficiales en directo organizadas a través del canal oficial de YouTube u otros canales deportivos autorizados por la federación.
                       </p>
                     </div>
                   </div>
@@ -757,10 +903,10 @@ function AutorizacionesContent() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 font-bold text-sm text-white">
                         <Newspaper className="w-4 h-4 text-primary" />
-                        <span>3. Difusión en Prensa y Medios Locales</span>
+                        <span>C. Difusión en Medios de Comunicación y Prensa Deportiva</span>
                       </div>
                       <p className="text-xs text-tertiary leading-relaxed">
-                        Autorizo la cesión de imágenes o referencias a resultados deportivos para notas de prensa en medios de comunicación locales de San Pedro Alcántara y Marbella.
+                        Autorizo la cesión de imágenes para notas de prensa, podios y crónicas en medios de comunicación locales y provinciales de Marbella y San Pedro Alcántara con fines informativos.
                       </p>
                     </div>
                   </div>
@@ -784,19 +930,83 @@ function AutorizacionesContent() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 font-bold text-sm text-red-300">
                         <Ban className="w-4 h-4 text-red-400" />
-                        <span>4. No autorizo ninguna cesión de imagen (Denegación expresa)</span>
+                        <span>D. Denegación Expresa Total de Imágenes (Anexo 05)</span>
                       </div>
                       <p className="text-xs text-red-200/80 leading-relaxed">
-                        Al marcar esta opción, no se concede autorización para redes, streaming ni prensa. Se generará y custodiará el resguardo oficial firmado de denegación para que conste formalmente ante el club y el cuerpo técnico.
+                        Al marcar esta opción, no se concede ninguna cesión para redes, streaming ni prensa. Se emitirá el resguardo formal de denegación para conocimiento estricto del cuerpo técnico y directiva.
                       </p>
                     </div>
                   </div>
                 </label>
               </div>
 
+              {/* ========================================================================= */}
+              {/* ANEXO 06: DESPLAZAMIENTOS, VIAJES Y ASISTENCIA SANITARIA OFICIAL          */}
+              {/* ========================================================================= */}
+              <div className="space-y-3 pt-5 border-t border-white/10">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/40 rounded text-[10px] font-bold uppercase tracking-wider">
+                      Anexo 06
+                    </span>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Bus className="w-4 h-4 text-blue-400" />
+                      <span>Autorización de Desplazamientos y Asistencia Médica Oficial</span>
+                    </h3>
+                  </div>
+                  <p className="text-[11px] text-tertiary">
+                    Modelo oficial de desplazamientos de la Junta de Andalucía y la Federación Andaluza de Voleibol (FAVB):
+                  </p>
+                </div>
+
+                <label
+                  className={`block p-4 rounded-lg border transition-all cursor-pointer ${
+                    consentTravel
+                      ? 'bg-blue-950/20 border-blue-500/50 shadow-md'
+                      : 'bg-surface-container-low border-white/10'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={consentTravel}
+                      onChange={(e) => setConsentTravel(e.target.checked)}
+                      className="mt-1 w-4 h-4 rounded border-blue-400 text-blue-500 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+                    />
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 font-bold text-sm text-white">
+                        <span>Autorización de Salidas, Viajes Oficiales y Cobertura Sanitaria</span>
+                      </div>
+                      <p className="text-xs text-blue-100/90 leading-relaxed">
+                        Autorizo el traslado y desplazamiento del deportista para la disputa de partidos oficiales, concentraciones, Campeonatos de Andalucía (CADEBA), torneos federados y entrenamientos programados durante la temporada 2026/2027 en medios de transporte autorizados por el club (autobús concertado o vehículos designados) bajo la tutela del cuerpo técnico y delegados.
+                      </p>
+                      <p className="text-[11px] text-blue-200/80 leading-relaxed">
+                        Asimismo, faculta a los responsables del club a gestionar la asistencia sanitaria facultativa de urgencia en caso de lesión o indisposición a través del Seguro Deportivo Obligatorio de la FAVB y el Servicio Andaluz de Salud (SAS).
+                      </p>
+                    </div>
+                  </div>
+                </label>
+
+                {/* Observaciones médicas opcionales */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="block text-xs text-white/80 font-medium flex items-center gap-1.5">
+                    <HeartPulse className="w-3.5 h-3.5 text-tertiary" />
+                    <span>Observaciones de salud o alergias relevantes (Opcional):</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Indica si padece asma, alergias alimentarias, intolerancias o toma medicación especial..."
+                    value={medicalNotes}
+                    onChange={(e) => setMedicalNotes(e.target.value)}
+                    maxLength={400}
+                    className="w-full bg-surface-container-low border border-white/15 rounded-lg p-2.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
               {/* Declaración Responsable de Patria Potestad */}
               {verifiedPlayer.isMinor && (
-                <div className="p-3.5 bg-surface-container-low border border-white/15 rounded-lg space-y-2">
+                <div className="p-4 bg-surface-container-low border border-white/15 rounded-lg space-y-2">
                   <label className="flex items-start gap-2.5 cursor-pointer">
                     <input
                       type="checkbox"
@@ -806,17 +1016,20 @@ function AutorizacionesContent() {
                       className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer"
                     />
                     <span className="text-xs text-white/90 leading-relaxed">
-                      <strong>Declaración Responsable:</strong> Declaro bajo mi responsabilidad que ostento la patria potestad o tutela legal del menor citado y que actúo en su interés y con conocimiento del otro progenitor.
+                      <strong>Declaración Responsable (Junta de Andalucía):</strong> Declaro bajo mi exclusiva responsabilidad que ostento la patria potestad o tutela legal del deportista menor de edad citado y que presto este consentimiento con conocimiento y conformidad del otro progenitor para los Anexos 05 y 06.
                     </span>
                   </label>
                 </div>
               )}
 
-              {/* Firma Manuscrita Táctil */}
+              {/* Firma Manuscrita Táctil de Alta Calidad */}
               <div className="space-y-2 pt-2 border-t border-white/10">
-                <label className="block text-xs font-bold text-white uppercase tracking-wider">
-                  Firma Digitalizada <span className="text-primary">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-white uppercase tracking-wider">
+                    Firma Manuscrita Digitalizada <span className="text-primary">*</span>
+                  </label>
+                  <span className="text-[11px] text-tertiary">Línea continua negra sólida</span>
+                </div>
                 <SignaturePad onSignatureChange={setSignatureData} />
               </div>
 
@@ -826,7 +1039,7 @@ function AutorizacionesContent() {
                 <Link href="/privacidad" target="_blank" className="text-primary underline hover:text-primary/80">
                   Política de Privacidad
                 </Link>
-                . Podrás revocar esta autorización o ejercitar tus derechos en cualquier momento escribiendo a {CLUB_INFO.contactEmail}.
+                . Podrás revocar esta autorización o ejercitar tus derechos de acceso, rectificación y supresión en cualquier momento escribiendo a {CLUB_INFO.contactEmail}.
               </p>
 
               {/* Mensaje de error si falla el envío */}
@@ -844,11 +1057,11 @@ function AutorizacionesContent() {
                 className="w-full py-4 bg-primary hover:bg-primary/90 text-white font-bold text-sm uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-40 shadow-xl shadow-primary/20 cursor-pointer"
               >
                 {isSubmitting ? (
-                  <span>Registrando y generando resguardo...</span>
+                  <span>Registrando y generando documentos oficiales...</span>
                 ) : (
                   <>
                     <FileText className="w-4 h-4" />
-                    <span>Firmar y Registrar Autorización</span>
+                    <span>Firmar y Generar Documentos Oficiales en PDF</span>
                   </>
                 )}
               </button>
@@ -857,68 +1070,87 @@ function AutorizacionesContent() {
         )}
 
         {/* ========================================================================= */}
-        {/* PASO 3: CONFIRMACIÓN Y DESCARGA DEL RESGUARDO                             */}
+        {/* PASO 3: CONFIRMACIÓN Y DESCARGA DEL PDF OFICIAL DE 2 PÁGINAS              */}
         {/* ========================================================================= */}
         {step === 3 && verifiedPlayer && (
-          <div className="bg-surface-container-lowest border border-emerald-500/30 rounded-xl p-6 sm:p-10 space-y-6 shadow-2xl text-center">
-            <div className="w-16 h-16 bg-emerald-950/70 border border-emerald-500/40 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-8 space-y-6 text-center shadow-2xl">
+            <div className="w-16 h-16 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-10 h-10" />
             </div>
 
             <div className="space-y-2">
               <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
-                Trámite Completado con Éxito
+                Trámite Oficial Completado con Éxito
               </span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-white uppercase tracking-tight">
-                Autorización Registrada
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">
+                Autorizaciones Registradas Oficialmente
               </h2>
-              <p className="text-sm text-tertiary max-w-md mx-auto">
-                La cesión de derechos de imagen de <strong className="text-white">{verifiedPlayer.name}</strong> ({verifiedPlayer.teamName}) ha quedado custodiada en el registro oficial del club.
+              <p className="text-xs text-tertiary max-w-md mx-auto">
+                Los Anexos 05 y 06 han sido firmados y custodiados en los servidores seguros del club con sellado digital de integridad y marca temporal certificada.
               </p>
             </div>
 
-            {/* Resumen de permisos firmados */}
-            <div className="bg-surface-container-low p-4 rounded-lg border border-white/10 text-left space-y-2 text-xs">
-              <div className="flex justify-between items-center py-1 border-b border-white/5">
-                <span className="text-tertiary">Firmado por:</span>
-                <span className="font-bold text-white">{signerName} (DNI: {signerDni})</span>
+            {/* Resumen de los datos firmados */}
+            <div className="bg-surface-container-low border border-white/10 rounded-lg p-5 text-left text-xs space-y-2.5 max-w-lg mx-auto">
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-tertiary">Deportista:</span>
+                <strong className="text-white">{verifiedPlayer.name}</strong>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-white/5">
-                <span className="text-tertiary">Web y Redes Sociales:</span>
-                <span className={`font-bold ${consentSocialMedia ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {consentSocialMedia ? 'Autorizado' : 'No autorizado'}
-                </span>
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-tertiary">Equipo / Categoría:</span>
+                <strong className="text-white">{verifiedPlayer.teamName}</strong>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-white/5">
-                <span className="text-tertiary">Streaming de Partidos:</span>
-                <span className={`font-bold ${consentStreaming ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {consentStreaming ? 'Autorizado' : 'No autorizado'}
-                </span>
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-tertiary">Persona Firmante:</span>
+                <strong className="text-white">
+                  {signerName} (DNI: {signerDni})
+                </strong>
               </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-tertiary">Prensa y Medios:</span>
-                <span className={`font-bold ${consentPress ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {consentPress ? 'Autorizado' : 'No autorizado'}
-                </span>
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-tertiary">Anexo 05 (Cesión de Imagen):</span>
+                <strong className={denyAllConsents ? 'text-red-400' : 'text-emerald-400'}>
+                  {denyAllConsents
+                    ? 'Denegación Total Expresa'
+                    : `${[
+                        consentSocialMedia ? 'Redes/Web' : null,
+                        consentStreaming ? 'Streaming' : null,
+                        consentPress ? 'Prensa' : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}`}
+                </strong>
               </div>
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-tertiary">Anexo 06 (Desplazamientos y Viajes):</span>
+                <strong className={consentTravel ? 'text-emerald-400' : 'text-red-400'}>
+                  {consentTravel ? 'Autorizado Expresamente' : 'No Autorizado'}
+                </strong>
+              </div>
+              {confirmedHash && (
+                <div className="pt-2 text-[10px] text-tertiary space-y-1">
+                  <span>Código de Sellado SHA-256:</span>
+                  <div className="font-mono text-white/70 bg-black/30 p-2 rounded break-all">
+                    {confirmedHash}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Botón de Descarga del Resguardo PDF */}
-            <div className="pt-2 space-y-3">
+            {/* Botón de Descarga del Documento Oficial */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={handleDownloadSuccessPdf}
-                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-600/20"
+                className="w-full sm:w-auto px-6 py-3.5 bg-primary hover:bg-primary/90 text-white font-bold text-sm uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
               >
-                <Download className="w-5 h-5" />
-                <span>Descargar Resguardo Oficial en PDF</span>
+                <Download className="w-4 h-4" />
+                <span>Descargar Resguardo Oficial (PDF 2 Páginas)</span>
               </button>
-
               <Link
                 href="/"
-                className="inline-block text-xs text-tertiary hover:text-white transition-colors underline pt-2"
+                className="w-full sm:w-auto px-6 py-3.5 bg-surface-container-high hover:bg-surface-container-highest text-white/80 font-bold text-sm uppercase tracking-wider rounded-lg transition-colors inline-flex items-center justify-center"
               >
-                Volver a la página principal del club
+                Volver al Inicio
               </Link>
             </div>
           </div>
@@ -926,81 +1158,78 @@ function AutorizacionesContent() {
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL INFORMATIVO DE CONDICIONES Y ALCANCE LEGAL                           */}
+      {/* MODAL INFORMATIVO DE LOS MODELOS OFICIALES DE LA JUNTA DE ANDALUCÍA       */}
       {/* ========================================================================= */}
       {showInfoModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-white/10 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface-container-lowest border border-white/10 rounded-2xl max-w-2xl w-full p-6 sm:p-8 space-y-5 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Info className="w-4 h-4 text-primary" />
-                <span>Información y Alcance de las Autorizaciones (RGPD)</span>
-              </h3>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded">
+                  JUNTA DE ANDALUCÍA
+                </span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Marco Normativo de Protección de Menores en el Deporte
+                </h3>
+              </div>
               <button
-                type="button"
                 onClick={() => setShowInfoModal(false)}
-                className="text-tertiary hover:text-white p-1"
+                className="text-tertiary hover:text-white p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs text-on-surface leading-relaxed">
-              <div className="p-3 bg-surface-container-low rounded-lg border border-white/5 space-y-1">
-                <h4 className="font-bold text-white flex items-center gap-1.5">
-                  <Camera className="w-3.5 h-3.5 text-primary" />
-                  <span>1. Páginas Web y Redes Sociales del Club</span>
+            <div className="space-y-4 text-xs text-on-surface/90 leading-relaxed">
+              <div className="space-y-1">
+                <h4 className="font-bold text-white text-sm text-primary">
+                  1. Anexo 05: Manejo Adecuado de Datos e Imágenes
                 </h4>
-                <p className="text-tertiary">
-                  Comprende la captación y publicación de imágenes durante partidos oficiales, entrenamientos y entregas de trofeos para las crónicas deportivas del club en Instagram (@voleibolsanpedro), Facebook y en la web oficial (voleibolsanpedro.es). Las imágenes nunca se cederán a fines comerciales de terceros y se limitarán a la difusión deportiva del club.
+                <p>
+                  Regulado en el <em>Protocolo Marco de Actuación para la Protección de las Personas Menores frente a la Violencia en el Deporte</em> (Orden de 18 de noviembre de 2024 de la Consejería de Cultura y Deporte de la Junta de Andalucía) y Ley Orgánica 8/2021 (LOPIVI).
+                </p>
+                <p>
+                  Garantiza que las imágenes tomadas durante entrenamientos, partidos y eventos solo se utilicen para fines de divulgación y promoción deportiva del club, quedando prohibido cualquier uso mercantil ajeno o cesión no autorizada.
                 </p>
               </div>
 
-              <div className="p-3 bg-surface-container-low rounded-lg border border-white/5 space-y-1">
-                <h4 className="font-bold text-white flex items-center gap-1.5">
-                  <Tv className="w-3.5 h-3.5 text-primary" />
-                  <span>2. Retransmisiones en Directo (Streaming / YouTube)</span>
+              <div className="space-y-1">
+                <h4 className="font-bold text-white text-sm text-primary">
+                  2. Diferenciación por Edad (Art. 7 LOPDGDD 3/2018)
                 </h4>
-                <p className="text-tertiary">
-                  Permite la emisión pública en streaming de los partidos que dispute el equipo en plataformas audiovisuales del club (YouTube). Facilita que familiares y aficionados que no puedan desplazarse al pabellón sigan los encuentros en tiempo real.
+                <p>
+                  • <strong>Menores de 14 años:</strong> El consentimiento corresponde exclusivamente a los titulares de la patria potestad o tutela legal.<br />
+                  • <strong>Menores de 14 a 18 años:</strong> Requiere el consentimiento informado del menor con la conformidad y conocimiento de sus padres/tutores.<br />
+                  • <strong>Mayores de edad (+18):</strong> Declaración expresa directa del propio deportista.
                 </p>
               </div>
 
-              <div className="p-3 bg-surface-container-low rounded-lg border border-white/5 space-y-1">
-                <h4 className="font-bold text-white flex items-center gap-1.5">
-                  <Newspaper className="w-3.5 h-3.5 text-primary" />
-                  <span>3. Prensa y Medios de Comunicación Locales</span>
+              <div className="space-y-1">
+                <h4 className="font-bold text-white text-sm text-primary">
+                  3. Anexo 06: Desplazamientos, Viajes y Asistencia Sanitaria
                 </h4>
-                <p className="text-tertiary">
-                  Autoriza el envío de notas de prensa y fotos de equipo a periódicos y portales de noticias comarcales de San Pedro Alcántara y Marbella para destacar los logros deportivos de la cantera.
+                <p>
+                  Autoriza los desplazamientos fuera de San Pedro Alcántara para competiciones oficiales de la Federación Andaluza de Voleibol (FAVB), garantizando la supervisión técnica y habilitando la asistencia médica inmediata a través del Seguro Deportivo Obligatorio y el Servicio Andaluz de Salud (SAS).
                 </p>
               </div>
 
-              <div className="p-3 bg-red-950/30 rounded-lg border border-red-500/30 space-y-1">
-                <h4 className="font-bold text-red-300 flex items-center gap-1.5">
-                  <Ban className="w-3.5 h-3.5 text-red-400" />
-                  <span>¿Qué sucede si no autorizo la cesión de imagen?</span>
+              <div className="space-y-1">
+                <h4 className="font-bold text-white text-sm text-primary">
+                  4. Derecho de Revocación
                 </h4>
-                <p className="text-red-200/80">
-                  La no autorización <strong>no condiciona en ningún caso la práctica deportiva</strong> del menor. Podrá entrenar y competir en ligas federadas con absoluta normalidad. El club adoptará las medidas técnicas para no publicar primeros planos de su rostro ni enfocarlo en las retransmisiones.
-                </p>
-              </div>
-
-              <div className="p-3 bg-surface-container-low rounded-lg border border-white/5 space-y-1">
-                <h4 className="font-bold text-white">Revocación y Ejercicio de Derechos</h4>
-                <p className="text-tertiary">
-                  Conforme a los Arts. 15 a 22 del RGPD, podrás revocar este consentimiento o ejercer tus derechos de acceso, rectificación y supresión en cualquier momento enviando un correo a <strong className="text-white">{CLUB_INFO.contactEmail}</strong>.
+                <p>
+                  El consentimiento prestado puede ser revocado en cualquier momento, de forma total o parcial, notificándolo a <strong>{CLUB_INFO.contactEmail}</strong>.
                 </p>
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-white/10">
+            <div className="pt-2 text-right">
               <button
                 type="button"
                 onClick={() => setShowInfoModal(false)}
-                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase rounded transition-colors"
+                className="px-5 py-2.5 bg-primary text-white font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-primary/90 cursor-pointer"
               >
-                Entendido y Cerrar
+                Entendido
               </button>
             </div>
           </div>

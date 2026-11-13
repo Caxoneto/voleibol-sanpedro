@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { queryNeon } from './streaming-store';
 import { FAVB_TEAMS, FAVB_PLAYERS } from './favb-data';
-import { encryptData, generateBlindIndex, maskDni } from './encryption';
+import { encryptData, decryptData, generateBlindIndex, maskDni } from './encryption';
 
 export interface PlayerCensusRecord {
   playerId: string;
@@ -27,6 +27,8 @@ export interface PlayerConsentRecord {
   consentSocialMedia: boolean;
   consentStreaming: boolean;
   consentPress: boolean;
+  consentTravel?: boolean;
+  medicalNotes?: string;
   signatureData: string;
   legalVersion: string;
   documentHash: string;
@@ -34,6 +36,14 @@ export interface PlayerConsentRecord {
   userAgent?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DirectConsentPrefill {
+  signerName?: string;
+  signerDni?: string;
+  signerRelationship?: 'PADRE' | 'MADRE' | 'TUTOR_LEGAL' | 'PROPIO_JUGADOR';
+  signerPhone?: string;
+  signerEmail?: string;
 }
 
 export interface VerificationResult {
@@ -49,6 +59,7 @@ export interface VerificationResult {
   };
   alreadySigned?: boolean;
   verificationToken?: string;
+  prefilledData?: DirectConsentPrefill;
   existingConsent?: {
     id: string;
     signedAt: string;
@@ -58,6 +69,8 @@ export interface VerificationResult {
     consentSocialMedia: boolean;
     consentStreaming: boolean;
     consentPress: boolean;
+    consentTravel?: boolean;
+    medicalNotes?: string;
   };
 }
 
@@ -77,6 +90,8 @@ export interface ConsentSubmissionPayload {
   consentSocialMedia: boolean;
   consentStreaming: boolean;
   consentPress: boolean;
+  consentTravel?: boolean;
+  medicalNotes?: string;
   signatureData: string;
   legalVersion?: string;
   ipAddress?: string;
@@ -248,10 +263,13 @@ export async function verifyPlayerIdentity(
     consent_social_media: boolean;
     consent_streaming: boolean;
     consent_press: boolean;
+    consent_travel: boolean;
+    medical_notes: string | null;
     created_at: string;
   }>(
     `SELECT id, signer_name, signer_dni, signer_relationship, consent_social_media, 
-            consent_streaming, consent_press, created_at 
+            consent_streaming, consent_press, COALESCE(consent_travel, true) AS consent_travel,
+            medical_notes, created_at 
      FROM player_consents WHERE player_id = $1 LIMIT 1;`,
     [playerId]
   );
@@ -278,7 +296,9 @@ export async function verifyPlayerIdentity(
         signerRelationship: existing.signer_relationship,
         consentSocialMedia: existing.consent_social_media,
         consentStreaming: existing.consent_streaming,
-        consentPress: existing.consent_press
+        consentPress: existing.consent_press,
+        consentTravel: existing.consent_travel,
+        medicalNotes: existing.medical_notes || undefined
       }
     };
   }
@@ -321,6 +341,8 @@ export async function submitPlayerConsent(
       consentSocialMedia,
       consentStreaming,
       consentPress,
+      consentTravel = true,
+      medicalNotes = '',
       signatureData,
       legalVersion = 'v1_2026',
       ipAddress = '',
@@ -349,14 +371,15 @@ export async function submitPlayerConsent(
       signerName.length > 150 ||
       signerDni.length > 20 ||
       (signerEmail && signerEmail.length > 150) ||
-      (signerPhone && signerPhone.length > 30)
+      (signerPhone && signerPhone.length > 30) ||
+      (medicalNotes && medicalNotes.length > 500)
     ) {
       return { success: false, error: 'Uno o más campos exceden la longitud máxima permitida.' };
     }
 
     // Calcular hash SHA-256 de integridad jurídica
     const timestampIso = new Date().toISOString();
-    const hashData = `${playerId}|${signerDni}|${consentSocialMedia ? '1' : '0'}|${consentStreaming ? '1' : '0'}|${consentPress ? '1' : '0'}|${legalVersion}|${timestampIso}`;
+    const hashData = `${playerId}|${signerDni}|${consentSocialMedia ? '1' : '0'}|${consentStreaming ? '1' : '0'}|${consentPress ? '1' : '0'}|${consentTravel ? '1' : '0'}|${legalVersion}|${timestampIso}`;
     const documentHash = crypto.createHash('sha256').update(hashData).digest('hex');
 
     // 1. Insertar o actualizar en player_consents
@@ -365,16 +388,16 @@ export async function submitPlayerConsent(
         player_id, player_name, team_id, is_minor,
         signer_type, signer_name, signer_dni, signer_relationship,
         signer_email, signer_phone,
-        consent_social_media, consent_streaming, consent_press,
+        consent_social_media, consent_streaming, consent_press, consent_travel, medical_notes,
         signature_data, legal_version, document_hash,
         ip_address, user_agent, updated_at
       ) VALUES (
         $1, $2, $3, $4,
         $5, $6, $7, $8,
         $9, $10,
-        $11, $12, $13,
-        $14, $15, $16,
-        $17, $18, NOW()
+        $11, $12, $13, $14, $15,
+        $16, $17, $18,
+        $19, $20, NOW()
       )
       ON CONFLICT (player_id) DO UPDATE SET
         signer_type = EXCLUDED.signer_type,
@@ -386,6 +409,8 @@ export async function submitPlayerConsent(
         consent_social_media = EXCLUDED.consent_social_media,
         consent_streaming = EXCLUDED.consent_streaming,
         consent_press = EXCLUDED.consent_press,
+        consent_travel = EXCLUDED.consent_travel,
+        medical_notes = EXCLUDED.medical_notes,
         signature_data = EXCLUDED.signature_data,
         legal_version = EXCLUDED.legal_version,
         document_hash = EXCLUDED.document_hash,
@@ -397,7 +422,7 @@ export async function submitPlayerConsent(
         playerId, playerName, teamId, isMinor,
         signerType, signerName, signerDni, signerRelationship,
         signerEmail, signerPhone,
-        consentSocialMedia, consentStreaming, consentPress,
+        consentSocialMedia, consentStreaming, consentPress, consentTravel, medicalNotes,
         signatureData, legalVersion, documentHash,
         ipAddress, userAgent
       ]
@@ -489,6 +514,8 @@ export async function getAdminConsentDashboard(): Promise<{
     consent_social_media: boolean | null;
     consent_streaming: boolean | null;
     consent_press: boolean | null;
+    consent_travel: boolean | null;
+    medical_notes: string | null;
     document_hash: string | null;
     signature_data: string | null;
   }>(`
@@ -496,6 +523,7 @@ export async function getAdminConsentDashboard(): Promise<{
       c.player_id, c.player_name, c.team_id, c.birth_year, c.dni_last5,
       p.id AS consent_id, p.created_at, p.signer_name, p.signer_dni, p.signer_relationship,
       p.signer_phone, p.signer_email, p.consent_social_media, p.consent_streaming, p.consent_press,
+      COALESCE(p.consent_travel, true) AS consent_travel, p.medical_notes,
       p.document_hash, p.signature_data
     FROM player_census c
     LEFT JOIN player_consents p ON c.player_id = p.player_id
@@ -551,6 +579,8 @@ export async function getAdminConsentDashboard(): Promise<{
       consentSocialMedia: r.consent_social_media ?? undefined,
       consentStreaming: r.consent_streaming ?? undefined,
       consentPress: r.consent_press ?? undefined,
+      consentTravel: r.consent_travel ?? undefined,
+      medicalNotes: r.medical_notes || undefined,
       documentHash: r.document_hash || undefined,
       signatureData: r.signature_data || undefined
     };
@@ -741,5 +771,259 @@ export function verifyAdminSessionToken(token: string | null | undefined): boole
     return typeof payload.exp === 'number' && payload.exp > Date.now();
   } catch {
     return false;
+  }
+}
+
+/**
+ * Emite un token firmado con HMAC para acceso directo (Magic Link) sin necesidad de DNI ni fecha de nacimiento.
+ * Permite adjuntar datos pre-rellenados (tutor, teléfono, DNI) para ahorrar tiempo al declarante.
+ * Válido por 30 días para facilitar a los padres o deportistas firmar desde su móvil.
+ */
+export function createDirectConsentToken(
+  playerId: string,
+  prefill?: DirectConsentPrefill,
+  daysValid = 30
+): string {
+  const secret = getAdminSessionSecret();
+  const payload = {
+    playerId,
+    prefill: prefill || undefined,
+    exp: Date.now() + daysValid * 24 * 60 * 60 * 1000,
+  };
+  const b64Payload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', secret)
+    .update(`direct-consent:${playerId}:${b64Payload}`)
+    .digest('base64url');
+
+  return `${b64Payload}.${signature}`;
+}
+
+/**
+ * Valida el token de enlace directo comprobando la firma HMAC en tiempo constante y su expiración.
+ * Extrae los datos pre-rellenados si fueron codificados por la administración.
+ */
+export function verifyDirectConsentToken(token: string | null | undefined): {
+  valid: boolean;
+  playerId?: string;
+  prefill?: DirectConsentPrefill;
+  error?: string;
+} {
+  if (!token) return { valid: false, error: 'Enlace no válido (falta token).' };
+  const parts = token.split('.');
+  if (parts.length !== 2) return { valid: false, error: 'Formato de enlace directo no válido.' };
+
+  try {
+    const secret = getAdminSessionSecret();
+    const [b64Payload, signature] = parts;
+    const payload = JSON.parse(Buffer.from(b64Payload, 'base64url').toString('utf8'));
+    const playerId = payload.playerId;
+
+    if (!playerId || typeof payload.exp !== 'number' || payload.exp <= Date.now()) {
+      return { valid: false, error: 'El enlace directo ha caducado. Solicita uno nuevo a la directiva del club.' };
+    }
+
+    const expectedSig = crypto
+      .createHmac('sha256', secret)
+      .update(`direct-consent:${playerId}:${b64Payload}`)
+      .digest('base64url');
+
+    const sigBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+      return { valid: false, error: 'Firma de seguridad no válida.' };
+    }
+
+    return { valid: true, playerId, prefill: payload.prefill };
+  } catch {
+    return { valid: false, error: 'Error al verificar el enlace directo.' };
+  }
+}
+
+/**
+ * Obtiene los datos del deportista mediante Enlace Directo (sin solicitar fecha ni DNI).
+ * Pre-rellena automáticamente todos los datos conocidos del deportista o del tutor legal
+ * para ahorrar tiempo al firmante. Emite inmediatamente un token de verificación seguro para el Paso 2.
+ */
+export async function getPlayerDataForDirectConsent(
+  playerId: string,
+  tokenPrefill?: DirectConsentPrefill
+): Promise<VerificationResult> {
+  const rows = await queryNeon<{
+    player_id: string;
+    player_name: string;
+    team_id: string;
+    birth_year: number | null;
+    birth_date: string | null;
+    dni_last5: string | null;
+    dni_encrypted: string | null;
+    parent_name?: string | null;
+    parent_dni?: string | null;
+    parent_relationship?: string | null;
+    contact_phone?: string | null;
+    contact_email?: string | null;
+  }>(
+    `SELECT player_id, player_name, team_id, birth_year, birth_date, dni_last5, dni_encrypted,
+            parent_name, parent_dni, parent_relationship, contact_phone, contact_email
+     FROM player_census WHERE player_id = $1 LIMIT 1;`,
+    [playerId]
+  );
+
+  let censusRecord = rows[0];
+
+  if (!censusRecord) {
+    const staticPlayer = FAVB_PLAYERS.find((p) => p.id === playerId);
+    if (!staticPlayer) {
+      return {
+        valid: false,
+        error: 'Deportista no encontrado en el censo oficial del club.',
+      };
+    }
+    censusRecord = {
+      player_id: staticPlayer.id,
+      player_name: `${staticPlayer.firstName} ${staticPlayer.lastName}`.trim(),
+      team_id: staticPlayer.teamId,
+      birth_year: staticPlayer.birthYear || null,
+      birth_date: null,
+      dni_last5: null,
+      dni_encrypted: null,
+    };
+  }
+
+  const currentYear = 2026;
+  const isMinor = (censusRecord.birth_year || 2010) > currentYear - 18;
+
+  // Descifrar DNI si está disponible de forma segura
+  let decryptedDni = '';
+  if (censusRecord.dni_encrypted) {
+    try {
+      decryptedDni = decryptData(censusRecord.dni_encrypted);
+    } catch {
+      decryptedDni = '';
+    }
+  }
+
+  // Comprobar si ya existe consentimiento firmado
+  const consentRows = await queryNeon<{
+    id: string;
+    signer_name: string;
+    signer_dni: string;
+    signer_relationship: string;
+    signer_phone: string | null;
+    signer_email: string | null;
+    consent_social_media: boolean;
+    consent_streaming: boolean;
+    consent_press: boolean;
+    consent_travel: boolean;
+    medical_notes: string | null;
+    created_at: string;
+  }>(
+    `SELECT id, signer_name, signer_dni, signer_relationship, signer_phone, signer_email,
+            consent_social_media, consent_streaming, consent_press, 
+            COALESCE(consent_travel, true) AS consent_travel,
+            medical_notes, created_at 
+     FROM player_consents WHERE player_id = $1 LIMIT 1;`,
+    [playerId]
+  );
+
+  const existing = consentRows[0];
+
+  // Construir datos pre-rellenados basados en lo que ya sabemos y disponemos
+  let prefilledData: DirectConsentPrefill;
+  if (!isMinor) {
+    // Mayor de edad (+18): El firmante es el propio deportista
+    prefilledData = {
+      signerName: tokenPrefill?.signerName || censusRecord.player_name,
+      signerDni: tokenPrefill?.signerDni || decryptedDni || censusRecord.dni_last5 || '',
+      signerRelationship: 'PROPIO_JUGADOR',
+      signerPhone: tokenPrefill?.signerPhone || censusRecord.contact_phone || '',
+      signerEmail: tokenPrefill?.signerEmail || censusRecord.contact_email || '',
+    };
+  } else {
+    // Menor de edad: Datos del padre/madre/tutor legal
+    prefilledData = {
+      signerName: tokenPrefill?.signerName || existing?.signer_name || censusRecord.parent_name || '',
+      signerDni: tokenPrefill?.signerDni || existing?.signer_dni || censusRecord.parent_dni || '',
+      signerRelationship: (tokenPrefill?.signerRelationship || existing?.signer_relationship || censusRecord.parent_relationship || 'MADRE') as any,
+      signerPhone: tokenPrefill?.signerPhone || existing?.signer_phone || censusRecord.contact_phone || '',
+      signerEmail: tokenPrefill?.signerEmail || existing?.signer_email || censusRecord.contact_email || '',
+    };
+  }
+
+  if (existing) {
+    return {
+      valid: true,
+      alreadySigned: true,
+      verificationToken: createConsentVerificationToken(censusRecord.player_id),
+      prefilledData,
+      player: {
+        id: censusRecord.player_id,
+        name: censusRecord.player_name,
+        teamId: censusRecord.team_id,
+        teamName: getTeamNameById(censusRecord.team_id),
+        birthYear: censusRecord.birth_year || 2010,
+        isMinor,
+      },
+      existingConsent: {
+        id: existing.id,
+        signedAt: existing.created_at,
+        signerName: existing.signer_name,
+        signerDni: maskDni(existing.signer_dni),
+        signerRelationship: existing.signer_relationship,
+        consentSocialMedia: existing.consent_social_media,
+        consentStreaming: existing.consent_streaming,
+        consentPress: existing.consent_press,
+        consentTravel: existing.consent_travel,
+        medicalNotes: existing.medical_notes || undefined,
+      },
+    };
+  }
+
+  return {
+    valid: true,
+    alreadySigned: false,
+    verificationToken: createConsentVerificationToken(censusRecord.player_id),
+    prefilledData,
+    player: {
+      id: censusRecord.player_id,
+      name: censusRecord.player_name,
+      teamId: censusRecord.team_id,
+      teamName: getTeamNameById(censusRecord.team_id),
+      birthYear: censusRecord.birth_year || 2010,
+      isMinor,
+    },
+  };
+}
+
+/**
+ * Actualiza los datos de tutor y contacto en la ficha del censo para que queden persistidos
+ */
+export async function updatePlayerCensusParentInfo(
+  playerId: string,
+  data: DirectConsentPrefill
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await queryNeon(
+      `UPDATE player_census 
+       SET parent_name = COALESCE($1, parent_name),
+           parent_dni = COALESCE($2, parent_dni),
+           parent_relationship = COALESCE($3, parent_relationship),
+           contact_phone = COALESCE($4, contact_phone),
+           contact_email = COALESCE($5, contact_email),
+           updated_at = NOW()
+       WHERE player_id = $6;`,
+      [
+        data.signerName || null,
+        data.signerDni || null,
+        data.signerRelationship || null,
+        data.signerPhone || null,
+        data.signerEmail || null,
+        playerId,
+      ]
+    );
+    return { success: true };
+  } catch (err) {
+    console.error('[ConsentStore] Error updating parent info:', err);
+    return { success: false, error: 'Error al actualizar los datos en el censo' };
   }
 }

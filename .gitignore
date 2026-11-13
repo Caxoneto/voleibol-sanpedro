@@ -44,6 +44,10 @@ next-env.d.ts
 
 # working artifacts
 *.psd
+*.doc
+*.docx
+*.DOC
+*.DOCX
 Gmail - Security Alert*.pdf
 guion-presentacion.html
 

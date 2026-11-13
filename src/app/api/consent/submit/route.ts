@@ -37,8 +37,10 @@ export async function POST(req: NextRequest) {
       consentSocialMedia: !!body.consentSocialMedia,
       consentStreaming: !!body.consentStreaming,
       consentPress: !!body.consentPress,
+      consentTravel: body.consentTravel !== undefined ? !!body.consentTravel : true,
+      medicalNotes: body.medicalNotes ? String(body.medicalNotes).trim() : '',
       signatureData: body.signatureData,
-      legalVersion: 'v1_2026_11',
+      legalVersion: 'v2_2026_junta',
       ipAddress,
       userAgent
     };

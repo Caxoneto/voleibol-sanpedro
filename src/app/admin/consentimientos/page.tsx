@@ -20,6 +20,15 @@ import {
   Edit2,
   Trash2,
   FileSpreadsheet,
+  Link as LinkIcon,
+  Share2,
+  Send,
+  Bus,
+  HeartPulse,
+  ExternalLink,
+  X,
+  Save,
+  FileText,
 } from 'lucide-react';
 import { CLUB_INFO } from '@/lib/data-store';
 import { generateConsentPdf } from '@/lib/pdf-consent';
@@ -43,6 +52,8 @@ interface PlayerDashboardItem {
   consentSocialMedia?: boolean;
   consentStreaming?: boolean;
   consentPress?: boolean;
+  consentTravel?: boolean;
+  medicalNotes?: string;
   documentHash?: string;
   signatureData?: string;
 }
@@ -102,6 +113,141 @@ export default function AdminConsentimientosPage() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkTextInput, setBulkTextInput] = useState('');
   const [bulkResult, setBulkResult] = useState<string | null>(null);
+
+  // Modal de Enlace Directo (Magic Link) y campos pre-rellenados
+  const [directLinkPlayer, setDirectLinkPlayer] = useState<PlayerDashboardItem | null>(null);
+  const [directLinkData, setDirectLinkData] = useState<{
+    directUrl: string;
+    directToken: string;
+    whatsappText: string;
+  } | null>(null);
+  const [isLoadingDirectLink, setIsLoadingDirectLink] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedMsg, setCopiedMsg] = useState(false);
+
+  // Estados de los campos pre-rellenados
+  const [prefillName, setPrefillName] = useState('');
+  const [prefillDni, setPrefillDni] = useState('');
+  const [prefillRelationship, setPrefillRelationship] = useState('MADRE');
+  const [prefillPhone, setPrefillPhone] = useState('');
+  const [prefillEmail, setPrefillEmail] = useState('');
+  const [saveToCensus, setSaveToCensus] = useState(false);
+  const [isUpdatingPrefill, setIsUpdatingPrefill] = useState(false);
+  const [prefillNotice, setPrefillNotice] = useState<string | null>(null);
+
+  // Abrir modal de enlace directo y generar token inicial con datos disponibles
+  const handleOpenDirectLinkModal = async (player: PlayerDashboardItem) => {
+    setDirectLinkPlayer(player);
+    setDirectLinkData(null);
+    setCopiedLink(false);
+    setCopiedMsg(false);
+    setPrefillNotice(null);
+    setSaveToCensus(false);
+    setIsLoadingDirectLink(true);
+
+    try {
+      const res = await fetch('/api/admin/direct-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: player.playerId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setDirectLinkData({
+          directUrl: json.directUrl,
+          directToken: json.directToken,
+          whatsappText: json.whatsappText,
+        });
+
+        // Cargar datos pre-rellenados obtenidos del censo o consentimiento previo
+        const pre = json.prefilledData || {};
+        setPrefillName(pre.signerName || (player.isMinor ? '' : player.playerName));
+        setPrefillDni(pre.signerDni || '');
+        setPrefillRelationship(pre.signerRelationship || (player.isMinor ? 'MADRE' : 'PROPIO_JUGADOR'));
+        setPrefillPhone(pre.signerPhone || '');
+        setPrefillEmail(pre.signerEmail || '');
+      } else {
+        alert(json.error || 'Error al generar enlace directo');
+      }
+    } catch {
+      alert('Error de conexión al generar enlace directo');
+    } finally {
+      setIsLoadingDirectLink(false);
+    }
+  };
+
+  // Actualizar el enlace directo y mensaje con datos modificados en el modal
+  const handleUpdateDirectLink = async (persistToCensus: boolean = false) => {
+    if (!directLinkPlayer) return;
+    setIsUpdatingPrefill(true);
+    setPrefillNotice(null);
+
+    try {
+      const res = await fetch('/api/admin/direct-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: directLinkPlayer.playerId,
+          customPrefill: {
+            signerName: prefillName.trim(),
+            signerDni: prefillDni.trim().toUpperCase(),
+            signerRelationship: prefillRelationship,
+            signerPhone: prefillPhone.trim(),
+            signerEmail: prefillEmail.trim(),
+          },
+          saveToCensus: persistToCensus,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setDirectLinkData({
+          directUrl: json.directUrl,
+          directToken: json.directToken,
+          whatsappText: json.whatsappText,
+        });
+        if (persistToCensus) {
+          setPrefillNotice('✓ Datos guardados en la ficha del censo del club y enlace actualizado.');
+          loadDashboardData();
+        } else {
+          setPrefillNotice('✓ Enlace y WhatsApp actualizados con los nuevos datos.');
+        }
+        setTimeout(() => setPrefillNotice(null), 4000);
+      } else {
+        alert(json.error || 'Error al actualizar enlace');
+      }
+    } catch {
+      alert('Error de conexión al actualizar enlace');
+    } finally {
+      setIsUpdatingPrefill(false);
+    }
+  };
+
+  // Descargar Modelo Oficial en PDF con los datos pre-rellenados (Borrador para firma física)
+  const handleDownloadDraftPdf = () => {
+    if (!directLinkPlayer) return;
+
+    const doc = generateConsentPdf({
+      playerName: directLinkPlayer.playerName,
+      teamName: directLinkPlayer.teamName,
+      birthYear: directLinkPlayer.birthYear,
+      isMinor: directLinkPlayer.isMinor,
+      signerName: prefillName.trim() || directLinkPlayer.playerName,
+      signerDni: prefillDni.trim().toUpperCase(),
+      signerRelationship: prefillRelationship,
+      signerPhone: prefillPhone.trim(),
+      signerEmail: prefillEmail.trim(),
+      consentSocialMedia: true,
+      consentStreaming: true,
+      consentPress: true,
+      consentTravel: true,
+      medicalNotes: '',
+      // signatureData no se pasa para que el recuadro quede en blanco listo para firmar físicamente
+    });
+
+    const safeName = directLinkPlayer.playerName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    doc.save(`modelo_oficial_junta_andalucia_${safeName}_prerellenado.pdf`);
+  };
 
   // Cargar datos
   const loadDashboardData = useCallback(async () => {
@@ -272,7 +418,7 @@ export default function AdminConsentimientosPage() {
     }
   };
 
-  // Descargar PDF de un jugador
+  // Descargar PDF oficial de un jugador (Modelos Junta de Andalucía Anexo 05 y 06)
   const handleDownloadPdf = (player: PlayerDashboardItem) => {
     if (!player.isSigned) return;
 
@@ -290,13 +436,15 @@ export default function AdminConsentimientosPage() {
       consentSocialMedia: !!player.consentSocialMedia,
       consentStreaming: !!player.consentStreaming,
       consentPress: !!player.consentPress,
+      consentTravel: player.consentTravel !== false,
+      medicalNotes: player.medicalNotes,
       signatureData: player.signatureData,
       documentHash: player.documentHash,
       signedAt: player.signedAt,
     });
 
     const safeName = player.playerName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    doc.save(`autorizacion_cdv_${safeName}.pdf`);
+    doc.save(`autorizaciones_junta_andalucia_${safeName}.pdf`);
   };
 
   // Exportar listado CSV
@@ -733,6 +881,7 @@ export default function AdminConsentimientosPage() {
                   <th className="py-3 px-3 text-center">Redes</th>
                   <th className="py-3 px-3 text-center">Streaming</th>
                   <th className="py-3 px-3 text-center">Prensa</th>
+                  <th className="py-3 px-3 text-center">Desplaz.</th>
                   <th className="py-3 px-3">Fecha Firma</th>
                   <th className="py-3 px-4 text-right">Acciones</th>
                 </tr>
@@ -740,7 +889,7 @@ export default function AdminConsentimientosPage() {
               <tbody className="divide-y divide-white/5 text-on-surface">
                 {filteredPlayers.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-sm text-tertiary">
+                    <td colSpan={11} className="py-12 text-center text-sm text-tertiary">
                       No se han encontrado deportistas con los filtros seleccionados.
                     </td>
                   </tr>
@@ -888,6 +1037,23 @@ export default function AdminConsentimientosPage() {
                         )}
                       </td>
 
+                      {/* Anexo 06: Desplazamientos y Asistencia Médica */}
+                      <td className="py-3.5 px-3 text-center">
+                        {p.isSigned ? (
+                          p.consentTravel !== false ? (
+                            <span className="text-blue-400 font-bold" title="Autorizado para Desplazamientos y Viajes (Anexo 06)">
+                              <Bus className="w-4 h-4 inline" />
+                            </span>
+                          ) : (
+                            <span className="text-red-400 font-bold text-[10px] bg-red-950/60 px-1 py-0.5 rounded" title="NO AUTORIZADO PARA VIAJES">
+                              ✕ NO
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-tertiary">-</span>
+                        )}
+                      </td>
+
                       {/* Fecha de Firma */}
                       <td className="py-3.5 px-3 text-[11px] text-tertiary">
                         {p.signedAt ? (
@@ -904,26 +1070,35 @@ export default function AdminConsentimientosPage() {
 
                       {/* Acciones */}
                       <td className="py-3.5 px-4 text-right">
-                        {p.isSigned ? (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleDownloadPdf(p)}
-                              className="p-1.5 bg-surface-container-high hover:bg-surface-container-highest text-white rounded transition-colors"
-                              title="Descargar Resguardo PDF"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleRevoke(p)}
-                              className="p-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 rounded transition-colors"
-                              title="Revocar / Eliminar autorización"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-tertiary italic">Esperando firma</span>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Botón de Enlace Directo / WhatsApp (siempre accesible) */}
+                          <button
+                            onClick={() => handleOpenDirectLinkModal(p)}
+                            className="p-1.5 bg-primary/20 hover:bg-primary text-primary hover:text-white border border-primary/30 rounded transition-colors cursor-pointer"
+                            title="Generar Enlace Directo sin DNI / Enviar por WhatsApp"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {p.isSigned && (
+                            <>
+                              <button
+                                onClick={() => handleDownloadPdf(p)}
+                                className="p-1.5 bg-surface-container-high hover:bg-surface-container-highest text-white rounded transition-colors cursor-pointer"
+                                title="Descargar Resguardo PDF Oficial (Junta de Andalucía)"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleRevoke(p)}
+                                className="p-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 rounded transition-colors cursor-pointer"
+                                title="Revocar / Eliminar autorización"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -992,6 +1167,302 @@ export default function AdminConsentimientosPage() {
                 className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase rounded transition-colors shadow-lg shadow-primary/20"
               >
                 Actualizar Fichas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL DE ENLACE DIRECTO (MAGIC LINK) Y DATOS PRE-RELLENADOS               */}
+      {/* ========================================================================= */}
+      {directLinkPlayer && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surface-container-lowest border border-white/10 rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl my-8">
+            {/* Cabecera */}
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold uppercase rounded">
+                  ACCESO DIRECTO
+                </span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Enlace y Documento Oficial Pre-rellenado
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setDirectLinkPlayer(null);
+                  setDirectLinkData(null);
+                }}
+                className="text-tertiary hover:text-white p-1 cursor-pointer transition-colors"
+                title="Cerrar modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Datos del deportista */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface-container-low rounded-xl border border-white/5">
+              <div>
+                <div className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>{directLinkPlayer.playerName}</span>
+                  <span className="px-1.5 py-0.5 bg-white/10 text-white/90 text-[10px] font-semibold rounded">
+                    {directLinkPlayer.teamName}
+                  </span>
+                </div>
+                <div className="text-xs text-tertiary">
+                  Nacimiento: {directLinkPlayer.birthYear || 'N/D'} · {directLinkPlayer.isMinor ? 'Menor de edad (Firma tutor legal)' : 'Mayor de edad (+18)'}
+                </div>
+              </div>
+              {directLinkPlayer.dniLast5 && (
+                <div className="text-xs text-tertiary">
+                  DNI Censo: <span className="font-mono text-white font-bold">{directLinkPlayer.dniLast5}</span>
+                </div>
+              )}
+            </div>
+
+            {isLoadingDirectLink ? (
+              <div className="py-8 text-center text-xs text-tertiary space-y-2">
+                <RefreshCw className="w-5 h-5 animate-spin mx-auto text-primary" />
+                <p>Cargando datos del deportista y generando enlace seguro con firma criptográfica HMAC...</p>
+              </div>
+            ) : directLinkData ? (
+              <div className="space-y-5">
+                {/* Explicación y aviso */}
+                <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-lg text-xs text-emerald-200 leading-relaxed">
+                  Al abrir este enlace, el firmante accede directamente al formulario oficial con los datos del deportista pre-verificados por el Club y <strong>los campos ya completados para ahorrarle tener que escribirlos</strong>. Solo debe revisarlos y firmar en pantalla.
+                </div>
+
+                {/* Formulario de Campos Pre-rellenados Editables */}
+                <div className="space-y-3 p-4 bg-surface-container-low/60 rounded-xl border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Edit2 className="w-3.5 h-3.5 text-primary" />
+                      <span>Datos del Firmante para Pre-rellenar</span>
+                    </span>
+                    <span className="text-[11px] text-tertiary">
+                      {directLinkPlayer.isMinor ? 'Padre / Madre / Tutor' : 'Deportista (+18)'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Nombre y Apellidos */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                        Nombre y Apellidos del Firmante
+                      </label>
+                      <input
+                        type="text"
+                        value={prefillName}
+                        onChange={(e) => setPrefillName(e.target.value)}
+                        placeholder="Nombre completo"
+                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    {/* DNI / NIE */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                        DNI / NIE Firmante
+                      </label>
+                      <input
+                        type="text"
+                        value={prefillDni}
+                        onChange={(e) => setPrefillDni(e.target.value.toUpperCase())}
+                        placeholder="12345678A"
+                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    {/* Parentesco */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                        Parentesco / Condición
+                      </label>
+                      <select
+                        value={prefillRelationship}
+                        onChange={(e) => setPrefillRelationship(e.target.value)}
+                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary"
+                      >
+                        {directLinkPlayer.isMinor ? (
+                          <>
+                            <option value="MADRE">Madre</option>
+                            <option value="PADRE">Padre</option>
+                            <option value="TUTOR_LEGAL">Tutor / Tutora Legal</option>
+                          </>
+                        ) : (
+                          <option value="PROPIO_JUGADOR">Propio Deportista (Mayor de edad)</option>
+                        )}
+                      </select>
+                    </div>
+
+                    {/* Teléfono */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                        Teléfono Móvil
+                      </label>
+                      <input
+                        type="tel"
+                        value={prefillPhone}
+                        onChange={(e) => setPrefillPhone(e.target.value)}
+                        placeholder="600 000 000"
+                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                        Correo Electrónico
+                      </label>
+                      <input
+                        type="email"
+                        value={prefillEmail}
+                        onChange={(e) => setPrefillEmail(e.target.value)}
+                        placeholder="contacto@ejemplo.com"
+                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Acciones de prefill */}
+                  <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/5">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs text-white/80">
+                      <input
+                        type="checkbox"
+                        checked={saveToCensus}
+                        onChange={(e) => setSaveToCensus(e.target.checked)}
+                        className="w-4 h-4 rounded border-white/20 bg-surface-container-high text-primary focus:ring-primary"
+                      />
+                      <span>Guardar permanentemente en la ficha del censo del club</span>
+                    </label>
+
+                    <button
+                      type="button"
+                      disabled={isUpdatingPrefill}
+                      onClick={() => handleUpdateDirectLink(saveToCensus)}
+                      className="px-3.5 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {isUpdatingPrefill ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Actualizando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Actualizar Enlace y WhatsApp</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {prefillNotice && (
+                    <div className="p-2.5 bg-emerald-950/60 border border-emerald-500/40 rounded-lg text-xs text-emerald-200">
+                      {prefillNotice}
+                    </div>
+                  )}
+                </div>
+
+                {/* Enlace Directo Generado */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-white/80 uppercase tracking-wider">
+                      Enlace Directo Generado
+                    </label>
+                    <span className="text-[11px] text-tertiary">Válido 30 días</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={directLinkData.directUrl}
+                      className="w-full bg-surface-container-low border border-white/15 rounded-lg px-3 py-2 text-xs font-mono text-white/90 select-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(directLinkData.directUrl);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2500);
+                      }}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold uppercase transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                        copiedLink
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-surface-container-high hover:bg-surface-container-highest text-white'
+                      }`}
+                    >
+                      {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      <span>{copiedLink ? 'Copiado' : 'Copiar'}</span>
+                    </button>
+                    <a
+                      href={directLinkData.directUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 bg-surface-container-high hover:bg-surface-container-highest text-white rounded-lg transition-colors shrink-0 cursor-pointer"
+                      title="Abrir y probar enlace en nueva pestaña"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Compartir por WhatsApp */}
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                  <label className="block text-xs font-bold text-white/80 uppercase tracking-wider">
+                    Compartir por WhatsApp con la Familia
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(directLinkData.whatsappText)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2.5 px-4 bg-[#25D366] hover:bg-[#20ba59] text-black font-bold text-xs uppercase tracking-wider rounded-lg transition-colors inline-flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Enviar por WhatsApp</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(directLinkData.whatsappText);
+                        setCopiedMsg(true);
+                        setTimeout(() => setCopiedMsg(false), 2500);
+                      }}
+                      className="py-2.5 px-3 bg-surface-container-high hover:bg-surface-container-highest text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                    >
+                      {copiedMsg ? 'Mensaje Copiado' : 'Copiar Mensaje'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Descargar Documento Oficial PDF Pre-rellenado (Junta de Andalucía) */}
+                <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="text-xs text-tertiary">
+                    ¿Necesitas el documento impreso para firma presencial en papel?
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDownloadDraftPdf}
+                    className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer border border-white/10"
+                  >
+                    <Download className="w-4 h-4 text-primary" />
+                    <span>Descargar PDF Pre-rellenado</span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="pt-3 border-t border-white/10 text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  setDirectLinkPlayer(null);
+                  setDirectLinkData(null);
+                }}
+                className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white/80 text-xs font-bold uppercase rounded-lg cursor-pointer"
+              >
+                Cerrar
               </button>
             </div>
           </div>
