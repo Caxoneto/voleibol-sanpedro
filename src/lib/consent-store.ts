@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { queryNeon } from './streaming-store';
 import { FAVB_TEAMS, FAVB_PLAYERS } from './favb-data';
-import { encryptData, generateBlindIndex } from './encryption';
+import { encryptData, generateBlindIndex, maskDni } from './encryption';
 
 export interface PlayerCensusRecord {
   playerId: string;
@@ -48,6 +48,7 @@ export interface VerificationResult {
     isMinor: boolean;
   };
   alreadySigned?: boolean;
+  verificationToken?: string;
   existingConsent?: {
     id: string;
     signedAt: string;
@@ -61,6 +62,7 @@ export interface VerificationResult {
 }
 
 export interface ConsentSubmissionPayload {
+  verificationToken: string;
   playerId: string;
   playerName: string;
   teamId: string;
@@ -259,6 +261,7 @@ export async function verifyPlayerIdentity(
     return {
       valid: true,
       alreadySigned: true,
+      verificationToken: createConsentVerificationToken(censusRecord.player_id),
       player: {
         id: censusRecord.player_id,
         name: censusRecord.player_name,
@@ -271,7 +274,7 @@ export async function verifyPlayerIdentity(
         id: existing.id,
         signedAt: existing.created_at,
         signerName: existing.signer_name,
-        signerDni: existing.signer_dni,
+        signerDni: maskDni(existing.signer_dni),
         signerRelationship: existing.signer_relationship,
         consentSocialMedia: existing.consent_social_media,
         consentStreaming: existing.consent_streaming,
@@ -283,6 +286,7 @@ export async function verifyPlayerIdentity(
   return {
     valid: true,
     alreadySigned: false,
+    verificationToken: createConsentVerificationToken(censusRecord.player_id),
     player: {
       id: censusRecord.player_id,
       name: censusRecord.player_name,
@@ -302,6 +306,7 @@ export async function submitPlayerConsent(
 ): Promise<{ success: boolean; consentId?: string; documentHash?: string; error?: string }> {
   try {
     const {
+      verificationToken,
       playerId,
       playerName,
       teamId,
@@ -322,12 +327,31 @@ export async function submitPlayerConsent(
       userAgent = ''
     } = payload;
 
+    // Validación estricta del token de verificación emitido en el Paso 1
+    if (!verificationToken || !verifyConsentVerificationToken(verificationToken, playerId)) {
+      return {
+        success: false,
+        error: 'Sesión de verificación no válida o expirada. Por favor, vuelve al Paso 1 y valida la identidad del deportista.'
+      };
+    }
+
     if (!playerId || !signerName || !signerDni || !signatureData) {
       return { success: false, error: 'Faltan campos obligatorios para registrar la autorización.' };
     }
 
-    if (!signatureData.startsWith('data:image/')) {
-      return { success: false, error: 'Firma gráfica no válida.' };
+    // Limitación estricta de tamaño de firma para prevenir DoS / consumo excesivo de memoria
+    if (!signatureData.startsWith('data:image/') || signatureData.length > 131072) {
+      return { success: false, error: 'Firma gráfica no válida o excede el límite permitido (128 KB).' };
+    }
+
+    // Límites de longitud defensivos para campos de texto
+    if (
+      signerName.length > 150 ||
+      signerDni.length > 20 ||
+      (signerEmail && signerEmail.length > 150) ||
+      (signerPhone && signerPhone.length > 30)
+    ) {
+      return { success: false, error: 'Uno o más campos exceden la longitud máxima permitida.' };
     }
 
     // Calcular hash SHA-256 de integridad jurídica
@@ -617,18 +641,77 @@ export async function revokePlayerConsent(
 }
 
 /**
- * Gestión de Sesión Segura de Administrador mediante HMAC
+ * Obtiene el secreto de firma seguro para sesiones y tokens de verificación.
+ * Aplica el principio fail-closed estricto: lanza un error si la variable no está inyectada.
  */
-const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || 'cdv-super-secure-session-key-fallback-2026';
+function getAdminSessionSecret(): string {
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    throw new Error('[Security] ADMIN_SESSION_SECRET no está configurada en las variables de entorno.');
+  }
+  return secret;
+}
 
+/**
+ * Emite un token temporal (15 minutos) firmado con HMAC para garantizar que
+ * el envío del consentimiento en el Paso 2 proviene de una verificación válida en el Paso 1.
+ */
+export function createConsentVerificationToken(playerId: string): string {
+  const secret = getAdminSessionSecret();
+  const payload = {
+    playerId,
+    exp: Date.now() + 15 * 60 * 1000, // 15 minutos de validez
+  };
+  const b64Payload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', secret)
+    .update(`consent-verification:${playerId}:${b64Payload}`)
+    .digest('base64url');
+
+  return `${b64Payload}.${signature}`;
+}
+
+/**
+ * Valida el token de verificación en tiempo constante comprobando expiración y coincidencia de deportista.
+ */
+export function verifyConsentVerificationToken(token: string | null | undefined, playerId: string): boolean {
+  if (!token || !playerId) return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+
+  try {
+    const secret = getAdminSessionSecret();
+    const [b64Payload, signature] = parts;
+    const expectedSig = crypto
+      .createHmac('sha256', secret)
+      .update(`consent-verification:${playerId}:${b64Payload}`)
+      .digest('base64url');
+
+    const sigBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+      return false;
+    }
+
+    const payload = JSON.parse(Buffer.from(b64Payload, 'base64url').toString('utf8'));
+    return payload.playerId === playerId && typeof payload.exp === 'number' && payload.exp > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Gestión de Sesión Segura de Administrador mediante HMAC con comparación en tiempo constante.
+ */
 export function createAdminSessionToken(username: string): string {
+  const secret = getAdminSessionSecret();
   const payload = {
     user: username,
     exp: Date.now() + 24 * 60 * 60 * 1000 // 24 horas
   };
   const b64Payload = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = crypto
-    .createHmac('sha256', SESSION_SECRET)
+    .createHmac('sha256', secret)
     .update(b64Payload)
     .digest('base64url');
 
@@ -640,17 +723,22 @@ export function verifyAdminSessionToken(token: string | null | undefined): boole
   const parts = token.split('.');
   if (parts.length !== 2) return false;
 
-  const [b64Payload, signature] = parts;
-  const expectedSig = crypto
-    .createHmac('sha256', SESSION_SECRET)
-    .update(b64Payload)
-    .digest('base64url');
-
-  if (signature !== expectedSig) return false;
-
   try {
+    const secret = getAdminSessionSecret();
+    const [b64Payload, signature] = parts;
+    const expectedSig = crypto
+      .createHmac('sha256', secret)
+      .update(b64Payload)
+      .digest('base64url');
+
+    const sigBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+      return false;
+    }
+
     const payload = JSON.parse(Buffer.from(b64Payload, 'base64url').toString('utf8'));
-    return payload.exp && payload.exp > Date.now();
+    return typeof payload.exp === 'number' && payload.exp > Date.now();
   } catch {
     return false;
   }

@@ -1,11 +1,33 @@
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminSessionToken } from '@/lib/consent-store';
+import { getClientIp, adminLoginRateLimiter } from '@/lib/rate-limiter';
 
 export const dynamic = 'force-dynamic';
 
+function safeTimingCompare(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const hashA = crypto.createHash('sha256').update(a).digest();
+  const hashB = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const clientIp = getClientIp(req);
+
+    if (adminLoginRateLimiter.isRateLimited(clientIp)) {
+      const remainingSec = adminLoginRateLimiter.getRemainingSeconds(clientIp);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Demasiados intentos fallidos. Espera ${Math.ceil(remainingSec / 60)} minutos antes de reintentar.`,
+        },
+        { status: 429 }
+      );
+    }
+
     const { username, password } = await req.json();
 
     const expectedUser = process.env.ADMIN_USER;
@@ -22,7 +44,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (username !== expectedUser || password !== expectedPassword) {
+    const isUserValid = safeTimingCompare(username, expectedUser);
+    const isPassValid = safeTimingCompare(password, expectedPassword);
+
+    if (!isUserValid || !isPassValid) {
+      adminLoginRateLimiter.recordFailedAttempt(clientIp);
       return NextResponse.json(
         {
           success: false,
@@ -31,6 +57,8 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+
+    adminLoginRateLimiter.clearAttempts(clientIp);
 
     const sessionToken = createAdminSessionToken(username);
 

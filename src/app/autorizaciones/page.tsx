@@ -53,6 +53,7 @@ function AutorizacionesContent() {
     birthYear: number;
     isMinor: boolean;
   } | null>(null);
+  const [verificationToken, setVerificationToken] = useState<string>('');
 
   // Si ya estaba firmado previamente
   const [alreadySignedData, setAlreadySignedData] = useState<{
@@ -158,6 +159,7 @@ function AutorizacionesContent() {
       }
 
       setVerifiedPlayer(data.player);
+      setVerificationToken(data.verificationToken || '');
 
       if (data.alreadySigned && data.existingConsent) {
         setAlreadySignedData(data.existingConsent);
@@ -254,6 +256,7 @@ function AutorizacionesContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          verificationToken,
           playerId: verifiedPlayer.id,
           playerName: verifiedPlayer.name,
           teamId: verifiedPlayer.teamId,

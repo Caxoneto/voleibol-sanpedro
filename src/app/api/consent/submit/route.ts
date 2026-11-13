@@ -11,7 +11,18 @@ export async function POST(req: NextRequest) {
     const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : req.headers.get('x-real-ip') || '127.0.0.1';
     const userAgent = req.headers.get('user-agent') || 'Desconocido';
 
+    if (!body.verificationToken) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Se requiere un token de verificación válido. Por favor, completa la verificación en el Paso 1.',
+        },
+        { status: 403 }
+      );
+    }
+
     const payload: ConsentSubmissionPayload = {
+      verificationToken: String(body.verificationToken).trim(),
       playerId: body.playerId,
       playerName: body.playerName,
       teamId: body.teamId,

@@ -7,9 +7,7 @@ const AUTH_TAG_LENGTH = 16; // 128 bits
 function getEncryptionKey(): Buffer {
   const keyHex = process.env.DATA_ENCRYPTION_KEY;
   if (!keyHex) {
-    // Si no está configurada, derivar una clave fija del entorno para evitar caídas en test
-    console.warn('[Encryption] DATA_ENCRYPTION_KEY no configurada en variables de entorno');
-    return crypto.scryptSync('cdv-fallback-key-2026', 'cdv-salt-protection', 32);
+    throw new Error('[Security] DATA_ENCRYPTION_KEY no está configurada en las variables de entorno.');
   }
   return Buffer.from(keyHex, 'hex');
 }
