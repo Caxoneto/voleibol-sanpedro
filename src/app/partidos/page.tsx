@@ -1003,7 +1003,7 @@ function PartidosContent() {
                   id={`cat-pill-${category.id}`}
                   onClick={() => handleSelectCategoryFromBar(category.id)}
                   aria-pressed={isSelected}
-                  className={`w-[calc(100%-4.5rem)] sm:w-auto snap-center first:snap-start last:snap-end flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e] -translate-y-0.5'
                       : 'bg-surface-container-high text-tertiary hover:text-white'

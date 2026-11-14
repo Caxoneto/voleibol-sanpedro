@@ -434,27 +434,27 @@ function AutorizacionesContent() {
 
         {/* Indicador de pasos */}
         {!loadingDirectAccess && (
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap ${
                 step === 1 ? 'bg-primary text-white' : 'bg-surface-container-high text-tertiary'
               }`}
             >
               <span>1</span>
               <span>Identificación</span>
             </div>
-            <div className="w-8 h-px bg-white/20" />
+            <div className="hidden sm:block w-8 h-px bg-white/20" />
             <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap ${
                 step === 2 ? 'bg-primary text-white' : 'bg-surface-container-high text-tertiary'
               }`}
             >
               <span>2</span>
               <span>Autorizaciones y Firma</span>
             </div>
-            <div className="w-8 h-px bg-white/20" />
+            <div className="hidden sm:block w-8 h-px bg-white/20" />
             <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap ${
                 step === 3 ? 'bg-primary text-white' : 'bg-surface-container-high text-tertiary'
               }`}
             >

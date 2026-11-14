@@ -729,7 +729,7 @@ export default function HeroMatchesCarousel({
                           refreshSingleMatch(match.id, false);
                         }}
                         disabled={isRefreshing}
-                        className={`w-5 h-5 flex items-center justify-center shrink-0 border transition-colors ${
+                        className={`w-5 h-5 flex items-center justify-center shrink-0 overflow-hidden border transition-colors ${
                           isLive
                             ? 'bg-red-950/90 hover:bg-red-800 text-red-300 border-red-500/50'
                             : 'bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border-white/15'
@@ -738,7 +738,7 @@ export default function HeroMatchesCarousel({
                         aria-label="Actualizar marcador"
                       >
                         <span
-                          className={`material-symbols-outlined text-[13px] ${
+                          className={`material-symbols-outlined text-[12px] leading-none ${
                             isRefreshing ? 'animate-spin text-white' : ''
                           }`}
                           aria-hidden="true"

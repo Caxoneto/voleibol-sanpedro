@@ -163,7 +163,7 @@ export default function NoticiasPage() {
                   id={`noticias-cat-pill-${c.value}`}
                   onClick={() => setSelectedCat(c.value)}
                   aria-pressed={active}
-                  className={`w-[calc(100%-4.5rem)] sm:w-auto snap-center first:snap-start last:snap-end flex items-center justify-center text-center shrink-0 px-4 py-2 font-label-md text-xs sm:text-label-md uppercase tracking-wider whitespace-nowrap transition-all ${
+                  className={`w-auto snap-start flex items-center justify-center text-center shrink-0 px-4 py-2 font-label-md text-xs sm:text-label-md uppercase tracking-wider whitespace-nowrap transition-all ${
                     active
                       ? 'bg-primary-container text-white shadow-md font-bold'
                       : 'bg-surface-container-high text-on-surface-variant hover:text-on-surface'

@@ -526,7 +526,7 @@ export default function CalendarioPage() {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
 
         <div className="absolute -right-20 -top-24 w-96 h-96 rounded-full bg-primary-container/10 blur-3xl pointer-events-none" />
-        <div className="max-w-7xl mx-auto relative z-10 flex items-end justify-between gap-4">
+        <div className="max-w-7xl mx-auto relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
           <div className="flex flex-col gap-1 max-w-3xl min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[10px] sm:text-[11px] uppercase font-bold tracking-widest">
@@ -593,7 +593,7 @@ export default function CalendarioPage() {
               id="cal-cat-pill-ALL"
               onClick={() => handleSelectCategory('ALL')}
               aria-pressed={selectedCategory === 'ALL'}
-              className={`w-[calc(100%-4.5rem)] sm:w-auto snap-center first:snap-start last:snap-end flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+              className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                 selectedCategory === 'ALL'
                   ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e]'
                   : 'bg-surface-container-high text-tertiary hover:text-white'
@@ -607,7 +607,7 @@ export default function CalendarioPage() {
                 id={`cal-cat-pill-${cat.id}`}
                 onClick={() => handleSelectCategory(cat.id)}
                 aria-pressed={selectedCategory === cat.id}
-                className={`w-[calc(100%-4.5rem)] sm:w-auto snap-center first:snap-start last:snap-end flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
                   selectedCategory === cat.id
                     ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e]'
                     : 'bg-surface-container-high text-tertiary hover:text-white'
