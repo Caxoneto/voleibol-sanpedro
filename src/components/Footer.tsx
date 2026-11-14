@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { CLUB_INFO, CURRENT_SPONSORS } from '@/lib/data-store';
 import CookieSettingsButton from '@/components/CookieSettingsButton';
 import { InstagramIcon, FacebookIcon, WhatsAppIcon } from '@/components/SocialIcons';
@@ -12,6 +13,8 @@ import StreamingModal from '@/components/StreamingModal';
 type FooterSectionKey = 'club' | 'sede' | 'enlaces' | 'apoya';
 
 export default function Footer() {
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith('/admin');
   const { status: streamingStatus, updateLocalStatus } = useStreaming();
   const [isStreamingModalOpen, setIsStreamingModalOpen] = useState(false);
 
@@ -25,6 +28,38 @@ export default function Footer() {
   const toggleSection = (key: FooterSectionKey) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  // En el área privada de administración mantenemos únicamente el pie legal mínimo
+  if (isAdminRoute) {
+    return (
+      <footer className="w-full bg-surface-container-lowest border-t border-white/5 py-4 text-on-surface">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-tertiary">
+          <nav aria-label="Enlaces legales" className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1">
+            <Link href="/aviso-legal" className="hover:text-primary transition-colors">
+              Aviso Legal
+            </Link>
+            <span className="text-white/20 select-none">•</span>
+            <Link href="/privacidad" className="hover:text-primary transition-colors">
+              Política de Privacidad
+            </Link>
+            <span className="text-white/20 select-none">•</span>
+            <Link href="/cookies" className="hover:text-primary transition-colors">
+              Política de Cookies
+            </Link>
+            <span className="text-white/20 select-none">•</span>
+            <Link href="/accesibilidad" className="hover:text-primary transition-colors">
+              Accesibilidad
+            </Link>
+            <span className="text-white/20 select-none">•</span>
+            <CookieSettingsButton />
+          </nav>
+          <p className="text-[11px] text-tertiary/70 text-center sm:text-right">
+            © {new Date().getFullYear()} {CLUB_INFO.federationRegisteredName} (CIF: {CLUB_INFO.cif})
+          </p>
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="w-full bg-surface-container-lowest border-t border-white/5 pt-8 pb-8 text-on-surface">

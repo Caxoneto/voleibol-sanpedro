@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { CLUB_INFO } from './data-store';
+import { CLUB_LOGO_BASE64 } from './club-logo-base64';
 
 export interface ConsentPdfData {
   consentId?: string;
@@ -12,21 +13,96 @@ export interface ConsentPdfData {
   signerRelationship: string;
   signerPhone?: string;
   signerEmail?: string;
-  consentSocialMedia: boolean;
-  consentStreaming: boolean;
-  consentPress: boolean;
+  consentImage?: boolean;
+  consentSocialMedia?: boolean;
+  consentStreaming?: boolean;
+  consentPress?: boolean;
   consentTravel?: boolean;
   medicalNotes?: string;
   signatureData?: string;
   documentHash?: string;
   signedAt?: string;
+  /** Cuando es true, genera un modelo en blanco / pre-rellenado para imprimir y firmar presencialmente en papel, dejando las casillas de SÍ/NO sin marcar para que decida el declarante */
+  isPrintableBlank?: boolean;
 }
 
 /**
- * Genera el documento oficial de autorizaciones basado en los Modelos Oficiales de la Junta de Andalucía:
- * - Página 1: Anexo 05 - Modelo de Manejo Adecuado de Datos e Imágenes (Menores / Mayores de edad).
- * - Página 2: Anexo 06 - Modelo de Autorización para Desplazamientos, Viajes y Asistencia Sanitaria Oficial,
- *   junto con la firma manuscrita fidedigna y el sellado criptográfico SHA-256 de custodia.
+ * Dibuja una franja de estado (firmado) o de casillas de selección manual (imprimible presencial).
+ */
+function drawDecisionRow(
+  doc: jsPDF,
+  margin: number,
+  y: number,
+  contentWidth: number,
+  label: string,
+  isAllowed: boolean,
+  isPrintableBlank: boolean
+): number {
+  const rowH = 8.2;
+
+  if (isPrintableBlank) {
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, rowH, 0.9, 0.9, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.4);
+    doc.setTextColor(30, 41, 59);
+    doc.text(label, margin + 4, y + 5.3);
+
+    // Casillas dibujadas para marcar a bolígrafo: [ ] SÍ AUTORIZO   [ ] NO AUTORIZO
+    const boxSize = 3.4;
+    const boxY = y + 2.4;
+
+    const noBoxX = margin + contentWidth - 28;
+    const yesBoxX = noBoxX - 31;
+
+    // Casilla SÍ
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(71, 85, 105);
+    doc.setLineWidth(0.35);
+    doc.rect(yesBoxX, boxY, boxSize, boxSize, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.3);
+    doc.setTextColor(15, 23, 42);
+    doc.text('SÍ AUTORIZO', yesBoxX + boxSize + 2, y + 5.3);
+
+    // Casilla NO
+    doc.setFillColor(255, 255, 255);
+    doc.rect(noBoxX, boxY, boxSize, boxSize, 'FD');
+    doc.text('NO AUTORIZO', noBoxX + boxSize + 2, y + 5.3);
+
+    doc.setLineWidth(0.2);
+  } else {
+    doc.setFillColor(isAllowed ? 240 : 254, isAllowed ? 253 : 242, isAllowed ? 244 : 242);
+    doc.setDrawColor(isAllowed ? 110 : 248, isAllowed ? 231 : 113, isAllowed ? 183 : 113);
+    doc.roundedRect(margin, y, contentWidth, rowH, 0.9, 0.9, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.4);
+    doc.setTextColor(20, 20, 25);
+    doc.text(label, margin + 4, y + 5.3);
+
+    doc.setTextColor(isAllowed ? 6 : 185, isAllowed ? 95 : 28, isAllowed ? 70 : 28);
+    doc.text(
+      isAllowed ? '[ SÍ AUTORIZADO ]' : '[ NO AUTORIZADO ]',
+      margin + contentWidth - 4,
+      y + 5.3,
+      { align: 'right' }
+    );
+  }
+
+  return y + rowH;
+}
+
+/**
+ * Genera el documento oficial unificado de autorizaciones deportivas en UNA SOLA PÁGINA (A4).
+ * Cumple estrictamente con la normativa vigente:
+ * - Ley Orgánica 1/1982 de protección civil del derecho al honor, a la intimidad y a la propia imagen.
+ * - Reglamento General de Protección de Datos (RGPD UE 2016/679) y LOPDGDD 3/2018.
+ * - Ley 6/2020 de servicios electrónicos de confianza (firma manuscrita digitalizada fidedigna).
+ * - Protocolo Marco de Protección de Menores de la Junta de Andalucía (Consejería de Cultura y Deporte).
  */
 export function generateConsentPdf(data: ConsentPdfData): jsPDF {
   const doc = new jsPDF({
@@ -35,527 +111,467 @@ export function generateConsentPdf(data: ConsentPdfData): jsPDF {
     format: 'a4',
   });
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 16;
-  const contentWidth = pageWidth - margin * 2;
+  const pageWidth = 210;
+  const margin = 14;
+  const contentWidth = pageWidth - margin * 2; // 182 mm
 
-  // Determinar tramo de edad para los textos oficiales de la Junta de Andalucía
   const currentYear = 2026;
-  const birthYear = data.birthYear || (data.isMinor ? 2012 : 2000);
+  const birthYear = data.birthYear || (data.isMinor ? 2011 : 2000);
   const age = currentYear - birthYear;
-  const isUnder14 = data.isMinor && age < 14;
-  const is14to18 = data.isMinor && age >= 14;
-  const allDenied = !data.consentSocialMedia && !data.consentStreaming && !data.consentPress;
+
+  const isPrintableBlank = !!data.isPrintableBlank;
+
+  // Estado de consentimiento de imagen
+  const imageAllowed = data.consentImage !== undefined
+    ? !!data.consentImage
+    : !!(data.consentSocialMedia || data.consentStreaming || data.consentPress);
+
+  // Estado de autorización de desplazamientos
   const travelAllowed = data.consentTravel !== false;
 
   const dateFormatted = data.signedAt
     ? new Date(data.signedAt).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })
     : new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
 
-  // Función auxiliar para dibujar la cabecera institucional oficial en cada página
-  const drawHeader = (pageNumber: number, totalPages: number) => {
-    let y = 14;
-
-    // Banda lateral roja del Club
+  // =========================================================================
+  // 1. CABECERA INSTITUCIONAL
+  // =========================================================================
+  let y = 11;
+  try {
+    doc.addImage(CLUB_LOGO_BASE64, 'JPEG', margin, y, 16, 10.6);
+  } catch {
     doc.setFillColor(180, 10, 20);
-    doc.rect(margin, y, 3.5, 16, 'F');
+    doc.rect(margin, y, 3.5, 10.6, 'F');
+  }
 
-    // Nombre del Club
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(20, 20, 20);
-    doc.text(CLUB_INFO.name.toUpperCase(), margin + 7, y + 5);
+  const textX = margin + 19;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(180, 10, 20);
+  doc.text(CLUB_INFO.name.toUpperCase(), textX, y + 3.2);
 
-    // Subtítulo oficial
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(80, 80, 85);
-    doc.text(
-      `CIF: ${CLUB_INFO.cif} · Sede: Pabellón Polideportivo Sergio Scariolo`,
-      margin + 7,
-      y + 9.5
-    );
-    doc.text(
-      `Email: ${CLUB_INFO.contactEmail} · Web: voleibolsanpedro.es · Reg. Entidades Deportivas`,
-      margin + 7,
-      y + 13.5
-    );
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(75, 75, 80);
+  doc.text(`CIF: ${CLUB_INFO.cif} · Sede: Pabellón Polideportivo Sergio Scariolo`, textX, y + 7);
+  doc.text(`Email: ${CLUB_INFO.contactEmail} · Web: voleibolsanpedro.es · Reg. Entidades Deportivas`, textX, y + 10.5);
 
-    // Indicador de normativa Junta de Andalucía en la esquina superior derecha
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(90, 90, 100);
-    doc.text('JUNTA DE ANDALUCÍA', margin + contentWidth, y + 4.5, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.text('Consejería de Cultura y Deporte', margin + contentWidth, y + 8, { align: 'right' });
-    doc.text('Protocolo Marco de Menores en el Deporte', margin + contentWidth, y + 11.5, { align: 'right' });
+  // Junta de Andalucía a la derecha
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.setTextColor(60, 65, 75);
+  doc.text('JUNTA DE ANDALUCÍA', margin + contentWidth, y + 3.2, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.3);
+  doc.setTextColor(90, 95, 105);
+  doc.text('Consejería de Cultura y Deporte', margin + contentWidth, y + 6.9, { align: 'right' });
+  doc.text('Protocolo de Menores en el Deporte', margin + contentWidth, y + 10.4, { align: 'right' });
 
-    // Línea separadora tenue
-    doc.setDrawColor(215, 215, 220);
-    doc.setLineWidth(0.3);
-    doc.line(margin, y + 18, margin + contentWidth, y + 18);
-
-    // Pie de página
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(120, 120, 125);
-    doc.text(
-      `Documento oficial de autorizaciones deportivas · C.D. Voleibol San Pedro · Temporada 2026/2027`,
-      margin,
-      pageHeight - 10
-    );
-    doc.text(`Página ${pageNumber} de ${totalPages}`, margin + contentWidth, pageHeight - 10, { align: 'right' });
-  };
+  // Línea divisoria
+  y += 14.2;
+  doc.setDrawColor(215, 215, 220);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, margin + contentWidth, y);
 
   // =========================================================================
-  // PÁGINA 1: ANEXO 05 - TRATAMIENTO DE DATOS E IMÁGENES
+  // 2. TÍTULO UNIFICADO DEL DOCUMENTO
   // =========================================================================
-  drawHeader(1, 2);
-
-  let y = 36;
-
-  // Título del Anexo 05
+  y += 4;
   doc.setFillColor(248, 249, 252);
   doc.setDrawColor(210, 215, 225);
-  doc.roundedRect(margin, y, contentWidth, 13, 1.2, 1.2, 'FD');
+  doc.roundedRect(margin, y, contentWidth, 10.2, 1, 1, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(8.8);
   doc.setTextColor(180, 10, 20);
-  doc.text('ANEXO 05 · JUNTA DE ANDALUCÍA (PROTOCOLO MARCO DE PROTECCIÓN DE MENORES)', margin + 4, y + 5);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(30, 30, 30);
-  const titleScope = data.isMinor
-    ? isUnder14
-      ? 'AUTORIZACIÓN PARA EL TRATAMIENTO DE DATOS E IMÁGENES DE PERSONAS MENORES (<14 AÑOS)'
-      : 'AUTORIZACIÓN PARA EL TRATAMIENTO DE DATOS E IMÁGENES DE MENORES (14 A 18 AÑOS)'
-    : 'DECLARACIÓN OFICIAL DE CESIÓN DE DERECHOS DE IMAGEN DE DEPORTISTAS MAYORES DE EDAD';
-  doc.text(titleScope, margin + 4, y + 10);
-
-  y += 17;
-
-  // 1. Bloque: Datos Oficiales del Deportista
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(30, 30, 30);
-  doc.text('1. DATOS IDENTIFICATIVOS DEL DEPORTISTA', margin, y);
-  y += 3;
-
-  doc.setFillColor(252, 252, 254);
-  doc.setDrawColor(220, 222, 228);
-  doc.roundedRect(margin, y, contentWidth, 20, 1, 1, 'FD');
+  doc.text('AUTORIZACIÓN OFICIAL DE IMAGEN Y DESPLAZAMIENTOS DEPORTIVOS', margin + 4, y + 4.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(70, 70, 75);
-
-  doc.text('Nombre y Apellidos:', margin + 4, y + 5.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 15, 15);
-  doc.text(data.playerName, margin + 35, y + 5.5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(70, 70, 75);
-  doc.text('Equipo / Categoría:', margin + 4, y + 11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 15, 15);
-  doc.text(data.teamName, margin + 35, y + 11);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(70, 70, 75);
-  doc.text('Año Nacimiento / Edad:', margin + 4, y + 16.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 15, 15);
-  const ageLabel = data.isMinor
-    ? `${birthYear} (${age} años · ${isUnder14 ? 'Menor de 14 años' : 'Menor de 14 a 18 años'})`
-    : `${birthYear || 'Registrado'} (Mayor de edad · Sénior)`;
-  doc.text(ageLabel, margin + 35, y + 16.5);
-
-  y += 24;
-
-  // 2. Bloque: Datos del Firmante / Declaración de Representación
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(30, 30, 30);
-  const signerBlockTitle = data.isMinor
-    ? isUnder14
-      ? '2. DATOS DEL PADRE, MADRE O TUTOR/A LEGAL QUE PRESTA EL CONSENTIMIENTO'
-      : '2. DATOS DEL PROGENITOR / TUTOR LEGAL Y DEL MENOR QUE MANIFIESTAN CONFORMIDAD'
-    : '2. DATOS DEL DEPORTISTA DECLARANTE (MAYOR DE EDAD)';
-  doc.text(signerBlockTitle, margin, y);
-  y += 3;
-
-  const signerBoxH = 22;
-  doc.setFillColor(252, 252, 254);
-  doc.setDrawColor(220, 222, 228);
-  doc.roundedRect(margin, y, contentWidth, signerBoxH, 1, 1, 'FD');
-
-  doc.setFontSize(7.5);
-
-  // Columna Izquierda: Identidad y Representación
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(75, 75, 80);
-  doc.text('Nombre del Firmante:', margin + 4, y + 5.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 15, 15);
-  doc.text(data.signerName || 'Deportista / Tutor', margin + 34, y + 5.5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(75, 75, 80);
-  doc.text('DNI / NIE:', margin + 4, y + 11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 15, 15);
-  doc.text(data.signerDni || 'No facilitado', margin + 34, y + 11);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(75, 75, 80);
-  doc.text('Condición / Relación:', margin + 4, y + 16.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 15, 15);
-  doc.text(data.signerRelationship || 'TUTOR_LEGAL', margin + 34, y + 16.5);
-
-  // Columna Derecha: Canales de Contacto (Teléfono y Correo en filas separadas sin desbordamiento)
-  const colRightLabelX = margin + 92;
-  const colRightValX = margin + 118;
-  const maxEmailWidth = contentWidth - 120; // Espacio libre antes del margen derecho
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(75, 75, 80);
-  doc.text('Teléfono Móvil:', colRightLabelX, y + 5.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 15, 15);
-  doc.text(data.signerPhone || 'Facilitado en censo', colRightValX, y + 5.5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(75, 75, 80);
-  doc.text('Correo Electrónico:', colRightLabelX, y + 11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 15, 15);
-  if (data.signerEmail) {
-    if (data.signerEmail.length > 25) {
-      doc.setFontSize(6.5);
-    }
-    const truncatedEmail = doc.splitTextToSize(data.signerEmail, maxEmailWidth)[0];
-    doc.text(truncatedEmail, colRightValX, y + 11);
-    doc.setFontSize(7.5);
-  } else {
-    doc.text('Facilitado en censo', colRightValX, y + 11);
-  }
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(75, 75, 80);
-  doc.text('Canal de Registro:', colRightLabelX, y + 16.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(20, 20, 20);
-  doc.text('Firma Digital / Web Oficial', colRightValX, y + 16.5);
-
-  y += signerBoxH + 4;
-
-  // 3. Bloque: Alcance de las autorizaciones de imagen (Anexo 05)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(30, 30, 30);
-  doc.text('3. ALCANCE ESPECÍFICO DEL TRATAMIENTO DE IMÁGENES (RGPD ART. 6 Y 7 · LOPDGDD ART. 7)', margin, y);
-  y += 3;
-
-  // Tabla con las 3 modalidades del Anexo 05
-  const rowH = 10.5;
-
-  // Fila A: Redes Sociales y Web
-  doc.setFillColor(data.consentSocialMedia ? 245 : 255, data.consentSocialMedia ? 252 : 242, data.consentSocialMedia ? 245 : 242);
-  doc.setDrawColor(215, 218, 225);
-  doc.roundedRect(margin, y, contentWidth, rowH, 0.8, 0.8, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(20, 20, 25);
-  doc.text('A. Sitio Web Oficial y Redes Sociales Institucionales del Club', margin + 4, y + 4.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  doc.setTextColor(80, 80, 85);
-  doc.text('Publicación de fotos grupales, convocatorias deportivas y logros en Instagram, Facebook, X y web.', margin + 4, y + 8);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(data.consentSocialMedia ? 15 : 190, data.consentSocialMedia ? 130 : 25, data.consentSocialMedia ? 40 : 25);
-  doc.text(
-    data.consentSocialMedia ? '[ SÍ AUTORIZADO ]' : '[ NO AUTORIZADO ]',
-    margin + contentWidth - 34,
-    y + 6.5
-  );
-
-  y += rowH + 2.5;
-
-  // Fila B: Streaming y Video
-  doc.setFillColor(data.consentStreaming ? 245 : 255, data.consentStreaming ? 252 : 242, data.consentStreaming ? 245 : 242);
-  doc.setDrawColor(215, 218, 225);
-  doc.roundedRect(margin, y, contentWidth, rowH, 0.8, 0.8, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(20, 20, 25);
-  doc.text('B. Retransmisión y Streaming en Directo de Partidos Oficiales', margin + 4, y + 4.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  doc.setTextColor(80, 80, 85);
-  doc.text('Emisión en streaming en directo por YouTube u otros canales oficiales de los encuentros de liga.', margin + 4, y + 8);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(data.consentStreaming ? 15 : 190, data.consentStreaming ? 130 : 25, data.consentStreaming ? 40 : 25);
-  doc.text(
-    data.consentStreaming ? '[ SÍ AUTORIZADO ]' : '[ NO AUTORIZADO ]',
-    margin + contentWidth - 34,
-    y + 6.5
-  );
-
-  y += rowH + 2.5;
-
-  // Fila C: Prensa y Medios
-  doc.setFillColor(data.consentPress ? 245 : 255, data.consentPress ? 252 : 242, data.consentPress ? 245 : 242);
-  doc.setDrawColor(215, 218, 225);
-  doc.roundedRect(margin, y, contentWidth, rowH, 0.8, 0.8, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(20, 20, 25);
-  doc.text('C. Medios de Comunicación, Prensa Local y Televisión Deportiva', margin + 4, y + 4.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  doc.setTextColor(80, 80, 85);
-  doc.text('Cesión a prensa escrita y digital de Marbella y San Pedro de fotos en podios, crónicas y torneos.', margin + 4, y + 8);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(data.consentPress ? 15 : 190, data.consentPress ? 130 : 25, data.consentPress ? 40 : 25);
-  doc.text(
-    data.consentPress ? '[ SÍ AUTORIZADO ]' : '[ NO AUTORIZADO ]',
-    margin + contentWidth - 34,
-    y + 6.5
-  );
-
-  y += rowH + 4;
-
-  if (allDenied) {
-    doc.setFillColor(254, 242, 242);
-    doc.setDrawColor(248, 113, 113);
-    doc.roundedRect(margin, y, contentWidth, 9, 1, 1, 'FD');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(185, 28, 28);
-    doc.text(
-      'AVISO OFICIAL: La persona declarante ha marcado DENEGACIÓN EXPRESA TOTAL de imagen en este Anexo 05.',
-      margin + 4,
-      y + 5.5
-    );
-    y += 12;
-  }
-
-  // Cláusula legal oficial del Anexo 05 de la Junta de Andalucía
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.7);
-  doc.setTextColor(90, 90, 95);
-  const legalTextAnexo05 =
-    'Conforme al Protocolo Marco de Actuación para la Protección de las Personas Menores frente a la Violencia en el Deporte de la Junta de Andalucía (Orden de 18 de noviembre de 2024), Ley Orgánica 8/2021 (LOPIVI), Ley Orgánica 1/1982 de Protección del Derecho al Honor y a la Propia Imagen, RGPD (UE 2016/679) y Ley Orgánica 3/2018 (LOPDGDD), las imágenes solo podrán ser captadas y difundidas con fines estrictamente deportivos y promocionales del C.D. Voleibol San Pedro, quedando terminantemente prohibida su cesión a terceros con fines lucrativos o comerciales ajenos al club. La persona firmante podrá revocar total o parcialmente este consentimiento en cualquier momento mediante comunicación por escrito a la dirección voleibolsanpedro@hotmail.es.';
-
-  const splitAnexo05 = doc.splitTextToSize(legalTextAnexo05, contentWidth);
-  doc.text(splitAnexo05, margin, y);
-  y += splitAnexo05.length * 3.3 + 4;
-
-  // Nota de continuación
-  doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
-  doc.setTextColor(130, 130, 135);
+  doc.setTextColor(55, 55, 60);
   doc.text(
-    'Continúa en la Página 2 con el Anexo 06 (Autorización de Desplazamientos y Viajes Deportivos), Declaración Responsable y Firma.',
-    margin,
-    y
-  );
-
-  // =========================================================================
-  // PÁGINA 2: ANEXO 06 - DESPLAZAMIENTOS Y VIAJES + FIRMA Y CUSTODIA
-  // =========================================================================
-  doc.addPage();
-  drawHeader(2, 2);
-
-  y = 36;
-
-  // Título del Anexo 06
-  doc.setFillColor(248, 249, 252);
-  doc.setDrawColor(210, 215, 225);
-  doc.roundedRect(margin, y, contentWidth, 13, 1.2, 1.2, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(180, 10, 20);
-  doc.text('ANEXO 06 · JUNTA DE ANDALUCÍA (PROTOCOLO MARCO DE PROTECCIÓN DE MENORES)', margin + 4, y + 5);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(30, 30, 30);
-  doc.text(
-    'AUTORIZACIÓN OFICIAL PARA DESPLAZAMIENTOS, VIAJES DEPORTIVOS Y ASISTENCIA SANITARIA',
+    isPrintableBlank
+      ? 'Temporada Oficial 2026/2027 · C.D. Voleibol San Pedro · Modelo Oficial para Firma Presencial'
+      : 'Temporada Oficial 2026/2027 · C.D. Voleibol San Pedro · Documento Oficial de Consentimiento',
     margin + 4,
-    y + 10
+    y + 8.3
   );
 
-  y += 17;
+  // Espacio generoso entre título y bloque 1
+  y += 16.5;
 
-  // Bloque: Alcance del Desplazamiento
+  // =========================================================================
+  // 3. BLOQUE 1: DATOS IDENTIFICATIVOS Y DE REPRESENTACIÓN
+  // =========================================================================
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8.2);
   doc.setTextColor(30, 30, 30);
-  doc.text('1. CONDICIONES GENERALES DEL DESPLAZAMIENTO Y VIAJES OFICIALES (TEMPORADA 2026/2027)', margin, y);
-  y += 3;
+  doc.text('1. DATOS IDENTIFICATIVOS Y DE REPRESENTACIÓN', margin, y);
+  y += 2.8;
+
+  const idBoxH = 22.5;
+  doc.setFillColor(252, 252, 254);
+  doc.setDrawColor(220, 222, 228);
+  doc.roundedRect(margin, y, contentWidth, idBoxH, 1, 1, 'FD');
+
+  // Línea vertical divisoria interior
+  doc.setDrawColor(230, 232, 238);
+  doc.line(margin + 88, y + 2.5, margin + 88, y + idBoxH - 2.5);
+
+  // Columna 1: Deportista
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.2);
+  doc.setTextColor(180, 10, 20);
+  doc.text('DATOS DEL DEPORTISTA:', margin + 4, y + 5);
+
+  doc.setFontSize(7.4);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(70, 70, 75);
+  doc.text('Nombre:', margin + 4, y + 9.8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 15, 15);
+  doc.text(data.playerName, margin + 21, y + 9.8);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(70, 70, 75);
+  doc.text('Equipo:', margin + 4, y + 14.3);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 15, 15);
+  doc.text(data.teamName, margin + 21, y + 14.3);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(70, 70, 75);
+  doc.text('Edad:', margin + 4, y + 18.8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 15, 15);
+  const ageStr = data.isMinor ? `${birthYear} (${age} años · Menor)` : `${birthYear || 'Reg.'} (Mayor de edad)`;
+  doc.text(ageStr, margin + 21, y + 18.8);
+
+  // Columna 2: Firmante / Representante
+  const col2X = margin + 92;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.2);
+  doc.setTextColor(180, 10, 20);
+  doc.text('PERSONA FIRMANTE / REPRESENTANTE:', col2X, y + 5);
+
+  doc.setFontSize(7.4);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(70, 70, 75);
+  doc.text('Nombre:', col2X, y + 9.8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 15, 15);
+  doc.text(data.signerName || (isPrintableBlank ? '_____________________________' : 'Deportista / Tutor'), col2X + 19, y + 9.8);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(70, 70, 75);
+  doc.text('DNI / NIE:', col2X, y + 14.3);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 15, 15);
+  const dniText = data.signerDni
+    ? `${data.signerDni} (${data.signerRelationship || 'TUTOR'})`
+    : isPrintableBlank
+    ? `_______________ (${data.signerRelationship || 'TUTOR'})`
+    : `N/D (${data.signerRelationship || 'TUTOR'})`;
+  doc.text(dniText, col2X + 19, y + 14.3);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(70, 70, 75);
+  doc.text('Contacto:', col2X, y + 18.8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 15, 15);
+  const contactStr =
+    data.signerPhone || data.signerEmail
+      ? `${data.signerPhone || '—'} · ${data.signerEmail || '—'}`
+      : isPrintableBlank
+      ? 'Tel: ____________ · Email: ________________'
+      : 'Facilitado en censo';
+  // Ajustar ligeramente si el email es muy largo para no desbordar el borde derecho
+  const maxContactW = contentWidth - 114;
+  if (doc.getTextWidth(contactStr) > maxContactW) {
+    doc.setFontSize(6.5);
+  }
+  doc.text(doc.splitTextToSize(contactStr, maxContactW)[0], col2X + 19, y + 18.8);
+
+  y += idBoxH + 6.5;
+
+  // =========================================================================
+  // 4. BLOQUE 2: CESIÓN DE IMAGEN
+  // =========================================================================
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(30, 30, 30);
+  doc.text('2. TRATAMIENTO Y DIFUSIÓN DE IMÁGENES (LEY 1/1982 · RGPD UE 2016/679)', margin, y);
+  y += 2.8;
+
+  const imgText =
+    'Autorizo al C.D. VOLEIBOL SAN PEDRO, conforme a la Ley Orgánica 1/1982 de protección civil del derecho al honor, a la intimidad y a la propia imagen, y al RGPD (UE) 2016/679, para que la imagen del deportista pueda ser captada y divulgada por el club y entidades organizadoras en la web oficial, redes sociales del club, retransmisiones en directo (streaming), prensa y soportes deportivos con la exclusiva finalidad de promoción del deporte, respetando en todo momento la dignidad y honor personal del deportista. Esta autorización se otorga para la temporada 2026/2027 sin límite temporal y con fines no lucrativos.';
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.25);
+  const splitImg = doc.splitTextToSize(imgText, contentWidth - 8);
+  const imgBoxH = splitImg.length * 3.35 + 5.5;
 
   doc.setFillColor(252, 252, 254);
   doc.setDrawColor(220, 222, 228);
-  doc.roundedRect(margin, y, contentWidth, 34, 1, 1, 'FD');
+  doc.roundedRect(margin, y, contentWidth, imgBoxH, 1, 1, 'FD');
+
+  doc.setTextColor(45, 45, 50);
+  doc.text(splitImg, margin + 4, y + 4.8);
+
+  y += imgBoxH + 2.8;
+
+  y = drawDecisionRow(
+    doc,
+    margin,
+    y,
+    contentWidth,
+    isPrintableBlank ? 'Cesión de Imagen (marque una opción):' : 'Cesión de Imagen Deportiva y Promoción:',
+    imageAllowed,
+    isPrintableBlank
+  );
+
+  y += 6.5;
+
+  // =========================================================================
+  // 5. BLOQUE 3: DESPLAZAMIENTOS Y ASISTENCIA SANITARIA
+  // =========================================================================
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(30, 30, 30);
+  doc.text('3. DESPLAZAMIENTOS, VIAJES DEPORTIVOS Y ASISTENCIA SANITARIA', margin, y);
+  y += 2.8;
+
+  const travelText =
+    'Se autoriza la participación y el traslado del deportista en transportes fletados, vehículos oficiales o concertados por la entidad para partidos de liga federada FAVB, concentraciones, Campeonatos de Andalucía (CADEBA), torneos oficiales y entrenamientos, bajo supervisión del cuerpo técnico y delegados de campo del C.D. Voleibol San Pedro. En caso de lesión o urgencia médica durante la actividad, se faculta expresamente a los responsables del club a adoptar las medidas sanitarias oportunas y gestionar la asistencia a través del Seguro Deportivo Obligatorio de la FAVB y el Servicio Andaluz de Salud (SAS).';
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.2);
-  doc.setTextColor(40, 40, 45);
+  doc.setFontSize(7.25);
+  const splitTravel = doc.splitTextToSize(travelText, contentWidth - 8);
+  const travelBoxH = splitTravel.length * 3.35 + 5.5;
 
-  const travelP1 =
-    '• Actividad Autorizada: Participación del deportista en partidos de liga regular, concentraciones, Campeonatos de Andalucía (CADEBA), torneos federados oficiales y sesiones de entrenamiento programadas por el C.D. Voleibol San Pedro y la Federación Andaluza de Voleibol (FAVB).';
-  const travelP2 =
-    '• Medios de Transporte: Desplazamientos en autobuses fletados o concertados por la entidad, vehículos oficiales del club o vehículos autorizados con la debida cobertura aseguradora en vigor.';
-  const travelP3 =
-    '• Supervisión Técnica y Cuidado: El deportista viajará bajo la tutela y supervisión directa del cuerpo técnico, monitores titulados y personas delegadas de campo colegiadas del C.D. Voleibol San Pedro.';
-  const travelP4 =
-    '• Cobertura Sanitaria de Urgencia: En caso de lesión o urgencia médica sobrevenida durante el desplazamiento o la competición, se faculta a los responsables del club a tomar las medidas sanitarias oportunas y gestionar la asistencia facultativa a través del Seguro Deportivo Obligatorio de la FAVB y los centros de urgencias del Servicio Andaluz de Salud (SAS).';
+  doc.setFillColor(252, 252, 254);
+  doc.setDrawColor(220, 222, 228);
+  doc.roundedRect(margin, y, contentWidth, travelBoxH, 1, 1, 'FD');
 
-  const splitTP1 = doc.splitTextToSize(travelP1, contentWidth - 8);
-  const splitTP2 = doc.splitTextToSize(travelP2, contentWidth - 8);
-  const splitTP3 = doc.splitTextToSize(travelP3, contentWidth - 8);
-  const splitTP4 = doc.splitTextToSize(travelP4, contentWidth - 8);
+  doc.setTextColor(45, 45, 50);
+  doc.text(splitTravel, margin + 4, y + 4.8);
 
-  let subY = y + 4.5;
-  doc.text(splitTP1, margin + 4, subY);
-  subY += splitTP1.length * 3 + 1;
-  doc.text(splitTP2, margin + 4, subY);
-  subY += splitTP2.length * 3 + 1;
-  doc.text(splitTP3, margin + 4, subY);
-  subY += splitTP3.length * 3 + 1;
-  doc.text(splitTP4, margin + 4, subY);
+  y += travelBoxH + 2.8;
 
-  y += 38;
+  y = drawDecisionRow(
+    doc,
+    margin,
+    y,
+    contentWidth,
+    isPrintableBlank
+      ? 'Autorización de Desplazamientos y Asistencia Médica (marque una):'
+      : 'Autorización de Desplazamientos y Asistencia Médica:',
+    travelAllowed,
+    isPrintableBlank
+  );
 
-  // Estado del consentimiento de desplazamiento
-  doc.setFillColor(travelAllowed ? 245 : 255, travelAllowed ? 252 : 242, travelAllowed ? 245 : 242);
-  doc.setDrawColor(215, 218, 225);
-  doc.roundedRect(margin, y, contentWidth, 8, 0.8, 0.8, 'FD');
+  y += 6;
 
+  // Observaciones médicas si existen
+  if (data.medicalNotes && data.medicalNotes.trim()) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    const splitMed = doc.splitTextToSize(data.medicalNotes.trim(), contentWidth - 52);
+    const medH = Math.max(8.5, splitMed.length * 3.1 + 4);
+
+    doc.setFillColor(254, 252, 232);
+    doc.setDrawColor(250, 204, 21);
+    doc.roundedRect(margin, y, contentWidth, medH, 0.8, 0.8, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.9);
+    doc.setTextColor(133, 77, 14);
+    doc.text('Observaciones médicas / alergias:', margin + 4, y + 4.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(113, 63, 18);
+    doc.text(splitMed, margin + 47, y + 4.5);
+
+    y += medH + 5;
+  }
+
+  // =========================================================================
+  // 6. BLOQUE 4: INFORMACIÓN DE PROTECCIÓN DE DATOS (RGPD Y LOPDGDD)
+  // =========================================================================
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.8);
-  doc.setTextColor(20, 20, 25);
-  doc.text('Estado de la Autorización de Desplazamientos Oficiales (Anexo 06):', margin + 4, y + 5);
-
-  doc.setTextColor(travelAllowed ? 15 : 190, travelAllowed ? 130 : 25, travelAllowed ? 40 : 25);
-  doc.text(travelAllowed ? '[ SÍ AUTORIZADO EXPRESAMENTE ]' : '[ NO AUTORIZADO ]', margin + contentWidth - 52, y + 5);
-
-  y += 12;
-
-  // 2. Bloque: Declaración Responsable y Patria Potestad
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
   doc.setTextColor(30, 30, 30);
-  doc.text('2. DECLARACIÓN RESPONSABLE Y CONFORMIDAD JURÍDICA', margin, y);
-  y += 3;
+  doc.text('4. INFORMACIÓN DE PROTECCIÓN DE DATOS (RGPD ART. 13 · LOPDGDD 3/2018)', margin, y);
+  y += 3.2;
 
-  doc.setFillColor(252, 252, 254);
-  doc.setDrawColor(220, 222, 228);
-  doc.roundedRect(margin, y, contentWidth, 16, 1, 1, 'FD');
+  const rgpdText =
+    'Responsable: C.D. Voleibol San Pedro (CIF G93147824, C/ Diego Piña Medina 21, San Pedro Alcántara, Málaga · voleibolsanpedro@hotmail.es). Finalidad: Gestión de licencias, actividad deportiva, expedición de autorizaciones oficiales y difusión deportiva del club. Base jurídica: Misión de interés público, relación federativa y consentimiento expreso. Conservación: Durante la vinculación federativa y plazos legales aplicables. Derechos: Acceso, rectificación, supresión, limitación y oposición en el email del club o ante la AEPD (www.aepd.es).';
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  doc.setTextColor(50, 50, 55);
+  doc.setFontSize(6.5);
+  doc.setTextColor(75, 75, 82);
+  const splitRgpd = doc.splitTextToSize(rgpdText, contentWidth);
+  doc.text(splitRgpd, margin, y);
+
+  y += splitRgpd.length * 3.0 + 5;
+
+  // =========================================================================
+  // 7. BLOQUE 5: DECLARACIÓN RESPONSABLE Y FIRMA MANUSCRITA
+  // =========================================================================
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(30, 30, 30);
+  doc.text('5. DECLARACIÓN RESPONSABLE Y CONFORMIDAD JURÍDICA', margin, y);
+  y += 3.2;
 
   const declText = data.isMinor
-    ? 'La persona firmante declara bajo su exclusiva responsabilidad que ostenta la patria potestad o tutela legal del deportista menor de edad, que actúa con el consentimiento y conocimiento del otro progenitor, y que acepta íntegramente las condiciones recogidas en el Anexo 05 (Imágenes) y Anexo 06 (Desplazamientos) del Protocolo Marco de la Junta de Andalucía para la presente temporada.'
-    : 'La persona firmante declara bajo su responsabilidad que es mayor de edad, deportista federado del C.D. Voleibol San Pedro y que presta su consentimiento libre, inequívoco e informado conforme a la normativa autonómica y estatal aplicable.';
+    ? 'La persona firmante declara bajo su exclusiva responsabilidad que ostenta la patria potestad o tutela legal del deportista menor de edad, actuando con consentimiento del otro progenitor y prestando conformidad libre, inequívoca e informada a los términos expresados en este documento.'
+    : 'La persona firmante declara bajo su responsabilidad que es mayor de edad, deportista federado del C.D. Voleibol San Pedro y que presta su consentimiento libre, informado e inequívoco a los términos de este documento.';
 
-  const splitDecl = doc.splitTextToSize(declText, contentWidth - 8);
-  doc.text(splitDecl, margin + 4, y + 4.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.9);
+  doc.setTextColor(45, 45, 50);
+  const splitDecl = doc.splitTextToSize(declText, contentWidth);
+  doc.text(splitDecl, margin, y);
 
-  y += 20;
+  y += splitDecl.length * 3.1 + 4;
 
-  // 3. Bloque: Firma Digitalizada y Custodia Criptográfica
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(30, 30, 30);
-  doc.text('3. FIRMA DIGITALIZADA Y REGISTRO DE CUSTODIA (LEY 6/2020)', margin, y);
-  y += 3;
+  // Recuadro de Firma y Registro de Conformidad (25 mm de alto)
+  const signBoxH = 25;
+  const signW = 76;
 
-  const signBoxH = 34;
-
-  // Recuadro de la firma manuscrita (Izquierda)
   doc.setFillColor(255, 255, 255);
   doc.setDrawColor(210, 215, 225);
-  doc.roundedRect(margin, y, 84, signBoxH, 1, 1, 'FD');
+  doc.roundedRect(margin, y, signW, signBoxH, 1, 1, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
+  doc.setFontSize(6.6);
   doc.setTextColor(100, 100, 110);
-  doc.text('FIRMA MANUSCRITA REGISTRADA:', margin + 3, y + 4);
+  doc.text('FIRMA MANUSCRITA:', margin + 3.5, y + 4.2);
 
-  // Incrustar la imagen de firma si existe
-  if (data.signatureData && data.signatureData.startsWith('data:image/')) {
+  const isSyntheticGreenPixel =
+    data.signatureData &&
+    data.signatureData.includes('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+
+  if (!isPrintableBlank && data.signatureData && data.signatureData.startsWith('data:image/') && !isSyntheticGreenPixel) {
     try {
-      doc.addImage(data.signatureData, 'PNG', margin + 3, y + 5.5, 78, signBoxH - 7);
+      doc.addImage(data.signatureData, 'PNG', margin + 3, y + 5, signW - 6, signBoxH - 6.5);
     } catch {
       doc.setFont('helvetica', 'italic');
-      doc.setFontSize(7.5);
+      doc.setFontSize(6.8);
       doc.setTextColor(140, 140, 145);
-      doc.text('(Firma manuscrita digitalizada registrada en servidor)', margin + 6, y + 18);
+      doc.text('(Firma digital manuscrita registrada)', margin + 12, y + 14);
     }
   } else {
+    doc.setDrawColor(180, 180, 185);
+    doc.setLineDashPattern([1, 1], 0);
+    doc.line(margin + 8, y + 18, margin + signW - 8, y + 18);
+    doc.setLineDashPattern([], 0);
+
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(7.5);
+    doc.setFontSize(6.3);
     doc.setTextColor(140, 140, 145);
-    doc.text('(Firma manuscrita digitalizada)', margin + 15, y + 18);
+    doc.text('Firma manuscrita del declarante / tutor', margin + 11.5, y + 21.8);
   }
 
-  // Recuadro de Evidencias Criptográficas (Derecha)
-  const metaX = margin + 88;
-  const metaW = contentWidth - 88;
+  // Recuadro derecho: Evidencias digitales o Datos de firma presencial
+  const metaX = margin + signW + 4;
+  const metaW = contentWidth - signW - 4; // 102 mm
 
   doc.setFillColor(250, 251, 254);
   doc.setDrawColor(210, 215, 225);
   doc.roundedRect(metaX, y, metaW, signBoxH, 1, 1, 'FD');
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(180, 10, 20);
-  doc.text('EVIDENCIAS DE CUSTODIA OFICIAL', metaX + 4, y + 5);
+  if (isPrintableBlank) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.2);
+    doc.setTextColor(180, 10, 20);
+    doc.text('LUGAR, FECHA Y CONFORMIDAD PRESENCIAL', metaX + 4, y + 4.8);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(65, 65, 70);
+    doc.text(
+      `Declarante: ${data.signerName || '____________________________________'}`,
+      metaX + 4,
+      y + 9.8
+    );
+    doc.text(
+      `En San Pedro Alcántara, a _____ de ________________ de 202___`,
+      metaX + 4,
+      y + 14.8
+    );
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(6.2);
+    doc.setTextColor(100, 100, 105);
+    doc.text(
+      'Marque claramente SÍ o NO en ambos apartados y firme en el recuadro izquierdo.',
+      metaX + 4,
+      y + 20.5
+    );
+  } else {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.2);
+    doc.setTextColor(180, 10, 20);
+    doc.text('CONFORMIDAD Y VALIDEZ DIGITAL (LEY 6/2020)', metaX + 4, y + 4.8);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.7);
+    doc.setTextColor(70, 70, 75);
+
+    doc.text(
+      `Firmante: ${data.signerName || 'Deportista / Tutor'} (${data.signerRelationship || 'TUTOR'}) · DNI: ${data.signerDni || 'N/D'}`,
+      metaX + 4,
+      y + 9.4
+    );
+    doc.text(`Fecha y Hora: ${dateFormatted} (Hora peninsular española)`, metaX + 4, y + 13.6);
+    doc.text(`Canal: Portal Oficial Web C.D. Voleibol San Pedro (Firma en pantalla)`, metaX + 4, y + 17.8);
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(6);
+    doc.setTextColor(100, 100, 105);
+    doc.text(
+      'La presente firma digitalizada goza de plena validez jurídica conforme al art. 3 de la Ley 6/2020.',
+      metaX + 4,
+      y + 21.8
+    );
+  }
+
+  y += signBoxH + 5.5;
+
+  // =========================================================================
+  // 8. PIE DE CUSTODIA EN 2 LÍNEAS SUTILES AL FINAL
+  // =========================================================================
+  doc.setDrawColor(220, 220, 225);
+  doc.setLineWidth(0.2);
+  doc.line(margin, y, margin + contentWidth, y);
+  y += 3.5;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  doc.setTextColor(70, 70, 75);
-
-  doc.text(`Fecha y Hora: ${dateFormatted} (Madrid)`, metaX + 4, y + 10);
-  doc.text(`ID Registro (UUID):`, metaX + 4, y + 14.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(20, 20, 20);
-  doc.text(data.consentId || 'REG-CDV-PENDING', metaX + 4, y + 18);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(70, 70, 75);
-  doc.text(`Sellado de Integridad SHA-256:`, metaX + 4, y + 23);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(5.8);
-  doc.setTextColor(20, 20, 20);
-  const hashStr = data.documentHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-  doc.text(hashStr.substring(0, 36), metaX + 4, y + 26.5);
-  doc.text(hashStr.substring(36), metaX + 4, y + 29.5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
+  doc.setFontSize(6.1);
   doc.setTextColor(110, 110, 115);
-  doc.text('Custodia en BBDD Neon PostgreSQL · Inmutable', metaX + 4, y + 32.5);
+
+  if (isPrintableBlank) {
+    doc.text(
+      'DOCUMENTO PARA FIRMA PRESENCIAL · Entregar debidamente cumplimentado y firmado al delegado de equipo o secretaría del Club.',
+      margin,
+      y
+    );
+  } else {
+    const hashStr = data.documentHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+    doc.text(
+      `EVIDENCIA DE CUSTODIA · ID (UUID): ${data.consentId || 'REG-PENDIENTE'} · Huella SHA-256: ${hashStr}`,
+      margin,
+      y
+    );
+  }
+
+  doc.text(
+    'C.D. Voleibol San Pedro · Documento Oficial de Autorizaciones Deportivas · Temporada 2026/2027 · Página 1 de 1 (Documento Único)',
+    margin,
+    y + 3.5
+  );
 
   return doc;
 }

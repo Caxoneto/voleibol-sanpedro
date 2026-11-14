@@ -36,6 +36,9 @@ import {
   SendHorizontal,
   ClipboardCheck,
   FileDown,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { CLUB_INFO } from '@/lib/data-store';
 import { generateConsentPdf } from '@/lib/pdf-consent';
@@ -99,6 +102,9 @@ interface DashboardData {
     totalSigned: number;
     totalPending: number;
     percentSigned: number;
+    imageAllowed?: number;
+    imageDenied?: number;
+    travelAllowed?: number;
     socialAllowed: number;
     streamingAllowed: number;
     streamingDenied: number;
@@ -124,21 +130,17 @@ export default function AdminConsentimientosPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Filtros y búsqueda
+  // Filtros, ordenación y búsqueda
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'SIGNED' | 'PENDING' | 'STREAMING_DENIED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'SIGNED' | 'PENDING'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState<{
+    key: 'status' | 'image' | 'travel' | null;
+    direction: 'asc' | 'desc';
+  }>({ key: null, direction: 'asc' });
 
   // Estados de acciones
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
-  const [editingDniPlayerId, setEditingDniPlayerId] = useState<string | null>(null);
-  const [editingDniValue, setEditingDniValue] = useState<string>('');
-  const [isUpdatingDni, setIsUpdatingDni] = useState(false);
-
-  // Modal de carga masiva de DNIs
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkTextInput, setBulkTextInput] = useState('');
-  const [bulkResult, setBulkResult] = useState<string | null>(null);
 
   // Modal de Enlace Directo (Magic Link) y campos pre-rellenados
   const [directLinkPlayer, setDirectLinkPlayer] = useState<PlayerDashboardItem | null>(null);
@@ -249,7 +251,7 @@ export default function AdminConsentimientosPage() {
     }
   };
 
-  // Descargar Modelo Oficial en PDF con los datos pre-rellenados (Borrador para firma física)
+  // Descargar Modelo Oficial en PDF con los datos pre-rellenados (Borrador en blanco para firma presencial)
   const handleDownloadDraftPdf = () => {
     if (!directLinkPlayer) return;
 
@@ -258,21 +260,17 @@ export default function AdminConsentimientosPage() {
       teamName: directLinkPlayer.teamName,
       birthYear: directLinkPlayer.birthYear,
       isMinor: directLinkPlayer.isMinor,
-      signerName: prefillName.trim() || directLinkPlayer.playerName,
+      signerName: prefillName.trim(),
       signerDni: prefillDni.trim().toUpperCase(),
       signerRelationship: prefillRelationship,
       signerPhone: prefillPhone.trim(),
       signerEmail: prefillEmail.trim(),
-      consentSocialMedia: true,
-      consentStreaming: true,
-      consentPress: true,
-      consentTravel: true,
       medicalNotes: '',
-      // signatureData no se pasa para que el recuadro quede en blanco listo para firmar físicamente
+      isPrintableBlank: true,
     });
 
     const safeName = directLinkPlayer.playerName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    doc.save(`modelo_oficial_junta_andalucia_${safeName}_prerellenado.pdf`);
+    doc.save(`autorizacion_presencial_${safeName}.pdf`);
   };
 
   // Estados para selección múltiple y gestión por lotes
@@ -481,10 +479,18 @@ export default function AdminConsentimientosPage() {
     setData(null);
   };
 
-  // Filtrado de jugadores
+  const handleSort = (key: 'status' | 'image' | 'travel') => {
+    setSortConfig((prev) => {
+      if (prev.key !== key) return { key, direction: 'asc' };
+      if (prev.direction === 'asc') return { key, direction: 'desc' };
+      return { key: null, direction: 'asc' };
+    });
+  };
+
+  // Filtrado y ordenación de jugadores
   const filteredPlayers = useMemo(() => {
     if (!data) return [];
-    return data.players.filter((p) => {
+    const list = data.players.filter((p) => {
       // Filtro de equipo
       if (selectedTeamFilter !== 'ALL' && p.teamId !== selectedTeamFilter) {
         return false;
@@ -492,23 +498,49 @@ export default function AdminConsentimientosPage() {
       // Filtro de estado
       if (statusFilter === 'SIGNED' && !p.isSigned) return false;
       if (statusFilter === 'PENDING' && p.isSigned) return false;
-      if (statusFilter === 'STREAMING_DENIED' && (!p.isSigned || p.consentStreaming)) return false;
 
-      // Búsqueda por texto (nombre, DNI firmante, o DNI censo)
+      // Búsqueda por texto (nombre deportista, nombre firmante o DNI firmante)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
         const matchName = p.playerName.toLowerCase().includes(query);
-        const matchDniLast5 = p.dniLast5 && p.dniLast5.toLowerCase().includes(query);
         const matchSignerDni = p.signerDni && p.signerDni.toLowerCase().includes(query);
         const matchSignerName = p.signerName && p.signerName.toLowerCase().includes(query);
-        if (!matchName && !matchDniLast5 && !matchSignerDni && !matchSignerName) {
+        if (!matchName && !matchSignerDni && !matchSignerName) {
           return false;
         }
       }
 
       return true;
     });
-  }, [data, selectedTeamFilter, statusFilter, searchQuery]);
+
+    if (!sortConfig.key) return list;
+
+    const getSortRank = (p: PlayerDashboardItem): number => {
+      if (sortConfig.key === 'status') {
+        return p.isSigned ? 1 : 0; // asc: Pendientes (0) primero, Completados (1) después
+      }
+      if (sortConfig.key === 'image') {
+        if (!p.isSigned) return 0; // Sin firmar
+        const allowed = !!(p.consentSocialMedia || p.consentStreaming || p.consentPress);
+        return allowed ? 2 : 1; // asc: Pendiente (0) -> No (1) -> Sí (2)
+      }
+      if (sortConfig.key === 'travel') {
+        if (!p.isSigned) return 0;
+        const allowed = p.consentTravel !== false;
+        return allowed ? 2 : 1;
+      }
+      return 0;
+    };
+
+    return [...list].sort((a, b) => {
+      const rankA = getSortRank(a);
+      const rankB = getSortRank(b);
+      if (rankA !== rankB) {
+        return sortConfig.direction === 'asc' ? rankA - rankB : rankB - rankA;
+      }
+      return a.playerName.localeCompare(b.playerName, 'es');
+    });
+  }, [data, selectedTeamFilter, statusFilter, searchQuery, sortConfig]);
 
   // Copiar recordatorio de WhatsApp
   const handleCopyWhatsAppReminder = () => {
@@ -532,32 +564,6 @@ export default function AdminConsentimientosPage() {
     navigator.clipboard.writeText(message);
     setCopiedWhatsApp(true);
     setTimeout(() => setCopiedWhatsApp(false), 3000);
-  };
-
-  // Guardar DNI editado inline
-  const handleSaveDni = async (playerId: string) => {
-    setIsUpdatingDni(true);
-    try {
-      const res = await fetch('/api/admin/census', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId,
-          dniLast5: editingDniValue,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setEditingDniPlayerId(null);
-        loadDashboardData();
-      } else {
-        alert(json.error || 'Error al guardar');
-      }
-    } catch {
-      alert('Error de conexión');
-    } finally {
-      setIsUpdatingDni(false);
-    }
   };
 
   // Revocar autorización
@@ -629,9 +635,8 @@ export default function AdminConsentimientosPage() {
       'Parentesco',
       'Teléfono',
       'Email',
-      'Autoriza Redes',
-      'Autoriza Streaming',
-      'Autoriza Prensa',
+      'Cesión Imagen',
+      'Desplazamientos',
       'Hash SHA256',
     ];
 
@@ -648,9 +653,8 @@ export default function AdminConsentimientosPage() {
       `"${p.signerRelationship || ''}"`,
       `"${p.signerPhone || ''}"`,
       `"${p.signerEmail || ''}"`,
-      p.consentSocialMedia ? 'SI' : 'NO',
-      p.consentStreaming ? 'SI' : 'NO',
-      p.consentPress ? 'SI' : 'NO',
+      p.isSigned ? (p.consentSocialMedia || p.consentStreaming || p.consentPress ? 'SI' : 'NO') : '',
+      p.isSigned ? (p.consentTravel !== false ? 'SI' : 'NO') : '',
       `"${p.documentHash || ''}"`,
     ]);
 
@@ -662,51 +666,6 @@ export default function AdminConsentimientosPage() {
     link.download = `censo_autorizaciones_cdv_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-  };
-
-  // Procesar carga masiva de DNIs
-  const handleBulkSubmit = async () => {
-    if (!data || !bulkTextInput.trim()) return;
-
-    // Formato admitido: Líneas con "Nombre, DNI" o "DNI"
-    const lines = bulkTextInput.split('\n').filter((l) => l.trim().length > 0);
-    const items: Array<{ playerId: string; dni: string }> = [];
-
-    for (const line of lines) {
-      const parts = line.split(/[,;\t]/).map((p) => p.trim());
-      if (parts.length >= 2) {
-        const queryName = parts[0].toLowerCase();
-        const dniVal = parts[1];
-        const match = data.players.find(
-          (p) => p.playerName.toLowerCase().includes(queryName) || p.playerId === parts[0]
-        );
-        if (match) {
-          items.push({ playerId: match.playerId, dni: dniVal });
-        }
-      }
-    }
-
-    if (items.length === 0) {
-      setBulkResult('No se encontraron coincidencias de nombres en el texto pegado.');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/admin/census', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setBulkResult(`¡Se actualizaron con éxito ${json.updatedCount} fichas federativas!`);
-        loadDashboardData();
-      } else {
-        setBulkResult(json.error || 'Error en la actualización masiva.');
-      }
-    } catch {
-      setBulkResult('Error de conexión.');
-    }
   };
 
   // Pantalla de carga inicial
@@ -796,15 +755,9 @@ export default function AdminConsentimientosPage() {
     <div className="w-full min-h-screen bg-background text-on-surface py-8 px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Barra Superior */}
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold uppercase tracking-widest rounded">
-              DIRECTIVA
-            </span>
-            <span className="text-xs text-tertiary">Gestión Oficial RGPD y Derechos de Imagen</span>
-          </div>
+        <div>
           <h1 className="text-2xl sm:text-3xl font-display-xl text-white uppercase tracking-tight">
-            Control de Autorizaciones de Imagen
+            Control de Autorizaciones
           </h1>
         </div>
 
@@ -831,13 +784,6 @@ export default function AdminConsentimientosPage() {
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>Exportar CSV</span>
-          </button>
-          <button
-            onClick={() => setShowBulkModal(true)}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-white/10 transition-colors cursor-pointer"
-          >
-            <Edit2 className="w-4 h-4" />
-            <span>Gestión Fichas DNI</span>
           </button>
           <button
             onClick={handleLogout}
@@ -898,20 +844,24 @@ export default function AdminConsentimientosPage() {
 
             <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-5 space-y-2">
               <span className="text-[11px] font-bold text-primary uppercase tracking-wider block">
-                Streaming en Directo
+                Cesión de Imagen
               </span>
               <div className="flex items-baseline justify-between">
                 <div>
-                  <span className="text-2xl font-display-xl text-white">{data.stats.streamingAllowed}</span>
+                  <span className="text-2xl font-display-xl text-white">
+                    {data.stats.imageAllowed !== undefined ? data.stats.imageAllowed : data.stats.streamingAllowed}
+                  </span>
                   <span className="text-[11px] text-emerald-400 block font-semibold">✓ Autorizan</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-2xl font-display-xl text-red-400">{data.stats.streamingDenied}</span>
+                  <span className="text-2xl font-display-xl text-red-400">
+                    {data.stats.imageDenied !== undefined ? data.stats.imageDenied : data.stats.streamingDenied}
+                  </span>
                   <span className="text-[11px] text-red-400 block font-semibold">✕ Deniegan</span>
                 </div>
               </div>
               <span className="text-[10px] text-tertiary block pt-1">
-                Atención para las retransmisiones de YouTube.
+                Protocolo Marco de Menores (Junta de Andalucía).
               </span>
             </div>
           </div>
@@ -981,7 +931,7 @@ export default function AdminConsentimientosPage() {
               <Search className="w-4 h-4 text-tertiary absolute left-3 top-3" />
               <input
                 type="text"
-                placeholder="Buscar por nombre, DNI del tutor o ficha..."
+                placeholder="Buscar por deportista, firmante o DNI..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-surface-container-low border border-white/15 rounded-lg pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-primary placeholder-white/30"
@@ -993,13 +943,12 @@ export default function AdminConsentimientosPage() {
               <Filter className="w-4 h-4 text-tertiary" />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'SIGNED' | 'PENDING' | 'STREAMING_DENIED')}
+                onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'SIGNED' | 'PENDING')}
                 className="bg-surface-container-low border border-white/15 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary"
               >
                 <option value="ALL">Todos los Estados</option>
                 <option value="PENDING">🔴 Solo Pendientes</option>
-                <option value="SIGNED">🟢 Solo Firmados</option>
-                <option value="STREAMING_DENIED">⚠️ Deniegan Streaming</option>
+                <option value="SIGNED">🟢 Solo Completados</option>
               </select>
             </div>
 
@@ -1108,13 +1057,64 @@ export default function AdminConsentimientosPage() {
                   </th>
                   <th className="py-3 px-4">Deportista</th>
                   <th className="py-3 px-3">Equipo</th>
-                  <th className="py-3 px-3">Ficha DNI</th>
-                  <th className="py-3 px-3">Estado</th>
+                  <th className="py-3 px-3">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('status')}
+                      className="inline-flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer uppercase"
+                      title="Ordenar por Estado"
+                    >
+                      <span>Estado</span>
+                      {sortConfig.key === 'status' ? (
+                        sortConfig.direction === 'asc' ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-primary" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-primary" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-tertiary/70" />
+                      )}
+                    </button>
+                  </th>
                   <th className="py-3 px-3">Firmante / DNI</th>
-                  <th className="py-3 px-3 text-center">Redes</th>
-                  <th className="py-3 px-3 text-center">Streaming</th>
-                  <th className="py-3 px-3 text-center">Prensa</th>
-                  <th className="py-3 px-3 text-center">Desplaz.</th>
+                  <th className="py-3 px-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('image')}
+                      className="inline-flex items-center justify-center gap-1.5 hover:text-primary transition-colors cursor-pointer uppercase"
+                      title="Ordenar por Cesión de Imagen"
+                    >
+                      <span>Cesión Imagen</span>
+                      {sortConfig.key === 'image' ? (
+                        sortConfig.direction === 'asc' ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-primary" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-primary" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-tertiary/70" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('travel')}
+                      className="inline-flex items-center justify-center gap-1.5 hover:text-primary transition-colors cursor-pointer uppercase"
+                      title="Ordenar por Desplazamientos"
+                    >
+                      <span>Desplazamientos</span>
+                      {sortConfig.key === 'travel' ? (
+                        sortConfig.direction === 'asc' ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-primary" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-primary" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-tertiary/70" />
+                      )}
+                    </button>
+                  </th>
                   <th className="py-3 px-3">Fecha Firma</th>
                   <th className="py-3 px-4 text-right">Acciones</th>
                 </tr>
@@ -1122,7 +1122,7 @@ export default function AdminConsentimientosPage() {
               <tbody className="divide-y divide-white/5 text-on-surface">
                 {filteredPlayers.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="py-12 text-center text-sm text-tertiary">
+                    <td colSpan={9} className="py-12 text-center text-sm text-tertiary">
                       No se han encontrado deportistas con los filtros seleccionados.
                     </td>
                   </tr>
@@ -1165,81 +1165,27 @@ export default function AdminConsentimientosPage() {
                         {p.teamName}
                       </td>
 
-                      {/* Ficha DNI (últimos 4+letra) */}
-                      <td className="py-3.5 px-3">
-                        {editingDniPlayerId === p.playerId ? (
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              maxLength={6}
-                              value={editingDniValue}
-                              onChange={(e) => setEditingDniValue(e.target.value.toUpperCase())}
-                              className="w-16 bg-surface-container-high border border-primary px-1.5 py-1 text-xs text-white uppercase font-mono rounded"
-                              placeholder="1234A"
-                            />
-                            <button
-                              onClick={() => handleSaveDni(p.playerId)}
-                              disabled={isUpdatingDni}
-                              className="p-1 bg-primary text-white rounded hover:bg-primary/80"
-                              title="Guardar"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setEditingDniPlayerId(null)}
-                              className="p-1 text-tertiary hover:text-white"
-                              title="Cancelar"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-white/80">
-                              {p.dniLast5 ? p.dniLast5 : <span className="text-white/30 italic">Sin asignar</span>}
-                            </span>
-                            <button
-                              onClick={() => {
-                                setEditingDniPlayerId(p.playerId);
-                                setEditingDniValue(p.dniLast5 || '');
-                              }}
-                              className="text-tertiary hover:text-white p-1"
-                              title="Editar DNI censo"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Estado */}
+                      {/* Estado (únicamente Completado o Pendiente) */}
                       <td className="py-3.5 px-3">
                         {p.isSigned ? (
-                          p.consentStreaming ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-950/70 border border-emerald-500/40 text-emerald-300">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                              <span>Completo</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-950/70 border border-amber-500/40 text-amber-300">
-                              <AlertCircle className="w-3 h-3 text-amber-400" />
-                              <span>Sin Streaming</span>
-                            </span>
-                          )
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 whitespace-nowrap">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <span>Completado</span>
+                          </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-950/70 border border-red-500/40 text-red-300">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-950/70 border border-red-500/40 text-red-300 whitespace-nowrap">
                             <Clock className="w-3 h-3 text-red-400" />
                             <span>Pendiente</span>
                           </span>
                         )}
                       </td>
 
-                      {/* Firmante / DNI */}
+                      {/* Firmante / DNI (siempre en dos líneas sin partir DNI) */}
                       <td className="py-3.5 px-3">
                         {p.isSigned ? (
-                          <div>
-                            <span className="font-semibold text-white block">{p.signerName}</span>
-                            <span className="text-[11px] text-tertiary">
+                          <div className="min-w-[175px]">
+                            <span className="font-semibold text-white block whitespace-nowrap">{p.signerName}</span>
+                            <span className="text-[11px] text-tertiary block whitespace-nowrap">
                               {p.signerRelationship} · DNI: {p.signerDni}
                             </span>
                           </div>
@@ -1248,29 +1194,16 @@ export default function AdminConsentimientosPage() {
                         )}
                       </td>
 
-                      {/* Badges Redes / Streaming / Prensa */}
+                      {/* Cesión Integral de Imágenes */}
                       <td className="py-3.5 px-3 text-center">
                         {p.isSigned ? (
-                          p.consentSocialMedia ? (
-                            <span className="text-emerald-400 font-bold" title="Autorizado para Redes">
-                              <Camera className="w-4 h-4 inline" />
+                          p.consentSocialMedia || p.consentStreaming || p.consentPress ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-400 font-bold text-xs" title="Autorizado para Cesión de Imagen">
+                              <Camera className="w-3.5 h-3.5" />
+                              <span>SÍ</span>
                             </span>
                           ) : (
-                            <span className="text-red-400/60 font-bold" title="No Autorizado">✕</span>
-                          )
-                        ) : (
-                          <span className="text-tertiary">-</span>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-3 text-center">
-                        {p.isSigned ? (
-                          p.consentStreaming ? (
-                            <span className="text-emerald-400 font-bold" title="Autorizado para Streaming">
-                              <Tv className="w-4 h-4 inline" />
-                            </span>
-                          ) : (
-                            <span className="text-red-400 font-bold bg-red-950/60 px-1 py-0.5 rounded" title="NO AUTORIZADO PARA STREAMING">
+                            <span className="text-red-400 font-bold bg-red-950/60 px-1.5 py-0.5 rounded text-[10px]" title="DENEGADA CESIÓN DE IMAGEN">
                               ✕ NO
                             </span>
                           )
@@ -1279,29 +1212,16 @@ export default function AdminConsentimientosPage() {
                         )}
                       </td>
 
-                      <td className="py-3.5 px-3 text-center">
-                        {p.isSigned ? (
-                          p.consentPress ? (
-                            <span className="text-emerald-400 font-bold" title="Autorizado para Prensa">
-                              <Newspaper className="w-4 h-4 inline" />
-                            </span>
-                          ) : (
-                            <span className="text-red-400/60 font-bold" title="No Autorizado">✕</span>
-                          )
-                        ) : (
-                          <span className="text-tertiary">-</span>
-                        )}
-                      </td>
-
-                      {/* Anexo 06: Desplazamientos y Asistencia Médica */}
+                      {/* Desplazamientos y Asistencia Médica */}
                       <td className="py-3.5 px-3 text-center">
                         {p.isSigned ? (
                           p.consentTravel !== false ? (
-                            <span className="text-blue-400 font-bold" title="Autorizado para Desplazamientos y Viajes (Anexo 06)">
-                              <Bus className="w-4 h-4 inline" />
+                            <span className="inline-flex items-center gap-1 text-blue-400 font-bold text-xs" title="Autorizado para Desplazamientos y Viajes">
+                              <Bus className="w-3.5 h-3.5" />
+                              <span>SÍ</span>
                             </span>
                           ) : (
-                            <span className="text-red-400 font-bold text-[10px] bg-red-950/60 px-1 py-0.5 rounded" title="NO AUTORIZADO PARA VIAJES">
+                            <span className="text-red-400 font-bold text-[10px] bg-red-950/60 px-1.5 py-0.5 rounded" title="NO AUTORIZADO PARA VIAJES">
                               ✕ NO
                             </span>
                           )
@@ -1367,74 +1287,10 @@ export default function AdminConsentimientosPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL DE GESTIÓN MASIVA DE DNI DEL CENSO                                  */}
-      {/* ========================================================================= */}
-      {showBulkModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-white/10 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-white/10 pb-3">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-primary" />
-                <span>Gestión Masiva de DNI / Fichas Federativas</span>
-              </h3>
-              <button
-                onClick={() => {
-                  setShowBulkModal(false);
-                  setBulkResult(null);
-                }}
-                className="text-tertiary hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-xs text-tertiary leading-relaxed">
-              Pega aquí filas copiadas de tu Excel o listado federativo. Admite formato:{' '}
-              <strong className="text-white">Nombre Jugador, DNI</strong> (ej: <code>Marta Sanchez, 12345678Z</code> o <code>Lola Rios, 5678Z</code>). El sistema extraerá automáticamente los últimos 4 dígitos y letra.
-            </p>
-
-            <textarea
-              rows={8}
-              value={bulkTextInput}
-              onChange={(e) => setBulkTextInput(e.target.value)}
-              placeholder="Marta Sanchez Rosado, 12345678Z&#10;Lola Ríos Osuna, 87654321A"
-              className="w-full bg-surface-container-low border border-white/15 rounded-lg p-3 text-xs text-white font-mono placeholder-white/30 focus:outline-none focus:border-primary"
-            />
-
-            {bulkResult && (
-              <div className="p-3 bg-surface-container-high border border-white/10 rounded-lg text-xs text-white">
-                {bulkResult}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowBulkModal(false);
-                  setBulkResult(null);
-                }}
-                className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white/80 font-bold text-xs uppercase rounded transition-colors"
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                onClick={handleBulkSubmit}
-                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase rounded transition-colors shadow-lg shadow-primary/20"
-              >
-                Actualizar Fichas
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
       {/* MODAL DE ENLACE DIRECTO (MAGIC LINK) Y DATOS PRE-RELLENADOS               */}
       {/* ========================================================================= */}
       {directLinkPlayer && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-surface-container-lowest border border-white/10 rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl my-8">
             {/* Cabecera */}
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
@@ -1729,7 +1585,7 @@ export default function AdminConsentimientosPage() {
       {/* MODAL DE GENERACIÓN MÚLTIPLE DE ENLACES DIRECTOS (POR LOTE O EQUIPO)      */}
       {/* ========================================================================= */}
       {showBatchModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="bg-surface-container-lowest border border-white/10 rounded-2xl max-w-4xl w-full p-5 sm:p-6 space-y-4 shadow-2xl my-6 max-h-[92vh] flex flex-col">
             {/* Cabecera */}
             <div className="flex justify-between items-center border-b border-white/10 pb-3 shrink-0">

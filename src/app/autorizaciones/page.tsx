@@ -420,7 +420,7 @@ function AutorizacionesContent() {
             Autorizaciones Oficiales y Cesión de Imagen
           </h1>
           <p className="text-sm text-tertiary max-w-xl mx-auto">
-            Trámite digital oficial para deportistas y familias del {CLUB_INFO.name}. Modelos Anexo 05 y Anexo 06 conforme al Protocolo de Menores de la Junta de Andalucía, RGPD y LOPDGDD.
+            Trámite digital oficial para deportistas y familias del {CLUB_INFO.name}. Conforme al Protocolo de Menores de la Junta de Andalucía, RGPD y LOPDGDD.
           </p>
         </div>
 
@@ -450,7 +450,7 @@ function AutorizacionesContent() {
               }`}
             >
               <span>2</span>
-              <span>Anexos Oficiales y Firma</span>
+              <span>Autorizaciones y Firma</span>
             </div>
             <div className="w-8 h-px bg-white/20" />
             <div
@@ -676,7 +676,7 @@ function AutorizacionesContent() {
                   Paso 2: Declaración Oficial y Firma Digital
                 </h2>
                 <span className="text-xs text-tertiary">
-                  Modelos oficiales Anexo 05 y 06 adaptados a la normativa de la Junta de Andalucía
+                  Documentación oficial adaptada a la normativa de la Junta de Andalucía
                 </span>
               </div>
               <div className="text-right">
@@ -801,9 +801,7 @@ function AutorizacionesContent() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 bg-primary/20 text-primary border border-primary/40 rounded text-[10px] font-bold uppercase tracking-wider">
-                        Anexo 05
-                      </span>
+                      <Camera className="w-4 h-4 text-primary" />
                       <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                         Tratamiento de Datos e Imágenes de Menores / Deportistas
                       </h3>
@@ -822,13 +820,13 @@ function AutorizacionesContent() {
                   </button>
                 </div>
 
-                {/* Casilla 1: Redes y Web */}
+                {/* Casilla Única Oficial: Cesión de Imagen Integral */}
                 <label
-                  className={`block p-4 rounded-lg border transition-all ${
+                  className={`block p-4 rounded-xl border transition-all ${
                     denyAllConsents
                       ? 'bg-surface-container-low/40 border-white/5 opacity-40 cursor-not-allowed'
                       : consentSocialMedia
-                      ? 'bg-primary/10 border-primary/50 cursor-pointer'
+                      ? 'bg-primary/10 border-primary/50 cursor-pointer shadow-md'
                       : 'bg-surface-container-low border-white/10 hover:border-white/20 cursor-pointer'
                   }`}
                 >
@@ -837,84 +835,29 @@ function AutorizacionesContent() {
                       type="checkbox"
                       disabled={denyAllConsents}
                       checked={consentSocialMedia}
-                      onChange={(e) => handleConsentChange(setConsentSocialMedia, e.target.checked)}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setConsentSocialMedia(val);
+                        setConsentStreaming(val);
+                        setConsentPress(val);
+                        if (val) setDenyAllConsents(false);
+                      }}
                       className="mt-1 w-4 h-4 rounded border-white/30 text-primary focus:ring-primary accent-primary cursor-pointer disabled:cursor-not-allowed"
                     />
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex items-center gap-2 font-bold text-sm text-white">
-                        <Camera className="w-4 h-4 text-primary" />
-                        <span>A. Sitio Web Oficial y Redes Sociales del Club</span>
+                        <span>Autorización para el Tratamiento y Difusión de Imágenes</span>
                       </div>
                       <p className="text-xs text-tertiary leading-relaxed">
-                        Autorizo la captación y publicación de fotografías de equipo, convocatorias deportivas y logros en la web oficial y redes oficiales del {CLUB_INFO.name} (Instagram, Facebook, Twitter/X).
+                        Autorizo al <strong>{CLUB_INFO.name}</strong> y a las entidades organizadoras y patrocinadores para captar y divulgar la imagen del deportista en la web oficial, redes sociales del club, retransmisiones oficiales de partidos (streaming), prensa y soportes deportivos con la exclusiva finalidad de promoción del deporte, conforme a la Ley 1/1982, RGPD y el Protocolo Marco de Protección de Menores de la Junta de Andalucía.
                       </p>
                     </div>
                   </div>
                 </label>
 
-                {/* Casilla 2: Streaming */}
+                {/* Casilla Alternativa: Denegación Expresa Total de Imágenes */}
                 <label
-                  className={`block p-4 rounded-lg border transition-all ${
-                    denyAllConsents
-                      ? 'bg-surface-container-low/40 border-white/5 opacity-40 cursor-not-allowed'
-                      : consentStreaming
-                      ? 'bg-primary/10 border-primary/50 cursor-pointer'
-                      : 'bg-surface-container-low border-white/10 hover:border-white/20 cursor-pointer'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      disabled={denyAllConsents}
-                      checked={consentStreaming}
-                      onChange={(e) => handleConsentChange(setConsentStreaming, e.target.checked)}
-                      className="mt-1 w-4 h-4 rounded border-white/30 text-primary focus:ring-primary accent-primary cursor-pointer disabled:cursor-not-allowed"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 font-bold text-sm text-white">
-                        <Tv className="w-4 h-4 text-primary" />
-                        <span>B. Retransmisión y Streaming en Directo de Partidos Oficiales</span>
-                      </div>
-                      <p className="text-xs text-tertiary leading-relaxed">
-                        Autorizo la difusión audiovisual del deportista en las emisiones de partidos oficiales en directo organizadas a través del canal oficial de YouTube u otros canales deportivos autorizados por la federación.
-                      </p>
-                    </div>
-                  </div>
-                </label>
-
-                {/* Casilla 3: Prensa */}
-                <label
-                  className={`block p-4 rounded-lg border transition-all ${
-                    denyAllConsents
-                      ? 'bg-surface-container-low/40 border-white/5 opacity-40 cursor-not-allowed'
-                      : consentPress
-                      ? 'bg-primary/10 border-primary/50 cursor-pointer'
-                      : 'bg-surface-container-low border-white/10 hover:border-white/20 cursor-pointer'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      disabled={denyAllConsents}
-                      checked={consentPress}
-                      onChange={(e) => handleConsentChange(setConsentPress, e.target.checked)}
-                      className="mt-1 w-4 h-4 rounded border-white/30 text-primary focus:ring-primary accent-primary cursor-pointer disabled:cursor-not-allowed"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 font-bold text-sm text-white">
-                        <Newspaper className="w-4 h-4 text-primary" />
-                        <span>C. Difusión en Medios de Comunicación y Prensa Deportiva</span>
-                      </div>
-                      <p className="text-xs text-tertiary leading-relaxed">
-                        Autorizo la cesión de imágenes para notas de prensa, podios y crónicas en medios de comunicación locales y provinciales de Marbella y San Pedro Alcántara con fines informativos.
-                      </p>
-                    </div>
-                  </div>
-                </label>
-
-                {/* Casilla 4: Denegación Total Expresa */}
-                <label
-                  className={`block p-4 rounded-lg border transition-all cursor-pointer ${
+                  className={`block p-4 rounded-xl border transition-all cursor-pointer ${
                     denyAllConsents
                       ? 'bg-red-950/40 border-red-500/70 shadow-lg shadow-red-950/40'
                       : 'bg-surface-container-low/80 border-red-500/20 hover:border-red-500/40'
@@ -930,10 +873,10 @@ function AutorizacionesContent() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 font-bold text-sm text-red-300">
                         <Ban className="w-4 h-4 text-red-400" />
-                        <span>D. Denegación Expresa Total de Imágenes (Anexo 05)</span>
+                        <span>No autorizo la captación ni difusión de imágenes (Denegación expresa de imagen)</span>
                       </div>
                       <p className="text-xs text-red-200/80 leading-relaxed">
-                        Al marcar esta opción, no se concede ninguna cesión para redes, streaming ni prensa. Se emitirá el resguardo formal de denegación para conocimiento estricto del cuerpo técnico y directiva.
+                        Al marcar esta opción, no se concede ninguna cesión de imagen en redes, streaming ni prensa oficial. Se registrará la denegación en acta interna para conocimiento estricto de técnicos y delegados de campo.
                       </p>
                     </div>
                   </div>
@@ -941,17 +884,14 @@ function AutorizacionesContent() {
               </div>
 
               {/* ========================================================================= */}
-              {/* ANEXO 06: DESPLAZAMIENTOS, VIAJES Y ASISTENCIA SANITARIA OFICIAL          */}
+              {/* DESPLAZAMIENTOS, VIAJES Y ASISTENCIA SANITARIA OFICIAL                    */}
               {/* ========================================================================= */}
               <div className="space-y-3 pt-5 border-t border-white/10">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/40 rounded text-[10px] font-bold uppercase tracking-wider">
-                      Anexo 06
-                    </span>
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <Bus className="w-4 h-4 text-blue-400" />
-                      <span>Autorización de Desplazamientos y Asistencia Médica Oficial</span>
+                    <Bus className="w-4 h-4 text-blue-400" />
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                      Autorización de Desplazamientos y Asistencia Médica Oficial
                     </h3>
                   </div>
                   <p className="text-[11px] text-tertiary">
@@ -1016,7 +956,7 @@ function AutorizacionesContent() {
                       className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer"
                     />
                     <span className="text-xs text-white/90 leading-relaxed">
-                      <strong>Declaración Responsable (Junta de Andalucía):</strong> Declaro bajo mi exclusiva responsabilidad que ostento la patria potestad o tutela legal del deportista menor de edad citado y que presto este consentimiento con conocimiento y conformidad del otro progenitor para los Anexos 05 y 06.
+                      <strong>Declaración Responsable (Junta de Andalucía):</strong> Declaro bajo mi exclusiva responsabilidad que ostento la patria potestad o tutela legal del deportista menor de edad citado y que presto este consentimiento con conocimiento y conformidad del otro progenitor para las autorizaciones oficiales de imagen y desplazamientos.
                     </span>
                   </label>
                 </div>
@@ -1070,7 +1010,7 @@ function AutorizacionesContent() {
         )}
 
         {/* ========================================================================= */}
-        {/* PASO 3: CONFIRMACIÓN Y DESCARGA DEL PDF OFICIAL DE 2 PÁGINAS              */}
+        {/* PASO 3: CONFIRMACIÓN Y DESCARGA DEL PDF OFICIAL DE 1 PÁGINA               */}
         {/* ========================================================================= */}
         {step === 3 && verifiedPlayer && (
           <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-8 space-y-6 text-center shadow-2xl">
@@ -1086,7 +1026,7 @@ function AutorizacionesContent() {
                 Autorizaciones Registradas Oficialmente
               </h2>
               <p className="text-xs text-tertiary max-w-md mx-auto">
-                Los Anexos 05 y 06 han sido firmados y custodiados en los servidores seguros del club con sellado digital de integridad y marca temporal certificada.
+                Las autorizaciones oficiales han sido firmadas y custodiadas en los servidores seguros del club con sellado digital de integridad y marca temporal certificada.
               </p>
             </div>
 
@@ -1107,23 +1047,15 @@ function AutorizacionesContent() {
                 </strong>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-tertiary">Anexo 05 (Cesión de Imagen):</span>
+                <span className="text-tertiary">Cesión de Imagen:</span>
                 <strong className={denyAllConsents ? 'text-red-400' : 'text-emerald-400'}>
-                  {denyAllConsents
-                    ? 'Denegación Total Expresa'
-                    : `${[
-                        consentSocialMedia ? 'Redes/Web' : null,
-                        consentStreaming ? 'Streaming' : null,
-                        consentPress ? 'Prensa' : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}`}
+                  {denyAllConsents ? 'Denegación Expresa Total' : 'Autorizado'}
                 </strong>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-tertiary">Anexo 06 (Desplazamientos y Viajes):</span>
+                <span className="text-tertiary">Desplazamientos y Asistencia Médica:</span>
                 <strong className={consentTravel ? 'text-emerald-400' : 'text-red-400'}>
-                  {consentTravel ? 'Autorizado Expresamente' : 'No Autorizado'}
+                  {consentTravel ? 'Autorizado' : 'No Autorizado'}
                 </strong>
               </div>
               {confirmedHash && (
@@ -1144,7 +1076,7 @@ function AutorizacionesContent() {
                 className="w-full sm:w-auto px-6 py-3.5 bg-primary hover:bg-primary/90 text-white font-bold text-sm uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
-                <span>Descargar Resguardo Oficial (PDF 2 Páginas)</span>
+                <span>Descargar Resguardo Oficial (PDF)</span>
               </button>
               <Link
                 href="/"
@@ -1183,7 +1115,7 @@ function AutorizacionesContent() {
             <div className="space-y-4 text-xs text-on-surface/90 leading-relaxed">
               <div className="space-y-1">
                 <h4 className="font-bold text-white text-sm text-primary">
-                  1. Anexo 05: Manejo Adecuado de Datos e Imágenes
+                  1. Tratamiento y Protección de Imágenes
                 </h4>
                 <p>
                   Regulado en el <em>Protocolo Marco de Actuación para la Protección de las Personas Menores frente a la Violencia en el Deporte</em> (Orden de 18 de noviembre de 2024 de la Consejería de Cultura y Deporte de la Junta de Andalucía) y Ley Orgánica 8/2021 (LOPIVI).
@@ -1206,7 +1138,7 @@ function AutorizacionesContent() {
 
               <div className="space-y-1">
                 <h4 className="font-bold text-white text-sm text-primary">
-                  3. Anexo 06: Desplazamientos, Viajes y Asistencia Sanitaria
+                  3. Desplazamientos, Viajes y Asistencia Sanitaria
                 </h4>
                 <p>
                   Autoriza los desplazamientos fuera de San Pedro Alcántara para competiciones oficiales de la Federación Andaluza de Voleibol (FAVB), garantizando la supervisión técnica y habilitando la asistencia médica inmediata a través del Seguro Deportivo Obligatorio y el Servicio Andaluz de Salud (SAS).

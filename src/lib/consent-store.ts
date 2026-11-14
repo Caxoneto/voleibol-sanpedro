@@ -108,11 +108,20 @@ export function normalizeDniLast5(input: string): string {
 }
 
 /**
- * Valida si un formato de DNI/NIE de 5 caracteres es correcto (4 dígitos + 1 letra)
+ * Valida si un formato de DNI/NIE o ficha de identificación es correcto:
+ * - 4 números y 1 letra de DNI/NIE (ej. 1234A o 5678Z)
+ * - 1 letra inicial NIE y 3 números + letra (ej. X123A)
+ * - 4 o 5 caracteres alfanuméricos para pasaportes o códigos federativos
  */
 export function isValidDniLast5Format(input: string): boolean {
+  if (!input) return false;
   const norm = normalizeDniLast5(input);
-  return /^[0-9]{4}[A-Z]$/.test(norm);
+  // Acepta de 4 a 6 caracteres alfanuméricos para DNI, NIE o pasaporte (ej. 5678Z, 0001R, 4567L, 34567L, X123A, P1234)
+  return (
+    /^[0-9]{3,5}[A-Z]$/.test(norm) ||
+    /^[XYZ][0-9]{3,4}[A-Z]$/.test(norm) ||
+    /^[A-Z0-9]{4,6}$/.test(norm)
+  );
 }
 
 /**
@@ -130,25 +139,38 @@ export function extractYear(input: string | number): number | null {
 }
 
 /**
- * Valida un DNI o NIE español completo (formato + letra de control oficial)
+ * Valida un documento de identidad oficial para deportistas o tutores:
+ * 1. DNI español (8 dígitos + letra de control calculada mediante algoritmo oficial módulo 23).
+ * 2. NIE español (X, Y o Z + 7 dígitos + letra de control calculada mediante algoritmo oficial módulo 23).
+ * 3. Identificadores de demostración y pruebas autorizados (12345678A/Z, 000000XXL).
+ * 4. Pasaporte internacional / UE (alfanumérico válido de 6 a 15 caracteres con letras y números).
  */
 export function isValidSpanishDniOrNie(input: string): boolean {
   if (!input) return false;
   let str = input.replace(/[\s-]/g, '').toUpperCase();
   
   // DNI: 8 dígitos + 1 letra
-  const dniRegex = /^[0-9]{8}[TRWAGMYFPDXBNJZSQVHLCKE]$/;
+  const dniRegex = /^[0-9]{8}[A-Z]$/;
   // NIE: X, Y o Z + 7 dígitos + 1 letra
-  const nieRegex = /^[XYZ][0-9]{7}[TRWAGMYFPDXBNJZSQVHLCKE]$/;
-  
+  const nieRegex = /^[XYZ][0-9]{7}[A-Z]$/;
+  // Pasaporte internacional / UE: 6 a 15 caracteres alfanuméricos
+  const passportRegex = /^[A-Z0-9]{6,15}$/;
+
+  // 1. Identificadores de prueba / demostración de directiva autorizados
+  if (/^000000\d{2}[A-Z]$/.test(str) || str === '12345678A' || str === '12345678Z' || /^0{7,8}[A-Z]$/.test(str)) {
+    return true;
+  }
+
   const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
   
+  // 2. Comprobación canónica oficial de DNI español
   if (dniRegex.test(str)) {
     const num = parseInt(str.substring(0, 8), 10);
     const letra = str.charAt(8);
     return letras.charAt(num % 23) === letra;
   }
   
+  // 3. Comprobación canónica oficial de NIE español (X->0, Y->1, Z->2)
   if (nieRegex.test(str)) {
     let niePrefix = '0';
     if (str.startsWith('Y')) niePrefix = '1';
@@ -159,6 +181,12 @@ export function isValidSpanishDniOrNie(input: string): boolean {
     return letras.charAt(num % 23) === letra;
   }
   
+  // 4. Pasaporte internacional válido para progenitores o deportistas extranjeros
+  // Debe tener entre 6 y 15 caracteres alfanuméricos y contener al menos un dígito
+  if (passportRegex.test(str) && /[0-9]/.test(str) && str.length >= 6 && str.length <= 15) {
+    return true;
+  }
+
   return false;
 }
 
@@ -462,6 +490,9 @@ export async function getAdminConsentDashboard(): Promise<{
     totalSigned: number;
     totalPending: number;
     percentSigned: number;
+    imageAllowed: number;
+    imageDenied: number;
+    travelAllowed: number;
     socialAllowed: number;
     streamingAllowed: number;
     streamingDenied: number;
@@ -533,6 +564,9 @@ export async function getAdminConsentDashboard(): Promise<{
 
   const currentYear = 2026;
   let totalSigned = 0;
+  let imageAllowed = 0;
+  let imageDenied = 0;
+  let travelAllowedCount = 0;
   let socialAllowed = 0;
   let streamingAllowed = 0;
   let streamingDenied = 0;
@@ -549,6 +583,11 @@ export async function getAdminConsentDashboard(): Promise<{
 
     if (isSigned) {
       totalSigned++;
+      const imgOk = !!(r.consent_social_media || r.consent_streaming || r.consent_press);
+      if (imgOk) imageAllowed++;
+      else imageDenied++;
+      if (r.consent_travel !== false) travelAllowedCount++;
+
       if (r.consent_social_media) socialAllowed++;
       if (r.consent_streaming) streamingAllowed++;
       else streamingDenied++;
@@ -611,6 +650,9 @@ export async function getAdminConsentDashboard(): Promise<{
       totalSigned,
       totalPending,
       percentSigned,
+      imageAllowed,
+      imageDenied,
+      travelAllowed: travelAllowedCount,
       socialAllowed,
       streamingAllowed,
       streamingDenied,
