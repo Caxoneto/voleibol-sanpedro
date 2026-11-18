@@ -18,6 +18,17 @@ export async function GET() {
     const googleCfg = getOAuthProviderConfig('google');
     const msCfg = getOAuthProviderConfig('microsoft');
 
+    const staffEffectivePermissions = session
+      ? Object.values(session.effectivePermissions)
+          .filter((g) => g.scope !== 'PROPIO' || g.code === 'substitution.request')
+          .map((g) => g.code)
+      : [];
+    const effectivePermissionScopes = session
+      ? Object.fromEntries(
+          Object.values(session.effectivePermissions).map((g) => [g.code, g.scope])
+        )
+      : {};
+
     return NextResponse.json({
       success: true,
       authenticated: Boolean(session),
@@ -40,7 +51,9 @@ export async function GET() {
             staffTeamIds: session.staffTeamIds,
             ownAthleteId: session.ownAthleteId,
             guardianAthleteIds: session.guardianAthleteIds,
-            effectivePermissions: Object.keys(session.effectivePermissions),
+            effectivePermissions: staffEffectivePermissions,
+            staffEffectivePermissions,
+            effectivePermissionScopes,
           }
         : null,
     });

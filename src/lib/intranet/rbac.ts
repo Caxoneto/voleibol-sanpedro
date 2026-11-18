@@ -23,6 +23,15 @@ export class IntranetForbiddenError extends Error {
   }
 }
 
+export class IntranetValidationError extends Error {
+  public readonly statusCode: number;
+  constructor(message: string, statusCode = 400) {
+    super(message);
+    this.name = 'IntranetValidationError';
+    this.statusCode = statusCode;
+  }
+}
+
 export interface UserRoleAssignment {
   id: string;
   roleCode: RoleCode;
@@ -369,7 +378,11 @@ export function can(
         ctx.guardianAthleteIds.includes(options.athleteId)
       );
     }
-    return true;
+    // Solo se permite invocación sin sujeto objetivo para autogestión de staff
+    if (permissionCode === 'substitution.request') {
+      return ctx.isStaff;
+    }
+    return false;
   }
 
   return false;

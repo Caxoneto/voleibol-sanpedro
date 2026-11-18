@@ -72,7 +72,7 @@ src/
 * `POST /api/admin/direct-link-batch` — Genera lote de hasta 200 enlaces y envía emails en bloques (omitiendo `isSigned` y `isShredded`).
 
 ### Intranet y Portal de Socios (`/api/intranet/*`)
-* `/api/intranet/auth/me`, `login`, `logout`, `magic`, `bootstrap`, `invite`, `oauth/[provider]`, `oauth/[provider]/callback` — Gestión de identidad, autenticación multi-canal, OAuth2 tenant `common` e invitaciones (acceso sin 2FA por decisión del club).
+* `/api/intranet/auth/me`, `login`, `logout`, `magic`, `bootstrap`, `invite`, `oauth/[provider]`, `oauth/[provider]/callback` — Gestión de identidad, autenticación multi-canal con enlace mágico consumido por `POST` (`/acceso?magic=`), cookie OAuth `cdv_oauth_tx` sellada por AES-GCM, activación unificada/atómica de invitaciones (`claimAndApplyInvitation`), OAuth2 tenant `common` y rate limiting por IP + cuenta (endpoint `/api/intranet/auth/2fa` bloqueado con `403` mientras 2FA esté desactivado).
 * `/api/intranet/gov` — Panel de Presidencia, asignaciones de equipos y matriz RBAC de permisos.
 * `/api/intranet/structure` — Temporadas, equipos, pabellones, pistas y horarios.
 * `/api/intranet/census` — Sincronización y gestión avanzada del censo unificado y cuotas.

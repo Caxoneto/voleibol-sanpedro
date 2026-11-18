@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { queryNeon } from '@/lib/streaming-store';
-import { getClientIp } from '@/lib/rate-limiter';
+import { checkNeonRateLimit, getClientIp } from '@/lib/rate-limiter';
 import {
   getOAuthProviderConfig,
   getPublicBaseUrl,
-  inspectInvitationToken,
+  claimAndApplyInvitation,
+  unsealOAuthTxCookie,
   createIntranetSession,
   setIntranetSessionCookie,
   type OAuthProviderKey,
 } from '@/lib/intranet/auth';
 import { buildUserAccessContext } from '@/lib/intranet/rbac';
+import { ensureIntranetSeeded } from '@/lib/intranet/seed-bootstrap';
 import { recordAuditLog } from '@/lib/intranet/audit';
 
 export const dynamic = 'force-dynamic';
@@ -27,22 +29,24 @@ export async function GET(
   const provider: OAuthProviderKey = providerRaw;
 
   try {
+    await ensureIntranetSeeded();
+    const clientIp = getClientIp(req);
+    const rl = await checkNeonRateLimit(`intranet-oauth-cb:${clientIp}`, 20, 600, 600);
+    if (!rl.allowed) {
+      return NextResponse.redirect(`${baseUrl}/acceso?error=oauth_error_interno`);
+    }
+
     const code = req.nextUrl.searchParams.get('code') || '';
     const state = req.nextUrl.searchParams.get('state') || '';
     const cookieStore = cookies();
     const txRaw = cookieStore.get('cdv_oauth_tx')?.value;
     cookieStore.delete('cdv_oauth_tx');
 
-    if (!code || !state || !txRaw) {
+    const tx = unsealOAuthTxCookie(txRaw);
+    if (!code || !state || !tx) {
       return NextResponse.redirect(`${baseUrl}/acceso?error=oauth_estado_invalido`);
     }
 
-    const tx = JSON.parse(txRaw) as {
-      state: string;
-      codeVerifier: string;
-      provider: string;
-      inviteToken?: string;
-    };
     if (tx.state !== state || tx.provider !== provider) {
       return NextResponse.redirect(`${baseUrl}/acceso?error=oauth_csrf`);
     }
@@ -127,31 +131,41 @@ export async function GET(
     );
     let userId = linked[0]?.user_id;
 
-    // 2. Si no está vinculada, buscar usuario existente por email o invitación activa (NUNCA registro abierto)
+    // 2. Si viene con invitación explícita, reclamar y activar atómicamente (incluidos usuarios en estado INVITED)
+    if (tx.inviteToken) {
+      const claimed = await claimAndApplyInvitation({
+        rawToken: tx.inviteToken,
+        expectedEmail: providerEmail,
+        name: displayName,
+      });
+      if (claimed) {
+        userId = claimed.userId;
+      }
+    }
+
+    // 3. Si aún no está resuelto, buscar usuario por correo o invitación pendiente por correo (NUNCA registro abierto)
     if (!userId) {
       const byEmail = await queryNeon<{ id: string; status: string }>(
         `SELECT id::text, status FROM intranet_users WHERE LOWER(email) = $1 LIMIT 1;`,
         [providerEmail]
       );
       if (byEmail[0]) {
-        userId = byEmail[0].id;
-      } else if (tx.inviteToken) {
-        const inv = await inspectInvitationToken(tx.inviteToken);
-        if (inv && inv.email.toLowerCase() === providerEmail) {
-          const ins = await queryNeon<{ id: string }>(
-            `INSERT INTO intranet_users (email, name, email_verified, status)
-             VALUES ($1, $2, true, 'ACTIVE') RETURNING id::text AS id;`,
-            [providerEmail, displayName]
-          );
-          userId = ins[0].id;
-          for (const rc of inv.role_codes) {
-            if (rc === 'PRESIDENTE') continue;
-            await queryNeon(
-              `INSERT INTO intranet_user_roles (user_id, role_code) VALUES ($1::uuid, $2);`,
-              [userId, rc]
-            );
-          }
-          await queryNeon(`UPDATE intranet_invitations SET accepted_at = NOW() WHERE id = $1::uuid;`, [inv.id]);
+        if (byEmail[0].status === 'INVITED') {
+          const claimedByEmail = await claimAndApplyInvitation({
+            expectedEmail: providerEmail,
+            name: displayName,
+          });
+          userId = claimedByEmail?.userId || byEmail[0].id;
+        } else {
+          userId = byEmail[0].id;
+        }
+      } else {
+        const claimedByEmail = await claimAndApplyInvitation({
+          expectedEmail: providerEmail,
+          name: displayName,
+        });
+        if (claimedByEmail) {
+          userId = claimedByEmail.userId;
         }
       }
     }
@@ -183,7 +197,6 @@ export async function GET(
       [user.id, dbProvider, providerAccountId, providerEmail]
     );
 
-    const clientIp = getClientIp(req);
     const { rawToken, expiresAt } = await createIntranetSession({
       userId: user.id,
       ipAddress: clientIp,

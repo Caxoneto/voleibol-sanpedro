@@ -739,7 +739,40 @@ export async function POST(req: NextRequest) {
 
       let savedTripId = tripId;
       if (savedTripId) {
-        const updated = await queryNeon<{ id: string }>(
+        const tripMetaRows = await queryNeon<{ id: string; created_by: string | null }>(
+          `SELECT id::text AS id, created_by::text AS created_by
+           FROM intranet_staff_trips
+           WHERE id = $1::uuid
+           LIMIT 1;`,
+          [savedTripId]
+        );
+        if (tripMetaRows.length === 0) {
+          return NextResponse.json(
+            { success: false, error: 'Expedición no encontrada.' },
+            { status: 404 }
+          );
+        }
+
+        const linkedTeams = await queryNeon<{ team_season_id: string }>(
+          `SELECT DISTINCT team_season_id
+           FROM intranet_match_assignments
+           WHERE trip_id = $1::uuid;`,
+          [savedTripId]
+        );
+        if (linkedTeams.length > 0) {
+          for (const row of linkedTeams) {
+            assertCan(ctx, 'trip.manage', { teamSeasonId: row.team_season_id });
+          }
+        } else {
+          const manageScope = getAuthorizedTeamScope(ctx, 'trip.manage');
+          if (!manageScope.isGlobal && tripMetaRows[0].created_by !== ctx.user.id) {
+            throw new IntranetForbiddenError(
+              'No tienes permiso para modificar esta expedición.'
+            );
+          }
+        }
+
+        await queryNeon(
           `UPDATE intranet_staff_trips
            SET madrid_date = $2,
                destination_locality = $3,
@@ -747,8 +780,7 @@ export async function POST(req: NextRequest) {
                departure_time_madrid = $5,
                meeting_point = $6,
                transport_notes = $7
-           WHERE id = $1::uuid
-           RETURNING id::text AS id;`,
+           WHERE id = $1::uuid;`,
           [
             savedTripId,
             madridDate,
@@ -759,12 +791,6 @@ export async function POST(req: NextRequest) {
             transportNotes,
           ]
         );
-        if (updated.length === 0) {
-          return NextResponse.json(
-            { success: false, error: 'Expedición no encontrada.' },
-            { status: 404 }
-          );
-        }
       } else {
         const inserted = await queryNeon<{ id: string }>(
           `INSERT INTO intranet_staff_trips (
@@ -839,6 +865,39 @@ export async function POST(req: NextRequest) {
           { success: false, error: 'Identificador de expedición no válido.' },
           { status: 400 }
         );
+      }
+
+      const tripMetaRows = await queryNeon<{ id: string; created_by: string | null }>(
+        `SELECT id::text AS id, created_by::text AS created_by
+         FROM intranet_staff_trips
+         WHERE id = $1::uuid
+         LIMIT 1;`,
+        [tripId]
+      );
+      if (tripMetaRows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Expedición no encontrada.' },
+          { status: 404 }
+        );
+      }
+
+      const linkedTeams = await queryNeon<{ team_season_id: string }>(
+        `SELECT DISTINCT team_season_id
+         FROM intranet_match_assignments
+         WHERE trip_id = $1::uuid;`,
+        [tripId]
+      );
+      if (linkedTeams.length > 0) {
+        for (const row of linkedTeams) {
+          assertCan(ctx, 'trip.manage', { teamSeasonId: row.team_season_id });
+        }
+      } else {
+        const manageScope = getAuthorizedTeamScope(ctx, 'trip.manage');
+        if (!manageScope.isGlobal && tripMetaRows[0].created_by !== ctx.user.id) {
+          throw new IntranetForbiddenError(
+            'No tienes permiso para eliminar esta expedición.'
+          );
+        }
       }
 
       await queryNeon(

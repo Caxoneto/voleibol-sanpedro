@@ -8,6 +8,7 @@ import { isStrictEmail } from '@/lib/validators';
 import {
   buildUserAccessContext,
   IntranetAuthError,
+  IntranetValidationError,
   type IntranetAccessContext,
   type IntranetSessionUser,
 } from './rbac';
@@ -18,6 +19,15 @@ import type { RoleCode } from './catalog';
 export const INTRANET_SESSION_COOKIE = 'cdv_intranet_session';
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function escapeHtml(text: string): string {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /**
  * Obtiene el secreto de firma de sesiones de intranet sin fallbacks hardcodeados.
@@ -391,7 +401,7 @@ export async function createIntranetInvitation(params: {
   let emailError: string | undefined;
 
   if (params.sendEmail !== false) {
-    const safeName = (params.recipientName || cleanEmail).replace(/[<>\r\n]/g, '').slice(0, 80);
+    const safeName = (params.recipientName || cleanEmail).replace(/[\r\n]/g, '').trim().slice(0, 80);
     const title =
       params.targetType === 'STAFF'
         ? 'Invitación al área interna de Staff'
@@ -413,18 +423,18 @@ export async function createIntranetInvitation(params: {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden;">
           <div style="background: #d90429; padding: 18px 24px; color: #ffffff;">
-            <div style="font-size: 12px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.9;">${CLUB_INFO.name}</div>
-            <h2 style="margin: 4px 0 0 0; font-size: 20px;">${title}</h2>
+            <div style="font-size: 12px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.9;">${escapeHtml(CLUB_INFO.name)}</div>
+            <h2 style="margin: 4px 0 0 0; font-size: 20px;">${escapeHtml(title)}</h2>
           </div>
           <div style="padding: 24px; color: #18181b; font-size: 14px; line-height: 1.6;">
-            <p>Hola <strong>${safeName}</strong>,</p>
+            <p>Hola <strong>${escapeHtml(safeName)}</strong>,</p>
             <p>Has recibido una invitación personal para activar tu cuenta en la plataforma del club (<strong>voleibolsanpedro.es</strong>).</p>
             <p style="margin: 24px 0; text-align: center;">
-              <a href="${inviteUrl}" style="display: inline-block; background: #d90429; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">
+              <a href="${escapeHtml(inviteUrl)}" style="display: inline-block; background: #d90429; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">
                 Activar mi acceso ahora
               </a>
             </p>
-            <p style="font-size: 12px; color: #52525b;">Este enlace personal es de un solo uso y caduca en ${days} días. Si el botón no funciona, copia esta dirección:<br/><span style="word-break: break-all;">${inviteUrl}</span></p>
+            <p style="font-size: 12px; color: #52525b;">Este enlace personal es de un solo uso y caduca en ${days} días. Si el botón no funciona, copia esta dirección:<br/><span style="word-break: break-all;">${escapeHtml(inviteUrl)}</span></p>
           </div>
         </div>
       `,
@@ -472,6 +482,243 @@ export async function inspectInvitationToken(rawToken: string) {
   return inv;
 }
 
+export interface ClaimedInvitationResult {
+  invitationId: string;
+  userId: string;
+  email: string;
+  name: string;
+  phone: string | null;
+  targetType: 'STAFF' | 'GUARDIAN' | 'ATHLETE';
+  roleCodes: RoleCode[];
+}
+
+/**
+ * Reclama de forma atómica una invitación (por token o correo pendiente de usuario INVITED),
+ * activa la cuenta, asigna roles/equipos y vincula ficha deportiva o tutela legal.
+ */
+export async function claimAndApplyInvitation(params: {
+  rawToken?: string;
+  expectedEmail?: string;
+  name?: string;
+  phone?: string | null;
+  passwordHash?: string | null;
+  revokeExistingSessions?: boolean;
+}): Promise<ClaimedInvitationResult | null> {
+  const cleanExpectedEmail = params.expectedEmail?.trim().toLowerCase() || null;
+
+  type ClaimedRow = {
+    id: string;
+    email: string;
+    target_type: 'STAFF' | 'GUARDIAN' | 'ATHLETE';
+    role_codes: RoleCode[];
+    team_season_ids: string[];
+    athlete_id: string | null;
+    metadata_json: Record<string, unknown>;
+  };
+
+  let claimedRows: ClaimedRow[] = [];
+
+  if (params.rawToken) {
+    const tokenHash = hashOpaqueToken(params.rawToken);
+    claimedRows = await queryNeon<ClaimedRow>(
+      `UPDATE intranet_invitations inv
+       SET accepted_at = NOW()
+       WHERE inv.token_hash = $1
+         AND inv.accepted_at IS NULL
+         AND inv.revoked_at IS NULL
+         AND inv.expires_at > NOW()
+         AND ($2::text IS NULL OR LOWER(inv.email) = $2)
+         AND NOT EXISTS (
+           SELECT 1 FROM intranet_users u
+           WHERE LOWER(u.email) = LOWER(inv.email) AND u.status = 'SUSPENDED'
+         )
+       RETURNING inv.id::text, inv.email, inv.target_type, inv.role_codes,
+                 inv.team_season_ids, inv.athlete_id,
+                 COALESCE(inv.metadata_json, '{}'::jsonb) AS metadata_json;`,
+      [tokenHash, cleanExpectedEmail]
+    );
+  } else if (cleanExpectedEmail) {
+    claimedRows = await queryNeon<ClaimedRow>(
+      `UPDATE intranet_invitations inv
+       SET accepted_at = NOW()
+       WHERE inv.id = (
+         SELECT id
+         FROM intranet_invitations
+         WHERE LOWER(email) = $1
+           AND accepted_at IS NULL
+           AND revoked_at IS NULL
+           AND expires_at > NOW()
+         ORDER BY created_at DESC
+         LIMIT 1
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM intranet_users u
+         WHERE LOWER(u.email) = LOWER(inv.email) AND u.status = 'SUSPENDED'
+       )
+       RETURNING inv.id::text, inv.email, inv.target_type, inv.role_codes,
+                 inv.team_season_ids, inv.athlete_id,
+                 COALESCE(inv.metadata_json, '{}'::jsonb) AS metadata_json;`,
+      [cleanExpectedEmail]
+    );
+  }
+
+  const inv = claimedRows[0];
+  if (!inv) {
+    return null;
+  }
+
+  const cleanEmail = inv.email.trim().toLowerCase();
+  const metaName =
+    typeof inv.metadata_json?.invitedName === 'string'
+      ? inv.metadata_json.invitedName.trim()
+      : typeof inv.metadata_json?.guardianName === 'string'
+      ? inv.metadata_json.guardianName.trim()
+      : typeof inv.metadata_json?.athleteName === 'string'
+      ? inv.metadata_json.athleteName.trim()
+      : '';
+  const finalName = (params.name?.trim() || metaName || cleanEmail).slice(0, 140);
+  const cleanPhone = params.phone?.trim() || null;
+
+  const existingUsers = await queryNeon<{
+    id: string;
+    name: string;
+    phone: string | null;
+    status: string;
+  }>(
+    `SELECT id::text AS id, name, phone, status FROM intranet_users WHERE LOWER(email) = $1 LIMIT 1;`,
+    [cleanEmail]
+  );
+
+  let userId = existingUsers[0]?.id;
+  let storedName = existingUsers[0]?.name || finalName;
+  let storedPhone = existingUsers[0]?.phone || cleanPhone;
+
+  if (!userId) {
+    const inserted = await queryNeon<{ id: string }>(
+      `INSERT INTO intranet_users (email, name, phone, password_hash, email_verified, status)
+       VALUES ($1, $2, $3, $4, true, 'ACTIVE')
+       RETURNING id::text AS id;`,
+      [cleanEmail, finalName, cleanPhone, params.passwordHash || null]
+    );
+    userId = inserted[0].id;
+    storedName = finalName;
+    storedPhone = cleanPhone;
+  } else {
+    if (existingUsers[0].status === 'SUSPENDED') {
+      throw new IntranetValidationError('La cuenta asociada está suspendida.', 403);
+    }
+    const updatedUser = await queryNeon<{ name: string; phone: string | null }>(
+      `UPDATE intranet_users
+       SET name = COALESCE(NULLIF($2, ''), name),
+           phone = COALESCE($3, phone),
+           password_hash = COALESCE($4, password_hash),
+           email_verified = true,
+           status = 'ACTIVE',
+           updated_at = NOW()
+       WHERE id = $1::uuid
+       RETURNING name, phone;`,
+      [userId, params.name?.trim() || '', cleanPhone, params.passwordHash || null]
+    );
+    storedName = updatedUser[0]?.name || storedName;
+    storedPhone = updatedUser[0]?.phone || storedPhone;
+
+    if (params.passwordHash && params.revokeExistingSessions !== false) {
+      await queryNeon(
+        `UPDATE intranet_sessions SET revoked_at = NOW() WHERE user_id = $1::uuid AND revoked_at IS NULL;`,
+        [userId]
+      );
+    }
+  }
+
+  for (const roleCode of inv.role_codes || []) {
+    if (roleCode === 'PRESIDENTE') continue;
+    if (
+      inv.team_season_ids &&
+      inv.team_season_ids.length > 0 &&
+      ['ENTRENADOR', 'AYUDANTE', 'DELEGADO'].includes(roleCode)
+    ) {
+      for (const teamId of inv.team_season_ids) {
+        await queryNeon(
+          `INSERT INTO intranet_user_roles (user_id, role_code, team_season_id)
+           SELECT $1::uuid, $2, $3
+           WHERE NOT EXISTS (
+             SELECT 1 FROM intranet_user_roles
+             WHERE user_id = $1::uuid AND role_code = $2 AND team_season_id = $3 AND valid_to IS NULL
+           );`,
+          [userId, roleCode, teamId]
+        );
+        const fn =
+          roleCode === 'ENTRENADOR'
+            ? 'HEAD_COACH'
+            : roleCode === 'AYUDANTE'
+            ? 'ASSISTANT'
+            : 'DELEGATE';
+        await queryNeon(
+          `INSERT INTO intranet_team_staff (user_id, team_season_id, staff_function)
+           VALUES ($1::uuid, $2, $3)
+           ON CONFLICT (user_id, team_season_id, staff_function) DO UPDATE SET valid_to = NULL;`,
+          [userId, teamId, fn]
+        );
+      }
+    } else {
+      await queryNeon(
+        `INSERT INTO intranet_user_roles (user_id, role_code, team_season_id)
+         SELECT $1::uuid, $2, NULL
+         WHERE NOT EXISTS (
+           SELECT 1 FROM intranet_user_roles
+           WHERE user_id = $1::uuid AND role_code = $2 AND team_season_id IS NULL AND valid_to IS NULL
+         );`,
+        [userId, roleCode]
+      );
+    }
+  }
+
+  if (inv.athlete_id) {
+    if (inv.target_type === 'ATHLETE') {
+      await queryNeon(
+        `UPDATE intranet_athletes
+         SET user_id = $2::uuid,
+             status = CASE WHEN status = 'SHREDDED' THEN status ELSE 'VERIFICADO' END,
+             verified_at = COALESCE(verified_at, NOW()),
+             updated_at = NOW()
+         WHERE id = $1 AND status <> 'SHREDDED';`,
+        [inv.athlete_id, userId]
+      );
+    } else if (inv.target_type === 'GUARDIAN') {
+      const updatedG = await queryNeon<{ id: string }>(
+        `UPDATE intranet_guardianships
+         SET guardian_user_id = $2::uuid
+         WHERE athlete_id = $1 AND (LOWER(email) = $3 OR guardian_user_id IS NULL)
+         RETURNING id::text AS id;`,
+        [inv.athlete_id, userId, cleanEmail]
+      );
+      if (updatedG.length === 0) {
+        await queryNeon(
+          `INSERT INTO intranet_guardianships (
+             athlete_id, guardian_user_id, full_name, relationship, email, phone, is_primary_payer
+           )
+           SELECT $1, $2::uuid, $3, 'TUTOR_LEGAL', $4, $5, true
+           WHERE NOT EXISTS (
+             SELECT 1 FROM intranet_guardianships
+             WHERE athlete_id = $1 AND guardian_user_id = $2::uuid
+           );`,
+          [inv.athlete_id, userId, storedName, cleanEmail, storedPhone]
+        );
+      }
+    }
+  }
+
+  return {
+    invitationId: inv.id,
+    userId,
+    email: cleanEmail,
+    name: storedName,
+    phone: storedPhone,
+    targetType: inv.target_type,
+    roleCodes: inv.role_codes,
+  };
+}
+
 export async function createMagicLoginToken(email: string): Promise<{
   sent: boolean;
   error?: string;
@@ -510,7 +757,7 @@ export async function createMagicLoginToken(email: string): Promise<{
     [tokenHash, existingUser?.id || null, cleanEmail]
   );
 
-  const magicUrl = `${getPublicBaseUrl()}/api/intranet/auth/magic?token=${encodeURIComponent(rawToken)}`;
+  const magicUrl = `${getPublicBaseUrl()}/acceso?magic=${encodeURIComponent(rawToken)}`;
   const mailRes = await sendSmtpMail({
     to: cleanEmail,
     subject: `[CDV San Pedro] Enlace directo de acceso`,
@@ -523,9 +770,9 @@ export async function createMagicLoginToken(email: string): Promise<{
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e4e4e7; border-radius: 10px; padding: 24px;">
         <h2 style="margin-top: 0; color: #18181b;">Enlace de acceso rápido</h2>
-        <p style="font-size: 14px; color: #3f3f46;">Pulsa el botón para entrar en tu cuenta del <strong>${CLUB_INFO.name}</strong>. Caduca en 15 minutos y es de un solo uso.</p>
+        <p style="font-size: 14px; color: #3f3f46;">Pulsa el botón para entrar en tu cuenta del <strong>${escapeHtml(CLUB_INFO.name)}</strong>. Caduca en 15 minutos y es de un solo uso.</p>
         <p style="margin: 24px 0; text-align: center;">
-          <a href="${magicUrl}" style="display: inline-block; background: #d90429; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">Entrar al portal</a>
+          <a href="${escapeHtml(magicUrl)}" style="display: inline-block; background: #d90429; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">Entrar al portal</a>
         </p>
       </div>
     `,
@@ -585,6 +832,31 @@ export function getOAuthProviderConfig(provider: OAuthProviderKey) {
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
     scopes: 'openid email profile User.Read',
   };
+}
+
+export function sealOAuthTxCookie(payload: {
+  state: string;
+  codeVerifier: string;
+  provider: OAuthProviderKey;
+  inviteToken?: string;
+}): string {
+  return encryptData(JSON.stringify(payload), 'intranet:oauth_tx');
+}
+
+export function unsealOAuthTxCookie(cipherText: string | undefined): {
+  state: string;
+  codeVerifier: string;
+  provider: string;
+  inviteToken?: string;
+} | null {
+  if (!cipherText) return null;
+  const dec = decryptDataStrict(cipherText, 'intranet:oauth_tx');
+  if (!dec.ok || !dec.value) return null;
+  try {
+    return JSON.parse(dec.value);
+  } catch {
+    return null;
+  }
 }
 
 // ==========================================

@@ -96,10 +96,16 @@ function MicrosoftMark() {
   );
 }
 
+const magicConsumeInFlight = new Map<
+  string,
+  Promise<{ ok: boolean; redirectTo?: string; error?: string }>
+>();
+
 function AccesoPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get('invite')?.trim() || '';
+  const magicToken = searchParams.get('magic')?.trim() || '';
   const stepParam = searchParams.get('step')?.trim() || '';
   const errorParam = searchParams.get('error')?.trim() || '';
 
@@ -125,6 +131,7 @@ function AccesoPageContent() {
   // Magic link
   const [magicEmail, setMagicEmail] = useState('');
   const [magicBusy, setMagicBusy] = useState(false);
+  const [magicConsumeBusy, setMagicConsumeBusy] = useState(false);
 
   // Bootstrap Presidente
   const [bsAdminUser, setBsAdminUser] = useState('');
@@ -205,6 +212,56 @@ function AccesoPageContent() {
       setGlobalError(ERROR_MESSAGES[errorParam] || 'No se pudo completar el acceso.');
     }
   }, [errorParam]);
+
+  // Canjear enlace mágico mediante POST (inmune a escáneres prefetch GET y doble montaje StrictMode)
+  useEffect(() => {
+    if (!magicToken || loadingMe || !presidentExists) return;
+    let active = true;
+    setMagicConsumeBusy(true);
+    setGlobalError('');
+
+    let pending = magicConsumeInFlight.get(magicToken);
+    if (!pending) {
+      pending = (async () => {
+        const res = await fetch('/api/intranet/auth/magic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'consume', token: magicToken }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.success) {
+          return {
+            ok: false,
+            error:
+              String(data?.error || '') ||
+              'El enlace mágico ha caducado o ya fue utilizado. Solicita uno nuevo.',
+          };
+        }
+        return {
+          ok: true,
+          redirectTo: String(data.redirectTo || '/club'),
+        };
+      })().catch(() => ({
+        ok: false,
+        error: 'Error de conexión verificando el enlace mágico.',
+      }));
+      magicConsumeInFlight.set(magicToken, pending);
+    }
+
+    pending.then((result) => {
+      if (!active) return;
+      if (result.ok) {
+        routerRef.current.replace(result.redirectTo || '/club');
+      } else {
+        setMagicConsumeBusy(false);
+        setGlobalError(result.error || 'El enlace mágico no es válido.');
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [magicToken, loadingMe, presidentExists]);
 
   // Cargar datos de invitación si viene ?invite=TOKEN
   useEffect(() => {
@@ -478,13 +535,13 @@ function AccesoPageContent() {
     [totpSecret]
   );
 
-  if (loadingMe) {
+  if (loadingMe || magicConsumeBusy) {
     return (
       <div className="min-h-[65vh] flex items-center justify-center px-4 py-12">
         <div className="bg-surface-container border border-white/10 p-8 max-w-sm w-full text-center shadow-[4px_4px_0px_0px_#0e0e0e] flex flex-col items-center gap-3">
           <Loader2 className="w-7 h-7 text-primary-container animate-spin" aria-hidden="true" />
           <p className="font-headline-sm text-sm uppercase tracking-wider text-on-surface">
-            Cargando acceso del club
+            {magicConsumeBusy ? 'Verificando enlace de acceso' : 'Cargando acceso del club'}
           </p>
         </div>
       </div>

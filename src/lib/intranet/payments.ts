@@ -3,6 +3,7 @@ import { queryNeon } from '@/lib/streaming-store';
 import { formatMadridDateString, getCurrentMadridYear } from '@/lib/date-utils';
 import { encryptData } from '@/lib/encryption';
 import { recordAuditLog } from './audit';
+import { IntranetValidationError } from './rbac';
 
 export type PaymentTrafficLight = 'GREEN' | 'YELLOW' | 'RED' | 'NONE';
 
@@ -388,7 +389,16 @@ export async function recordManualPayment(params: {
 }): Promise<{ paymentId: string; receiptNumber: string }> {
   const cleanAmount = roundMoney(params.amount);
   if (cleanAmount <= 0) {
-    throw new Error('El importe del cobro debe ser mayor que 0.');
+    throw new IntranetValidationError('El importe del cobro debe ser mayor que 0.');
+  }
+
+  // Verificar que el deportista existe y no está suprimido (RGPD Art. 17)
+  const athleteRows = await queryNeon<{ id: string; status: string }>(
+    `SELECT id, status FROM intranet_athletes WHERE id = $1 LIMIT 1;`,
+    [params.athleteId]
+  );
+  if (!athleteRows[0] || athleteRows[0].status === 'SHREDDED') {
+    throw new IntranetValidationError('Deportista no encontrado o ficha suprimida.', 404);
   }
 
   const paidDate = params.paidMadridDate?.trim() || formatMadridDateString(new Date());
@@ -404,11 +414,69 @@ export async function recordManualPayment(params: {
     .toString('hex')
     .toUpperCase()}`;
 
-  // Determinar cargos a imputar (los pasados explícitamente o los más antiguos pendientes)
-  let allocations = params.chargeAllocations || [];
+  // Determinar cargos a imputar (validando pertenencia estricta al deportista o los más antiguos pendientes)
+  let allocations = (params.chargeAllocations || []).filter((a) => roundMoney(a.amount) > 0);
   let enrollmentId: string | null = null;
 
-  if (allocations.length === 0) {
+  if (allocations.length > 0) {
+    // Consolidar posibles entradas repetidas para el mismo chargeId
+    const mergedByCharge = new Map<string, number>();
+    for (const a of allocations) {
+      const amt = roundMoney(a.amount);
+      if (amt > 0) {
+        mergedByCharge.set(a.chargeId, roundMoney((mergedByCharge.get(a.chargeId) || 0) + amt));
+      }
+    }
+    const requestedIds = Array.from(mergedByCharge.keys());
+
+    const validCharges = await queryNeon<{
+      id: string;
+      enrollment_id: string;
+      final_amount: string;
+      paid_amount: string;
+    }>(
+      `SELECT id::text AS id, enrollment_id::text AS enrollment_id,
+              final_amount::text, paid_amount::text
+       FROM intranet_charges
+       WHERE id = ANY($1::uuid[])
+         AND athlete_id = $2
+         AND status IN ('VENCIDO','PENDIENTE','PARCIAL');`,
+      [requestedIds, params.athleteId]
+    );
+
+    if (validCharges.length !== requestedIds.length) {
+      throw new IntranetValidationError(
+        'Uno o más cargos indicados no pertenecen al deportista o no están pendientes.',
+        400
+      );
+    }
+
+    const chargeMap = new Map(validCharges.map((c) => [c.id, c]));
+    const validated: Array<{ chargeId: string; amount: number }> = [];
+    let allocatedSum = 0;
+
+    for (const [chargeId, amt] of Array.from(mergedByCharge.entries())) {
+      const ch = chargeMap.get(chargeId)!;
+      if (!enrollmentId) enrollmentId = ch.enrollment_id;
+      const pending = roundMoney(Math.max(0, Number(ch.final_amount) - Number(ch.paid_amount)));
+      if (amt > pending + 0.001) {
+        throw new IntranetValidationError(
+          'Uno o más cargos superan su importe pendiente al imputar este cobro.',
+          400
+        );
+      }
+      allocatedSum = roundMoney(allocatedSum + amt);
+      validated.push({ chargeId, amount: amt });
+    }
+
+    if (allocatedSum > cleanAmount + 0.001) {
+      throw new IntranetValidationError(
+        'La suma de imputaciones supera el importe total del cobro.',
+        400
+      );
+    }
+    allocations = validated;
+  } else {
     const openCharges = await queryNeon<{
       id: string;
       enrollment_id: string;
@@ -473,8 +541,8 @@ export async function recordManualPayment(params: {
              ELSE 'PENDIENTE'
            END,
            updated_at = NOW()
-       WHERE id = $1::uuid;`,
-      [alloc.chargeId, roundMoney(alloc.amount), todayMadrid]
+       WHERE id = $1::uuid AND athlete_id = $4;`,
+      [alloc.chargeId, roundMoney(alloc.amount), todayMadrid, params.athleteId]
     );
   }
 

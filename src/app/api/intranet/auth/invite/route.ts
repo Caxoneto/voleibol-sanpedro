@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryNeon } from '@/lib/streaming-store';
 import { checkNeonRateLimit, getClientIp } from '@/lib/rate-limiter';
 import {
   inspectInvitationToken,
+  claimAndApplyInvitation,
   hashIntranetPassword,
   createIntranetSession,
   setIntranetSessionCookie,
 } from '@/lib/intranet/auth';
 import { buildUserAccessContext } from '@/lib/intranet/rbac';
+import { ensureIntranetSeeded } from '@/lib/intranet/seed-bootstrap';
 import { recordAuditLog } from '@/lib/intranet/audit';
 import { handleIntranetApiError } from '@/lib/intranet/api-helpers';
 
@@ -15,6 +16,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const clientIp = getClientIp(req);
+    const rl = await checkNeonRateLimit(`intranet-invite-inspect:${clientIp}`, 25, 600, 600);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Demasiadas consultas de invitación. Espera unos minutos.' },
+        { status: 429 }
+      );
+    }
+
     const token = req.nextUrl.searchParams.get('invite') || '';
     if (!token) {
       return NextResponse.json({ success: false, error: 'Token no indicado.' }, { status: 400 });
@@ -46,6 +56,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureIntranetSeeded();
     const clientIp = getClientIp(req);
     const rl = await checkNeonRateLimit(`intranet-invite:${clientIp}`, 10, 600, 900);
     if (!rl.allowed) {
@@ -68,97 +79,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const inv = await inspectInvitationToken(rawToken);
-    if (!inv) {
+    const passHash = hashIntranetPassword(password);
+    const claimed = await claimAndApplyInvitation({
+      rawToken,
+      name,
+      phone,
+      passwordHash: passHash,
+      revokeExistingSessions: true,
+    });
+
+    if (!claimed) {
       return NextResponse.json(
-        { success: false, error: 'Invitación inválida o caducada.' },
+        { success: false, error: 'Invitación inválida, caducada o cuenta suspendida.' },
         { status: 404 }
       );
     }
 
-    const cleanEmail = inv.email.trim().toLowerCase();
-    const passHash = hashIntranetPassword(password);
-
-    const existingUsers = await queryNeon<{ id: string }>(
-      `SELECT id::text AS id FROM intranet_users WHERE LOWER(email) = $1 LIMIT 1;`,
-      [cleanEmail]
-    );
-
-    let userId = existingUsers[0]?.id;
-    if (!userId) {
-      const inserted = await queryNeon<{ id: string }>(
-        `INSERT INTO intranet_users (email, name, phone, password_hash, email_verified, status)
-         VALUES ($1, $2, $3, $4, true, 'ACTIVE')
-         RETURNING id::text AS id;`,
-        [cleanEmail, name, phone, passHash]
-      );
-      userId = inserted[0].id;
-    } else {
-      await queryNeon(
-        `UPDATE intranet_users
-         SET name = $2, phone = COALESCE($3, phone), password_hash = $4,
-             email_verified = true, status = 'ACTIVE', updated_at = NOW()
-         WHERE id = $1::uuid;`,
-        [userId, name, phone, passHash]
-      );
-    }
-
-    // Asignar roles incluidos en la invitación (nunca PRESIDENTE por invitación ordinaria)
-    for (const roleCode of inv.role_codes) {
-      if (roleCode === 'PRESIDENTE') continue;
-      if (inv.team_season_ids && inv.team_season_ids.length > 0 && ['ENTRENADOR', 'AYUDANTE', 'DELEGADO'].includes(roleCode)) {
-        for (const teamId of inv.team_season_ids) {
-          await queryNeon(
-            `INSERT INTO intranet_user_roles (user_id, role_code, team_season_id)
-             SELECT $1::uuid, $2, $3
-             WHERE NOT EXISTS (
-               SELECT 1 FROM intranet_user_roles
-               WHERE user_id = $1::uuid AND role_code = $2 AND team_season_id = $3 AND valid_to IS NULL
-             );`,
-            [userId, roleCode, teamId]
-          );
-          const fn = roleCode === 'ENTRENADOR' ? 'HEAD_COACH' : roleCode === 'AYUDANTE' ? 'ASSISTANT' : 'DELEGATE';
-          await queryNeon(
-            `INSERT INTO intranet_team_staff (user_id, team_season_id, staff_function)
-             VALUES ($1::uuid, $2, $3)
-             ON CONFLICT (user_id, team_season_id, staff_function) DO UPDATE SET valid_to = NULL;`,
-            [userId, teamId, fn]
-          );
-        }
-      } else {
-        await queryNeon(
-          `INSERT INTO intranet_user_roles (user_id, role_code, team_season_id)
-           SELECT $1::uuid, $2, NULL
-           WHERE NOT EXISTS (
-             SELECT 1 FROM intranet_user_roles
-             WHERE user_id = $1::uuid AND role_code = $2 AND team_season_id IS NULL AND valid_to IS NULL
-           );`,
-          [userId, roleCode]
-        );
-      }
-    }
-
-    // Vincular deportista o tutela si procede
-    if (inv.athlete_id) {
-      if (inv.target_type === 'ATHLETE') {
-        await queryNeon(
-          `UPDATE intranet_athletes SET user_id = $2::uuid, status = 'VERIFICADO', verified_at = NOW(), updated_at = NOW() WHERE id = $1;`,
-          [inv.athlete_id, userId]
-        );
-      } else if (inv.target_type === 'GUARDIAN') {
-        await queryNeon(
-          `UPDATE intranet_guardianships
-           SET guardian_user_id = $2::uuid
-           WHERE athlete_id = $1 AND (LOWER(email) = $3 OR guardian_user_id IS NULL);`,
-          [inv.athlete_id, userId, cleanEmail]
-        );
-      }
-    }
-
-    await queryNeon(`UPDATE intranet_invitations SET accepted_at = NOW() WHERE id = $1::uuid;`, [inv.id]);
-
     const { rawToken: sessToken, expiresAt } = await createIntranetSession({
-      userId,
+      userId: claimed.userId,
       ipAddress: clientIp,
       userAgent: req.headers.get('user-agent'),
       twoFactorVerified: true,
@@ -169,10 +107,10 @@ export async function POST(req: NextRequest) {
       sessionId: 'invite',
       twoFactorVerified: true,
       user: {
-        id: userId,
-        email: cleanEmail,
-        name,
-        phone,
+        id: claimed.userId,
+        email: claimed.email,
+        name: claimed.name,
+        phone: claimed.phone,
         emailVerified: true,
         totpEnabled: false,
         status: 'ACTIVE',
@@ -180,13 +118,13 @@ export async function POST(req: NextRequest) {
     });
 
     await recordAuditLog({
-      actorUserId: userId,
-      actorEmail: cleanEmail,
+      actorUserId: claimed.userId,
+      actorEmail: claimed.email,
       action: 'ACCEPT_INVITATION',
       module: 'Auth',
       targetType: 'INVITATION',
-      targetId: inv.id,
-      details: { targetType: inv.target_type, roles: inv.role_codes },
+      targetId: claimed.invitationId,
+      details: { targetType: claimed.targetType, roles: claimed.roleCodes },
       ipAddress: clientIp,
     });
 

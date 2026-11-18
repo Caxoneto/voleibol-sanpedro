@@ -149,6 +149,11 @@ export async function GET(req: NextRequest) {
     await ensureIntranetSeeded();
 
     const scope = getAuthorizedTeamScope(ctx, 'athlete.view_basic');
+    if (!ctx.isStaff || (!scope.isGlobal && scope.teamIds.length === 0)) {
+      throw new IntranetForbiddenError(
+        'El acceso al censo del club está restringido al personal autorizado.'
+      );
+    }
     const includeDemoParam = req.nextUrl.searchParams.get('includeDemo') === '1';
     const canIncludeDemo = ctx.isPresident || can(ctx, 'athlete.edit');
     const allowDemo =
@@ -517,7 +522,7 @@ export async function GET(req: NextRequest) {
         canViewSensitive: can(ctx, 'athlete.view_sensitive'),
         canSendInvitation: can(ctx, 'invitation.send'),
         canViewTrafficLight:
-          ctx.isPresident || can(ctx, 'payments.team_status') || can(ctx, 'payments.view'),
+          paymentsGlobalView || paymentsTeamScope.teamIds.length > 0,
         canIncludeDemo,
       },
     });

@@ -1,7 +1,12 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getOAuthProviderConfig, getPublicBaseUrl, type OAuthProviderKey } from '@/lib/intranet/auth';
+import {
+  getOAuthProviderConfig,
+  getPublicBaseUrl,
+  sealOAuthTxCookie,
+  type OAuthProviderKey,
+} from '@/lib/intranet/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +34,7 @@ export async function GET(
   const cookieStore = cookies();
   cookieStore.set({
     name: 'cdv_oauth_tx',
-    value: JSON.stringify({ state, codeVerifier, provider, inviteToken }),
+    value: sealOAuthTxCookie({ state, codeVerifier, provider, inviteToken }),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

@@ -69,6 +69,8 @@ export interface IntranetMeSession {
   ownAthleteId: string | null;
   guardianAthleteIds: string[];
   effectivePermissions: string[];
+  staffEffectivePermissions?: string[];
+  effectivePermissionScopes?: Record<string, string>;
 }
 
 export interface IntranetMeResponse {
@@ -163,10 +165,14 @@ export default function ClubShell({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, []);
 
-  const permSet = useMemo(
-    () => new Set(session?.effectivePermissions || []),
-    [session]
-  );
+  const permSet = useMemo(() => {
+    const raw = session?.staffEffectivePermissions || session?.effectivePermissions || [];
+    const scopes = session?.effectivePermissionScopes;
+    if (!scopes) return new Set(raw);
+    return new Set(
+      raw.filter((code) => scopes[code] !== 'PROPIO' || code === 'substitution.request')
+    );
+  }, [session]);
 
   const contextValue = useMemo<ClubSessionContextValue | null>(() => {
     if (!session) return null;
@@ -243,6 +249,7 @@ export default function ClubShell({ children }: { children: ReactNode }) {
           'payments.record',
           'products.manage',
           'discounts.manage',
+          'payments.reports',
         ]),
       },
       {

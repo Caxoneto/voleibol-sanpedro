@@ -58,15 +58,20 @@ export function sanitizeCsvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
   const str = String(value);
 
-  // Protección contra CSV Formula Injection (=, +, -, @, \t, \r)
-  const dangerousPrefixes = ['=', '+', '-', '@', '\t', '\r'];
+  // Protección estricta contra CSV Formula Injection (incluyendo espacios iniciales o tubería '|')
   let sanitized = str;
-  if (dangerousPrefixes.some((prefix) => sanitized.startsWith(prefix))) {
+  if (/^[\s]*[=+\-@\t\r\n|]/.test(sanitized)) {
     sanitized = `'${sanitized}`;
   }
 
-  // Si contiene comillas, saltos de línea o el delimitador (;), entrecomillar y escapar comillas dobles
-  if (sanitized.includes('"') || sanitized.includes(';') || sanitized.includes(',') || sanitized.includes('\n')) {
+  // Si contiene comillas, saltos de línea o delimitadores (; ,), entrecomillar y escapar comillas dobles
+  if (
+    sanitized.includes('"') ||
+    sanitized.includes(';') ||
+    sanitized.includes(',') ||
+    sanitized.includes('\n') ||
+    sanitized.includes('\r')
+  ) {
     sanitized = `"${sanitized.replace(/"/g, '""')}"`;
   }
 

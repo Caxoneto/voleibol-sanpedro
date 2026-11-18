@@ -4,6 +4,24 @@ Este registro documenta el estado consolidado del proyecto y los cambios recient
 
 ---
 
+## 2026-11-18 (Rev. Seguridad) — Auditoría `/security-audit` y Endurecimiento de la Intranet
+
+* **Control de Acceso y Ámbitos RBAC (`src/lib/intranet/rbac.ts`, `auth/me`, `census`, `ClubShell`)**:
+  * Restringida la evaluación de `grant.scope === 'PROPIO'` en `can()` para exigir `athleteId` o `targetUserId` (permitiendo invocación sin sujeto solo en autogestión de staff `substitution.request`), impidiendo escaladas implícitas sobre módulos de staff.
+  * Exigido `ctx.isStaff` y alcance efectivo válido en `GET /api/intranet/census`; `/api/intranet/auth/me` expone `staffEffectivePermissions` y `effectivePermissionScopes` filtrados para `ClubShell`.
+  * Añadida verificación por equipo sobre expediciones existentes en `upsert_staff_trip` y `delete_staff_trip` (`src/app/api/intranet/trips/route.ts`).
+* **Autenticación, Enlaces Mágicos, Invitaciones y OAuth2 (`src/lib/intranet/auth.ts`, `magic`, `invite`, `oauth`, `acceso`)**:
+  * Enlaces mágicos apuntando a `/acceso?magic=` y canje exclusivo vía `POST /api/intranet/auth/magic` (`action: 'consume'`) inmune a prefetching `GET` de escáneres de correo, con auditoría `LOGIN_MAGIC_LINK`. `GET /api/intranet/auth/magic` redirige sin consumir el token.
+  * Unificada la activación atómica (`claimAndApplyInvitation`) para invitaciones por contraseña y por OAuth2 (incluyendo cuentas pre-creadas `INVITED`, asignación `intranet_team_staff`, `intranet_athletes` / `intranet_guardianships` y revocación de sesiones al cambiar contraseña).
+  * Cifrado/autenticación AES-256-GCM de la cookie `cdv_oauth_tx` (`sealOAuthTxCookie` / `unsealOAuthTxCookie`), rate limit por IP y por cuenta en `login`, `magic`, `invite` y `oauth/callback`.
+  * Bloqueo explícito (`403`) del endpoint residual `/api/intranet/auth/2fa` mientras 2FA permanezca desactivado.
+* **Gobernanza, Pagos, Errores y CSV (`gov`, `payments.ts`, `api-helpers.ts`, `csv-utils.ts`)**:
+  * Traspaso de presidencia (`transfer_presidency`) ejecutado en único CTE atómico con rate limit y validación de miembro activo de staff.
+  * Validación estricta de pertenencia `athlete_id`, estado abierto y suma de imputaciones en `recordManualPayment` para impedir IDOR financiero cruzado entre deportistas.
+  * Sanitización estricta en `handleIntranetApiError` evitando exponer mensajes internos o `NeonDbError` en respuestas `500`, escape HTML en correos de invitación y ampliación anti-Formula Injection CSV (`/^[\\s]*[=+\\-@\\t\\r\\n|]/`).
+
+---
+
 ## 2026-11-18 — Sistema Interno de Club (/club), Acceso (/acceso) y Zona de Deportistas (/mi-club)
 
 * **Resumen**: Implementación completa de la Intranet del Club (`/club`), Acceso unificado (`/acceso`) y Zona de Deportistas (`/mi-club`) en la rama `feature/intranet-club` utilizando Neon branch `dev-intranet`.

@@ -41,6 +41,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const acctRl = await checkNeonRateLimit(`intranet-login-acct:${email}`, 8, 600, 900);
+    if (!acctRl.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cuenta temporalmente bloqueada por seguridad. Espera ${Math.ceil(acctRl.retryAfterSec / 60)} minutos.`,
+        },
+        { status: 429 }
+      );
+    }
+
     const rows = await queryNeon<{
       id: string;
       email: string;

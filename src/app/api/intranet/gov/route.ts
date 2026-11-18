@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryNeon } from '@/lib/streaming-store';
-import { getClientIp } from '@/lib/rate-limiter';
+import { checkNeonRateLimit, getClientIp } from '@/lib/rate-limiter';
 import { isStrictEmail } from '@/lib/validators';
 import { madridLocalToUtcIso } from '@/lib/date-utils';
 import {
@@ -870,6 +870,22 @@ export async function POST(req: NextRequest) {
         throw new IntranetForbiddenError('Solo el Presidente activo puede transferir la presidencia.');
       }
 
+      const rlTransfer = await checkNeonRateLimit(
+        `intranet-transfer-pres:${ctx.user.id}:${clientIp}`,
+        5,
+        900,
+        1800
+      );
+      if (!rlTransfer.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Demasiados intentos de traspaso de presidencia. Espera unos minutos.',
+          },
+          { status: 429 }
+        );
+      }
+
       const currentPassword = String(body?.currentPassword || '');
       const successorUserId = String(body?.successorUserId || '').trim();
 
@@ -914,15 +930,22 @@ export async function POST(req: NextRequest) {
         name: string;
         status: string;
         totp_enabled: boolean;
+        has_staff_role: boolean;
       }>(
-        `SELECT id::text, email, name, status, totp_enabled
-         FROM intranet_users
-         WHERE id = $1::uuid
+        `SELECT u.id::text, u.email, u.name, u.status, u.totp_enabled,
+                EXISTS (
+                  SELECT 1 FROM intranet_user_roles ur
+                  WHERE ur.user_id = u.id
+                    AND ur.role_code IN ('DIRECTIVO','COORDINADOR','TESORERIA','SECRETARIA','ENTRENADOR','AYUDANTE','DELEGADO')
+                    AND (ur.valid_to IS NULL OR ur.valid_to > NOW())
+                ) AS has_staff_role
+         FROM intranet_users u
+         WHERE u.id = $1::uuid
          LIMIT 1;`,
         [successorUserId]
       );
       const successor = successorRows[0];
-      if (!successor || successor.status !== 'ACTIVE') {
+      if (!successor || successor.status !== 'ACTIVE' || !successor.has_staff_role) {
         return NextResponse.json(
           {
             success: false,
@@ -933,37 +956,43 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 1) Revocar rol PRESIDENTE del actual
-      await queryNeon(
-        `UPDATE intranet_user_roles
-         SET valid_to = NOW()
-         WHERE user_id = $1::uuid
-           AND role_code = 'PRESIDENTE'
-           AND valid_to IS NULL;`,
-        [ctx.user.id]
-      );
-
-      // 2) Asignar DIRECTIVO al presidente saliente si no lo tenía
-      await queryNeon(
-        `INSERT INTO intranet_user_roles (user_id, role_code, team_season_id, granted_by)
-         SELECT $1::uuid, 'DIRECTIVO', NULL, $1::uuid
-         WHERE NOT EXISTS (
-           SELECT 1 FROM intranet_user_roles
-           WHERE user_id = $1::uuid AND role_code = 'DIRECTIVO' AND team_season_id IS NULL AND valid_to IS NULL
-         );`,
-        [ctx.user.id]
-      );
-
-      // 3) Asignar PRESIDENTE al sucesor
-      await queryNeon(
-        `INSERT INTO intranet_user_roles (user_id, role_code, team_season_id, granted_by)
-         SELECT $2::uuid, 'PRESIDENTE', NULL, $1::uuid
-         WHERE NOT EXISTS (
-           SELECT 1 FROM intranet_user_roles
-           WHERE user_id = $2::uuid AND role_code = 'PRESIDENTE' AND team_season_id IS NULL AND valid_to IS NULL
-         );`,
+      // Traspaso atómico en un único CTE manteniendo la restricción de un único PRESIDENTE activo
+      const transferRows = await queryNeon<{ revoked_id: string | null; granted_id: string | null }>(
+        `WITH revoke_old AS (
+           UPDATE intranet_user_roles
+           SET valid_to = NOW()
+           WHERE user_id = $1::uuid
+             AND role_code = 'PRESIDENTE'
+             AND valid_to IS NULL
+           RETURNING id
+         ),
+         grant_dir AS (
+           INSERT INTO intranet_user_roles (user_id, role_code, team_season_id, granted_by)
+           SELECT $1::uuid, 'DIRECTIVO', NULL, $1::uuid
+           FROM revoke_old
+           WHERE NOT EXISTS (
+             SELECT 1 FROM intranet_user_roles
+             WHERE user_id = $1::uuid AND role_code = 'DIRECTIVO' AND team_season_id IS NULL AND valid_to IS NULL
+           )
+           RETURNING id
+         ),
+         grant_new AS (
+           INSERT INTO intranet_user_roles (user_id, role_code, team_season_id, granted_by)
+           SELECT $2::uuid, 'PRESIDENTE', NULL, $1::uuid
+           FROM revoke_old
+           RETURNING id
+         )
+         SELECT (SELECT id::text FROM revoke_old LIMIT 1) AS revoked_id,
+                (SELECT id::text FROM grant_new LIMIT 1) AS granted_id;`,
         [ctx.user.id, successor.id]
       );
+
+      if (!transferRows[0]?.revoked_id || !transferRows[0]?.granted_id) {
+        return NextResponse.json(
+          { success: false, error: 'No se pudo completar el traspaso de presidencia.' },
+          { status: 409 }
+        );
+      }
 
       await recordAuditLog({
         actorUserId: ctx.user.id,
