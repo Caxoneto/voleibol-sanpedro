@@ -2,7 +2,33 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { INITIAL_SPONSOR_TIERS, CURRENT_SPONSORS, CLUB_INFO, store } from '@/lib/data-store';
+import Link from 'next/link';
+import {
+  AlertCircle,
+  ArrowRight,
+  Award,
+  Bus,
+  CheckCircle2,
+  Dumbbell,
+  ExternalLink,
+  GraduationCap,
+  Handshake,
+  Loader2,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Phone,
+  ShieldCheck,
+  Shirt,
+  Sparkles,
+  Trophy,
+  Users,
+} from 'lucide-react';
+import { INITIAL_SPONSOR_TIERS, CURRENT_SPONSORS } from '@/lib/data-store';
+import { CLUB_INFO } from '@/lib/club-info';
+import { sanitizeHttpsUrl } from '@/lib/validators';
+
+const SPONSOR_LEGAL_VERSION = 'v3_2026_rgpd_patrocinio';
 
 const FEDERATED_TEAMS_SUMMARY = [
   { category: 'SÉNIOR', detail: '1 femenino • 1 masculino' },
@@ -23,28 +49,28 @@ const OTHER_PROGRAMS = [
 const SPONSORSHIP_DESTINATIONS = [
   {
     id: 'dest-arbitrajes',
-    icon: 'sports',
+    Icon: Trophy,
     title: 'Arbitrajes',
     description:
       'Ayudar a cubrir los costes de competición de una estructura con más de 150 partidos por temporada.',
   },
   {
     id: 'dest-transporte',
-    icon: 'directions_bus',
+    Icon: Bus,
     title: 'Transporte',
     description:
       'Disponer de un vehículo compartido para coordinar desplazamientos de equipos y personal.',
   },
   {
     id: 'dest-material',
-    icon: 'fitness_center',
+    Icon: Dumbbell,
     title: 'Material',
     description:
       'Incorporar gomas, foam y otros recursos específicos para los entrenamientos.',
   },
   {
     id: 'dest-visibilidad',
-    icon: 'checkroom',
+    Icon: Shirt,
     title: 'Visibilidad',
     description:
       'Producir 400 camisetas de entrenamiento, banners de pista y un photocall móvil.',
@@ -69,7 +95,7 @@ const NAMING_PROJECTS = [
     id: 'proj-movilidad',
     name: 'Movilidad del Club',
     title: 'Movilidad del Club',
-    icon: 'airport_shuttle',
+    Icon: Bus,
     description:
       'Vehículo de nueve plazas mediante renting o colaboración. Visibilidad durante desplazamientos y competiciones.',
     accent: true,
@@ -78,7 +104,7 @@ const NAMING_PROJECTS = [
     id: 'proj-camisetas',
     name: 'Camisetas de Entrenamiento',
     title: 'Camisetas de Entrenamiento',
-    icon: 'apparel',
+    Icon: Shirt,
     description:
       'Patrocinio total o por categoría de las 400 camisetas previstas para la temporada.',
     accent: false,
@@ -87,7 +113,7 @@ const NAMING_PROJECTS = [
     id: 'proj-cantera',
     name: 'Cantera y Formación',
     title: 'Cantera y Formación',
-    icon: 'school',
+    Icon: GraduationCap,
     description:
       'Apoyo a iniciación, formación técnica, material específico y desarrollo de entrenadores.',
     accent: false,
@@ -96,7 +122,7 @@ const NAMING_PROJECTS = [
     id: 'proj-torneos',
     name: 'Torneos y Eventos',
     title: 'Torneos y Eventos',
-    icon: 'emoji_events',
+    Icon: Trophy,
     description:
       'Colaboración vinculada a encuentros, torneos, photocall y acciones con las familias del club.',
     accent: true,
@@ -106,6 +132,9 @@ const NAMING_PROJECTS = [
 export default function PatrocinioPage() {
   const [selectedTier, setSelectedTier] = useState<string>('Patrocinador Oficial');
   const [submitted, setSubmitted] = useState<boolean>(false);
+  const [submittedTier, setSubmittedTier] = useState<string>('Patrocinador Oficial');
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     companyName: '',
@@ -113,19 +142,58 @@ export default function PatrocinioPage() {
     phone: '',
     email: '',
     message: '',
+    privacyAccepted: false,
+    website: '', // Honeypot anti-bots
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    store.addSponsorInquiry({
-      companyName: form.companyName,
-      contactPerson: form.contactPerson,
-      phone: form.phone,
-      email: form.email,
-      packageInterested: selectedTier,
-      message: form.message,
-    });
-    setSubmitted(true);
+    setSubmitError(null);
+
+    if (!form.privacyAccepted) {
+      setSubmitError('Debes aceptar expresamente la Política de Privacidad para enviar la solicitud.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/public/sponsor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: form.companyName.trim(),
+          contactPerson: form.contactPerson.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          packageInterested: selectedTier,
+          message: form.message.trim(),
+          privacyAccepted: form.privacyAccepted,
+          legalVersion: SPONSOR_LEGAL_VERSION,
+          website: form.website,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setSubmitError(data?.error || 'No se pudo registrar la solicitud. Revisa los campos e inténtalo de nuevo.');
+        return;
+      }
+
+      setSubmittedTier(selectedTier);
+      setSubmitted(true);
+      setForm({
+        companyName: '',
+        contactPerson: '',
+        phone: '',
+        email: '',
+        message: '',
+        privacyAccepted: false,
+        website: '',
+      });
+    } catch {
+      setSubmitError('Error de conexión con el servidor. Inténtalo de nuevo en unos instantes.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const generateWhatsAppUrl = (tierName: string) => {
@@ -178,9 +246,9 @@ export default function PatrocinioPage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
             <a
               href="#modalidades"
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary-container hover:bg-secondary-container text-white font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
             >
-              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">workspace_premium</span>
+              <Award className="w-[18px] h-[18px]" aria-hidden="true" />
               <span>Modalidades de colaboración</span>
             </a>
             <a
@@ -189,7 +257,7 @@ export default function PatrocinioPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#25D366] hover:bg-[#20ba59] text-black font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow-lg"
             >
-              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span>
+              <MessageCircle className="w-[18px] h-[18px]" aria-hidden="true" />
               <span>WhatsApp Directo</span>
             </a>
           </div>
@@ -212,7 +280,7 @@ export default function PatrocinioPage() {
             {CURRENT_SPONSORS.map((sponsor) => (
               <a
                 key={sponsor.id}
-                href={sponsor.url}
+                href={sanitizeHttpsUrl(sponsor.url, '#')}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={sponsor.name}
@@ -228,12 +296,10 @@ export default function PatrocinioPage() {
                   height={175}
                   className="h-[112px] sm:h-[140px] w-full max-w-[230px] sm:max-w-[205px] object-contain transition-transform duration-300 ease-out group-hover:scale-[1.15]"
                 />
-                <span
-                  className="material-symbols-outlined text-[15px] absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-80 transition-opacity text-primary"
+                <ExternalLink
+                  className="w-4 h-4 absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-80 transition-opacity text-primary"
                   aria-hidden="true"
-                >
-                  open_in_new
-                </span>
+                />
               </a>
             ))}
           </div>
@@ -332,9 +398,7 @@ export default function PatrocinioPage() {
               {/* Col 1: Equipos Federados */}
               <div className="bg-surface-container-low border border-white/5 p-6 space-y-4">
                 <div className="flex items-center gap-2 border-b border-white/10 pb-3">
-                  <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">
-                    sports_volleyball
-                  </span>
+                  <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
                   <h4 className="font-display-xl text-xl uppercase text-white">
                     Equipos Federados
                   </h4>
@@ -353,9 +417,7 @@ export default function PatrocinioPage() {
               <div className="bg-surface-container-low border border-white/5 p-6 flex flex-col justify-between space-y-4">
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 border-b border-white/10 pb-3">
-                    <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">
-                      groups
-                    </span>
+                    <Users className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
                     <h4 className="font-display-xl text-xl uppercase text-white">
                       Otros Programas
                     </h4>
@@ -379,9 +441,7 @@ export default function PatrocinioPage() {
                 <div className="space-y-3">
                   <div className="border-b border-white/10 pb-3">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">
-                        stadium
-                      </span>
+                      <MapPin className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
                       <h4 className="font-display-xl text-xl uppercase text-white">
                         Equipo Técnico e Instalaciones
                       </h4>
@@ -435,19 +495,20 @@ export default function PatrocinioPage() {
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                {SPONSORSHIP_DESTINATIONS.map((item) => (
-                  <div key={item.id} className="bg-surface-container-lowest border border-white/10 p-4 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">
-                        {item.icon}
-                      </span>
-                      <h3 className="font-headline-sm text-sm uppercase font-bold text-white">
-                        {item.title}
-                      </h3>
+                {SPONSORSHIP_DESTINATIONS.map((item) => {
+                  const IconComponent = item.Icon;
+                  return (
+                    <div key={item.id} className="bg-surface-container-lowest border border-white/10 p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <IconComponent className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
+                        <h3 className="font-headline-sm text-sm uppercase font-bold text-white">
+                          {item.title}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-tertiary leading-relaxed">{item.description}</p>
                     </div>
-                    <p className="text-xs text-tertiary leading-relaxed">{item.description}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -465,9 +526,7 @@ export default function PatrocinioPage() {
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 mt-6">
                 {COMPANY_BENEFITS.map((benefit, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-xs text-on-surface">
-                    <span className="material-symbols-outlined text-primary text-[16px] shrink-0 mt-0.5" aria-hidden="true">
-                      check_circle
-                    </span>
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
                     <span className="leading-snug">{benefit}</span>
                   </li>
                 ))}
@@ -517,9 +576,7 @@ export default function PatrocinioPage() {
                   <div className="space-y-2.5 border-t border-white/10 pt-4">
                     {tier.features.map((feat, idx) => (
                       <div key={idx} className="flex items-start gap-2 text-xs text-on-surface">
-                        <span className="material-symbols-outlined text-primary text-[16px] shrink-0 mt-0.5" aria-hidden="true">
-                          check_circle
-                        </span>
+                        <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
                         <span>{feat}</span>
                       </div>
                     ))}
@@ -532,7 +589,7 @@ export default function PatrocinioPage() {
                     onClick={() => setSelectedTier(tier.name)}
                     className={`w-full py-3 text-center block font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow ${
                       tier.isFeatured
-                        ? 'bg-primary-container hover:bg-secondary-container text-white'
+                        ? 'bg-primary-container hover:bg-cta-hover text-white'
                         : 'bg-surface-container-high hover:bg-primary-container text-white'
                     }`}
                   >
@@ -556,43 +613,42 @@ export default function PatrocinioPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {NAMING_PROJECTS.map((proj) => (
-              <div
-                key={proj.id}
-                className={`p-6 border flex flex-col justify-between transition-all ${
-                  proj.accent
-                    ? 'bg-primary-container/10 border-primary-container/30 hover:border-primary-container'
-                    : 'bg-surface-container-low border-white/10 hover:border-white/25'
-                }`}
-              >
-                <div className="space-y-3">
-                  <div className="w-10 h-10 bg-surface-container-highest border border-white/10 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[22px]" aria-hidden="true">
-                      {proj.icon}
-                    </span>
+            {NAMING_PROJECTS.map((proj) => {
+              const ProjectIcon = proj.Icon;
+              return (
+                <div
+                  key={proj.id}
+                  className={`p-6 border flex flex-col justify-between transition-all ${
+                    proj.accent
+                      ? 'bg-primary-container/10 border-primary-container/30 hover:border-primary-container'
+                      : 'bg-surface-container-low border-white/10 hover:border-white/25'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="w-10 h-10 bg-surface-container-highest border border-white/10 flex items-center justify-center text-primary">
+                      <ProjectIcon className="w-5 h-5" aria-hidden="true" />
+                    </div>
+                    <h3 className="font-display-xl text-xl uppercase text-white">
+                      {proj.title}
+                    </h3>
+                    <p className="text-xs text-tertiary leading-relaxed">
+                      {proj.description}
+                    </p>
                   </div>
-                  <h3 className="font-display-xl text-xl uppercase text-white">
-                    {proj.title}
-                  </h3>
-                  <p className="text-xs text-tertiary leading-relaxed">
-                    {proj.description}
-                  </p>
-                </div>
 
-                <div className="pt-5 mt-5 border-t border-white/10">
-                  <a
-                    href="#contacto"
-                    onClick={() => setSelectedTier(proj.name)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary hover:text-white transition-colors"
-                  >
-                    <span>Consultar este proyecto</span>
-                    <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
-                      arrow_forward
-                    </span>
-                  </a>
+                  <div className="pt-5 mt-5 border-t border-white/10">
+                    <a
+                      href="#contacto"
+                      onClick={() => setSelectedTier(proj.name)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary hover:text-white transition-colors"
+                    >
+                      <span>Consultar este proyecto</span>
+                      <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                    </a>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -605,7 +661,7 @@ export default function PatrocinioPage() {
                 <h2 className="font-display-xl text-3xl sm:text-4xl uppercase leading-none">
                   ¿HACEMOS EQUIPO?
                 </h2>
-                <p className="text-xs sm:text-sm text-white/90 mt-3 leading-relaxed">
+                <p className="text-xs sm:text-sm text-white/95 mt-3 leading-relaxed">
                   La colaboración de las empresas ayuda al club a ofrecer una experiencia deportiva mejor a 350 jugadores y jugadoras de San Pedro
                 </p>
               </div>
@@ -621,14 +677,14 @@ export default function PatrocinioPage() {
                     href="tel:+34657713771"
                     className="flex items-center gap-2.5 text-white hover:underline font-mono font-bold text-sm"
                   >
-                    <span className="material-symbols-outlined text-[18px]" aria-hidden="true">call</span>
+                    <Phone className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
                     <span>M. 657 71 37 71</span>
                   </a>
                   <a
                     href={`mailto:${CLUB_INFO.contactEmail}`}
                     className="flex items-center gap-2.5 text-white hover:underline font-medium text-xs sm:text-sm break-all"
                   >
-                    <span className="material-symbols-outlined text-[18px]" aria-hidden="true">mail</span>
+                    <Mail className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
                     <span>{CLUB_INFO.contactEmail}</span>
                   </a>
                 </div>
@@ -641,7 +697,7 @@ export default function PatrocinioPage() {
                   rel="noopener noreferrer"
                   className="w-full py-3 px-4 bg-black hover:bg-neutral-900 text-white font-label-md text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg"
                 >
-                  <span className="material-symbols-outlined text-[18px] text-[#25D366]" aria-hidden="true">chat</span>
+                  <MessageCircle className="w-[18px] h-[18px] text-[#25D366]" aria-hidden="true" />
                   <span>Hablar por WhatsApp</span>
                 </a>
               </div>
@@ -659,30 +715,59 @@ export default function PatrocinioPage() {
               </div>
 
               {submitted ? (
-                <div className="p-8 bg-emerald-500/15 border border-emerald-500/30 text-center space-y-4">
-                  <span className="material-symbols-outlined text-5xl text-emerald-400" aria-hidden="true">
-                    handshake
-                  </span>
+                <div className="p-8 bg-emerald-500/15 border border-emerald-500/30 text-center space-y-4" role="status">
+                  <Handshake className="w-12 h-12 text-emerald-400 mx-auto" aria-hidden="true" />
                   <h4 className="font-display-xl text-2xl uppercase text-white">
                     ¡Gracias por hacer equipo con el C.D. Voleibol San Pedro!
                   </h4>
                   <p className="text-xs text-tertiary max-w-lg mx-auto">
-                    Hemos registrado tu interés en <strong>{selectedTier}</strong>. Alberto Alcántara González se pondrá en contacto contigo a la mayor brevedad.
+                    Hemos registrado tu interés en <strong>{submittedTier}</strong>. Alberto Alcántara González se pondrá en contacto contigo a la mayor brevedad.
                   </p>
-                  <div className="pt-2">
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                     <a
-                      href={generateWhatsAppUrl(selectedTier)}
+                      href={generateWhatsAppUrl(submittedTier)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#25D366] text-black text-xs font-bold uppercase"
                     >
-                      <span className="material-symbols-outlined text-[16px]" aria-hidden="true">chat</span>
+                      <MessageCircle className="w-4 h-4" aria-hidden="true" />
                       <span>Confirmar también por WhatsApp Directo</span>
                     </a>
+                    <button
+                      type="button"
+                      onClick={() => setSubmitted(false)}
+                      className="px-4 py-2.5 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase transition-colors"
+                    >
+                      Enviar otra consulta
+                    </button>
                   </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Honeypot anti-bots */}
+                  <div className="sr-only" aria-hidden="true">
+                    <label htmlFor="sponsor-website-hp">Sitio web</label>
+                    <input
+                      id="sponsor-website-hp"
+                      name="website"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={form.website}
+                      onChange={(e) => setForm({ ...form, website: e.target.value })}
+                    />
+                  </div>
+
+                  {submitError && (
+                    <div
+                      role="alert"
+                      className="p-3 bg-red-950/70 border border-red-500/50 text-red-200 text-xs flex items-start gap-2"
+                    >
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" aria-hidden="true" />
+                      <span>{submitError}</span>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="sponsor-company" className="block text-xs uppercase font-bold text-tertiary mb-1">
@@ -692,6 +777,7 @@ export default function PatrocinioPage() {
                         id="sponsor-company"
                         type="text"
                         required
+                        maxLength={150}
                         value={form.companyName}
                         onChange={(e) => setForm({ ...form, companyName: e.target.value })}
                         placeholder="Nombre de la empresa"
@@ -707,6 +793,7 @@ export default function PatrocinioPage() {
                         id="sponsor-contact"
                         type="text"
                         required
+                        maxLength={120}
                         value={form.contactPerson}
                         onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
                         placeholder="Nombre y apellidos"
@@ -724,6 +811,7 @@ export default function PatrocinioPage() {
                         id="sponsor-phone"
                         type="tel"
                         required
+                        maxLength={30}
                         value={form.phone}
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
                         placeholder="+34 600 000 000"
@@ -781,6 +869,7 @@ export default function PatrocinioPage() {
                     <textarea
                       id="sponsor-message"
                       rows={3}
+                      maxLength={2000}
                       value={form.message}
                       onChange={(e) => setForm({ ...form, message: e.target.value })}
                       placeholder="Mensaje o consulta..."
@@ -788,12 +877,55 @@ export default function PatrocinioPage() {
                     />
                   </div>
 
+                  {/* Primera capa Art. 13 RGPD + Casilla obligatoria sin premarcar */}
+                  <div className="p-3.5 bg-surface-container-lowest border border-white/10 space-y-2.5 text-[11px] text-tertiary leading-relaxed">
+                    <div className="flex items-start gap-2">
+                      <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                      <p>
+                        Responsable: SAN PEDRO C.D VOLEIBOL (CIF G93147924) · Finalidad: gestionar tu solicitud · Base: consentimiento expreso (Art. 6.1.a RGPD) · Conservación: máx. 12 meses tras el cierre de la gestión · Encargados: Neon EU / Zoho Mail EU / Netlify (DPF-SCC) · Derechos y revocación:{' '}
+                        <a href={`mailto:${CLUB_INFO.contactEmail}`} className="text-primary underline hover:text-white">
+                          {CLUB_INFO.contactEmail}
+                        </a>.
+                      </p>
+                    </div>
+                    <label htmlFor="sponsor-privacy" className="flex items-start gap-2.5 cursor-pointer text-xs text-white pt-1">
+                      <input
+                        id="sponsor-privacy"
+                        type="checkbox"
+                        required
+                        checked={form.privacyAccepted}
+                        onChange={(e) => setForm({ ...form, privacyAccepted: e.target.checked })}
+                        className="mt-0.5 w-4 h-4 accent-[#d90429] shrink-0 cursor-pointer"
+                      />
+                      <span>
+                        He leído y acepto la{' '}
+                        <Link
+                          href="/privacidad"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline hover:text-white font-semibold"
+                        >
+                          Política de Privacidad
+                        </Link>{' '}
+                        para el tratamiento de mis datos con el fin de tramitar esta solicitud.
+                      </span>
+                    </label>
+                  </div>
+
                   <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
                     <button
                       type="submit"
-                      className="w-full sm:flex-1 py-3 bg-primary-container hover:bg-secondary-container text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
+                      disabled={submitting}
+                      className="w-full sm:flex-1 py-3 bg-primary-container hover:bg-cta-hover disabled:opacity-60 text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-[4px_4px_0px_0px_#0e0e0e] flex items-center justify-center gap-2"
                     >
-                      Enviar Solicitud
+                      {submitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                          <span>Enviando solicitud...</span>
+                        </>
+                      ) : (
+                        <span>Enviar Solicitud</span>
+                      )}
                     </button>
 
                     <a
@@ -802,7 +934,7 @@ export default function PatrocinioPage() {
                       rel="noopener noreferrer"
                       className="w-full sm:w-auto px-6 py-3 bg-[#25D366] hover:bg-[#20ba59] text-black font-label-md text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-2 shrink-0"
                     >
-                      <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span>
+                      <MessageCircle className="w-[18px] h-[18px]" aria-hidden="true" />
                       <span>WhatsApp Directo</span>
                     </a>
                   </div>

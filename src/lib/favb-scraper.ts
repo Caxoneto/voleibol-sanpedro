@@ -16,9 +16,11 @@ import {
   FAVB_STAFF,
 } from './favb-data';
 import { AFADE_CATEGORIES, AFADE_STANDINGS } from './afade-data';
-import { getConsolidatedAfadeMatches, syncAfadeData } from './afade-scraper';
+import { getConsolidatedAfadeMatches, getFastAfadeSnapshot, syncAfadeData } from './afade-scraper';
 import { Standings, Player, Staff, Position, StaffRole, MatchReferee, MatchRosterPerson } from './types';
-import { formatMadridDateString, formatMadridTime } from './date-utils';
+import { formatMadridDateString, formatMadridTime, madridLocalToUtcIso } from './date-utils';
+import { queryNeon } from './streaming-store';
+import { sanitizeHttpsUrl } from './validators';
 
 export interface FavbCompetitionMeta {
   code: string;
@@ -238,6 +240,8 @@ export interface FavbMatch {
   referees?: MatchReferee[];
   homeRoster?: MatchRosterPerson[];
   awayRoster?: MatchRosterPerson[];
+  homeRosterCount?: number;
+  awayRosterCount?: number;
 }
 
 export interface FavbStanding {
@@ -309,6 +313,13 @@ interface CacheState {
 
 const CACHE_TTL_MS = 20 * 1000; // 20 segundos de caché para reflejar cambios en vivo rápidamente
 const ROSTER_CACHE_TTL_MS = 60 * 1000; // 60 segundos para plantillas salvo force=true
+const FAVB_FETCH_CONCURRENCY = 5;
+
+const SPORTS_CACHE_KEYS = {
+  matches: 'favb_matches_v1',
+  rosters: 'favb_rosters_v1',
+  standings: 'favb_standings_v1',
+} as const;
 
 let lastForceSyncTime = 0;
 let lastForceStandingsTime = 0;
@@ -321,32 +332,104 @@ let cache: CacheState = {
   standings: {},
 };
 
+let inFlightMatchesSync: Promise<{
+  success: boolean;
+  matches: FavbMatch[];
+  lastSync: Date;
+  fromCache: boolean;
+}> | null = null;
+
+let inFlightRostersSync: Promise<{
+  success: boolean;
+  players: Player[];
+  staff: Staff[];
+  lastSync: Date;
+  fromCache: boolean;
+}> | null = null;
+
+let inFlightStandingsSync: Promise<{
+  success: boolean;
+  standings: Standings[];
+  lastSync: Date;
+  fromCache: boolean;
+}> | null = null;
+
 // Memoria acumulativa en servidor de convocatorias extraídas por equipo y partidos finalizados ya procesados
 const scrapedPersonasByTeam = new Map<string, Map<string, FavbRawPersona>>();
 const processedFinishedRosterMatchIds = new Set<string>();
 
 /**
- * Convierte una fecha (YYYY-MM-DD) y hora (HH:MM) en zona horaria Europe/Madrid a ISO UTC
- * respetando el horario de verano/invierno sin depender de la zona horaria del servidor (UTC en Netlify).
+ * Ejecuta tareas asíncronas con concurrencia máxima acotada para evitar fan-out excesivo en Netlify Lambdas.
  */
-export function madridDateTimeToUtcIso(fechaStr: string, horaStr = '12:00'): string {
-  const [y, m, d] = fechaStr.split('-').map(Number);
-  const [hh, mm] = (horaStr || '12:00').split(':').map(Number);
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>
+): Promise<PromiseSettledResult<R>[]> {
+  if (items.length === 0) return [];
+  const limit = Math.max(1, Math.min(concurrency, items.length));
+  const results = new Array<PromiseSettledResult<R>>(items.length);
+  let nextIndex = 0;
 
-  for (const offsetHours of [2, 1]) {
-    const candidate = new Date(Date.UTC(y, m - 1, d, hh - offsetHours, mm || 0, 0));
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/Madrid',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).formatToParts(candidate);
-    const hPart = Number(parts.find((p) => p.type === 'hour')?.value ?? -1);
-    if (hPart === hh) {
-      return candidate.toISOString();
+  async function runWorker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const currentIdx = nextIndex++;
+      try {
+        const value = await worker(items[currentIdx]);
+        results[currentIdx] = { status: 'fulfilled', value };
+      } catch (reason) {
+        results[currentIdx] = { status: 'rejected', reason };
+      }
     }
   }
-  return new Date(Date.UTC(y, m - 1, d, hh - 2, mm || 0, 0)).toISOString();
+
+  await Promise.all(Array.from({ length: limit }, () => runWorker()));
+  return results;
+}
+
+async function readFavbSportsCache<T>(cacheKey: string): Promise<{ data: T; lastSync: number } | null> {
+  try {
+    const rows = await queryNeon<{ payload_json: unknown; updated_at: string }>(
+      'SELECT payload_json, updated_at FROM sports_cache WHERE cache_key = $1 LIMIT 1;',
+      [cacheKey]
+    );
+    if (!rows || rows.length === 0 || !rows[0].payload_json) {
+      return null;
+    }
+    const raw = rows[0].payload_json;
+    const parsed = (typeof raw === 'string' ? JSON.parse(raw) : raw) as T & { lastSync?: number };
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+    const updatedMs = rows[0].updated_at ? new Date(rows[0].updated_at).getTime() : 0;
+    const lastSync =
+      typeof parsed.lastSync === 'number' && parsed.lastSync > 0 ? parsed.lastSync : updatedMs;
+    return { data: parsed, lastSync };
+  } catch {
+    return null;
+  }
+}
+
+async function writeFavbSportsCache(cacheKey: string, payload: unknown): Promise<void> {
+  try {
+    await queryNeon(
+      `INSERT INTO sports_cache (cache_key, payload_json, updated_at)
+       VALUES ($1, $2::jsonb, NOW())
+       ON CONFLICT (cache_key) DO UPDATE
+       SET payload_json = EXCLUDED.payload_json, updated_at = NOW();`,
+      [cacheKey, JSON.stringify(payload)]
+    );
+  } catch {
+    // Lecturas deportivas públicas: en fallo de Neon no interrumpimos la respuesta
+  }
+}
+
+/**
+ * Convierte una fecha (YYYY-MM-DD) y hora (HH:MM) en zona horaria Europe/Madrid a ISO UTC
+ * respetando el horario de verano/invierno y hourCycle h23 bajo TZ=UTC.
+ */
+export function madridDateTimeToUtcIso(fechaStr: string, horaStr = '12:00'): string {
+  return madridLocalToUtcIso(fechaStr, horaStr);
 }
 
 /**
@@ -460,8 +543,10 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
     if (p.instalacion && String(p.instalacion).trim() !== '') {
       const inst = String(p.instalacion).trim();
       venue = `${inst}${rawEsp ? ` – ${rawEsp}` : ''}${rawLoc ? ` (${rawLoc})` : ''}`;
-      if (p.google_maps_url && String(p.google_maps_url).trim()) {
-        googleMapsUrl = String(p.google_maps_url).trim();
+      const rawMapUrl = p.google_maps_url ? String(p.google_maps_url).trim() : '';
+      const safeMapUrl = sanitizeHttpsUrl(rawMapUrl, '');
+      if (safeMapUrl) {
+        googleMapsUrl = safeMapUrl;
       } else if (!inst.toLowerCase().includes('descansa')) {
         googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${inst} ${rawLoc}`.trim())}`;
       }
@@ -873,8 +958,62 @@ export async function updateMatchLiveScore(
 }
 
 /**
- * Obtiene y sincroniza datos de partidos de la FAVB desde favoley.net,
- * actualizando automáticamente resultados pasados, marcadores de hoy y cambios de horario/pabellón de los próximos 14 días.
+ * Lee el snapshot más rápido de partidos (memoria -> Neon sports_cache -> baseline consolidado)
+ * sin disparar peticiones HTTP externas bloqueantes. Ideal para SSR de HomePage.
+ */
+export async function getFastFavbMatchesSnapshot(): Promise<{
+  matches: FavbMatch[];
+  lastSync: Date;
+  fromCache: boolean;
+}> {
+  if (cache.matches.length > 0) {
+    return {
+      matches: cache.matches,
+      lastSync: new Date(cache.lastSync || Date.now()),
+      fromCache: true,
+    };
+  }
+
+  const [favbCached, afadeSnap] = await Promise.all([
+    readFavbSportsCache<{ matches: FavbMatch[]; lastSync: number }>(SPORTS_CACHE_KEYS.matches),
+    getFastAfadeSnapshot(),
+  ]);
+
+  if (favbCached && Array.isArray(favbCached.data.matches) && favbCached.data.matches.length > 0) {
+    let matches = favbCached.data.matches;
+    if (afadeSnap.matches.length > 0) {
+      const afadeMap = new Map(afadeSnap.matches.map((m) => [m.id, m]));
+      matches = matches.map((m) => afadeMap.get(m.id) || m);
+    }
+    cache.matches = matches;
+    cache.lastSync = favbCached.lastSync || Date.now();
+    return {
+      matches,
+      lastSync: new Date(cache.lastSync),
+      fromCache: true,
+    };
+  }
+
+  const consolidated = getConsolidatedOfficialMatches();
+  if (afadeSnap.matches.length > 0) {
+    const afadeMap = new Map(afadeSnap.matches.map((m) => [m.id, m]));
+    return {
+      matches: consolidated.map((m) => afadeMap.get(m.id) || m),
+      lastSync: new Date(afadeSnap.lastSync || Date.now()),
+      fromCache: true,
+    };
+  }
+
+  return {
+    matches: consolidated,
+    lastSync: new Date(),
+    fromCache: true,
+  };
+}
+
+/**
+ * Obtiene y sincroniza datos de partidos de la FAVB desde favoley.net con concurrencia acotada,
+ * singleflight y caché compartida en Neon (`sports_cache`).
  */
 export async function syncFavbData(forceRefresh = false): Promise<{
   success: boolean;
@@ -900,108 +1039,146 @@ export async function syncFavbData(forceRefresh = false): Promise<{
     };
   }
 
-  if (cache.matches.length === 0) {
-    cache.matches = getConsolidatedOfficialMatches();
-  }
-
-  const todayStr = formatMadridDateString(new Date());
-  const recent3DaysStr = formatMadridDateString(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000));
-  const horizonDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-  const horizonStr = formatMadridDateString(horizonDate);
-
-  // 1. Partidos pasados sin cerrar, de los últimos 3 días (si forceRefresh) o de los próximos 14 días para sincronizar resultados, horarios, sedes y actas vía JSON rápido
-  const targetMatches = cache.matches.filter(
-    (m) =>
-      !m.id.startsWith('afade-') &&
-      ((m.dateStr <= todayStr && (m.status !== 'FINISHED' || !m.setScores || m.setScores.length === 0)) ||
-      (forceRefresh && m.dateStr >= recent3DaysStr && m.dateStr <= todayStr) ||
-      (m.dateStr >= todayStr && m.dateStr <= horizonStr))
+  // Comprobar snapshot compartido en Neon antes de consultar favoley.net
+  const neonCached = await readFavbSportsCache<{ matches: FavbMatch[]; lastSync: number }>(
+    SPORTS_CACHE_KEYS.matches
   );
-
-  if (targetMatches.length > 0) {
-    await Promise.allSettled(
-      targetMatches.map(async (m) => {
-        const favbId = m.favbId || m.id.replace(/^favb-/, '');
-        const details = await fetchMatchDetailsJson(favbId);
-        if (details) {
-          m.status = details.status;
-          m.statusText = details.statusText;
-          if (details.homeScore !== undefined) m.homeScore = details.homeScore;
-          if (details.awayScore !== undefined) m.awayScore = details.awayScore;
-          if (details.setScores.length > 0) m.setScores = details.setScores;
-          if (details.homeTeam) m.homeTeam = details.homeTeam;
-          if (details.awayTeam) m.awayTeam = details.awayTeam;
-          if (details.isClubHome !== undefined) m.isClubHome = details.isClubHome;
-          if (details.matchDateIso) {
-            m.matchDate = details.matchDateIso;
-            m.dateStr = formatMadridDateString(details.matchDateIso);
-            m.timeStr = formatMadridTime(details.matchDateIso);
-          }
-          if (details.venue) m.venue = details.venue;
-          if (details.court) m.court = details.court;
-          if (details.locality) m.locality = details.locality;
-          if (details.googleMapsUrl) m.googleMapsUrl = details.googleMapsUrl;
-          if (details.referees) m.referees = details.referees;
-          if (details.homeRoster) m.homeRoster = details.homeRoster;
-          if (details.awayRoster) m.awayRoster = details.awayRoster;
-          m.lastChecked = new Date().toISOString();
-
-          // Regla de 12 horas si continúa figurando SCHEDULED sin parciales
-          if (m.status === 'SCHEDULED' && (!m.setScores || m.setScores.length === 0)) {
-            const scheduledTime = new Date(m.matchDate).getTime();
-            if (scheduledTime > 0 && Date.now() - scheduledTime >= 12 * 60 * 60 * 1000) {
-              m.status = 'POSTPONED';
-              m.statusText = 'Aplazado';
-            }
-          }
-
-          if (details.clubPersonas.length > 0) {
-            recordTeamPersonas(m.teamId, details.clubPersonas);
-            if (details.status === 'FINISHED') {
-              processedFinishedRosterMatchIds.add(m.id);
-            }
-          }
-        }
-
-        // Si el partido es de HOY o está EN JUEGO (LIVE), consultar también seccion=marcador para obtener currentSetScore punto a punto
-        if (m.status === 'LIVE' || (m.dateStr === todayStr && m.status !== 'FINISHED')) {
-          const live = await fetchLiveMatchScore(favbId);
-          if (live && !('error' in live)) {
-            m.status = live.status;
-            m.statusText = live.statusText;
-            if (live.homeScore !== undefined) m.homeScore = live.homeScore;
-            if (live.awayScore !== undefined) m.awayScore = live.awayScore;
-            m.currentSetScore = live.currentSetScore;
-            if (live.setScores.length > 0) m.setScores = live.setScores;
-            m.lastChecked = live.lastChecked;
-          }
-        }
-      })
-    );
-  }
-
-  // 2. Sincronizar simultáneamente las categorías de Liga AFADE
-  try {
-    const afadeRes = await syncAfadeData(forceRefresh);
-    if (afadeRes.success && afadeRes.matches.length > 0) {
-      const afadeMap = new Map(afadeRes.matches.map((m) => [m.id, m]));
-      cache.matches = cache.matches.map((m) => afadeMap.get(m.id) || m);
+  if (neonCached && Array.isArray(neonCached.data.matches) && neonCached.data.matches.length > 0) {
+    const ageMs = now - neonCached.lastSync;
+    if ((forceRefresh && ageMs < MIN_FORCE_COOLDOWN_MS) || (!forceRefresh && ageMs < CACHE_TTL_MS)) {
+      cache.matches = neonCached.data.matches;
+      cache.lastSync = neonCached.lastSync;
+      return {
+        success: true,
+        matches: cache.matches,
+        lastSync: new Date(cache.lastSync),
+        fromCache: true,
+      };
     }
-  } catch (err) {
-    console.error('Error sincronizando Liga AFADE:', err);
   }
 
-  cache.lastSync = Date.now();
+  if (inFlightMatchesSync) {
+    return inFlightMatchesSync;
+  }
+
   if (forceRefresh) {
-    lastForceSyncTime = cache.lastSync;
+    lastForceSyncTime = now;
   }
 
-  return {
-    success: true,
-    matches: cache.matches,
-    lastSync: new Date(cache.lastSync),
-    fromCache: false,
-  };
+  inFlightMatchesSync = (async () => {
+    try {
+      if (cache.matches.length === 0) {
+        cache.matches =
+          neonCached && Array.isArray(neonCached.data.matches) && neonCached.data.matches.length > 0
+            ? neonCached.data.matches
+            : getConsolidatedOfficialMatches();
+      }
+
+      const todayStr = formatMadridDateString(new Date());
+      const recent3DaysStr = formatMadridDateString(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000));
+      const horizonDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      const horizonStr = formatMadridDateString(horizonDate);
+
+      // 1. Partidos pasados sin cerrar, de los últimos 3 días (si forceRefresh) o de los próximos 14 días
+      const targetMatches = cache.matches.filter(
+        (m) =>
+          !m.id.startsWith('afade-') &&
+          ((m.dateStr <= todayStr && (m.status !== 'FINISHED' || !m.setScores || m.setScores.length === 0)) ||
+            (forceRefresh && m.dateStr >= recent3DaysStr && m.dateStr <= todayStr) ||
+            (m.dateStr >= todayStr && m.dateStr <= horizonStr))
+      );
+
+      if (targetMatches.length > 0) {
+        await mapWithConcurrency(targetMatches, FAVB_FETCH_CONCURRENCY, async (m) => {
+          const favbId = m.favbId || m.id.replace(/^favb-/, '');
+          const details = await fetchMatchDetailsJson(favbId);
+          if (details) {
+            m.status = details.status;
+            m.statusText = details.statusText;
+            if (details.homeScore !== undefined) m.homeScore = details.homeScore;
+            if (details.awayScore !== undefined) m.awayScore = details.awayScore;
+            if (details.setScores.length > 0) m.setScores = details.setScores;
+            if (details.homeTeam) m.homeTeam = details.homeTeam;
+            if (details.awayTeam) m.awayTeam = details.awayTeam;
+            if (details.isClubHome !== undefined) m.isClubHome = details.isClubHome;
+            if (details.matchDateIso) {
+              m.matchDate = details.matchDateIso;
+              m.dateStr = formatMadridDateString(details.matchDateIso);
+              m.timeStr = formatMadridTime(details.matchDateIso);
+            }
+            if (details.venue) m.venue = details.venue;
+            if (details.court) m.court = details.court;
+            if (details.locality) m.locality = details.locality;
+            if (details.googleMapsUrl) m.googleMapsUrl = details.googleMapsUrl;
+            if (details.referees) m.referees = details.referees;
+            if (details.homeRoster) m.homeRoster = details.homeRoster;
+            if (details.awayRoster) m.awayRoster = details.awayRoster;
+            m.lastChecked = new Date().toISOString();
+
+            if (m.status === 'SCHEDULED' && (!m.setScores || m.setScores.length === 0)) {
+              const scheduledTime = new Date(m.matchDate).getTime();
+              if (scheduledTime > 0 && Date.now() - scheduledTime >= 12 * 60 * 60 * 1000) {
+                m.status = 'POSTPONED';
+                m.statusText = 'Aplazado';
+              }
+            }
+
+            if (details.clubPersonas.length > 0) {
+              recordTeamPersonas(m.teamId, details.clubPersonas);
+              if (details.status === 'FINISHED') {
+                processedFinishedRosterMatchIds.add(m.id);
+              }
+            }
+          }
+
+          if (m.status === 'LIVE' || (m.dateStr === todayStr && m.status !== 'FINISHED')) {
+            const live = await fetchLiveMatchScore(favbId);
+            if (live && !('error' in live)) {
+              m.status = live.status;
+              m.statusText = live.statusText;
+              if (live.homeScore !== undefined) m.homeScore = live.homeScore;
+              if (live.awayScore !== undefined) m.awayScore = live.awayScore;
+              m.currentSetScore = live.currentSetScore;
+              if (live.setScores.length > 0) m.setScores = live.setScores;
+              m.lastChecked = live.lastChecked;
+            }
+          }
+        });
+      }
+
+      // 2. Sincronizar simultáneamente las categorías de Liga AFADE
+      try {
+        const afadeRes = await syncAfadeData(forceRefresh);
+        if (afadeRes.success && afadeRes.matches.length > 0) {
+          const afadeMap = new Map(afadeRes.matches.map((m) => [m.id, m]));
+          cache.matches = cache.matches.map((m) => afadeMap.get(m.id) || m);
+        }
+      } catch (err) {
+        console.error('Error sincronizando Liga AFADE:', err);
+      }
+
+      cache.lastSync = Date.now();
+      if (forceRefresh) {
+        lastForceSyncTime = cache.lastSync;
+      }
+
+      await writeFavbSportsCache(SPORTS_CACHE_KEYS.matches, {
+        lastSync: cache.lastSync,
+        matches: cache.matches,
+      });
+
+      return {
+        success: true,
+        matches: cache.matches,
+        lastSync: new Date(cache.lastSync),
+        fromCache: false,
+      };
+    } finally {
+      inFlightMatchesSync = null;
+    }
+  })();
+
+  return inFlightMatchesSync;
 }
 
 export const syncFavbMatches = syncFavbData;
@@ -1053,14 +1230,14 @@ export function getConsolidatedOfficialMatches(): FavbMatch[] {
       venue: m.venueName,
       court: m.court,
       locality: m.locality,
-      googleMapsUrl: m.googleMapsUrl,
+      googleMapsUrl: m.googleMapsUrl ? sanitizeHttpsUrl(m.googleMapsUrl, '') || undefined : undefined,
       status,
       statusText,
       homeScore,
       awayScore,
       setScores: m.setScores,
       isClubHome: m.isClubHome,
-      favbUrl: m.favbMatchUrl || 'https://favoley.net/publico/index.php',
+      favbUrl: sanitizeHttpsUrl(m.favbMatchUrl, 'https://favoley.net/publico/index.php'),
       association: 'FAVB' as const,
       referees: m.referees,
       homeRoster: m.homeRoster,
@@ -1148,9 +1325,35 @@ function isStaffPersona(p: FavbRawPersona): boolean {
   );
 }
 
+function slugifyPersonaName(name: string): string {
+  const norm = normalizeNameKey(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return norm.slice(0, 40) || 'persona';
+}
+
+function buildDeterministicPlayerId(teamId: string, fullName: string): string {
+  return `p-${teamId}-${slugifyPersonaName(fullName)}`;
+}
+
+function buildDeterministicStaffId(teamId: string, fullName: string): string {
+  return `stf-${teamId}-${slugifyPersonaName(fullName)}`;
+}
+
+function isRealCatalogPlayer(p: Player): boolean {
+  return (
+    !p.id.startsWith('demo-') &&
+    p.id !== 'p-test-prueba' &&
+    p.firstName !== 'Jugador' &&
+    p.firstName !== 'Jugadora'
+  );
+}
+
 /**
  * Sincroniza en tiempo real las plantillas de jugadores/as y cuerpo técnico de los 13 equipos
- * consultando las actas publicadas en favoley.net (`competicion_partido_datos.php`).
+ * consultando las actas publicadas en favoley.net (`competicion_partido_datos.php`) con
+ * concurrencia acotada, IDs deterministas sin datos biométricos sintéticos y caché en Neon.
  */
 export async function syncFavbRosters(
   forceRefresh = false,
@@ -1179,7 +1382,6 @@ export async function syncFavbRosters(
   }
   if (
     !forceRefresh &&
-    !targetTeamId &&
     rosterCache.lastSync > 0 &&
     now - rosterCache.lastSync < ROSTER_CACHE_TTL_MS &&
     rosterCache.players.length > 0
@@ -1193,53 +1395,91 @@ export async function syncFavbRosters(
     };
   }
 
-  try {
-    if (forceRefresh) {
-      processedFinishedRosterMatchIds.clear();
+  // Comprobar snapshot en Neon si no se pide refresco dirigido a un equipo concreto
+  if (!forceRefresh) {
+    const neonCached = await readFavbSportsCache<{
+      players: Player[];
+      staff: Staff[];
+      lastSync: number;
+    }>(SPORTS_CACHE_KEYS.rosters);
+    if (neonCached && Array.isArray(neonCached.data.players) && neonCached.data.players.length > 0) {
+      const ageMs = now - neonCached.lastSync;
+      if ((forceRefresh && ageMs < MIN_FORCE_COOLDOWN_MS) || (!forceRefresh && ageMs < ROSTER_CACHE_TTL_MS)) {
+        rosterCache = {
+          lastSync: neonCached.lastSync,
+          players: neonCached.data.players,
+          staff: Array.isArray(neonCached.data.staff) ? neonCached.data.staff : FAVB_STAFF,
+        };
+        return {
+          success: true,
+          players: rosterCache.players,
+          staff: rosterCache.staff,
+          lastSync: new Date(rosterCache.lastSync),
+          fromCache: true,
+        };
+      }
     }
-    const tomorrowStr = formatMadridDateString(new Date(Date.now() + 36 * 60 * 60 * 1000));
-    const recent14DaysStr = formatMadridDateString(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000));
-    const matchesByTeam = new Map<string, typeof FAVB_MATCHES>();
+  }
 
-    for (const m of FAVB_MATCHES) {
-      const list = matchesByTeam.get(m.teamId) || [];
-      list.push(m);
-      matchesByTeam.set(m.teamId, list);
-    }
+  if (inFlightRostersSync && !forceRefresh) {
+    return inFlightRostersSync;
+  }
 
-    const matchesToInspect: typeof FAVB_MATCHES = [];
-    for (const [tId, teamMatches] of Array.from(matchesByTeam.entries())) {
-      const sorted = [...teamMatches].sort(
-        (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
-      );
-      const isTargetTeam = Boolean(targetTeamId && tId === targetTeamId);
-      const baseRealPlayersCount = FAVB_PLAYERS.filter(
-        (p) => p.teamId === tId && p.firstName !== 'Jugador' && p.firstName !== 'Jugadora'
-      ).length;
+  const runSync = async (): Promise<{
+    success: boolean;
+    players: Player[];
+    staff: Staff[];
+    lastSync: Date;
+    fromCache: boolean;
+  }> => {
+    try {
+      if (forceRefresh) {
+        processedFinishedRosterMatchIds.clear();
+        lastForceRostersTime = Date.now();
+      }
+      const tomorrowStr = formatMadridDateString(new Date(Date.now() + 36 * 60 * 60 * 1000));
+      const recent14DaysStr = formatMadridDateString(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000));
+      const matchesByTeam = new Map<string, typeof FAVB_MATCHES>();
 
-      // Inspeccionar:
-      // - Todos los partidos hasta mañana si es el equipo objetivo pulsado por el usuario (o si el equipo aún tenía < 6 jugadores base)
-      // - O los partidos de los últimos 14 días / pendientes hasta mañana para el resto de equipos (evitando saturar con 60+ peticiones de octubre ya consolidadas en FAVB_PLAYERS)
-      sorted.forEach((m, idx) => {
-        const dStr = formatMadridDateString(m.matchDate);
-        const isRecentOrPending =
-          (dStr >= recent14DaysStr && dStr <= tomorrowStr) ||
-          (dStr <= tomorrowStr && m.status !== 'FINISHED');
-        if (
-          (isTargetTeam && (dStr <= tomorrowStr || idx < 2)) ||
-          (baseRealPlayersCount < 6 && (dStr <= tomorrowStr || idx < 2)) ||
-          isRecentOrPending
-        ) {
-          if (!processedFinishedRosterMatchIds.has(m.id)) {
-            matchesToInspect.push(m);
+      for (const m of FAVB_MATCHES) {
+        const list = matchesByTeam.get(m.teamId) || [];
+        list.push(m);
+        matchesByTeam.set(m.teamId, list);
+      }
+
+      const matchesToInspect: typeof FAVB_MATCHES = [];
+      for (const [tId, teamMatches] of Array.from(matchesByTeam.entries())) {
+        const sorted = [...teamMatches].sort(
+          (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
+        );
+        const isTargetTeam = Boolean(targetTeamId && tId === targetTeamId);
+        const baseRealPlayersCount = FAVB_PLAYERS.filter((p) => {
+          const ext = p as Player & { secondaryTeamIds?: string[] };
+          return (
+            isRealCatalogPlayer(p) &&
+            (p.teamId === tId || Boolean(ext.secondaryTeamIds?.includes(tId)))
+          );
+        }).length;
+
+        sorted.forEach((m, idx) => {
+          const dStr = formatMadridDateString(m.matchDate);
+          const isRecentOrPending =
+            (dStr >= recent14DaysStr && dStr <= tomorrowStr) ||
+            (dStr <= tomorrowStr && m.status !== 'FINISHED');
+          if (
+            (isTargetTeam && (dStr <= tomorrowStr || idx < 2)) ||
+            (baseRealPlayersCount < 6 && (dStr <= tomorrowStr || idx < 2)) ||
+            isRecentOrPending
+          ) {
+            if (!processedFinishedRosterMatchIds.has(m.id)) {
+              matchesToInspect.push(m);
+            }
           }
-        }
-      });
-    }
+        });
+      }
 
-    if (matchesToInspect.length > 0) {
-      await Promise.allSettled(
-        matchesToInspect.map(async (m) => {
+      if (matchesToInspect.length > 0) {
+        await mapWithConcurrency(matchesToInspect, FAVB_FETCH_CONCURRENCY, async (m) => {
           const numId = m.id.replace(/^favb-/, '');
           const details = await fetchMatchDetailsJson(numId);
           if (details && details.clubPersonas.length > 0) {
@@ -1248,221 +1488,238 @@ export async function syncFavbRosters(
               processedFinishedRosterMatchIds.add(m.id);
             }
           }
-        })
-      );
-    }
-
-    // Propagar licencias cruzadas de cantera (ej. jugadores CADETE convocados en Juvenil Masculino -> Cadete Masculino)
-    const jmPersonas = scrapedPersonasByTeam.get('team-jm');
-    if (jmPersonas) {
-      const cadeteList: FavbRawPersona[] = [];
-      for (const p of Array.from(jmPersonas.values())) {
-        if (!isStaffPersona(p) && p.tipo.toUpperCase().includes('CADETE')) {
-          cadeteList.push(p);
-        }
+        });
       }
-      if (cadeteList.length > 0) {
-        recordTeamPersonas('team-cm', cadeteList);
-      }
-    }
 
-    // Construir lista consolidada de jugadores y cuerpo técnico por cada equipo
-    const updatedPlayers: Player[] = [];
-    const updatedStaff: Staff[] = [];
-    const teamIds = FAVB_TEAMS.map((t) => t.id);
-
-    for (const teamId of teamIds) {
-      const compMeta = FAVB_COMPETITIONS.find((c) => c.teamId === teamId);
-      const isFemale = compMeta?.gender === 'FEMENINO';
-      const placeholderPrefix = isFemale ? 'Jugadora' : 'Jugador';
-
-      const fallbackPlayers = FAVB_PLAYERS.filter((p) => p.teamId === teamId);
-      const existingRealPlayers = fallbackPlayers.filter(
-        (fp) => fp.firstName !== 'Jugador' && fp.firstName !== 'Jugadora'
-      );
-
-      const baseYear = fallbackPlayers[0]?.birthYear || 2009;
-      const baseHeight = fallbackPlayers[0]?.heightCm || (isFemale ? 168 : 176);
-
-      // Mapa de jugadores reales por clave de nombre normalizado (estrictamente aditivo)
-      const realByKey = new Map<string, Player>();
-      // 1. Sembrar jugadores oficiales base
-      for (const rp of existingRealPlayers) {
-        const key = normalizeNameKey(`${rp.firstName} ${rp.lastName}`);
-        realByKey.set(key, { ...rp });
-      }
-      // 2. Sembrar jugadores reales acumulados de actas previas (para no perder ningún jugador convocado con anterioridad)
-      for (const cp of rosterCache.players.filter((p) => p.teamId === teamId)) {
-        if (cp.firstName !== 'Jugador' && cp.firstName !== 'Jugadora') {
-          const key = normalizeNameKey(`${cp.firstName} ${cp.lastName}`);
-          if (!realByKey.has(key)) {
-            realByKey.set(key, { ...cp });
+      // Propagar licencias cruzadas de cantera (ej. jugadores CADETE convocados en Juvenil Masculino -> Cadete Masculino)
+      const jmPersonas = scrapedPersonasByTeam.get('team-jm');
+      if (jmPersonas) {
+        const cadeteList: FavbRawPersona[] = [];
+        for (const p of Array.from(jmPersonas.values())) {
+          if (!isStaffPersona(p) && p.tipo.toUpperCase().includes('CADETE')) {
+            cadeteList.push(p);
           }
         }
+        if (cadeteList.length > 0) {
+          recordTeamPersonas('team-cm', cadeteList);
+        }
       }
 
-      const scrapedMap = scrapedPersonasByTeam.get(teamId);
-      if (scrapedMap) {
-        let addIdx = realByKey.size;
-        for (const sp of Array.from(scrapedMap.values())) {
-          if (isStaffPersona(sp)) continue;
-          const key = normalizeNameKey(sp.nombre);
-          if (!key) continue;
+      // Índice global de identidades canónicas reales para evitar crear IDs paralelos en doblajes
+      const canonicalByName = new Map<string, Player>();
+      for (const p of FAVB_PLAYERS) {
+        if (!isRealCatalogPlayer(p)) continue;
+        const nKey = normalizeNameKey(`${p.firstName} ${p.lastName}`);
+        if (nKey && !canonicalByName.has(nKey)) {
+          canonicalByName.set(nKey, p);
+        }
+      }
 
-          const dorsalNum = parseInt(sp.dorsal, 10);
-          const isLibero =
-            sp.libero === 1 ||
-            sp.tipo.toLowerCase().includes('líbero') ||
-            sp.tipo.toLowerCase().includes('libero');
-          const isCaptain = sp.capitan === 1 || sp.tipo.toLowerCase().includes('capit');
+      const updatedPlayers: Player[] = [];
+      const updatedStaff: Staff[] = [];
+      const teamIds = FAVB_TEAMS.map((t) => t.id);
 
-          const existing = realByKey.get(key);
-          if (existing) {
-            if (!Number.isNaN(dorsalNum) && dorsalNum > 0) existing.number = dorsalNum;
-            if (isCaptain) existing.isCaptain = true;
-            if (isLibero) existing.position = 'LIBERO';
-            if (!existing.matchesCalledUp) existing.matchesCalledUp = 1;
-            if (!existing.totalClubCallUps) existing.totalClubCallUps = existing.matchesCalledUp;
-          } else {
-            const { firstName, lastName } = splitFullName(sp.nombre);
-            realByKey.set(key, {
-              id: `p-${teamId}-${addIdx + 1}`,
+      for (const teamId of teamIds) {
+        const compMeta = FAVB_COMPETITIONS.find((c) => c.teamId === teamId);
+        const isFemale = compMeta?.gender === 'FEMENINO';
+        const placeholderPrefix = isFemale ? 'Jugadora' : 'Jugador';
+
+        const fallbackPlayers = FAVB_PLAYERS.filter((p) => {
+          const ext = p as Player & { secondaryTeamIds?: string[] };
+          return (
+            isRealCatalogPlayer(p) &&
+            (p.teamId === teamId || Boolean(ext.secondaryTeamIds?.includes(teamId)))
+          );
+        });
+
+        // Mapa de jugadores reales por clave de nombre normalizado (conservando SIEMPRE id canónico)
+        const realByKey = new Map<string, Player>();
+        for (const rp of fallbackPlayers) {
+          const key = normalizeNameKey(`${rp.firstName} ${rp.lastName}`);
+          realByKey.set(key, { ...rp, teamId });
+        }
+        for (const cp of rosterCache.players.filter((p) => p.teamId === teamId)) {
+          if (isRealCatalogPlayer(cp)) {
+            const key = normalizeNameKey(`${cp.firstName} ${cp.lastName}`);
+            if (!realByKey.has(key)) {
+              realByKey.set(key, { ...cp });
+            }
+          }
+        }
+
+        const scrapedMap = scrapedPersonasByTeam.get(teamId);
+        if (scrapedMap) {
+          let addIdx = realByKey.size;
+          for (const sp of Array.from(scrapedMap.values())) {
+            if (isStaffPersona(sp)) continue;
+            const key = normalizeNameKey(sp.nombre);
+            if (!key) continue;
+
+            const dorsalNum = parseInt(sp.dorsal, 10);
+            const isLibero =
+              sp.libero === 1 ||
+              sp.tipo.toLowerCase().includes('líbero') ||
+              sp.tipo.toLowerCase().includes('libero');
+            const isCaptain = sp.capitan === 1 || sp.tipo.toLowerCase().includes('capit');
+
+            const existing = realByKey.get(key);
+            if (existing) {
+              if (!Number.isNaN(dorsalNum) && dorsalNum > 0) existing.number = dorsalNum;
+              if (isCaptain) existing.isCaptain = true;
+              if (isLibero) existing.position = 'LIBERO';
+              if (!existing.matchesCalledUp) existing.matchesCalledUp = 1;
+              if (!existing.totalClubCallUps) existing.totalClubCallUps = existing.matchesCalledUp;
+            } else {
+              const { firstName, lastName } = splitFullName(sp.nombre);
+              const canonicalMatch = canonicalByName.get(key);
+              realByKey.set(key, {
+                id: canonicalMatch ? canonicalMatch.id : buildDeterministicPlayerId(teamId, sp.nombre),
+                teamId,
+                number: !Number.isNaN(dorsalNum) && dorsalNum > 0 ? dorsalNum : addIdx + 1,
+                firstName,
+                lastName,
+                position: isLibero ? 'LIBERO' : POS_CYCLE[addIdx % POS_CYCLE.length],
+                birthYear: canonicalMatch ? canonicalMatch.birthYear : 0,
+                heightCm: canonicalMatch ? canonicalMatch.heightCm : 0,
+                photoUrl: '/images/player-placeholder.svg',
+                isCaptain,
+                isHomegrown: true,
+                matchesCalledUp: 1,
+                totalClubCallUps: 1,
+              });
+              addIdx++;
+            }
+          }
+        }
+
+        const mergedReal = Array.from(realByKey.values()).sort((a, b) => a.number - b.number);
+        updatedPlayers.push(...mergedReal);
+
+        // Si el equipo aún no ha debutado (< 6 jugadores reales), completar slots vacíos con ID separado sin datos sintéticos
+        if (mergedReal.length < 6) {
+          const usedNumbers = new Set(mergedReal.map((p) => p.number));
+          for (let slot = mergedReal.length + 1; slot <= 10; slot++) {
+            let num = slot;
+            while (usedNumbers.has(num)) num++;
+            usedNumbers.add(num);
+            updatedPlayers.push({
+              id: `p-${teamId}-slot-${slot}`,
               teamId,
-              number: !Number.isNaN(dorsalNum) && dorsalNum > 0 ? dorsalNum : addIdx + 1,
-              firstName,
-              lastName,
-              position: isLibero ? 'LIBERO' : POS_CYCLE[addIdx % POS_CYCLE.length],
-              birthYear: baseYear + (addIdx % 2),
-              heightCm: isLibero ? baseHeight - 4 : baseHeight + ((addIdx * 2) % 6) - 2,
+              number: num,
+              firstName: placeholderPrefix,
+              lastName: String(slot),
+              position: POS_CYCLE[(slot - 1) % POS_CYCLE.length],
+              birthYear: 0,
+              heightCm: 0,
               photoUrl: '/images/player-placeholder.svg',
-              isCaptain,
+              isCaptain: slot === 1 && mergedReal.length === 0,
               isHomegrown: true,
-              matchesCalledUp: 1,
-              totalClubCallUps: 1,
             });
-            addIdx++;
           }
         }
+
+        // Fusionar Cuerpo Técnico (Staff) del equipo
+        const fallbackStaff = FAVB_STAFF.filter((s) => s.teamId === teamId);
+        const scrapedStaffList = scrapedMap
+          ? Array.from(scrapedMap.values()).filter((sp) => isStaffPersona(sp))
+          : [];
+        const hasRealScrapedStaff = scrapedStaffList.length > 0;
+
+        const staffByKey = new Map<string, Staff>();
+        for (const st of fallbackStaff) {
+          if (hasRealScrapedStaff && st.name.toLowerCase().includes('entrenador/a oficial')) {
+            continue;
+          }
+          staffByKey.set(normalizeNameKey(st.name), { ...st });
+        }
+        for (const cs of rosterCache.staff.filter((s) => s.teamId === teamId)) {
+          if (!cs.name.toLowerCase().includes('entrenador/a oficial')) {
+            const key = normalizeNameKey(cs.name);
+            if (!staffByKey.has(key)) {
+              staffByKey.set(key, { ...cs });
+            }
+          }
+        }
+
+        if (hasRealScrapedStaff) {
+          const staffAccentMap: Record<string, string> = {
+            Vazquez: 'Vázquez',
+            Alcantara: 'Alcántara',
+            Martinez: 'Martínez',
+            Gomez: 'Gómez',
+            Rodriguez: 'Rodríguez',
+            Galan: 'Galán',
+            Garcia: 'García',
+          };
+          for (const sp of scrapedStaffList) {
+            let cleanName = titleCase(sp.nombre.replace(/,[a-zA-Z]+$/, ''));
+            if (staffAccentMap[cleanName]) cleanName = staffAccentMap[cleanName];
+            const key = normalizeNameKey(cleanName);
+            if (!key || staffByKey.has(key)) continue;
+
+            const tUpper = sp.tipo.toUpperCase().trim();
+            const role: StaffRole =
+              tUpper === 'C' || (tUpper.includes('ENTRENADOR') && !tUpper.includes('2'))
+                ? 'HEAD_COACH'
+                : 'ASSISTANT';
+
+            staffByKey.set(key, {
+              id: buildDeterministicStaffId(teamId, cleanName),
+              teamId,
+              name: cleanName,
+              role,
+              photoUrl: '/images/staff-placeholder.svg',
+            });
+          }
+        }
+
+        updatedStaff.push(...Array.from(staffByKey.values()));
       }
 
-      const mergedReal = Array.from(realByKey.values()).sort((a, b) => a.number - b.number);
-      // Re-indexar IDs estables para el equipo
-      mergedReal.forEach((p, idx) => {
-        p.id = `p-${teamId}-${idx + 1}`;
+      rosterCache = {
+        lastSync: Date.now(),
+        players: updatedPlayers,
+        staff: updatedStaff,
+      };
+
+      if (forceRefresh) {
+        lastForceRostersTime = rosterCache.lastSync;
+      }
+
+      await writeFavbSportsCache(SPORTS_CACHE_KEYS.rosters, {
+        lastSync: rosterCache.lastSync,
+        players: updatedPlayers,
+        staff: updatedStaff,
       });
-      updatedPlayers.push(...mergedReal);
 
-      // Si el equipo aún no ha debutado (< 6 jugadores reales para un sexteto), completar hasta 10 con Jugador/a N
-      if (mergedReal.length < 6) {
-        const usedNumbers = new Set(mergedReal.map((p) => p.number));
-        for (let slot = mergedReal.length + 1; slot <= 10; slot++) {
-          let num = slot;
-          while (usedNumbers.has(num)) num++;
-          usedNumbers.add(num);
-          updatedPlayers.push({
-            id: `p-${teamId}-${slot}`,
-            teamId,
-            number: num,
-            firstName: placeholderPrefix,
-            lastName: String(slot),
-            position: POS_CYCLE[(slot - 1) % POS_CYCLE.length],
-            birthYear: baseYear,
-            heightCm: baseHeight,
-            photoUrl: '/images/player-placeholder.svg',
-            isCaptain: slot === 1 && mergedReal.length === 0,
-            isHomegrown: true,
-          });
-        }
-      }
-
-      // Fusionar Cuerpo Técnico (Staff) del equipo
-      const fallbackStaff = FAVB_STAFF.filter((s) => s.teamId === teamId);
-      const scrapedStaffList = scrapedMap
-        ? Array.from(scrapedMap.values()).filter((sp) => isStaffPersona(sp))
-        : [];
-      const hasRealScrapedStaff = scrapedStaffList.length > 0;
-
-      const staffByKey = new Map<string, Staff>();
-      for (const st of fallbackStaff) {
-        // Si ya hay entrenadores reales en el acta de favoley.net, descartar el comodín "Entrenador/a Oficial"
-        if (hasRealScrapedStaff && st.name.toLowerCase().includes('entrenador/a oficial')) {
-          continue;
-        }
-        staffByKey.set(normalizeNameKey(st.name), { ...st });
-      }
-      for (const cs of rosterCache.staff.filter((s) => s.teamId === teamId)) {
-        if (!cs.name.toLowerCase().includes('entrenador/a oficial')) {
-          const key = normalizeNameKey(cs.name);
-          if (!staffByKey.has(key)) {
-            staffByKey.set(key, { ...cs });
-          }
-        }
-      }
-
-      if (hasRealScrapedStaff) {
-        const staffAccentMap: Record<string, string> = {
-          Vazquez: 'Vázquez',
-          Alcantara: 'Alcántara',
-          Martinez: 'Martínez',
-          Gomez: 'Gómez',
-          Rodriguez: 'Rodríguez',
-          Galan: 'Galán',
-          Garcia: 'García',
-        };
-        let stIdx = staffByKey.size;
-        for (const sp of scrapedStaffList) {
-          let cleanName = titleCase(sp.nombre.replace(/,[a-zA-Z]+$/, ''));
-          if (staffAccentMap[cleanName]) cleanName = staffAccentMap[cleanName];
-          const key = normalizeNameKey(cleanName);
-          if (!key || staffByKey.has(key)) continue;
-
-          const tUpper = sp.tipo.toUpperCase().trim();
-          const role: StaffRole =
-            tUpper === 'C' || (tUpper.includes('ENTRENADOR') && !tUpper.includes('2'))
-              ? 'HEAD_COACH'
-              : 'ASSISTANT';
-
-          staffByKey.set(key, {
-            id: `stf-${teamId}-${stIdx + 1}`,
-            teamId,
-            name: cleanName,
-            role,
-            photoUrl: '/images/staff-placeholder.svg',
-          });
-          stIdx++;
-        }
-      }
-
-      updatedStaff.push(...Array.from(staffByKey.values()));
+      return {
+        success: true,
+        players: updatedPlayers,
+        staff: updatedStaff,
+        lastSync: new Date(rosterCache.lastSync),
+        fromCache: false,
+      };
+    } catch (error) {
+      console.error('[FAVB Scraper] Error al sincronizar plantillas:', error);
+      const safeFallbackPlayers = (
+        rosterCache.players.length > 0 ? rosterCache.players : FAVB_PLAYERS
+      ).filter(isRealCatalogPlayer);
+      return {
+        success: true,
+        players: safeFallbackPlayers,
+        staff: rosterCache.staff.length > 0 ? rosterCache.staff : FAVB_STAFF,
+        lastSync: new Date(rosterCache.lastSync || Date.now()),
+        fromCache: true,
+      };
+    } finally {
+      inFlightRostersSync = null;
     }
+  };
 
-    rosterCache = {
-      lastSync: Date.now(),
-      players: updatedPlayers,
-      staff: updatedStaff,
-    };
+  inFlightRostersSync = runSync();
+  return inFlightRostersSync;
 
-    if (forceRefresh) {
-      lastForceRostersTime = rosterCache.lastSync;
-    }
-
-    return {
-      success: true,
-      players: updatedPlayers,
-      staff: updatedStaff,
-      lastSync: new Date(rosterCache.lastSync),
-      fromCache: false,
-    };
-  } catch (error) {
-    console.error('[FAVB Scraper] Error al sincronizar plantillas:', error);
-    return {
-      success: true,
-      players: rosterCache.players.length > 0 ? rosterCache.players : FAVB_PLAYERS,
-      staff: rosterCache.staff.length > 0 ? rosterCache.staff : FAVB_STAFF,
-      lastSync: new Date(rosterCache.lastSync || Date.now()),
-      fromCache: true,
-    };
-  }
+  return runSync();
 }
 
 // ============================================================================
@@ -1545,7 +1802,8 @@ function parseFavbStandingsHtml(html: string, catId: string): Standings[] {
 }
 
 /**
- * Sincroniza en tiempo real las tablas de clasificación de las 11 competiciones desde favoley.net
+ * Sincroniza en tiempo real las tablas de clasificación desde favoley.net y ligaafade.es
+ * con concurrencia acotada, singleflight y snapshot compartido en Neon (`sports_cache`).
  */
 export async function syncFavbStandings(forceRefresh = false): Promise<{
   success: boolean;
@@ -1576,93 +1834,132 @@ export async function syncFavbStandings(forceRefresh = false): Promise<{
     };
   }
 
-  const byCategory = new Map<string, Standings[]>();
-  for (const comp of FAVB_COMPETITIONS) {
-    const previous =
-      standingsCache.standings.length > 0
-        ? standingsCache.standings.filter((s) => s.categoryId === comp.categoryId)
-        : FAVB_STANDINGS.filter((s) => s.categoryId === comp.categoryId);
-    byCategory.set(comp.categoryId, previous);
+  const neonCached = await readFavbSportsCache<{ standings: Standings[]; lastSync: number }>(
+    SPORTS_CACHE_KEYS.standings
+  );
+  if (neonCached && Array.isArray(neonCached.data.standings) && neonCached.data.standings.length > 0) {
+    const ageMs = now - neonCached.lastSync;
+    if ((forceRefresh && ageMs < MIN_FORCE_COOLDOWN_MS) || (!forceRefresh && ageMs < CACHE_TTL_MS)) {
+      standingsCache = {
+        lastSync: neonCached.lastSync,
+        standings: neonCached.data.standings,
+      };
+      return {
+        success: true,
+        standings: standingsCache.standings,
+        lastSync: new Date(standingsCache.lastSync),
+        fromCache: true,
+      };
+    }
   }
 
-  // Inicializar también las categorías de Liga AFADE
-  for (const cat of AFADE_CATEGORIES) {
-    const previous =
-      standingsCache.standings.length > 0
-        ? standingsCache.standings.filter((s) => s.categoryId === cat.id)
-        : AFADE_STANDINGS.filter((s) => s.categoryId === cat.id);
-    byCategory.set(cat.id, previous);
+  if (inFlightStandingsSync) {
+    return inFlightStandingsSync;
   }
-
-  await Promise.allSettled([
-    ...FAVB_COMPETITIONS.map(async (comp) => {
-      const url = `https://favoley.net/publico/seccion.php?seccion=competicion&id=${comp.favbId}&vista=clasificacion&grupo=${comp.grupo}&fase=${comp.fase}`;
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'es-ES,es;q=0.9',
-        },
-        cache: 'no-store',
-        signal: AbortSignal.timeout ? AbortSignal.timeout(6500) : undefined,
-      });
-      if (!res.ok) return;
-      const html = await res.text();
-      const parsed = parseFavbStandingsHtml(html, comp.categoryId);
-      if (parsed.length > 0) {
-        byCategory.set(comp.categoryId, parsed);
-      }
-    }),
-    (async () => {
-      try {
-        const afadeRes = await syncAfadeData(forceRefresh);
-        if (afadeRes.success && afadeRes.standings) {
-          for (const [catId, rows] of Object.entries(afadeRes.standings)) {
-            const standingsRows: Standings[] = rows.map((r, idx) => ({
-              id: `st-${catId}-${idx + 1}`,
-              categoryId: catId,
-              teamName: r.team,
-              isCurrentClub: r.isCurrentClub,
-              played: r.pj,
-              won: r.pg,
-              lost: r.pp,
-              pg3: r.pg3 ?? 0,
-              pg2: r.pg2 ?? 0,
-              pp1: r.pp1 ?? 0,
-              pp0: r.pp0 ?? 0,
-              setsFor: r.sf,
-              setsAgainst: r.sc,
-              setCoef: r.cs ?? (r.sc > 0 ? Number((r.sf / r.sc).toFixed(3)) : r.sf),
-              pointsFor: r.pf ?? 0,
-              pointsAgainst: r.pc ?? 0,
-              pointCoef: r.cp ?? ((r.pc ?? 0) > 0 ? Number(((r.pf ?? 0) / (r.pc ?? 1)).toFixed(3)) : (r.pf ?? 0)),
-              points: r.pts,
-            }));
-            byCategory.set(catId, standingsRows);
-          }
-        }
-      } catch (err) {
-        console.error('Error al sincronizar clasificaciones de AFADE:', err);
-      }
-    })(),
-  ]);
-
-  const consolidated = Array.from(byCategory.values()).flat();
-  const baselineAll = [...FAVB_STANDINGS, ...AFADE_STANDINGS];
-  standingsCache = {
-    lastSync: Date.now(),
-    standings: consolidated.length > 0 ? consolidated : baselineAll,
-  };
 
   if (forceRefresh) {
-    lastForceStandingsTime = standingsCache.lastSync;
+    lastForceStandingsTime = now;
   }
 
-  return {
-    success: true,
-    standings: standingsCache.standings,
-    lastSync: new Date(standingsCache.lastSync),
-    fromCache: false,
-  };
+  inFlightStandingsSync = (async () => {
+    try {
+      const byCategory = new Map<string, Standings[]>();
+      for (const comp of FAVB_COMPETITIONS) {
+        const previous =
+          standingsCache.standings.length > 0
+            ? standingsCache.standings.filter((s) => s.categoryId === comp.categoryId)
+            : FAVB_STANDINGS.filter((s) => s.categoryId === comp.categoryId);
+        byCategory.set(comp.categoryId, previous);
+      }
+
+      for (const cat of AFADE_CATEGORIES) {
+        const previous =
+          standingsCache.standings.length > 0
+            ? standingsCache.standings.filter((s) => s.categoryId === cat.id)
+            : AFADE_STANDINGS.filter((s) => s.categoryId === cat.id);
+        byCategory.set(cat.id, previous);
+      }
+
+      await Promise.all([
+        mapWithConcurrency(FAVB_COMPETITIONS, FAVB_FETCH_CONCURRENCY, async (comp) => {
+          const url = `https://favoley.net/publico/seccion.php?seccion=competicion&id=${comp.favbId}&vista=clasificacion&grupo=${comp.grupo}&fase=${comp.fase}`;
+          const res = await fetch(url, {
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+              Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'es-ES,es;q=0.9',
+            },
+            cache: 'no-store',
+            signal: AbortSignal.timeout ? AbortSignal.timeout(6500) : undefined,
+          });
+          if (!res.ok) return;
+          const html = await res.text();
+          const parsed = parseFavbStandingsHtml(html, comp.categoryId);
+          if (parsed.length > 0) {
+            byCategory.set(comp.categoryId, parsed);
+          }
+        }),
+        (async () => {
+          try {
+            const afadeRes = await syncAfadeData(forceRefresh);
+            if (afadeRes.success && afadeRes.standings) {
+              for (const [catId, rows] of Object.entries(afadeRes.standings)) {
+                const standingsRows: Standings[] = rows.map((r, idx) => ({
+                  id: `st-${catId}-${idx + 1}`,
+                  categoryId: catId,
+                  teamName: r.team,
+                  isCurrentClub: r.isCurrentClub,
+                  played: r.pj,
+                  won: r.pg,
+                  lost: r.pp,
+                  pg3: r.pg3 ?? 0,
+                  pg2: r.pg2 ?? 0,
+                  pp1: r.pp1 ?? 0,
+                  pp0: r.pp0 ?? 0,
+                  setsFor: r.sf,
+                  setsAgainst: r.sc,
+                  setCoef: r.cs ?? (r.sc > 0 ? Number((r.sf / r.sc).toFixed(3)) : r.sf),
+                  pointsFor: r.pf ?? 0,
+                  pointsAgainst: r.pc ?? 0,
+                  pointCoef: r.cp ?? ((r.pc ?? 0) > 0 ? Number(((r.pf ?? 0) / (r.pc ?? 1)).toFixed(3)) : (r.pf ?? 0)),
+                  points: r.pts,
+                }));
+                byCategory.set(catId, standingsRows);
+              }
+            }
+          } catch (err) {
+            console.error('Error al sincronizar clasificaciones de AFADE:', err);
+          }
+        })(),
+      ]);
+
+      const consolidated = Array.from(byCategory.values()).flat();
+      const baselineAll = [...FAVB_STANDINGS, ...AFADE_STANDINGS];
+      standingsCache = {
+        lastSync: Date.now(),
+        standings: consolidated.length > 0 ? consolidated : baselineAll,
+      };
+
+      if (forceRefresh) {
+        lastForceStandingsTime = standingsCache.lastSync;
+      }
+
+      await writeFavbSportsCache(SPORTS_CACHE_KEYS.standings, {
+        lastSync: standingsCache.lastSync,
+        standings: standingsCache.standings,
+      });
+
+      return {
+        success: true,
+        standings: standingsCache.standings,
+        lastSync: new Date(standingsCache.lastSync),
+        fromCache: false,
+      };
+    } finally {
+      inFlightStandingsSync = null;
+    }
+  })();
+
+  return inFlightStandingsSync;
 }

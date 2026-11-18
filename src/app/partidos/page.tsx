@@ -1,17 +1,27 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
-  INITIAL_CATEGORIES,
-  INITIAL_TEAMS,
-  INITIAL_MATCHES,
-  INITIAL_PLAYERS,
-  CLUB_INFO,
-} from '@/lib/data-store';
-import { FavbMatch, getConsolidatedOfficialMatches } from '@/lib/favb-scraper';
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  ExternalLink,
+  FileText,
+  Home,
+  MapPin,
+  Navigation,
+  Plane,
+  RefreshCw,
+  Scale,
+  Smartphone,
+  Trophy,
+  Vote,
+} from 'lucide-react';
+import { CLUB_CATEGORIES_META, CLUB_TEAMS_META, CLUB_INFO } from '@/lib/club-info';
+import type { FavbMatch } from '@/lib/favb-scraper';
 import {
   formatMadridDate,
   formatMadridDateString,
@@ -25,7 +35,7 @@ import SponsorBanner from '@/components/SponsorBanner';
 import MatchActaModal from '@/components/MatchActaModal';
 import { isRestMatch } from '@/lib/match-utils';
 import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
-import { Scale, FileText, Navigation } from 'lucide-react';
+import { sanitizeHttpsUrl } from '@/lib/validators';
 
 interface DisplaySetColumn {
   label: string;
@@ -36,121 +46,233 @@ interface DisplaySetColumn {
 
 type CategorySubTab = 'pending' | 'finished';
 
+const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v7';
+
+function stripMatchRostersForCache(list: FavbMatch[]): FavbMatch[] {
+  return list.map(({ homeRoster: _h, awayRoster: _a, ...rest }) => rest);
+}
+
+function formatSyncHourMadrid(iso?: string): string {
+  try {
+    const date = iso ? new Date(iso) : new Date();
+    return date.toLocaleTimeString('es-ES', {
+      timeZone: 'Europe/Madrid',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+  } catch {
+    return 'Reciente';
+  }
+}
+
 function PartidosContent() {
   const { recordings } = useStreaming();
   const searchParams = useSearchParams();
   const initialMatchParam = searchParams.get('match') || searchParams.get('partido');
   const rawCategoryParam = searchParams.get('categoria') || searchParams.get('cat');
 
-  // Inicializar sincrónicamente con los partidos consolidados para que el DOM exista desde el instante 0
-  const initialConsolidated = useMemo(() => getConsolidatedOfficialMatches(), []);
-
-  // Determinar categoría inicial (por parámetro o deducida del partido pulsado)
   const resolvedInitialCategory = useMemo(() => {
     if (rawCategoryParam) return rawCategoryParam;
-    if (initialMatchParam) {
-      const found = initialConsolidated.find((m) => m.id === initialMatchParam);
-      if (found?.categoryId) return found.categoryId;
-    }
     return 'cat-senior-fem';
-  }, [rawCategoryParam, initialMatchParam, initialConsolidated]);
+  }, [rawCategoryParam]);
 
-  const [matches, setMatches] = useState<FavbMatch[]>(initialConsolidated);
+  const [matches, setMatches] = useState<FavbMatch[]>([]);
+  const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
-
-  // Sub-pestaña activa por categoría ('pending' | 'finished')
-  const [subTabByCategory, setSubTabByCategory] = useState<Record<string, CategorySubTab>>(() => {
-    const map: Record<string, CategorySubTab> = {};
-    if (initialMatchParam) {
-      const found = initialConsolidated.find((m) => m.id === initialMatchParam);
-      if (found && found.categoryId) {
-        map[found.categoryId] = found.status === 'FINISHED' ? 'finished' : 'pending';
-      }
-    }
-    return map;
-  });
-
-  // ID del partido enfocado al navegar desde el carrusel de Inicio
+  const [subTabByCategory, setSubTabByCategory] = useState<Record<string, CategorySubTab>>({});
   const [highlightedMatchId, setHighlightedMatchId] = useState<string | null>(initialMatchParam);
-
-  // IDs de partidos con refresco individual en curso
   const [refreshingMatchIds, setRefreshingMatchIds] = useState<Set<string>>(new Set());
   const [refreshFeedback, setRefreshFeedback] = useState<{
     matchId: string;
     message: string;
   } | null>(null);
-
-  // Estado del acordeón: categoría expandida
   const [expandedCatId, setExpandedCatId] = useState<string | null>(resolvedInitialCategory);
-
-  // Partido seleccionado para abrir el modal de Acta Oficial / Convocatorias
   const [selectedActaMatch, setSelectedActaMatch] = useState<FavbMatch | null>(null);
-
-  // Estado de montaje en el cliente para evitar mismatch de hidratación con grabaciones dinámicas
   const [mounted, setMounted] = useState(false);
+  const [nowMs, setNowMs] = useState<number | null>(null);
+
+  const catScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const matchesRef = useRef<FavbMatch[]>([]);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrolledMatchParamRef = useRef<string | null>(null);
+  const appliedRouteCatRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    matchesRef.current = matches;
+  }, [matches]);
+
   useEffect(() => {
     setMounted(true);
+    setNowMs(Date.now());
   }, []);
 
-  // Referencia al contenedor de scroll horizontal de categorías
-  const catScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const showToast = useCallback((matchId: string, message: string) => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setRefreshFeedback({ matchId, message });
+    feedbackTimerRef.current = setTimeout(() => {
+      setRefreshFeedback(null);
+      feedbackTimerRef.current = null;
+    }, 3500);
+  }, []);
 
-  // Jugadora destacada real de la plantilla oficial (Capitana Senior Femenino: María López Quevedo #8)
-  const mvpPlayer =
-    INITIAL_PLAYERS.find((p) => p.teamId === 'team-sf' && p.isCaptain) || INITIAL_PLAYERS[0];
-  const featuredMatch = INITIAL_MATCHES.find((m) => m.isFeatured) || INITIAL_MATCHES[0];
+  // Actualizar un partido individual sin ?force=true en rutas públicas
+  const handleRefreshSingleMatch = useCallback(
+    async (matchId: string, silent = false) => {
+      if (!silent) {
+        setRefreshingMatchIds((prev) => new Set(prev).add(matchId));
+      }
+      try {
+        const res = await fetch(`/api/favb/match/${encodeURIComponent(matchId)}`, {
+          cache: 'no-store',
+        });
+        const data = await res.json();
+        if (res.ok && data.success && data.match) {
+          setMatches((prev) => {
+            const next = prev.map((m) =>
+              m.id === data.match.id || m.favbId === data.match.favbId ? { ...m, ...data.match } : m
+            );
+            try {
+              window.localStorage.setItem(
+                MATCHES_STORAGE_KEY,
+                JSON.stringify({
+                  matches: stripMatchRostersForCache(next),
+                  lastSync: new Date().toISOString(),
+                })
+              );
+            } catch {
+              // Ignorar cuota de localStorage
+            }
+            return next;
+          });
+          setSelectedActaMatch((prev) =>
+            prev && (prev.id === data.match.id || prev.favbId === data.match.favbId)
+              ? { ...prev, ...data.match }
+              : prev
+          );
+          if (!silent) {
+            const statusMsg =
+              data.match.status === 'LIVE'
+                ? 'EN DIRECTO · Marcador actualizado'
+                : data.match.status === 'FINISHED'
+                ? 'Partido finalizado. Acta cerrada.'
+                : 'Marcador al día con la federación';
+            showToast(matchId, statusMsg);
+          }
+        }
+      } catch (err) {
+        console.error(`Error al actualizar marcador del partido ${matchId}`, err);
+      } finally {
+        if (!silent) {
+          setRefreshingMatchIds((prev) => {
+            const next = new Set(prev);
+            next.delete(matchId);
+            return next;
+          });
+        }
+      }
+    },
+    [showToast]
+  );
 
-  // Hidratar inmediatamente desde localStorage y sincronizar en segundo plano al montar
+  const fetchFavbMatches = useCallback(
+    async (manual: boolean) => {
+      if (manual) setSyncing(true);
+      try {
+        const res = await fetch('/api/favb/sync', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.ok && data.success && Array.isArray(data.matches)) {
+          setMatches(data.matches);
+          setLastSyncTime(formatSyncHourMadrid(data.lastSync));
+          try {
+            window.localStorage.setItem(
+              MATCHES_STORAGE_KEY,
+              JSON.stringify({
+                matches: stripMatchRostersForCache(data.matches as FavbMatch[]),
+                lastSync: data.lastSync || new Date().toISOString(),
+              })
+            );
+          } catch {
+            // Ignorar cuota de localStorage
+          }
+          if (manual) {
+            showToast('global', 'Partidos, horarios y resultados actualizados.');
+          }
+          if (initialMatchParam) {
+            const updatedTarget = (data.matches as FavbMatch[]).find(
+              (m) => m.id === initialMatchParam
+            );
+            if (updatedTarget && updatedTarget.categoryId) {
+              const desiredTab: CategorySubTab =
+                updatedTarget.status === 'FINISHED' ? 'finished' : 'pending';
+              setExpandedCatId(updatedTarget.categoryId);
+              setSubTabByCategory((prev) => ({
+                ...prev,
+                [updatedTarget.categoryId!]: desiredTab,
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error al sincronizar partidos:', err);
+      } finally {
+        setLoadingInitial(false);
+        if (manual) setSyncing(false);
+      }
+    },
+    [initialMatchParam, showToast]
+  );
+
+  // Hidratar inmediatamente desde localStorage y sincronizar al montar
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('cdv_synced_matches_v6');
+      const cached = window.localStorage.getItem(MATCHES_STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
-          const cachedMap = new Map((parsed.matches as FavbMatch[]).map((m) => [m.id, m]));
-          setMatches(
-            initialConsolidated.map((m) => {
-              const c = cachedMap.get(m.id);
-              return c ? { ...m, ...c } : m;
-            })
-          );
+          setMatches(parsed.matches as FavbMatch[]);
+          setLoadingInitial(false);
         }
         if (parsed.lastSync) {
-          setLastSyncTime(
-            new Date(parsed.lastSync).toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          );
+          setLastSyncTime(formatSyncHourMadrid(parsed.lastSync));
         }
       }
     } catch {
       // Ignorar errores de localStorage
     }
-    fetchFavbMatches(false);
-  }, []);
+    void fetchFavbMatches(false);
 
-  // Polling automático cada 45 segundos para partidos EN VIVO o programados para HOY
+    return () => {
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    };
+  }, [fetchFavbMatches]);
+
+  // Polling automático cada 45s sin closures obsoletas ni ráfaga paralela simultánea
   useEffect(() => {
-    const todayStr = formatMadridDateString(new Date());
-    const targetMatches = matches.filter(
-      (m) => m.status === 'LIVE' || (m.status === 'SCHEDULED' && m.dateStr === todayStr)
-    );
-    if (targetMatches.length === 0) return;
-
+    let cancelled = false;
     const timer = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        targetMatches.forEach((m) => {
-          handleRefreshSingleMatch(m.id, false, true);
+        const todayStr = formatMadridDateString(new Date());
+        const targetMatches = matchesRef.current
+          .filter((m) => m.status === 'LIVE' || (m.status === 'SCHEDULED' && m.dateStr === todayStr))
+          .slice(0, 6);
+        targetMatches.forEach((m, idx) => {
+          setTimeout(() => {
+            if (!cancelled && document.visibilityState === 'visible') {
+              void handleRefreshSingleMatch(m.id, true);
+            }
+          }, idx * 450);
         });
       }
     }, 45000);
 
-    return () => clearInterval(timer);
-  }, [matches]);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [handleRefreshSingleMatch]);
 
-  // Centrar siempre la píldora de la categoría activa en la barra horizontal (sin cancelar el scroll vertical)
   const centerCategoryPill = (catId: string | null) => {
     if (!catId) return;
     const container = catScrollContainerRef.current;
@@ -168,23 +290,36 @@ function PartidosContent() {
     }
   }, [expandedCatId]);
 
-  // Control de navegación desde el carrusel de Inicio (?categoria=...&match=...)
+  // Control de navegación desde el carrusel de Inicio (?cat=...&match=...)
   useEffect(() => {
-    if (!resolvedInitialCategory) return;
-    setExpandedCatId(resolvedInitialCategory);
+    const routeKey = `${resolvedInitialCategory}::${initialMatchParam || ''}`;
 
-    if (initialMatchParam) {
-      setHighlightedMatchId(initialMatchParam);
-      const targetMatch = matches.find((m) => m.id === initialMatchParam);
-      const targetCatId = targetMatch?.categoryId || resolvedInitialCategory;
-      if (targetMatch) {
-        const desiredTab: CategorySubTab =
-          targetMatch.status === 'FINISHED' ? 'finished' : 'pending';
-        setSubTabByCategory((prev) =>
-          prev[targetCatId] === desiredTab ? prev : { ...prev, [targetCatId]: desiredTab }
-        );
+    if (!initialMatchParam) {
+      if (appliedRouteCatRef.current !== routeKey) {
+        appliedRouteCatRef.current = routeKey;
+        if (resolvedInitialCategory) setExpandedCatId(resolvedInitialCategory);
       }
+      return;
+    }
 
+    setHighlightedMatchId(initialMatchParam);
+    const targetMatch = matches.find((m) => m.id === initialMatchParam);
+    const targetCatId = targetMatch?.categoryId || resolvedInitialCategory;
+
+    if (appliedRouteCatRef.current !== routeKey && (targetMatch || matches.length > 0 || rawCategoryParam)) {
+      appliedRouteCatRef.current = routeKey;
+      if (targetCatId) {
+        setExpandedCatId(targetCatId);
+      }
+    }
+
+    if (targetMatch && scrolledMatchParamRef.current !== initialMatchParam) {
+      const desiredTab: CategorySubTab =
+        targetMatch.status === 'FINISHED' ? 'finished' : 'pending';
+      setSubTabByCategory((prev) =>
+        prev[targetCatId] === desiredTab ? prev : { ...prev, [targetCatId]: desiredTab }
+      );
+      scrolledMatchParamRef.current = initialMatchParam;
       const scrollBoth = () => {
         centerCategoryPill(targetCatId);
         const matchEl = document.getElementById(`match-${initialMatchParam}`);
@@ -192,7 +327,6 @@ function PartidosContent() {
           matchEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       };
-
       const t1 = setTimeout(scrollBoth, 120);
       const t2 = setTimeout(scrollBoth, 450);
       return () => {
@@ -200,117 +334,7 @@ function PartidosContent() {
         clearTimeout(t2);
       };
     }
-  }, [resolvedInitialCategory, initialMatchParam]);
-
-  const fetchFavbMatches = async (force: boolean) => {
-    if (force) setSyncing(true);
-    try {
-      const res = await fetch(`/api/favb/sync?force=${force}`, { cache: 'no-store' });
-      const data = await res.json();
-      if (data.success && data.matches) {
-        setMatches(data.matches);
-        setLastSyncTime(
-          new Date(data.lastSync).toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        );
-        try {
-          localStorage.setItem(
-            'cdv_synced_matches_v6',
-            JSON.stringify({
-              matches: data.matches,
-              lastSync: data.lastSync || new Date().toISOString(),
-            })
-          );
-        } catch {
-          // Ignorar cuota de localStorage
-        }
-        if (force) {
-          setRefreshFeedback({
-            matchId: 'global',
-            message: 'Partidos, horarios y resultados sincronizados en directo con favoley.net',
-          });
-          setTimeout(() => setRefreshFeedback(null), 3500);
-        }
-        // Si veníamos con un partido en la URL y su estado cambió tras sincronizar, asegurar pestaña correcta
-        if (initialMatchParam) {
-          const updatedTarget = (data.matches as FavbMatch[]).find(
-            (m) => m.id === initialMatchParam
-          );
-          if (updatedTarget && updatedTarget.categoryId) {
-            const desiredTab: CategorySubTab =
-              updatedTarget.status === 'FINISHED' ? 'finished' : 'pending';
-            setSubTabByCategory((prev) => ({
-              ...prev,
-              [updatedTarget.categoryId!]: desiredTab,
-            }));
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error al sincronizar con favoley.net', err);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // Actualizar un partido individual consultando favoley.net en tiempo real
-  const handleRefreshSingleMatch = async (matchId: string, simulate = false, silent = false) => {
-    if (!silent) {
-      setRefreshingMatchIds((prev) => new Set(prev).add(matchId));
-    }
-    try {
-      const res = await fetch(
-        `/api/favb/match/${matchId}?force=true${simulate ? '&simulate=true' : ''}`
-      );
-      const data = await res.json();
-      if (data.success && data.match) {
-        setMatches((prev) => {
-          const next = prev.map((m) =>
-            m.id === data.match.id || m.favbId === data.match.favbId ? { ...m, ...data.match } : m
-          );
-          try {
-            localStorage.setItem(
-              'cdv_synced_matches_v6',
-              JSON.stringify({
-                matches: next,
-                lastSync: new Date().toISOString(),
-              })
-            );
-          } catch {
-            // Ignorar cuota de localStorage
-          }
-          return next;
-        });
-        setSelectedActaMatch((prev) =>
-          prev && (prev.id === data.match.id || prev.favbId === data.match.favbId)
-            ? { ...prev, ...data.match }
-            : prev
-        );
-        if (!silent) {
-          const statusMsg =
-            data.match.status === 'LIVE'
-              ? '🔴 ¡EN DIRECTO! Marcador actualizado'
-              : data.match.status === 'FINISHED'
-              ? '✅ Partido finalizado. Acta cerrada.'
-              : 'Marcador al día con favoley.net';
-          setRefreshFeedback({ matchId, message: statusMsg });
-          setTimeout(() => setRefreshFeedback(null), 3500);
-        }
-      }
-    } catch (err) {
-      console.error(`Error al actualizar marcador del partido ${matchId}`, err);
-    } finally {
-      if (!silent) {
-        setRefreshingMatchIds((prev) => {
-          const next = new Set(prev);
-          next.delete(matchId);
-          return next;
-        });
-      }
-    }
-  };
+  }, [resolvedInitialCategory, rawCategoryParam, initialMatchParam, matches]);
 
   // Alternar acordeón
   const handleToggleCategory = (catId: string) => {
@@ -331,8 +355,7 @@ function PartidosContent() {
 
   // Descarga de archivo .ics para el móvil
   const handleDownloadIcs = (m: FavbMatch) => {
-    const matchObj = INITIAL_MATCHES.find((im) => im.id === m.id);
-    const dateIso = m.matchDate || (matchObj ? matchObj.matchDate : new Date().toISOString());
+    const dateIso = m.matchDate || new Date().toISOString();
     const icsString = generateIcsContent(
       `${m.homeTeam} vs ${m.awayTeam}`,
       m.venue,
@@ -352,8 +375,7 @@ function PartidosContent() {
 
   // Enlace directo de Google Calendar
   const getGoogleCalendarLink = (m: FavbMatch) => {
-    const matchObj = INITIAL_MATCHES.find((im) => im.id === m.id);
-    const dateIso = m.matchDate || (matchObj ? matchObj.matchDate : new Date().toISOString());
+    const dateIso = m.matchDate || new Date().toISOString();
     return generateGoogleCalendarUrl(
       `Voleibol: ${m.homeTeam} vs ${m.awayTeam}`,
       m.venue,
@@ -361,13 +383,16 @@ function PartidosContent() {
     );
   };
 
-  // Enlace directo de Google Maps para el pabellón del partido
+  // Enlace directo de Google Maps para el pabellón del partido (validado https:)
   const getVenueMapsLink = (m: FavbMatch) => {
-    if (m.googleMapsUrl) return m.googleMapsUrl;
-    if (m.isClubHome) return CLUB_INFO.venueMapsUrl;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      `${m.venue} ${m.locality || ''}`.trim()
-    )}`;
+    const raw =
+      m.googleMapsUrl ||
+      (m.isClubHome
+        ? CLUB_INFO.venueMapsUrl
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+            `${m.venue} ${m.locality || ''}`.trim()
+          )}`);
+    return sanitizeHttpsUrl(raw, CLUB_INFO.venueMapsUrl);
   };
 
   // Callback cuando el modal de Acta Oficial actualiza los datos de un partido en vivo
@@ -381,9 +406,9 @@ function PartidosContent() {
       );
       try {
         localStorage.setItem(
-          'cdv_synced_matches_v6',
+          MATCHES_STORAGE_KEY,
           JSON.stringify({
-            matches: next,
+            matches: stripMatchRostersForCache(next),
             lastSync: new Date().toISOString(),
           })
         );
@@ -407,7 +432,14 @@ function PartidosContent() {
     }
     const homeCount = Array.isArray(m.homeRoster) ? m.homeRoster.filter((p) => !p.isStaff).length : 0;
     const awayCount = Array.isArray(m.awayRoster) ? m.awayRoster.filter((p) => !p.isStaff).length : 0;
-    return homeCount + awayCount;
+    if (homeCount + awayCount > 0) {
+      return homeCount + awayCount;
+    }
+    const clubSummaryCount = m.isClubHome ? m.homeRosterCount : m.awayRosterCount;
+    if (typeof clubSummaryCount === 'number' && clubSummaryCount > 0) {
+      return clubSummaryCount;
+    }
+    return (m.homeRosterCount ?? 0) + (m.awayRosterCount ?? 0);
   };
 
   // Regla de colores unificada con la página de inicio: verde ganando, blanco perdiendo, amarillo empate
@@ -481,8 +513,8 @@ function PartidosContent() {
 
   // Agrupar los partidos oficiales por categorías y ordenarlos estrictamente por proximidad temporal
   const categoriesData = useMemo(() => {
-    return INITIAL_CATEGORIES.map((cat) => {
-      const catTeams = INITIAL_TEAMS.filter((t) => t.categoryId === cat.id);
+    return CLUB_CATEGORIES_META.map((cat) => {
+      const catTeams = CLUB_TEAMS_META.filter((t) => t.categoryId === cat.id);
 
       const catMatches = matches.filter((m) => {
         if (m.categoryId && m.categoryId === cat.id) return true;
@@ -492,26 +524,25 @@ function PartidosContent() {
         );
       });
 
-      // En vivo: ordenados por proximidad temporal ascendente
       const live = catMatches
         .filter((m) => m.status === 'LIVE')
         .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
-      // Próximos / Pendientes (incluye programados, aplazados y cancelados aún no jugados):
       const scheduled = catMatches
         .filter((m) => m.status === 'SCHEDULED' || m.status === 'POSTPONED' || m.status === 'CANCELLED')
         .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
 
-      // Finalizados: ordenados por proximidad temporal descendente (el más reciente primero)
       const finished = catMatches
         .filter((m) => m.status === 'FINISHED')
         .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime());
 
-      // Partido destacado en rojo de la categoría: el partido en vivo, o si no hay ninguno en vivo, el próximo programado que NO esté aplazado/cancelado
       const upcomingPlayable = scheduled.filter((m) => {
         if (m.status !== 'SCHEDULED') return false;
-        const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
-        return !isPast12h;
+        if (nowMs !== null) {
+          const isPast12h = nowMs - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
+          return !isPast12h;
+        }
+        return true;
       });
       const nextOrLiveMatch = live[0] || upcomingPlayable[0];
 
@@ -526,7 +557,7 @@ function PartidosContent() {
         redHighlightedMatchId: nextOrLiveMatch?.id || null,
       };
     });
-  }, [matches]);
+  }, [matches, nowMs]);
 
   // Todos los partidos actualmente en directo
   const allLiveMatches = useMemo(() => {
@@ -588,10 +619,10 @@ function PartidosContent() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRefreshSingleMatch(m.id);
+                    void handleRefreshSingleMatch(m.id);
                   }}
                   disabled={isRefreshing}
-                  className={`w-6 h-6 flex items-center justify-center shrink-0 border transition-colors ${
+                  className={`w-6 h-6 flex items-center justify-center shrink-0 border transition-colors cursor-pointer ${
                     isLive
                       ? 'bg-red-950/90 hover:bg-red-800 text-red-300 border-red-500/50'
                       : 'bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border-white/15'
@@ -599,14 +630,10 @@ function PartidosContent() {
                   title={`Actualizar marcador desde ${m.id.startsWith('afade-') ? 'ligaafade.es' : 'favoley.net'}`}
                   aria-label="Actualizar marcador"
                 >
-                  <span
-                    className={`material-symbols-outlined text-[15px] ${
-                      isRefreshing ? 'animate-spin text-white' : ''
-                    }`}
+                  <RefreshCw
+                    className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-white' : ''}`}
                     aria-hidden="true"
-                  >
-                    sync
-                  </span>
+                  />
                 </button>
               )}
 
@@ -623,9 +650,11 @@ function PartidosContent() {
                     : `Fuera (${m.venue})`
                 }
               >
-                <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
-                  {m.isClubHome ? 'home' : 'flight'}
-                </span>
+                {m.isClubHome ? (
+                  <Home className="w-3.5 h-3.5" aria-hidden="true" />
+                ) : (
+                  <Plane className="w-3.5 h-3.5" aria-hidden="true" />
+                )}
               </span>
             </div>
           </div>
@@ -823,9 +852,7 @@ function PartidosContent() {
           {/* Funcionalidad 2: Pabellón + Badge Pista Exacta + Localidad + Cómo llegar */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-              <span className="material-symbols-outlined text-[14px] text-primary shrink-0" aria-hidden="true">
-                pin_drop
-              </span>
+              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
               {m.court && (
                 <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
                   {m.court}
@@ -853,12 +880,12 @@ function PartidosContent() {
                 className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/10 text-[10px] font-bold uppercase tracking-wider transition-colors"
                 title={`Cómo llegar a ${m.venue}`}
               >
-                <Navigation className="w-3 h-3 text-primary group-hover:text-white shrink-0" />
+                <Navigation className="w-3 h-3 text-primary group-hover:text-white shrink-0" aria-hidden="true" />
                 <span>Cómo llegar</span>
               </a>
 
               <a
-                href={m.favbUrl}
+                href={sanitizeHttpsUrl(m.favbUrl, CLUB_INFO.federationUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
@@ -866,7 +893,7 @@ function PartidosContent() {
                 title={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
                 aria-label={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
               >
-                <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
+                <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
               </a>
             </div>
           </div>
@@ -902,10 +929,10 @@ function PartidosContent() {
               }}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors"
             >
-              <FileText className="w-3 h-3 shrink-0" />
+              <FileText className="w-3 h-3 shrink-0" aria-hidden="true" />
               <span>Ver Acta / Convocatoria</span>
               {getCalledUpCount(m) > 0 && (
-                <span className="px-1.5 py-0.2 bg-black/40 text-white font-mono text-[9px]">
+                <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[9px]">
                   {getCalledUpCount(m)} conv.
                 </span>
               )}
@@ -965,7 +992,7 @@ function PartidosContent() {
                 2026 / 2027
               </span>
             </div>
-            <h1 className="font-display-xl text-3xl sm:text-4xl lg:text-5xl uppercase tracking-tight leading-none whitespace-nowrap">
+            <h1 className="font-display-xl text-2xl sm:text-4xl lg:text-5xl uppercase tracking-tight leading-none">
               <span className="text-white">PARTIDOS Y </span>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container via-red-500 to-secondary-fixed-dim">
                 RESULTADOS
@@ -977,16 +1004,16 @@ function PartidosContent() {
 
       {/* Notificación flotante de feedback al actualizar marcador */}
       {refreshFeedback && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#161616] border-2 border-primary-container text-white px-4 py-3 shadow-2xl flex items-center gap-3 animate-bounce">
-          <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">check_circle</span>
+        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#161616] border-2 border-primary-container text-white px-4 py-3 shadow-2xl flex items-center gap-3 animate-fade-in">
+          <CheckCircle2 className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
           <span className="text-xs font-bold uppercase tracking-wider">
             {refreshFeedback.message}
           </span>
         </div>
       )}
 
-      {/* Selector Rápido Horizontal de Categorías (Sticky) + Botón Icono Actualizar integrado en Desktop */}
-      <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
+      {/* Selector Rápido Horizontal de Categorías (Sticky) + Botón Icono Actualizar integrado */}
+      <section aria-label="Categorías de partidos" className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex items-center justify-between gap-2.5 sm:gap-3">
           <div
             ref={catScrollContainerRef}
@@ -1000,10 +1027,11 @@ function PartidosContent() {
               return (
                 <button
                   key={category.id}
+                  type="button"
                   id={`cat-pill-${category.id}`}
                   onClick={() => handleSelectCategoryFromBar(category.id)}
                   aria-pressed={isSelected}
-                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e] -translate-y-0.5'
                       : 'bg-surface-container-high text-tertiary hover:text-white'
@@ -1015,26 +1043,32 @@ function PartidosContent() {
             })}
           </div>
 
-          {/* Botón de actualizar (solo icono) integrado en la barra sticky de categorías (Mobile y Desktop) */}
           <button
             type="button"
-            onClick={() => fetchFavbMatches(true)}
+            onClick={() => void fetchFavbMatches(true)}
             disabled={syncing}
-            className="flex w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
+            className="flex w-9 h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0 cursor-pointer"
             title={`Actualizar marcadores oficiales (FAVB y Liga AFADE) (Última: ${lastSyncTime})`}
             aria-label="Actualizar resultados"
           >
-            <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
-              sync
-            </span>
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
         </div>
       </section>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 sm:py-5 space-y-5 relative z-10">
+        {loadingInitial && matches.length === 0 && (
+          <div className="bg-surface-container-low border border-white/10 p-8 text-center flex flex-col items-center gap-2">
+            <RefreshCw className="w-6 h-6 text-primary animate-spin" aria-hidden="true" />
+            <p className="text-xs uppercase font-bold tracking-wider text-white">
+              Cargando partidos oficiales...
+            </p>
+          </div>
+        )}
+
         {/* MÓDULO DESTACADO: PARTIDOS EN DIRECTO AHORA */}
         {allLiveMatches.length > 0 && (
-          <section className="bg-red-950/20 border-2 border-red-500 p-3.5 sm:p-5 shadow-2xl relative animate-fadeIn">
+          <section className="bg-red-950/20 border-2 border-red-500 p-3.5 sm:p-5 shadow-2xl relative animate-fade-in">
             <div className="flex items-center gap-2.5 pb-2.5 mb-3 border-b border-red-500/30">
               <span className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -1132,13 +1166,15 @@ function PartidosContent() {
                               className="p-0.5 text-primary flex items-center justify-center"
                               title={
                                 nextMatch.isClubHome
-                                    ? 'En casa (Sergio Scariolo)'
+                                  ? 'En casa (Sergio Scariolo)'
                                   : `Fuera (${nextMatch.venue})`
                               }
                             >
-                              <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
-                                {nextMatch.isClubHome ? 'home' : 'flight'}
-                              </span>
+                              {nextMatch.isClubHome ? (
+                                <Home className="w-3.5 h-3.5" aria-hidden="true" />
+                              ) : (
+                                <Plane className="w-3.5 h-3.5" aria-hidden="true" />
+                              )}
                             </span>
                           </div>
                         ) : null}
@@ -1147,22 +1183,20 @@ function PartidosContent() {
                           {totalCount} part.
                         </span>
 
-                        <span
-                          className={`material-symbols-outlined text-xl transition-transform duration-300 ${
+                        <ChevronDown
+                          className={`w-5 h-5 transition-transform duration-300 ${
                             isExpanded
                               ? 'rotate-180 text-primary'
                               : 'text-tertiary group-hover:text-white'
                           }`}
                           aria-hidden="true"
-                        >
-                          expand_more
-                        </span>
+                        />
                       </div>
                     </button>
 
                     {/* Panel Desplegable Separado por Pestañas: PENDIENTES vs FINALIZADOS */}
                     {isExpanded && (
-                      <div className="px-3.5 sm:px-5 pb-5 pt-3 border-t border-white/10 space-y-4 animate-fadeIn">
+                      <div className="px-3.5 sm:px-5 pb-5 pt-3 border-t border-white/10 space-y-4 animate-fade-in">
                         {/* Barra de Sub-Pestañas: Pendientes vs Finalizados */}
                         <div className="flex items-center gap-2 pb-2.5 border-b border-white/10">
                           <button
@@ -1356,21 +1390,19 @@ function PartidosContent() {
                                               type="button"
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleRefreshSingleMatch(m.id);
+                                                void handleRefreshSingleMatch(m.id);
                                               }}
                                               disabled={isRefreshing}
-                                              className="w-6 h-6 flex items-center justify-center bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/15 transition-colors"
-                                              title="Comprobar en favoley.net si ha comenzado o actualizar marcador"
+                                              className="w-6 h-6 flex items-center justify-center bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/15 transition-colors cursor-pointer"
+                                              title="Comprobar marcador oficial"
                                               aria-label="Actualizar marcador"
                                             >
-                                              <span
-                                                className={`material-symbols-outlined text-[15px] ${
+                                              <RefreshCw
+                                                className={`w-3.5 h-3.5 ${
                                                   isRefreshing ? 'animate-spin text-white' : ''
                                                 }`}
                                                 aria-hidden="true"
-                                              >
-                                                sync
-                                              </span>
+                                              />
                                             </button>
 
                                             <span
@@ -1385,9 +1417,11 @@ function PartidosContent() {
                                                   : `Partido fuera (${m.venue})`
                                               }
                                             >
-                                              <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
-                                                {m.isClubHome ? 'home' : 'flight'}
-                                              </span>
+                                              {m.isClubHome ? (
+                                                <Home className="w-3.5 h-3.5" aria-hidden="true" />
+                                              ) : (
+                                                <Plane className="w-3.5 h-3.5" aria-hidden="true" />
+                                              )}
                                             </span>
                                           </div>
                                         </div>
@@ -1490,10 +1524,8 @@ function PartidosContent() {
 
                                         {/* Funcionalidad 2: Pabellón + Pista Exacta + Localidad + Cómo llegar */}
                                         <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-                                          <div className="flex items-center gap-1.5 text-[11px] text-tertiary min-w-0 flex-1 overflow-hidden">
-                                            <span className="material-symbols-outlined text-[14px] text-primary shrink-0" aria-hidden="true">
-                                              pin_drop
-                                            </span>
+                                          <div className="flex items-center gap-1.5 text-[11px] text-tertiary min-w-[160px] flex-1 overflow-hidden">
+                                            <MapPin className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
                                             {m.court && (
                                               <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
                                                 {m.court}
@@ -1538,21 +1570,17 @@ function PartidosContent() {
                                               title="Añadir a Google Calendar"
                                               aria-label="Añadir a Google Calendar"
                                             >
-                                              <span className="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">
-                                                event
-                                              </span>
+                                              <Calendar className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                                             </a>
 
                                             <button
                                               type="button"
                                               onClick={() => handleDownloadIcs(m)}
-                                              className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
+                                              className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container cursor-pointer"
                                               title="Añadir a la agenda del móvil (.ics)"
                                               aria-label="Añadir al móvil"
                                             >
-                                              <span className="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">
-                                                smartphone
-                                              </span>
+                                              <Smartphone className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                                             </button>
 
                                             <a
@@ -1563,7 +1591,7 @@ function PartidosContent() {
                                               title={`Cómo llegar a ${m.venue}`}
                                               aria-label="Cómo llegar al pabellón"
                                             >
-                                              <Navigation className="w-3 h-3 text-primary shrink-0" />
+                                              <Navigation className="w-3 h-3 text-primary shrink-0" aria-hidden="true" />
                                               <span>Cómo llegar</span>
                                             </a>
                                           </div>
@@ -1603,7 +1631,7 @@ function PartidosContent() {
                                             <FileText className="w-3 h-3 shrink-0" />
                                             <span>Ver Acta / Convocatoria</span>
                                             {getCalledUpCount(m) > 0 && (
-                                              <span className="px-1.5 py-0.2 bg-black/40 text-white font-mono text-[9px]">
+                                              <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[9px]">
                                                 {getCalledUpCount(m)} conv.
                                               </span>
                                             )}
@@ -1662,20 +1690,20 @@ function PartidosContent() {
 
             <div className="flex items-center gap-3 text-[11px] font-semibold text-white/90">
               <span
-                className="flex items-center gap-1"
+                className="flex items-center gap-1.5"
                 title="Partido jugado en el Pabellón Polideportivo Sergio Scariolo"
               >
-                <span className="w-5 h-5 flex items-center justify-center bg-primary-container/20 text-primary border border-primary-container/30">
-                  <span className="material-symbols-outlined text-[13px]" aria-hidden="true">home</span>
+                <span className="w-6 h-6 flex items-center justify-center bg-primary-container/20 text-primary border border-primary-container/30">
+                  <Home className="w-3.5 h-3.5" aria-hidden="true" />
                 </span>
                 <span>En Casa</span>
               </span>
               <span
-                className="flex items-center gap-1"
+                className="flex items-center gap-1.5"
                 title="Partido jugado fuera de casa (a domicilio)"
               >
-                <span className="w-5 h-5 flex items-center justify-center bg-white/5 text-tertiary border border-white/10">
-                  <span className="material-symbols-outlined text-[13px]" aria-hidden="true">flight</span>
+                <span className="w-6 h-6 flex items-center justify-center bg-white/5 text-tertiary border border-white/10">
+                  <Plane className="w-3.5 h-3.5" aria-hidden="true" />
                 </span>
                 <span>Fuera</span>
               </span>
@@ -1683,65 +1711,32 @@ function PartidosContent() {
           </div>
         </section>
 
-        {/* Sección MVP de la Afición con Jugadora Oficial (Exclusivo Senior Femenino +18) */}
-        {mvpPlayer && (
-          <section className="bg-surface-container-high border border-primary-container/30 p-6 sm:p-8">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-              <div className="md:col-span-8 space-y-3">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-500 text-black text-[10px] uppercase font-bold tracking-wider">
-                  <span className="material-symbols-outlined text-[14px]" aria-hidden="true">military_tech</span>
-                  CAPITANA Y REFERENTE • SENIOR FEMENINO (+18)
-                </div>
-                <h3 className="font-display-xl text-3xl sm:text-4xl uppercase text-white">
-                  {mvpPlayer.firstName} {mvpPlayer.lastName}
-                </h3>
-                <p className="font-body-md text-xs sm:text-sm text-tertiary leading-relaxed">
-                  Capitana del primer equipo Senior Femenino en 1ª División Andaluza, liderando al C.D. Voleibol San Pedro en la competición autonómica oficial.
-                </p>
-                <div className="flex items-center gap-6 pt-2 text-xs">
-                  <div>
-                    <span className="text-tertiary uppercase text-[10px] block">Dorsal</span>
-                    <span className="font-display-xl text-xl text-primary font-bold">
-                      #{mvpPlayer.number}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-tertiary uppercase text-[10px] block">Categoría</span>
-                    <span className="font-headline-sm text-sm text-white font-bold">
-                      1ª División Andaluza (Senior)
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-3">
-                  <Link
-                    href="/fan-zone"
-                    className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary hover:text-white"
-                  >
-                    <span>Votar MVP Senior en la Fan-Zone</span>
-                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">how_to_vote</span>
-                  </Link>
-                </div>
+        {/* Invitación a votación MVP oficial en Fan-Zone (Senior +18 con consentimiento activo) */}
+        <section className="bg-surface-container-high border border-primary-container/30 p-6 sm:p-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-500 text-black text-[10px] uppercase font-bold tracking-wider">
+                <Trophy className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>MVP DE LA AFICIÓN • SENIOR (+18)</span>
               </div>
-
-              <div className="md:col-span-4 flex justify-center">
-                <div className="relative w-44 h-52 sm:w-52 sm:h-60 border-2 border-primary-container shadow-2xl overflow-hidden bg-[#18181b]">
-                  <Image
-                    src={mvpPlayer.photoUrl}
-                    alt={mvpPlayer.firstName}
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black via-black/50 to-transparent p-3 text-center">
-                    <span className="font-display-xl text-lg text-white uppercase leading-none">
-                      #{mvpPlayer.number} {mvpPlayer.firstName}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <h3 className="font-display-xl text-2xl sm:text-3xl uppercase text-white">
+                Elige a la MVP del Último Encuentro
+              </h3>
+              <p className="font-body-md text-xs sm:text-sm text-tertiary leading-relaxed">
+                Apoya a nuestras jugadoras de categoría Senior (+18) votando de forma oficial y verificada tras cada jornada de 1ª División Andaluza en nuestra Fan-Zone.
+              </p>
             </div>
-          </section>
-        )}
+            <div className="shrink-0">
+              <Link
+                href="/fan-zone"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider transition-colors"
+              >
+                <Vote className="w-4 h-4" aria-hidden="true" />
+                <span>Votar MVP en la Fan-Zone</span>
+              </Link>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div className="relative z-10">

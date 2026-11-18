@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
 
 export default function HeroLiveBlock() {
-  const { status: streamingStatus } = useStreaming();
-  const isLive = streamingStatus.active && !!streamingStatus.url && isValidYouTubeUrl(streamingStatus.url);
+  const { status: streamingStatus, hydrated } = useStreaming();
+  const isLive = hydrated && streamingStatus.active && !!streamingStatus.url && isValidYouTubeUrl(streamingStatus.url);
 
   return (
     <div
@@ -107,11 +107,11 @@ export default function HeroLiveBlock() {
             rel="noopener noreferrer"
             title="Ver partido en directo en YouTube (Abre en ventana nueva)"
             aria-label="Ver streaming oficial en YouTube (En directo, abre en una nueva pestaña)"
-            className="group relative flex items-center gap-2 sm:gap-3 px-2.5 py-1.5 sm:px-4 sm:py-2.5 bg-gradient-to-r from-red-600 via-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-headline font-black uppercase tracking-wider rounded-md border-2 border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.7)] hover:shadow-[0_0_35px_rgba(239,68,68,0.95)] hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            className="group relative flex items-center gap-2 sm:gap-3 px-2.5 py-1.5 sm:px-4 sm:py-2.5 bg-gradient-to-r from-[#b80022] via-primary-container to-[#9e021d] hover:from-primary-container hover:to-[#b80022] text-white font-headline font-black uppercase tracking-wider rounded-md border-2 border-red-300 shadow-[0_0_20px_rgba(239,68,68,0.6)] hover:shadow-[0_0_32px_rgba(239,68,68,0.85)] hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
           >
             {/* Icono oficial de YouTube */}
             <div className="w-5 h-5 sm:w-7 sm:h-7 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
-              <svg className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-[#ff0000] fill-current" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className="w-3.5 h-3.5 sm:w-[18px] sm:h-[18px] text-[#ff0000] fill-current" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
               </svg>
             </div>

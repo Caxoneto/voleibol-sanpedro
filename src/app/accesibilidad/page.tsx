@@ -1,11 +1,22 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { CLUB_INFO } from '@/lib/data-store';
+import {
+  Accessibility,
+  TriangleAlert,
+  Keyboard,
+  ArrowRight,
+  Contrast,
+  Code,
+  CirclePause,
+  Table,
+  Mail,
+} from 'lucide-react';
+import { CLUB_INFO } from '@/lib/club-info';
 
 export const metadata: Metadata = {
   title: 'Declaración de Accesibilidad | C.D. Voleibol San Pedro',
   description:
-    'Declaración de accesibilidad web del portal oficial del C.D. Voleibol San Pedro conforme a la Norma UNE-EN 301 549:2022, WCAG 2.1 nivel AA, Real Decreto 1112/2018 y Ley 11/2023.',
+    'Declaración de accesibilidad web del portal oficial del C.D. Voleibol San Pedro conforme a la Norma UNE-EN 301 549:2022, WCAG 2.1 nivel AA y Ley 11/2023.',
 };
 
 export default function AccesibilidadPage() {
@@ -19,7 +30,6 @@ export default function AccesibilidadPage() {
 
       {/* Cabecera */}
       <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-12 border-b border-white/5 overflow-hidden">
-        {/* Background Image (Pabellón Sergio Scariolo) with slight blur */}
         <div
           className="pointer-events-none absolute inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-40 blur-[2px] scale-105 animate-hero-bg transition-transform duration-1000"
           style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
@@ -29,7 +39,7 @@ export default function AccesibilidadPage() {
 
         <div className="absolute -right-20 -top-24 w-96 h-96 rounded-full bg-primary-container/10 blur-3xl pointer-events-none" />
         <div className="max-w-5xl mx-auto relative z-10">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[11px] uppercase font-bold tracking-widest">
               ACCESIBILIDAD UNIVERSAL
             </span>
@@ -41,7 +51,7 @@ export default function AccesibilidadPage() {
             DECLARACIÓN <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#ff4d63] to-white">DE ACCESIBILIDAD</span>
           </h1>
           <p className="font-body-md text-sm sm:text-base text-tertiary max-w-2xl mt-2">
-            Compromiso firme de {CLUB_INFO.federationRegisteredName} con la inclusión digital, garantizando el acceso universal a la información deportiva y federativa para todas las personas.
+            Compromiso de {CLUB_INFO.federationRegisteredName} con la inclusión digital, trabajando de forma continua para facilitar el acceso a la información y trámites deportivos del club a todas las personas.
           </p>
         </div>
       </section>
@@ -49,129 +59,134 @@ export default function AccesibilidadPage() {
       {/* Contenido */}
       <section className="max-w-5xl mx-auto px-4 lg:px-8 py-12 relative z-10">
         <div className="space-y-10 text-on-surface font-body-sm text-sm sm:text-base leading-relaxed">
-          {/* 1. Compromiso y Marco Legal */}
+          {/* 1. Compromiso y Marco Normativo */}
           <div className="bg-surface-container-lowest border border-white/5 p-6 sm:p-8 space-y-4">
             <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-xs">
-              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">accessibility_new</span>
+              <Accessibility className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>Compromiso Institucional</span>
             </div>
             <h2 className="font-headline-sm text-xl sm:text-2xl text-white uppercase tracking-wide">
-              1. Compromiso con la Accesibilidad y Marco Normativo
+              1. Compromiso con la Accesibilidad y Estándares de Referencia
             </h2>
             <p className="text-tertiary">
-              El <strong>C.D. Voleibol San Pedro</strong> tiene como principio fundacional el fomento del deporte sin barreras. Este principio se traslada plenamente a su entorno digital, comprometiéndose a hacer accesible su sitio web oficial a todos los usuarios, con independencia de sus capacidades físicas, sensoriales o cognitivas, o de las tecnologías de asistencia que empleen.
-            </p>
-            <p className="text-tertiary">
-              El diseño técnico, desarrollo y maquetación de este portal se fundamentan en las siguientes normativas y estándares de referencia:
+              El <strong className="text-white">{CLUB_INFO.name}</strong>, como entidad deportiva asociativa privada sin ánimo de lucro, adopta voluntariamente y de acuerdo con la normativa aplicable a servicios digitales los estándares técnicos europeos e internacionales de accesibilidad web para eliminar barreras de acceso a deportistas, familias y aficionados.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               <div className="bg-surface-container-low p-4 border border-white/5 space-y-1">
                 <span className="text-xs uppercase font-bold text-primary block">Norma UNE-EN 301 549:2022</span>
                 <span className="text-white font-semibold">Requisitos de accesibilidad TIC</span>
-                <p className="text-xs text-tertiary">Estándar europeo armonizado para productos y servicios de tecnologías de la información y la comunicación.</p>
+                <p className="text-xs text-tertiary">Estándar europeo armonizado de referencia para sitios web y componentes interactivos digitales.</p>
               </div>
               <div className="bg-surface-container-low p-4 border border-white/5 space-y-1">
-                <span className="text-xs uppercase font-bold text-primary block">WCAG 2.1 - Nivel AA</span>
+                <span className="text-xs uppercase font-bold text-primary block">WCAG 2.1 — Nivel AA</span>
                 <span className="text-white font-semibold">W3C / WAI</span>
                 <p className="text-xs text-tertiary">Pautas de Accesibilidad para el Contenido Web en sus principios de perceptibilidad, operabilidad, comprensibilidad y robustez.</p>
               </div>
               <div className="bg-surface-container-low p-4 border border-white/5 space-y-1">
-                <span className="text-xs uppercase font-bold text-primary block">Real Decreto 1112/2018</span>
-                <span className="text-white font-semibold">Accesibilidad web y apps móviles</span>
-                <p className="text-xs text-tertiary">Disposición legislativa española relativa a la accesibilidad de sitios web y aplicaciones para dispositivos móviles.</p>
-              </div>
-              <div className="bg-surface-container-low p-4 border border-white/5 space-y-1">
                 <span className="text-xs uppercase font-bold text-primary block">Ley 11/2023, de 8 de mayo</span>
                 <span className="text-white font-semibold">Transposición Directiva (UE) 2019/882</span>
-                <p className="text-xs text-tertiary">Ley europea de accesibilidad aplicable a servicios y portales digitales interactivos.</p>
+                <p className="text-xs text-tertiary">Marco de accesibilidad de servicios y entornos interactivos en el ámbito europeo y estatal, adoptado como referencia de calidad del portal.</p>
+              </div>
+              <div className="bg-surface-container-low p-4 border border-white/5 space-y-1">
+                <span className="text-xs uppercase font-bold text-primary block">R.D. Legislativo 1/2013</span>
+                <span className="text-white font-semibold">Derechos de las personas con discapacidad</span>
+                <p className="text-xs text-tertiary">Texto Refundido de la Ley General de derechos de las personas con discapacidad y de su inclusión social.</p>
               </div>
             </div>
           </div>
 
-          {/* 2. Situación de Cumplimiento */}
-          <div className="bg-surface-container-lowest border border-white/5 p-6 sm:p-8 space-y-3">
+          {/* 2. Situación de Cumplimiento (Veraz y Honesta) */}
+          <div className="bg-surface-container-lowest border border-white/5 p-6 sm:p-8 space-y-4">
             <h2 className="font-headline-sm text-xl sm:text-2xl text-white uppercase tracking-wide">
-              2. Situación de Cumplimiento
+              2. Situación de Cumplimiento Actual
             </h2>
-            <div className="p-4 bg-surface-container-low border-l-4 border-emerald-500 space-y-2">
+            <div className="p-4 bg-surface-container-low border-l-4 border-amber-400 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-emerald-400 text-[20px]" aria-hidden="true">check_circle</span>
+                <TriangleAlert className="w-5 h-5 text-amber-300 shrink-0" aria-hidden="true" />
                 <span className="text-white font-bold uppercase tracking-wider text-sm">
-                  Plenamente Conforme con WCAG 2.1 Nivel AA
+                  Parcialmente Conforme con WCAG 2.1 Nivel AA (en mejora continua)
                 </span>
               </div>
               <p className="text-xs text-tertiary leading-relaxed">
-                El presente sitio web oficial (<strong className="text-white">C.D. Voleibol San Pedro</strong>) es plenamente conforme con el estándar europeo <strong className="text-white">UNE-EN 301 549:2022</strong> y satisface los criterios de conformidad de nivel AA establecidos en las <strong className="text-white">Pautas WCAG 2.1</strong> del World Wide Web Consortium (W3C).
+                Este sitio web es <strong className="text-white">parcialmente conforme</strong> con los criterios de nivel AA de las pautas <strong className="text-white">WCAG 2.1</strong> y la norma <strong className="text-white">UNE-EN 301 549:2022</strong>. El club mantiene un plan activo de revisión técnica de contrastes, etiquetado de formularios, modales y controles de movimiento.
               </p>
+            </div>
+            <div className="p-4 bg-surface-container-low border border-white/5 space-y-1.5 text-xs text-tertiary">
+              <h3 className="text-white font-bold text-sm">Limitaciones conocidas y contenidos de terceros</h3>
+              <ul className="list-disc list-inside space-y-1 pl-1">
+                <li>
+                  <strong className="text-white">Documentos PDF descargables:</strong> los resguardos en PDF generados dinámicamente para autorizaciones o calendarios pueden presentar limitaciones parciales de etiquetado semántico para lectores de pantalla; como alternativa accesible, toda la información del trámite se muestra en HTML en el propio portal y se remite en formato texto/HTML por correo electrónico.
+                </li>
+                <li>
+                  <strong className="text-white">Plataformas federativas externas:</strong> los enlaces salientes hacia portales externos como <code className="font-mono">favoley.net</code>, <code className="font-mono">ligaafade.es</code> o mapas externos dependen de terceros ajenos al control técnico del club.
+                </li>
+              </ul>
             </div>
           </div>
 
           {/* 3. Medidas Técnicas Implementadas */}
           <div className="bg-surface-container-lowest border border-white/5 p-6 sm:p-8 space-y-4">
             <h2 className="font-headline-sm text-xl sm:text-2xl text-white uppercase tracking-wide">
-              3. Medidas Técnicas y Criterios de Accesibilidad Aplicados
+              3. Medidas Técnicas Aplicadas en la Interfaz
             </h2>
-            <p className="text-tertiary">
-              Para asegurar una experiencia óptima a cualquier usuario o dispositivo de asistencia, se han integrado las siguientes soluciones técnicas:
-            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-surface-container-low p-4 border border-white/5 space-y-2">
                 <div className="flex items-center gap-2 text-white font-bold">
-                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">keyboard</span>
-                  <span>Navegación Íntegra por Teclado</span>
+                  <Keyboard className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                  <span>Navegación por Teclado y Modales</span>
                 </div>
                 <p className="text-xs text-tertiary leading-relaxed">
-                  Todos los enlaces, botones y componentes interactivos son accesibles mediante tabulación secuencial lógica. Se implementa un anillo visible de foco personalizado (<code className="text-primary font-mono">:focus-visible</code>) de 2px en tono rojo club con separación de 3px para máxima visibilidad.
+                  Uso de foco visible (<code className="text-primary font-mono">:focus-visible</code>), cierre mediante tecla <code className="text-primary font-mono">Escape</code> en diálogos modales y menús móviles y elementos interactivos semánticos (<code className="text-white font-mono">&lt;button&gt;</code>, <code className="text-white font-mono">&lt;a&gt;</code>).
                 </p>
               </div>
 
               <div className="bg-surface-container-low p-4 border border-white/5 space-y-2">
                 <div className="flex items-center gap-2 text-white font-bold">
-                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">shortcut</span>
-                  <span>Enlace de Salto Accesible (Skip Link)</span>
+                  <ArrowRight className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                  <span>Enlace de Salto al Contenido</span>
                 </div>
                 <p className="text-xs text-tertiary leading-relaxed">
-                  Se ha dispuesto como primer elemento interactivo del documento un salto directo al contenido principal (<code className="text-primary font-mono">#main-content</code>), permitiendo a usuarios de lectores de pantalla y navegación por teclado obviar la cabecera fija de navegación.
+                  Primer enlace interactivo de salto directo al contenido principal (<code className="text-primary font-mono">#main-content</code>) para evitar recorrer repetidamente la cabecera de navegación.
                 </p>
               </div>
 
               <div className="bg-surface-container-low p-4 border border-white/5 space-y-2">
                 <div className="flex items-center gap-2 text-white font-bold">
-                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">contrast</span>
-                  <span>Contraste Cromático de Nivel AA</span>
+                  <Contrast className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                  <span>Revisión de Contrastes Cromáticos AA</span>
                 </div>
                 <p className="text-xs text-tertiary leading-relaxed">
-                  Las combinaciones tipográficas sobre el fondo oscuro institucional han sido auditadas para superar holgadamente la relación mínima de contraste de 4.5:1 en textos estándar y 3:1 en títulos y elementos gráficos esenciales según el criterio WCAG 1.4.3.
+                  Ajuste de tokens de color para reservar el rojo institucional de alto contraste (<code className="text-primary font-mono">bg-primary-container</code>) en botones con texto blanco y emplear tonos claros (<code className="text-primary font-mono">text-primary</code>) únicamente sobre superficies oscuras.
                 </p>
               </div>
 
               <div className="bg-surface-container-low p-4 border border-white/5 space-y-2">
                 <div className="flex items-center gap-2 text-white font-bold">
-                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">code</span>
+                  <Code className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
                   <span>Semántica HTML5 y Atributos ARIA</span>
                 </div>
                 <p className="text-xs text-tertiary leading-relaxed">
-                  Estructuración con regiones semánticas nativas (<code className="text-white font-mono">&lt;header&gt;</code>, <code className="text-white font-mono">&lt;main&gt;</code>, <code className="text-white font-mono">&lt;footer&gt;</code>, <code className="text-white font-mono">&lt;nav&gt;</code>). Uso riguroso de roles modales, <code className="text-primary font-mono">aria-expanded</code>, <code className="text-primary font-mono">aria-controls</code>, títulos explícitos y ocultación de iconos decorativos con <code className="text-primary font-mono">aria-hidden=&quot;true&quot;</code>.
+                  Regiones semánticas (<code className="text-white font-mono">&lt;header&gt;</code>, <code className="text-white font-mono">&lt;main&gt;</code>, <code className="text-white font-mono">&lt;footer&gt;</code>, <code className="text-white font-mono">&lt;nav&gt;</code>), diálogos con <code className="text-primary font-mono">role=&quot;dialog&quot;</code> e iconos vectoriales locales marcados con <code className="text-primary font-mono">aria-hidden=&quot;true&quot;</code>.
                 </p>
               </div>
 
               <div className="bg-surface-container-low p-4 border border-white/5 space-y-2">
                 <div className="flex items-center gap-2 text-white font-bold">
-                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">motion_photos_off</span>
-                  <span>Reducción de Movimiento (Prefers-Reduced-Motion)</span>
+                  <CirclePause className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                  <span>Control de Movimiento y Marquesinas</span>
                 </div>
                 <p className="text-xs text-tertiary leading-relaxed">
-                  Pausa interactiva automática al situar el cursor (<code className="text-primary font-mono">:hover</code>) o enfocar elementos en movimiento para una lectura cómoda y accesible, junto a la desactivación de efectos de brillo o zooms ambientales decorativos bajo <code className="text-primary font-mono">prefers-reduced-motion: reduce</code>.
+                  Control interactivo de pausa en marquesinas superiores y soporte de <code className="text-primary font-mono">prefers-reduced-motion: reduce</code> para detener animaciones continuas cuando el usuario lo prefiera.
                 </p>
               </div>
 
               <div className="bg-surface-container-low p-4 border border-white/5 space-y-2">
                 <div className="flex items-center gap-2 text-white font-bold">
-                  <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">table_chart</span>
-                  <span>Tablas y Formularios Accesibles</span>
+                  <Table className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                  <span>Tablas y Formularios Etiquetados</span>
                 </div>
                 <p className="text-xs text-tertiary leading-relaxed">
-                  Las tablas de clasificaciones y cookies cuentan con subtítulos descriptivos (<code className="text-white font-mono">&lt;caption&gt;</code>) y encabezados con atributo de ámbito <code className="text-primary font-mono">scope=&quot;col&quot;</code>. Los formularios e interruptores disponen de etiquetas asociadas unívocamente mediante <code className="text-primary font-mono">id</code> y <code className="text-primary font-mono">aria-label</code>.
+                  Tablas con <code className="text-white font-mono">&lt;caption&gt;</code> y encabezados <code className="text-primary font-mono">scope=&quot;col&quot;</code>, junto a asociación explícita de campos mediante <code className="text-primary font-mono">htmlFor</code> e <code className="text-primary font-mono">id</code>.
                 </p>
               </div>
             </div>
@@ -180,34 +195,40 @@ export default function AccesibilidadPage() {
           {/* 4. Preparación de la Declaración */}
           <div className="bg-surface-container-lowest border border-white/5 p-6 sm:p-8 space-y-3">
             <h2 className="font-headline-sm text-xl sm:text-2xl text-white uppercase tracking-wide">
-              4. Preparación de la Presente Declaración
+              4. Preparación y Revisión de la Presente Declaración
             </h2>
             <p className="text-tertiary">
-              La presente declaración fue preparada y redactada el <strong className="text-white">19 de octubre de 2026</strong>.
+              La presente declaración ha sido revisada y actualizada el <strong className="text-white">16 de noviembre de 2026</strong>.
             </p>
             <p className="text-tertiary">
-              El método empleado para preparar la declaración ha sido una <strong>autoevaluación técnica exhaustiva</strong> llevada a cabo por el equipo de ingeniería de software del club, mediante análisis de código fuente en Next.js / TypeScript, validación de contrastes WCAG y pruebas de navegación por teclado y lectores de pantalla.
+              El método empleado ha consistido en una <strong className="text-white">autoevaluación técnica interna</strong> sobre el código fuente en Next.js / TypeScript, revisión de contraste cromático WCAG 2.1 AA, estructura semántica ARIA y pruebas de navegación por teclado y móvil.
             </p>
           </div>
 
-          {/* 5. Contacto y Comunicaciones */}
+          {/* 5. Contacto y Asistencia */}
           <div className="bg-surface-container-lowest border border-white/5 p-6 sm:p-8 space-y-4">
             <h2 className="font-headline-sm text-xl sm:text-2xl text-white uppercase tracking-wide">
-              5. Comunicaciones, Sugerencias y Procedimiento de Reclamación
+              5. Comunicaciones, Sugerencias y Soporte Accesible
             </h2>
             <p className="text-tertiary">
-              Si encuentras alguna barrera de acceso en nuestro portal o deseas trasladarnos una sugerencia de mejora de accesibilidad, dispones de los siguientes canales de contacto directo:
+              Si encuentras alguna barrera de accesibilidad en este portal, necesitas un documento en formato alternativo o deseas trasladarnos una sugerencia de mejora, puedes contactar directamente con el club:
             </p>
-            <div className="bg-surface-container-low p-4 sm:p-6 border border-white/5 space-y-3">
-              <p><strong className="text-white">Correo electrónico de contacto:</strong>{' '}
+            <div className="bg-surface-container-low p-4 sm:p-6 border border-white/5 space-y-3 text-sm">
+              <p className="flex flex-wrap items-center gap-2">
+                <Mail className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                <strong className="text-white">Correo electrónico de soporte:</strong>
                 <a href={`mailto:${CLUB_INFO.contactEmail}`} className="text-primary font-bold hover:underline">
                   {CLUB_INFO.contactEmail}
                 </a>
               </p>
-              <p><strong className="text-white">Dirección postal:</strong> {CLUB_INFO.officialAddress}, 29670 San Pedro Alcántara, Marbella (Málaga)</p>
-              <p><strong className="text-white">Asunto recomendado:</strong> Accesibilidad Web - C.D. Voleibol San Pedro</p>
+              <p>
+                <strong className="text-white">Teléfono de secretaría:</strong> {CLUB_INFO.contactPhone}
+              </p>
+              <p>
+                <strong className="text-white">Dirección postal:</strong> {CLUB_INFO.officialAddress}
+              </p>
               <p className="text-xs text-tertiary pt-2 border-t border-white/5">
-                Las comunicaciones serán atendidas por la secretaría técnica del club en un plazo máximo de quince (15) días hábiles. En caso de respuesta no satisfactoria, el usuario puede ejercer el procedimiento de reclamación previsto en el artículo 13 del Real Decreto 1112/2018 o elevar su consulta ante los organismos de consumo y derechos de las personas con discapacidad competentes en la Comunidad Autónoma de Andalucía.
+                Las solicitudes o incidencias de accesibilidad serán atendidas por la secretaría del club en un plazo máximo de quince (15) días hábiles. Si la respuesta no resultase satisfactoria, la persona interesada podrá trasladar su consulta ante los organismos competentes en materia de consumo o de derechos de las personas con discapacidad de la Comunidad Autónoma de Andalucía.
               </p>
             </div>
           </div>
@@ -218,7 +239,7 @@ export default function AccesibilidadPage() {
               <p className="text-white font-semibold">Transparencia y marco legal del club</p>
               <p className="text-xs text-tertiary">Consulta las condiciones de uso, aviso legal y políticas de privacidad.</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Link
                 href="/aviso-legal"
                 className="px-4 py-2 bg-surface-container-highest hover:bg-surface-container text-white text-xs uppercase font-bold tracking-wider transition-colors border border-white/10"

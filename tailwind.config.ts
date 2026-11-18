@@ -29,7 +29,10 @@ const config: Config = {
         'primary': '#ffb3af',
         'on-primary': '#68000e',
         'primary-container': '#d90429',
-        'on-primary-container': '#ffeae8',
+        'on-primary-container': '#ffffff',
+        'cta': '#d90429',
+        'cta-hover': '#b80022',
+        'on-cta': '#ffffff',
         'inverse-primary': '#bf0022',
         'secondary': '#ffb3b1',
         'on-secondary': '#680011',
@@ -66,6 +69,7 @@ const config: Config = {
         'headline-lg-mobile': ['var(--font-anton)', 'Anton', 'sans-serif'],
         'headline-md': ['var(--font-anton)', 'Anton', 'sans-serif'],
         'score-display': ['var(--font-anton)', 'Anton', 'sans-serif'],
+        'headline': ['var(--font-space-grotesk)', 'Space Grotesk', 'sans-serif'],
         'headline-sm': ['var(--font-space-grotesk)', 'Space Grotesk', 'sans-serif'],
         'body-lg': ['var(--font-space-grotesk)', 'Space Grotesk', 'sans-serif'],
         'body-md': ['var(--font-space-grotesk)', 'Space Grotesk', 'sans-serif'],
@@ -100,6 +104,30 @@ const config: Config = {
         'space-lg': '1.5rem',
         'space-xl': '2.5rem',
         'space-2xl': '4rem',
+        '4.5': '1.125rem',
+        '6.5': '1.625rem',
+      },
+      borderRadius: {
+        'xs': '0.125rem',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideInTop: {
+          '0%': { opacity: '0', transform: 'translateY(-8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideInBottom: {
+          '0%': { opacity: '0', transform: 'translateY(12px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.2s ease-out forwards',
+        'slide-in-top': 'slideInTop 0.2s ease-out forwards',
+        'slide-in-bottom': 'slideInBottom 0.25s ease-out forwards',
       },
       boxShadow: {
         'brutal': '4px 4px 0px 0px #d90429',

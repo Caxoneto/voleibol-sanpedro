@@ -17,30 +17,8 @@ import {
   ClubInfo,
 } from './types';
 
-export const CLUB_INFO: ClubInfo = {
-  name: 'C.D. Voleibol San Pedro',
-  shortName: 'CDV San Pedro',
-  federationRegisteredName: 'SAN PEDRO C.D VOLEIBOL',
-  cif: 'G93147924',
-  president: 'Alberto Alcántara González',
-  officialAddress: 'C/ Diego Piña Macias Nº 21, 29670 San Pedro Alcántara (Málaga)',
-  postalCode: '29670',
-  city: 'San Pedro Alcántara',
-  province: 'Málaga',
-  region: 'Málaga, Andalucía',
-  venueName: 'Pabellón Polideportivo Sergio Scariolo',
-  venueAddress: 'Diseminado Ensanche Sur I, 16S, 29670 Marbella, Málaga',
-  venueMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Pabell%C3%B3n+Polideportivo+Sergio+Scariolo,+Diseminado+Ensanche+Sur+I,+16S,+29670+Marbella,+M%C3%A1laga',
-  federationName: 'Federación Andaluza de Voleibol (FAVB)',
-  federationUrl: 'https://favoley.net/publico/index.php',
-  contactEmail: 'voleibolsanpedro@hotmail.es',
-  contactPhone: '+34 657 71 37 71',
-  whatsappUrl: 'https://wa.me/34657713771?text=Hola%2C%20me%20gustar%C3%ADa%20informaci%C3%B3n%20sobre%20el%20C.D.%20Voleibol%20San%20Pedro',
-  instagramUrl: 'https://www.instagram.com/voleibolsanpedro/',
-  facebookUrl: 'https://www.facebook.com/CDVoleibolSanPedro/',
-  socialHashtag: '#VoleibolSanPedro',
-  motto: 'Pasión, cantera y orgullo sampedreño',
-};
+import { CLUB_INFO } from './club-info';
+export { CLUB_INFO };
 
 import {
   FAVB_CATEGORIES,
@@ -82,14 +60,14 @@ El gran protagonista del fin de semana fue el conjunto **Senior Masculino (2ª D
 En un duelo de máxima intensidad emocional y alternativas constantes, el bloque dirigido desde el banquillo por **Nadeau** y capitaneado en pista por **Javier Rodríguez Gadea** firmó una victoria memorable por **3 - 2** con parciales de **22-25, 25-15, 23-25, 25-20 y 15-8**. El cuadro sampedreño supo sobreponerse hasta en dos ocasiones a un marcador adverso: tras ceder un ajustado primer set (22-25), reaccionó con autoridad en el segundo parcial (25-15) y, pese a ver cómo el conjunto linense se adelantaba de nuevo en el tercer juego (23-25), dominó con temple la cuarta manga (25-20) para forzar el desempate. En el tie-break definitivo, la solidez en bloqueo, el empuje del saque y la comunión con la grada sampedreña desataron la euforia local con un contundente **15-8** que sella la primera victoria del curso.
 
 - **Marcador oficial (Jornada 1):** **VOLEIBOL SAN PEDRO 3 - 2 CD VOLEYPLAYA LINENSE 2X2** (22-25, 25-15, 23-25, 25-20, 15-8)
-- **Plantilla protagonista en el acta inaugural:** **Pablo Vázquez (#1)**, **Przemyslaw Krenczyk (#3)**, **Fernando Vázquez (#5, líbero)**, **Salvador Martínez (#7)**, **Juan Eufrasio Martínez (#10)**, **José Benítez (#14)**, **Alejandro Hurtado (#18)**, **Javier Rodríguez Gadea (#22, capitán)**, **Christopher Martín (#47, líbero)**, **Sacha Schapovaloff (#81)** y **Luis Miguel Marrugo (#98)**, junto a los canteranos juveniles en promoción **Mateo Pérez (#19)** y **Gonzalo Galán (#99)**.
+- **Plantilla protagonista en el acta inaugural:** **Pablo Vázquez (#1)**, **Przemyslaw Krenczyk (#3)**, **Fernando Vázquez (#5, líbero)**, **Salvador Martínez (#7)**, **Juan Eufrasio Martínez (#10)**, **José Benítez (#14)**, **Alejandro Hurtado (#18)**, **Javier Rodríguez Gadea (#22, capitán)**, **Christopher Martín (#47, líbero)**, **Sacha Schapovaloff (#81)** y **Luis Miguel Marrugo (#98)**, junto a dos canteranos juveniles en promoción (**#19** y **#99**).
 
 ### Resto de la jornada federada FAVB (7 y 8 de noviembre)
 
 Nuestros equipos federados protagonizaron grandes actuaciones tanto a domicilio como en el Sergio Scariolo, destacando dos triunfos visitantes en categoría Juvenil Femenina y un valioso punto en cinco sets del Cadete Femenino Negro:
 
-- **Juvenil Femenino Rojo (Oro · G1) — ¡Remontada y triunfo en el tie-break a domicilio!:** **NUEVA OLA 2 - 3 VOLEIBOL SAN PEDRO ROJO** en el Polideportivo Fernando Ruiz Hierro de Vélez-Málaga (Jornada 5). Victoria de enorme mérito en cinco sets de las pupilas de **Nadeau**, lideradas en pista por su capitana **Marta Sánchez**, en una de las canchas más exigentes del grupo Oro.
-- **Juvenil Femenino Negro (Plata · G1) — ¡Victoria por 1-3 en Fuengirola!:** **FUENGIROLA CV B 1 - 3 VOLEIBOL SAN PEDRO NEGRO** (14-25, 25-11, 23-25, 15-25) en el Complejo Polideportivo Elola (Jornada 2). Gran actuación coral del bloque dirigido por **García** y capitaneado por **Paola López**, que supo adjudicarse el igualado tercer set (23-25) y cerrar con firmeza el cuarto parcial para sumar los 3 puntos a domicilio.
+- **Juvenil Femenino Rojo (Oro · G1) — ¡Remontada y triunfo en el tie-break a domicilio!:** **NUEVA OLA 2 - 3 VOLEIBOL SAN PEDRO ROJO** en el Polideportivo Fernando Ruiz Hierro de Vélez-Málaga (Jornada 5). Victoria de enorme mérito en cinco sets de las pupilas de **Nadeau**, lideradas en pista por su capitana, en una de las canchas más exigentes del grupo Oro.
+- **Juvenil Femenino Negro (Plata · G1) — ¡Victoria por 1-3 en Fuengirola!:** **FUENGIROLA CV B 1 - 3 VOLEIBOL SAN PEDRO NEGRO** (14-25, 25-11, 23-25, 15-25) en el Complejo Polideportivo Elola (Jornada 2). Gran actuación coral del bloque dirigido por **García** y liderado por su capitana, que supo adjudicarse el igualado tercer set (23-25) y cerrar con firmeza el cuarto parcial para sumar los 3 puntos a domicilio.
 - **Cadete Femenino Negro (Plata · G3) — Punto de orgullo tras levantar un 0-2:** **VOLEIBOL SAN PEDRO NEGRO 2 - 3 C.V. CIUDAD DE MÁLAGA** (19-25, 23-25, 25-23, 25-16, 8-15) en el Pabellón Sergio Scariolo (Jornada 2). Las jugadoras dirigidas por **Renouard** demostraron una gran capacidad de reacción igualando un 0-2 adverso con dos grandes sets (25-23 y 25-16) para sumar un valioso punto en casa.
 - **Senior Femenino (1ª Andaluza):** **VOLEIBOL SAN PEDRO 1 - 3 LAS FLORES SEVILLA** (21-25, 16-25, 25-22, 17-25) en la Jornada 6 disputada en el Sergio Scariolo. Nuestro primer equipo femenino compitió de tú a tú y se adjudicó el tercer parcial (25-22) ante un sólido conjunto hispalense.
 - **Infantil Femenino Gris (Plata · G1):** **VOLEIBOL SAN PEDRO GRIS 1 - 3 3STEVOLEY B** (17-25, 25-15, 17-25, 24-26) en el Sergio Scariolo. Nuestras infantiles ganaron con claridad el segundo set (25-15) y rozaron el tie-break en un emocionante cuarto parcial decidido por detalles (24-26).
@@ -263,13 +241,11 @@ Se unifica el criterio arbitral sobre el momento exacto en que los receptores pu
 
 ### Documentación y verificación oficial
 
-Puedes contrastar la presentación completa y consultar la circular original de la Federación Andaluza de Voleibol en el siguiente enlace oficial:
+Puedes descargar la copia íntegra del documento oficial archivada en el portal del C.D. Voleibol San Pedro y consultar la normativa federativa vigente en la web oficial de la FAVB:
 
-[Consultar presentación oficial de Cambios de Reglas 2026 en FAVB](https://165e8224379cb79cb563c792a0d46c7c.eu.r2.cloudflarestorage.com/favoley/portal/secciones/45/descargas/descarga_c44937ea001aa6df8115.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=3b22886a3aec6e3bb36a6af2d431a630%2F20261006%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261006T233124Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B%20filename%3D%22CAMBIOS%20DE%20REGLAS%202026_RFEVB_CTNA%20pptx.pdf%22&X-Amz-Signature=b5d6b3ce4733dcc66ea4de46b583e69ccfc2f42922fd22e63e217dd1a5d4fb2b)
+[Descargar PDF oficial de Cambios de Reglas 2026](/docs/cambios-de-reglas-2026-rfevb.pdf)
 
-Asimismo, los clubes, jugadores y técnicos pueden descargar la copia íntegra del documento archivada en el servidor del C.D. Voleibol San Pedro:
-
-[Descargar PDF oficial de Cambios de Reglas 2026](/docs/cambios-de-reglas-2026-rfevb.pdf)`,
+[Visitar portal oficial de la Federación Andaluza de Voleibol (FAVB)](https://favoley.net/publico/index.php)`,
     categoryId: 'cat-inst',
     categoryName: 'Normativa y FAVB',
     coverImageUrl: '/images/noticias/nuevas-reglas-2026.png',
@@ -431,7 +407,7 @@ export const INITIAL_WALLPAPERS: WallpaperDownload[] = [
     title: 'Poder en la Red - Remate Espectacular',
     type: 'MOBILE',
     dimensions: '1080 x 1920 (9:16)',
-    imageUrl: 'https://images.unsplash.com/photo-1686753767715-37cb0c34212c?w=1080&auto=format&fit=crop&q=80',
+    imageUrl: '/images/hero-spike.png',
     downloadUrl: '/images/hero-spike.png',
   },
   {
@@ -439,7 +415,7 @@ export const INITIAL_WALLPAPERS: WallpaperDownload[] = [
     title: 'Escudo Rojinegro - Fondo Estadio Carbono',
     type: 'DESKTOP',
     dimensions: '1920 x 1080 (16:9)',
-    imageUrl: 'https://images.unsplash.com/photo-1728971121202-04896f2a35a4?w=1920&auto=format&fit=crop&q=80',
+    imageUrl: '/images/logo.jpg',
     downloadUrl: '/images/logo.jpg',
   },
   {

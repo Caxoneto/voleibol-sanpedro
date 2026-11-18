@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   X,
   RefreshCw,
@@ -20,10 +21,11 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { MatchReferee, MatchRosterPerson, SetScore, MatchStatus } from '@/lib/types';
-import { INITIAL_CATEGORIES, INITIAL_TEAMS, CLUB_INFO } from '@/lib/data-store';
+import { CLUB_CATEGORIES_META, CLUB_TEAMS_META, CLUB_INFO } from '@/lib/club-info';
 import { formatMadridDate, formatMadridTime } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
+import { sanitizeHttpsUrl } from '@/lib/validators';
 
 export interface ActaMatchData {
   id: string;
@@ -77,6 +79,21 @@ export default function MatchActaModal({
   const [loading, setLoading] = useState<boolean>(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  const handleClose = useCallback(() => {
+    onCloseRef.current();
+    const prev = lastFocusedRef.current;
+    if (prev && typeof prev.focus === 'function') {
+      requestAnimationFrame(() => prev.focus());
+    }
+  }, []);
+
   const onMatchUpdatedRef = useRef(onMatchUpdated);
   useEffect(() => {
     onMatchUpdatedRef.current = onMatchUpdated;
@@ -105,10 +122,17 @@ export default function MatchActaModal({
       try {
         const targetId = isAfade ? matchData.id : resolvedFavbId;
         const res = await fetch(
-          `/api/favb/match/${encodeURIComponent(targetId)}?force=true`,
+          `/api/favb/match/${encodeURIComponent(targetId)}`,
           { cache: 'no-store' }
         );
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success || !data?.match) {
+          if (showNotification) {
+            setFeedbackMsg(data?.error || 'No se pudo actualizar el acta desde la federación.');
+            setTimeout(() => setFeedbackMsg(null), 3500);
+          }
+          return;
+        }
         if (data.success && data.match) {
           const live = data.match;
           setMatchData((prev) => ({
@@ -171,16 +195,48 @@ export default function MatchActaModal({
     }
   }, [initialMatch.id, initialMatch.association, initialMatch.homeRoster, initialMatch.awayRoster, fetchLiveActa]);
 
-  // Cerrar con tecla Escape
+  // Focus trap, restauración de foco y cierre con tecla Escape
   useEffect(() => {
+    lastFocusedRef.current = document.activeElement as HTMLElement | null;
+    const modalEl = modalRef.current;
+    if (modalEl) {
+      const focusable = modalEl.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length > 0) {
+        requestAnimationFrame(() => focusable[0].focus());
+      }
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        e.preventDefault();
+        handleClose();
+        return;
+      }
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusable = Array.from(
+          modalRef.current.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first || !modalRef.current.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else if (document.activeElement === last || !modalRef.current.contains(document.activeElement)) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [handleClose]);
 
   const homeName = matchData.homeTeam || matchData.homeTeamName || 'Equipo Local';
   const awayName = matchData.awayTeam || matchData.awayTeamName || 'Equipo Visitante';
@@ -192,11 +248,11 @@ export default function MatchActaModal({
     matchData.isClubHome === false || awayName.toUpperCase().includes('SAN PEDRO');
 
   const teamObj = matchData.teamId
-    ? INITIAL_TEAMS.find((t) => t.id === matchData.teamId)
+    ? CLUB_TEAMS_META.find((t) => t.id === matchData.teamId)
     : undefined;
   const catObj =
-    (matchData.categoryId && INITIAL_CATEGORIES.find((c) => c.id === matchData.categoryId)) ||
-    (teamObj && INITIAL_CATEGORIES.find((c) => c.id === teamObj.categoryId));
+    (matchData.categoryId && CLUB_CATEGORIES_META.find((c) => c.id === matchData.categoryId)) ||
+    (teamObj && CLUB_CATEGORIES_META.find((c) => c.id === teamObj.categoryId));
 
   const categoryTitle =
     catObj?.name || matchData.categoryName || teamObj?.name || 'Competición Oficial';
@@ -225,15 +281,16 @@ export default function MatchActaModal({
     return null;
   })();
 
-  const mapsLink =
+  const rawMapsLink =
     matchData.googleMapsUrl ||
     (isHomeSanPedro
       ? CLUB_INFO.venueMapsUrl
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
           `${venueDisplay} ${matchData.locality || ''}`.trim()
         )}`);
+  const mapsLink = sanitizeHttpsUrl(rawMapsLink, CLUB_INFO.venueMapsUrl);
 
-  const officialExternalUrl =
+  const rawOfficialExternalUrl =
     matchData.favbUrl ||
     matchData.favbMatchUrl ||
     matchData.afadeMatchUrl ||
@@ -242,6 +299,7 @@ export default function MatchActaModal({
       : `https://favoley.net/publico/seccion.php?seccion=ficha_partido&id=${encodeURIComponent(
           resolvedFavbId
         )}`);
+  const officialExternalUrl = sanitizeHttpsUrl(rawOfficialExternalUrl, CLUB_INFO.federationUrl);
 
   const referees = matchData.referees || [];
   const homeRoster = matchData.homeRoster || [];
@@ -378,15 +436,34 @@ export default function MatchActaModal({
             <>
               {/* Jugadores/as Convocados/as */}
               <div className="space-y-2">
+                {players.some((p) => p.name.startsWith('Deportista #')) && (
+                  <div className="p-2.5 bg-zinc-900/70 border border-zinc-800 rounded text-[11px] text-zinc-300 flex items-start gap-2 leading-snug">
+                    <Shield className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>
+                      {isSanPedro ? (
+                        <>
+                          Nombres de menores ocultos por protección de datos (RGPD) hasta contar con autorización activa.{' '}
+                          <Link href="/autorizaciones" className="text-primary underline hover:text-white font-semibold">
+                            Gestionar autorizaciones
+                          </Link>
+                        </>
+                      ) : (
+                        'Nombres de menores rivales anonimizados por protección de datos (RGPD).'
+                      )}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-400 pb-1 border-b border-zinc-800/80">
                   <span>Jugadores / Jugadoras en Acta</span>
                   <span>Dorsal · Rol</span>
                 </div>
 
                 <div className="divide-y divide-zinc-800/60">
-                  {players.map((p, idx) => (
+                  {players.map((p, idx) => {
+                    const isAnonymized = p.name.startsWith('Deportista #');
+                    return (
                     <div
-                      key={`${p.name}-${p.dorsal || idx}`}
+                      key={`${idx}-${p.dorsal || 'nd'}-${p.name}`}
                       className="py-2 flex items-center justify-between gap-2 hover:bg-white/[0.02] px-1 transition-colors"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -399,7 +476,13 @@ export default function MatchActaModal({
                         >
                           {p.dorsal ? `#${p.dorsal}` : '—'}
                         </span>
-                        <span className="text-xs sm:text-sm font-semibold text-zinc-100 truncate">
+                        <span
+                          className={`text-xs sm:text-sm truncate ${
+                            isAnonymized
+                              ? 'font-medium text-zinc-400 italic'
+                              : 'font-semibold text-zinc-100'
+                          }`}
+                        >
                           {p.name}
                         </span>
                       </div>
@@ -418,14 +501,15 @@ export default function MatchActaModal({
                           </span>
                         )}
                         {p.originCategory && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-violet-500/20 border border-violet-400/50 text-violet-300 text-[10px] font-bold uppercase tracking-wider">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-violet-500/20 border border-violet-400/50 text-violet-300 text-[10px] font-bold uppercase tracking-wider max-w-[165px] sm:max-w-none truncate">
                             <Sparkles className="w-2.5 h-2.5 text-violet-400 shrink-0" />
-                            <span>PROMOCIÓN: {p.originCategory}</span>
+                            <span className="truncate">PROMOCIÓN: {p.originCategory}</span>
                           </span>
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -471,10 +555,11 @@ export default function MatchActaModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="match-acta-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+      onClick={handleClose}
     >
       <div
+        ref={modalRef}
         className="bg-zinc-950 border-2 border-zinc-800 w-full max-w-5xl max-h-[92vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.9)] relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -528,11 +613,11 @@ export default function MatchActaModal({
 
             <button
               type="button"
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center bg-zinc-900 hover:bg-red-600 text-zinc-400 hover:text-white border border-zinc-700 transition-colors"
+              onClick={handleClose}
+              className="w-8 h-8 flex items-center justify-center bg-zinc-900 hover:bg-primary-container text-zinc-300 hover:text-white border border-zinc-700 transition-colors cursor-pointer"
               aria-label="Cerrar modal de acta"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -819,8 +904,8 @@ export default function MatchActaModal({
 
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold uppercase tracking-wider text-xs transition-colors shrink-0"
+            onClick={handleClose}
+            className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold uppercase tracking-wider text-xs transition-colors shrink-0 cursor-pointer"
           >
             Cerrar
           </button>

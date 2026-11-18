@@ -1,14 +1,29 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { INITIAL_CATEGORIES, INITIAL_STANDINGS } from '@/lib/data-store';
+import { CheckCircle2, ChevronDown, HelpCircle, Info, RefreshCw, Scale } from 'lucide-react';
+import { CLUB_CATEGORIES_META } from '@/lib/club-info';
 import { Standings } from '@/lib/types';
 import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
 
-const STANDINGS_STORAGE_KEY = 'cdv_synced_standings_v4';
+const STANDINGS_STORAGE_KEY = 'cdv_synced_standings_v5';
+
+function formatSyncHourMadrid(iso?: string): string {
+  try {
+    const date = iso ? new Date(iso) : new Date();
+    return date.toLocaleTimeString('es-ES', {
+      timeZone: 'Europe/Madrid',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+  } catch {
+    return 'Reciente';
+  }
+}
 
 interface SecondaryZoneRule {
   label: string;
@@ -283,92 +298,103 @@ function formatCoef(value: number): string {
 
 export default function ClasificacionPage() {
   const [selectedCatId, setSelectedCatId] = useState<string>('cat-senior-fem');
-  const [allStandings, setAllStandings] = useState<Standings[]>(INITIAL_STANDINGS);
+  const [allStandings, setAllStandings] = useState<Standings[]>([]);
+  const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [showLegendDropdown, setShowLegendDropdown] = useState<boolean>(false);
   const [showRulesDropdown, setShowRulesDropdown] = useState<boolean>(false);
   const catScrollRef = useRef<HTMLDivElement | null>(null);
+  const selectedCatIdRef = useRef<string>(selectedCatId);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchLiveStandings = async (force = false) => {
-    if (force) setSyncing(true);
-    try {
-      const res = await fetch(`/api/favb/standings?force=${force}`, { cache: 'no-store' });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.standings) && data.standings.length > 0) {
-        setAllStandings(data.standings);
-        const formattedTime = data.lastSync
-          ? new Date(data.lastSync).toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-        setLastSyncTime(formattedTime);
+  useEffect(() => {
+    selectedCatIdRef.current = selectedCatId;
+  }, [selectedCatId]);
 
-        try {
-          localStorage.setItem(
-            STANDINGS_STORAGE_KEY,
-            JSON.stringify({
-              standings: data.standings,
-              lastSync: data.lastSync || new Date().toISOString(),
-            })
-          );
-        } catch {
-          // Ignorar cuota de localStorage
+  const showToast = useCallback((msg: string) => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setSyncFeedback(msg);
+    feedbackTimerRef.current = setTimeout(() => {
+      setSyncFeedback(null);
+      feedbackTimerRef.current = null;
+    }, 3500);
+  }, []);
+
+  const fetchLiveStandings = useCallback(
+    async (manual = false) => {
+      if (manual) setSyncing(true);
+      try {
+        const res = await fetch('/api/favb/standings', { cache: 'no-store' });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.success && Array.isArray(data.standings) && data.standings.length > 0) {
+          setAllStandings(data.standings);
+          setLastSyncTime(formatSyncHourMadrid(data.lastSync));
+
+          try {
+            window.localStorage.setItem(
+              STANDINGS_STORAGE_KEY,
+              JSON.stringify({
+                standings: data.standings,
+                lastSync: data.lastSync || new Date().toISOString(),
+              })
+            );
+          } catch {
+            // Ignorar cuota de localStorage
+          }
+
+          if (manual) {
+            const currentIsAfade = selectedCatIdRef.current.includes('afade');
+            showToast(
+              `Clasificación oficial actualizada desde ${currentIsAfade ? 'ligaafade.es' : 'favoley.net'}`
+            );
+          }
+        } else if (manual) {
+          showToast('Mostrando última clasificación oficial sincronizada.');
         }
-
-        if (force) {
-          const currentIsAfade = selectedCatId.includes('afade');
-          setSyncFeedback(
-            `Clasificación oficial sincronizada en directo con ${currentIsAfade ? 'ligaafade.es' : 'favoley.net'}`
-          );
-          setTimeout(() => setSyncFeedback(null), 3500);
+      } catch (err) {
+        console.error('Error sincronizando clasificación:', err);
+        if (manual) {
+          showToast('Mostrando última clasificación oficial sincronizada.');
         }
+      } finally {
+        setLoadingInitial(false);
+        if (manual) setSyncing(false);
       }
-    } catch (err) {
-      console.error('Error sincronizando clasificación con favoley.net:', err);
-      if (force) {
-        setSyncFeedback('Mostrando última clasificación oficial sincronizada.');
-        setTimeout(() => setSyncFeedback(null), 3500);
-      }
-    } finally {
-      setSyncing(false);
-    }
-  };
+    },
+    [showToast]
+  );
 
-  // Hidratar inmediatamente desde localStorage y sincronizar al entrar y cada 60s
+  // Hidratar desde localStorage y sincronizar al entrar y cada 60s (sin ?force=true en cliente público)
   useEffect(() => {
     try {
-      const cached = localStorage.getItem(STANDINGS_STORAGE_KEY);
+      const cached = window.localStorage.getItem(STANDINGS_STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.standings) && parsed.standings.length > 0) {
-          const cachedCats = new Set((parsed.standings as Standings[]).map((s) => s.categoryId));
-          const missingInitial = INITIAL_STANDINGS.filter((s) => !cachedCats.has(s.categoryId));
-          setAllStandings([...parsed.standings, ...missingInitial]);
+          setAllStandings(parsed.standings as Standings[]);
+          setLoadingInitial(false);
         }
         if (parsed.lastSync) {
-          setLastSyncTime(
-            new Date(parsed.lastSync).toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          );
+          setLastSyncTime(formatSyncHourMadrid(parsed.lastSync));
         }
       }
     } catch {
       // Ignorar errores de lectura de localStorage
     }
 
-    fetchLiveStandings(false);
+    void fetchLiveStandings(false);
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        fetchLiveStandings(true);
+        void fetchLiveStandings(false);
       }
     }, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(interval);
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    };
+  }, [fetchLiveStandings]);
 
   // Centrar píldora de categoría seleccionada en el scroll horizontal
   useEffect(() => {
@@ -382,16 +408,15 @@ export default function ClasificacionPage() {
     }
   }, [selectedCatId]);
 
-  // Filtrar categorías que tengan clasificación activa
-  const availableCategories = INITIAL_CATEGORIES.filter((c) =>
-    allStandings.some((s) => s.categoryId === c.id)
-  );
+  const availableCategories =
+    allStandings.length > 0
+      ? CLUB_CATEGORIES_META.filter((c) => allStandings.some((s) => s.categoryId === c.id))
+      : CLUB_CATEGORIES_META;
 
-  // Mantener el orden oficial devuelto por favoley.net (que aplica puntos, coef. de sets y coef. de tantos)
   const standings = allStandings.filter((s) => s.categoryId === selectedCatId);
 
   const activeCategory =
-    INITIAL_CATEGORIES.find((c) => c.id === selectedCatId) || INITIAL_CATEGORIES[0];
+    CLUB_CATEGORIES_META.find((c) => c.id === selectedCatId) || CLUB_CATEGORIES_META[0];
   const isAfade = activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE');
   const categoryRule = CATEGORY_STANDINGS_RULES[selectedCatId] || DEFAULT_STANDING_RULE;
 
@@ -439,10 +464,11 @@ export default function ClasificacionPage() {
               return (
                 <button
                   key={cat.id}
+                  type="button"
                   id={`clasif-cat-pill-${cat.id}`}
                   onClick={() => setSelectedCatId(cat.id)}
                   aria-pressed={isSelected}
-                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[3px_3px_0px_0px_#0e0e0e] -translate-y-0.5'
                       : 'bg-surface-container-high text-tertiary hover:text-white'
@@ -456,22 +482,24 @@ export default function ClasificacionPage() {
 
           <button
             type="button"
-            onClick={() => fetchLiveStandings(true)}
+            onClick={() => void fetchLiveStandings(true)}
             disabled={syncing}
-            className="w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
-            title={`Sincronizar clasificación ahora con ${isAfade ? 'ligaafade.es' : 'favoley.net'} (Última: ${lastSyncTime})`}
-            aria-label="Sincronizar clasificación"
+            className="w-9 h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0 cursor-pointer"
+            title={`Actualizar clasificación desde ${isAfade ? 'ligaafade.es' : 'favoley.net'} (Última: ${lastSyncTime})`}
+            aria-label="Actualizar clasificación"
           >
-            <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
-              sync
-            </span>
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
         </div>
       </section>
 
       {syncFeedback && (
-        <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
-          <span className="material-symbols-outlined text-emerald-400 text-[18px]" aria-hidden="true">check_circle</span>
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-fade-in"
+        >
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
           <span>{syncFeedback}</span>
         </div>
       )}
@@ -493,9 +521,7 @@ export default function ClasificacionPage() {
               {activeCategory.name}
             </h2>
             <p className="text-xs text-tertiary mt-1.5 flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-primary text-[15px] shrink-0" aria-hidden="true">
-                gavel
-              </span>
+              <Scale className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
               <span>{categoryRule.summaryNote}</span>
             </p>
           </div>
@@ -733,6 +759,22 @@ export default function ClasificacionPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs sm:text-sm">
+              {loadingInitial && standings.length === 0 ? (
+                <tr>
+                  <td colSpan={16} className="py-10 text-center text-xs text-tertiary">
+                    <div className="flex flex-col items-center gap-2">
+                      <RefreshCw className="w-5 h-5 text-primary animate-spin" aria-hidden="true" />
+                      <span>Cargando clasificación oficial...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : standings.length === 0 ? (
+                <tr>
+                  <td colSpan={16} className="py-10 text-center text-xs text-tertiary">
+                    Sin datos de clasificación publicados para esta categoría todavía.
+                  </td>
+                </tr>
+              ) : null}
               {standings.map((team, idx) => {
                 const pos = idx + 1;
                 const isTopZone = pos <= categoryRule.topCut;
@@ -907,12 +949,10 @@ export default function ClasificacionPage() {
             onClick={() => setShowLegendDropdown(!showLegendDropdown)}
             aria-expanded={showLegendDropdown}
             aria-controls="table-legend-content"
-            className="w-full flex items-center justify-between text-left group"
+            className="w-full flex items-center justify-between text-left group cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">
-                help
-              </span>
+              <HelpCircle className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
               <div>
                 <h3 className="font-headline-sm text-sm uppercase text-white font-bold group-hover:text-primary transition-colors">
                   Leyenda de Siglas y Estadísticas de la Tabla
@@ -922,20 +962,18 @@ export default function ClasificacionPage() {
                 </span>
               </div>
             </div>
-            <span
-              className={`material-symbols-outlined text-tertiary transition-transform duration-200 text-[24px] ${
+            <ChevronDown
+              className={`w-6 h-6 text-tertiary transition-transform duration-200 shrink-0 ${
                 showLegendDropdown ? 'rotate-180' : ''
               }`}
               aria-hidden="true"
-            >
-              expand_more
-            </span>
+            />
           </button>
 
           {showLegendDropdown && (
             <div
               id="table-legend-content"
-              className="mt-5 pt-5 border-t border-white/10 animate-in fade-in duration-200"
+              className="mt-5 pt-5 border-t border-white/10 animate-fade-in"
             >
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
                 {TABLE_ACRONYMS_LEGEND.map((item) => (
@@ -966,10 +1004,10 @@ export default function ClasificacionPage() {
             onClick={() => setShowRulesDropdown(!showRulesDropdown)}
             aria-expanded={showRulesDropdown}
             aria-controls="favb-rules-content"
-            className="w-full flex items-center justify-between text-left group"
+            className="w-full flex items-center justify-between text-left group cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-[22px]" aria-hidden="true">info</span>
+              <Info className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
               <div>
                 <h3 className="font-headline-sm text-sm uppercase text-white font-bold group-hover:text-primary transition-colors">
                   Criterio Oficial de Puntuación {isAfade ? 'Liga AFADE / RFEVB' : 'FAVB / RFEVB'}
@@ -979,18 +1017,16 @@ export default function ClasificacionPage() {
                 </span>
               </div>
             </div>
-            <span
-              className={`material-symbols-outlined text-tertiary transition-transform duration-200 text-[24px] ${
+            <ChevronDown
+              className={`w-6 h-6 text-tertiary transition-transform duration-200 shrink-0 ${
                 showRulesDropdown ? 'rotate-180' : ''
               }`}
               aria-hidden="true"
-            >
-              expand_more
-            </span>
+            />
           </button>
 
           {showRulesDropdown && (
-            <div id="favb-rules-content" className="mt-6 pt-6 border-t border-white/10 space-y-4 animate-in fade-in duration-200">
+            <div id="favb-rules-content" className="mt-6 pt-6 border-t border-white/10 space-y-4 animate-fade-in">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                 <div className="p-4 bg-surface-container-lowest border-l-4 border-emerald-500">
                   <span className="font-bold text-white uppercase block">Victoria 3-0 o 3-1</span>

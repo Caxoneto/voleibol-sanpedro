@@ -112,6 +112,7 @@ export interface Match {
   status: MatchStatus;
   statusText?: string;
   setScores: SetScore[];
+  currentSetScore?: { set: string; home: number; away: number };
   homeScore?: number;
   awayScore?: number;
   favbMatchUrl?: string;
@@ -123,6 +124,8 @@ export interface Match {
   referees?: MatchReferee[];
   homeRoster?: MatchRosterPerson[];
   awayRoster?: MatchRosterPerson[];
+  homeRosterCount?: number;
+  awayRosterCount?: number;
 }
 
 export interface Standings {

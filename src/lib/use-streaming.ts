@@ -32,6 +32,13 @@ export interface StreamingPayloadEvent {
   recordings?: MatchRecordingsMap;
 }
 
+const DEFAULT_STATUS: StreamingStatus = {
+  active: false,
+  url: null,
+  matchId: null,
+  matchTitle: null,
+};
+
 export function isValidYouTubeUrl(urlStr?: string | null): boolean {
   if (!urlStr || typeof urlStr !== 'string') return false;
   try {
@@ -70,7 +77,7 @@ export function sanitizeRecordings(raw: unknown): MatchRecordingsMap {
 }
 
 export function sanitizeStatus(raw: unknown): StreamingStatus {
-  const fallback: StreamingStatus = { active: false, url: null, matchId: null, matchTitle: null };
+  const fallback: StreamingStatus = { ...DEFAULT_STATUS };
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return fallback;
   }
@@ -90,7 +97,7 @@ export function sanitizeStatus(raw: unknown): StreamingStatus {
   }
 
   return {
-    active: active,
+    active,
     url: validUrl,
     matchId: typeof obj.matchId === 'string' ? obj.matchId : null,
     matchTitle: typeof obj.matchTitle === 'string' ? obj.matchTitle : null,
@@ -100,15 +107,14 @@ export function sanitizeStatus(raw: unknown): StreamingStatus {
 
 export function loadFromStorage(): StreamingStatus {
   if (typeof window === 'undefined') {
-    return { active: false, url: null, matchId: null, matchTitle: null };
+    return { ...DEFAULT_STATUS };
   }
   try {
-    const cached = localStorage.getItem(STORAGE_KEY_STATUS);
-    if (!cached) return { active: false, url: null, matchId: null, matchTitle: null };
-    const parsed = JSON.parse(cached);
-    return sanitizeStatus(parsed);
+    const cached = window.localStorage.getItem(STORAGE_KEY_STATUS);
+    if (!cached) return { ...DEFAULT_STATUS };
+    return sanitizeStatus(JSON.parse(cached));
   } catch {
-    return { active: false, url: null, matchId: null, matchTitle: null };
+    return { ...DEFAULT_STATUS };
   }
 }
 
@@ -117,28 +123,77 @@ export function loadRecordingsFromStorage(): MatchRecordingsMap {
     return {};
   }
   try {
-    const cached = localStorage.getItem(STORAGE_KEY_RECORDINGS);
+    const cached = window.localStorage.getItem(STORAGE_KEY_RECORDINGS);
     if (!cached) return {};
-    const parsed = JSON.parse(cached);
-    return sanitizeRecordings(parsed);
+    return sanitizeRecordings(JSON.parse(cached));
   } catch {
     return {};
   }
 }
 
-export function useStreaming() {
-  const [status, setStatus] = useState<StreamingStatus>(() => loadFromStorage());
-  const [recordings, setRecordings] = useState<MatchRecordingsMap>(() => loadRecordingsFromStorage());
+interface SharedStreamingState {
+  status: StreamingStatus;
+  recordings: MatchRecordingsMap;
+  todayMatches: StreamingMatchOption[];
+  upcomingMatches: StreamingMatchOption[];
+  loading: boolean;
+  hydrated: boolean;
+}
 
-  const [todayMatches, setTodayMatches] = useState<StreamingMatchOption[]>([]);
-  const [upcomingMatches, setUpcomingMatches] = useState<StreamingMatchOption[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+let sharedState: SharedStreamingState = {
+  status: { ...DEFAULT_STATUS },
+  recordings: {},
+  todayMatches: [],
+  upcomingMatches: [],
+  loading: true,
+  hydrated: false,
+};
 
-  const fetchStatus = useCallback(async () => {
+let lastTodayJson = '[]';
+let lastUpcomingJson = '[]';
+let lastStatusJson = JSON.stringify(DEFAULT_STATUS);
+let lastRecordingsJson = '{}';
+
+const listeners = new Set<() => void>();
+let subscriberCount = 0;
+let pollingTimer: ReturnType<typeof setInterval> | null = null;
+let inFlightFetch: Promise<void> | null = null;
+let storageHydrated = false;
+let windowListenerBound = false;
+
+function notifyListeners() {
+  listeners.forEach((listener) => listener());
+}
+
+function hydrateSharedFromStorageOnce() {
+  if (storageHydrated || typeof window === 'undefined') return;
+  storageHydrated = true;
+
+  const cachedStatus = loadFromStorage();
+  const cachedRecordings = loadRecordingsFromStorage();
+  const statusJson = JSON.stringify(cachedStatus);
+  const recordingsJson = JSON.stringify(cachedRecordings);
+
+  sharedState = {
+    ...sharedState,
+    status: statusJson !== lastStatusJson ? cachedStatus : sharedState.status,
+    recordings: recordingsJson !== lastRecordingsJson ? cachedRecordings : sharedState.recordings,
+    hydrated: true,
+  };
+  lastStatusJson = statusJson;
+  lastRecordingsJson = recordingsJson;
+  notifyListeners();
+}
+
+async function fetchSharedStatus(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if (inFlightFetch) return inFlightFetch;
+
+  inFlightFetch = (async () => {
     try {
       const res = await fetch('/api/streaming', { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
+      const data = res.ok ? await res.json().catch(() => null) : null;
+      if (data) {
         const newStatus = sanitizeStatus({
           active: !!data.active,
           url: data.url || null,
@@ -146,101 +201,215 @@ export function useStreaming() {
           matchTitle: data.matchTitle || null,
           startedAt: data.startedAt,
         });
-        setStatus(newStatus);
+        const newStatusJson = JSON.stringify(newStatus);
+        const nextStatus = newStatusJson !== lastStatusJson ? newStatus : sharedState.status;
+        lastStatusJson = newStatusJson;
 
+        let nextRecordings = sharedState.recordings;
         if (data.recordings) {
           const cleanRecordings = sanitizeRecordings(data.recordings);
-          setRecordings(cleanRecordings);
+          const recJson = JSON.stringify(cleanRecordings);
+          if (recJson !== lastRecordingsJson) {
+            nextRecordings = cleanRecordings;
+            lastRecordingsJson = recJson;
+          }
           try {
-            localStorage.setItem(STORAGE_KEY_RECORDINGS, JSON.stringify(cleanRecordings));
-          } catch {}
+            window.localStorage.setItem(STORAGE_KEY_RECORDINGS, recJson);
+          } catch {
+            // Ignorar cuota de localStorage
+          }
         }
 
+        let nextToday = sharedState.todayMatches;
         if (Array.isArray(data.todayMatches)) {
-          setTodayMatches(data.todayMatches);
+          const todayJson = JSON.stringify(data.todayMatches);
+          if (todayJson !== lastTodayJson) {
+            nextToday = data.todayMatches;
+            lastTodayJson = todayJson;
+          }
         }
+
+        let nextUpcoming = sharedState.upcomingMatches;
         if (Array.isArray(data.upcomingMatches)) {
-          setUpcomingMatches(data.upcomingMatches);
+          const upcomingJson = JSON.stringify(data.upcomingMatches);
+          if (upcomingJson !== lastUpcomingJson) {
+            nextUpcoming = data.upcomingMatches;
+            lastUpcomingJson = upcomingJson;
+          }
         }
 
         try {
-          localStorage.setItem(STORAGE_KEY_STATUS, JSON.stringify(newStatus));
-        } catch {}
+          window.localStorage.setItem(STORAGE_KEY_STATUS, newStatusJson);
+        } catch {
+          // Ignorar cuota de localStorage
+        }
+
+        sharedState = {
+          status: nextStatus,
+          recordings: nextRecordings,
+          todayMatches: nextToday,
+          upcomingMatches: nextUpcoming,
+          loading: false,
+          hydrated: true,
+        };
+        notifyListeners();
+      } else {
+        sharedState = { ...sharedState, loading: false, hydrated: true };
+        notifyListeners();
       }
     } catch {
-      // Ignorar fallos de red silenciosamente
+      sharedState = { ...sharedState, loading: false, hydrated: true };
+      notifyListeners();
     } finally {
-      setLoading(false);
+      inFlightFetch = null;
     }
-  }, []);
+  })();
+
+  return inFlightFetch;
+}
+
+function handleWindowStreamingEvent(e: Event) {
+  const customEvent = e as CustomEvent<StreamingPayloadEvent | StreamingStatus>;
+  if (!customEvent.detail) return;
+  const detail = customEvent.detail;
+
+  let nextStatus = sharedState.status;
+  let nextRecordings = sharedState.recordings;
+
+  if ('status' in detail) {
+    const cleanStatus = sanitizeStatus(detail.status);
+    const statusJson = JSON.stringify(cleanStatus);
+    if (statusJson !== lastStatusJson) {
+      nextStatus = cleanStatus;
+      lastStatusJson = statusJson;
+    }
+    if (detail.recordings) {
+      const cleanRecs = sanitizeRecordings(detail.recordings);
+      const recJson = JSON.stringify(cleanRecs);
+      if (recJson !== lastRecordingsJson) {
+        nextRecordings = cleanRecs;
+        lastRecordingsJson = recJson;
+      }
+      try {
+        window.localStorage.setItem(STORAGE_KEY_RECORDINGS, recJson);
+      } catch {}
+    }
+  } else {
+    const cleanStatus = sanitizeStatus(detail);
+    const statusJson = JSON.stringify(cleanStatus);
+    if (statusJson !== lastStatusJson) {
+      nextStatus = cleanStatus;
+      lastStatusJson = statusJson;
+    }
+  }
+
+  sharedState = {
+    ...sharedState,
+    status: nextStatus,
+    recordings: nextRecordings,
+    hydrated: true,
+  };
+  notifyListeners();
+}
+
+export function useStreaming() {
+  // Inicialización determinista idéntica entre SSR y primer render CSR para evitar hydration mismatch
+  const [snapshot, setSnapshot] = useState<SharedStreamingState>(() => ({
+    status: { ...DEFAULT_STATUS },
+    recordings: {},
+    todayMatches: [],
+    upcomingMatches: [],
+    loading: true,
+    hydrated: false,
+  }));
 
   useEffect(() => {
-    fetchStatus();
+    const syncSnapshot = () => setSnapshot(sharedState);
+    listeners.add(syncSnapshot);
+    subscriberCount += 1;
 
-    // Polling cada 30 segundos solo si la pestaña está visible
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        fetchStatus();
-      }
-    }, 30000);
+    hydrateSharedFromStorageOnce();
+    syncSnapshot();
 
-    const handleUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<StreamingPayloadEvent | StreamingStatus>;
-      if (customEvent.detail) {
-        const detail = customEvent.detail;
-        if ('status' in detail) {
-          const cleanStatus = sanitizeStatus(detail.status);
-          setStatus(cleanStatus);
-          if (detail.recordings) {
-            const cleanRecs = sanitizeRecordings(detail.recordings);
-            setRecordings(cleanRecs);
-            try {
-              localStorage.setItem(STORAGE_KEY_RECORDINGS, JSON.stringify(cleanRecs));
-            } catch {}
-          }
-        } else {
-          setStatus(sanitizeStatus(detail));
+    if (subscriberCount === 1) {
+      void fetchSharedStatus();
+      pollingTimer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          void fetchSharedStatus();
+        }
+      }, 30000);
+    }
+
+    if (!windowListenerBound && typeof window !== 'undefined') {
+      window.addEventListener(STREAMING_EVENT, handleWindowStreamingEvent);
+      windowListenerBound = true;
+    }
+
+    return () => {
+      listeners.delete(syncSnapshot);
+      subscriberCount = Math.max(0, subscriberCount - 1);
+      if (subscriberCount === 0) {
+        if (pollingTimer) {
+          clearInterval(pollingTimer);
+          pollingTimer = null;
+        }
+        if (windowListenerBound && typeof window !== 'undefined') {
+          window.removeEventListener(STREAMING_EVENT, handleWindowStreamingEvent);
+          windowListenerBound = false;
         }
       }
     };
+  }, []);
 
-    window.addEventListener(STREAMING_EVENT, handleUpdate);
+  const refetch = useCallback(() => fetchSharedStatus(), []);
 
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener(STREAMING_EVENT, handleUpdate);
-    };
-  }, [fetchStatus]);
+  const updateLocalStatus = useCallback(
+    (newStatus: StreamingStatus, updatedRecordings?: MatchRecordingsMap) => {
+      const cleanStatus = sanitizeStatus(newStatus);
+      const statusJson = JSON.stringify(cleanStatus);
+      lastStatusJson = statusJson;
 
-  const updateLocalStatus = (newStatus: StreamingStatus, updatedRecordings?: MatchRecordingsMap) => {
-    const cleanStatus = sanitizeStatus(newStatus);
-    setStatus(cleanStatus);
-    const cleanRecs = updatedRecordings ? sanitizeRecordings(updatedRecordings) : undefined;
-    if (cleanRecs) {
-      setRecordings(cleanRecs);
+      let cleanRecs: MatchRecordingsMap | undefined;
+      if (updatedRecordings) {
+        cleanRecs = sanitizeRecordings(updatedRecordings);
+        const recJson = JSON.stringify(cleanRecs);
+        lastRecordingsJson = recJson;
+        try {
+          window.localStorage.setItem(STORAGE_KEY_RECORDINGS, recJson);
+        } catch {}
+      }
       try {
-        localStorage.setItem(STORAGE_KEY_RECORDINGS, JSON.stringify(cleanRecs));
+        window.localStorage.setItem(STORAGE_KEY_STATUS, statusJson);
       } catch {}
-    }
-    try {
-      localStorage.setItem(STORAGE_KEY_STATUS, JSON.stringify(cleanStatus));
-    } catch {}
 
-    window.dispatchEvent(
-      new CustomEvent(STREAMING_EVENT, {
-        detail: { status: cleanStatus, recordings: cleanRecs },
-      })
-    );
-  };
+      sharedState = {
+        ...sharedState,
+        status: cleanStatus,
+        recordings: cleanRecs ?? sharedState.recordings,
+        hydrated: true,
+      };
+      notifyListeners();
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent(STREAMING_EVENT, {
+            detail: { status: cleanStatus, recordings: cleanRecs },
+          })
+        );
+      }
+    },
+    []
+  );
 
   return {
-    status,
-    recordings,
-    todayMatches,
-    upcomingMatches,
-    loading,
-    refetch: fetchStatus,
-    refreshStatus: fetchStatus,
+    status: snapshot.status,
+    recordings: snapshot.recordings,
+    todayMatches: snapshot.todayMatches,
+    upcomingMatches: snapshot.upcomingMatches,
+    loading: snapshot.loading,
+    hydrated: snapshot.hydrated,
+    refetch,
+    refreshStatus: refetch,
     updateLocalStatus,
   };
 }

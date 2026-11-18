@@ -1,22 +1,91 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { CLUB_INFO, CURRENT_SPONSORS } from '@/lib/data-store';
+import { ArrowRight, ChevronDown, Code, ExternalLink, Handshake, MapPin } from 'lucide-react';
+import { CLUB_INFO } from '@/lib/club-info';
+import type { CurrentSponsor } from '@/lib/types';
 import CookieSettingsButton from '@/components/CookieSettingsButton';
 import { InstagramIcon, FacebookIcon, WhatsAppIcon } from '@/components/SocialIcons';
-import { useStreaming } from '@/lib/use-streaming';
-import StreamingModal from '@/components/StreamingModal';
 
 type FooterSectionKey = 'club' | 'sede' | 'enlaces' | 'apoya';
+
+// Catálogo ligero estático de patrocinadores para no arrastrar data-store.ts / favb-data.ts al bundle común
+const FOOTER_SPONSORS: CurrentSponsor[] = [
+  {
+    id: 'sponsor-inch',
+    name: 'INCH',
+    tagline: 'Thai Noodles • Ramen • Sushi',
+    logoUrl: '/images/sponsors/inch.png',
+    url: 'https://inchbar.es/inch-san-pedro/',
+    bgClass: 'bg-white',
+  },
+  {
+    id: 'sponsor-biscottino',
+    name: 'Heladería Biscottino',
+    tagline: 'Elaboración artesanal diaria y a la vista',
+    logoUrl: '/images/sponsors/heladeria-biscottino.png',
+    url: 'https://www.instagram.com/heladeriabiscottino1y2/',
+    bgClass: 'bg-white',
+  },
+  {
+    id: 'sponsor-pimentel',
+    name: 'Pimentel Artes Gráficas',
+    tagline: 'Artes Gráficas',
+    logoUrl: '/images/sponsors/pimentel-artes-graficas.png',
+    url: 'https://pimentel.es/',
+    bgClass: 'bg-white',
+  },
+  {
+    id: 'sponsor-gaucho',
+    name: 'Grupo Gaucho',
+    tagline: '',
+    logoUrl: '/images/sponsors/grupo-gaucho.png',
+    url: 'https://grupogaucho.es/',
+    bgClass: 'bg-[#0b0a09]',
+  },
+  {
+    id: 'sponsor-morales',
+    name: 'Morales Obra Civil',
+    tagline: '952 78 19 33',
+    logoUrl: '/images/sponsors/morales-obra-civil.png',
+    url: 'https://www.valledelsol.org/',
+    bgClass: 'bg-white',
+  },
+  {
+    id: 'sponsor-the-unit-fit',
+    name: 'The Unit Fit',
+    tagline: 'Gimnasio Personalizado • Marbella',
+    logoUrl: '/images/sponsors/the-unit-fit.png',
+    url: 'https://theunitfit.com/',
+    bgClass: 'bg-[#0b0a09]',
+  },
+  {
+    id: 'sponsor-ayuntamiento-marbella',
+    name: 'Tenencia de Alcaldía de San Pedro Alcántara • Ayuntamiento de Marbella',
+    tagline: 'Ayuntamiento de Marbella',
+    logoUrl: '/images/sponsors/ayuntamiento-marbella.png',
+    url: 'https://www.marbella.es/',
+    bgClass: 'bg-[#0074BD]',
+  },
+];
+
+function getSafeExternalUrl(raw?: string | null): string {
+  if (!raw) return '#';
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === 'https:' ? parsed.toString() : '#';
+  } catch {
+    return '#';
+  }
+}
 
 export default function Footer() {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
-  const { status: streamingStatus, updateLocalStatus } = useStreaming();
-  const [isStreamingModalOpen, setIsStreamingModalOpen] = useState(false);
+  const [copyrightYear, setCopyrightYear] = useState<string>('2026');
 
   const [openSections, setOpenSections] = useState<Record<FooterSectionKey, boolean>>({
     club: false,
@@ -24,6 +93,20 @@ export default function Footer() {
     enlaces: false,
     apoya: false,
   });
+
+  useEffect(() => {
+    try {
+      const madridYear = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Madrid',
+        year: 'numeric',
+      }).format(new Date());
+      if (/^\d{4}$/.test(madridYear)) {
+        setCopyrightYear(madridYear);
+      }
+    } catch {
+      // Fallback seguro
+    }
+  }, []);
 
   const toggleSection = (key: FooterSectionKey) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -38,33 +121,35 @@ export default function Footer() {
             <Link href="/aviso-legal" className="hover:text-primary transition-colors">
               Aviso Legal
             </Link>
-            <span className="text-white/20 select-none">•</span>
+            <span className="text-white/20 select-none" aria-hidden="true">•</span>
             <Link href="/privacidad" className="hover:text-primary transition-colors">
               Política de Privacidad
             </Link>
-            <span className="text-white/20 select-none">•</span>
+            <span className="text-white/20 select-none" aria-hidden="true">•</span>
             <Link href="/cookies" className="hover:text-primary transition-colors">
               Política de Cookies
             </Link>
-            <span className="text-white/20 select-none">•</span>
+            <span className="text-white/20 select-none" aria-hidden="true">•</span>
             <Link href="/accesibilidad" className="hover:text-primary transition-colors">
               Accesibilidad
             </Link>
-            <span className="text-white/20 select-none">•</span>
+            <span className="text-white/20 select-none" aria-hidden="true">•</span>
             <CookieSettingsButton />
           </nav>
-          <p className="text-[11px] text-tertiary/70 text-center sm:text-right">
-            © {new Date().getFullYear()} {CLUB_INFO.federationRegisteredName} (CIF: {CLUB_INFO.cif})
+          <p className="text-[11px] text-tertiary/80 text-center sm:text-right">
+            © {copyrightYear} {CLUB_INFO.federationRegisteredName} (CIF: {CLUB_INFO.cif})
           </p>
         </div>
       </footer>
     );
   }
 
+  const safeMapsUrl = getSafeExternalUrl(CLUB_INFO.venueMapsUrl);
+
   return (
     <footer className="w-full bg-surface-container-lowest border-t border-white/5 pt-8 pb-8 text-on-surface">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
-        {/* Cabecera del Footer + RRSS siempre visibles (al inicio en mobile) */}
+        {/* Cabecera del Footer + RRSS siempre visibles */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10 overflow-hidden rounded-none border border-white/10 shrink-0">
@@ -85,24 +170,24 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Redes Sociales Oficiales (Siempre visibles sin desplegar) */}
+          {/* Redes Sociales Oficiales con contraste WCAG AA */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
             <span className="text-[11px] text-tertiary font-semibold uppercase tracking-wider">
               Redes Oficiales:
             </span>
             <div className="grid grid-cols-3 sm:flex items-center gap-2">
               <a
-                href={CLUB_INFO.instagramUrl}
+                href={getSafeExternalUrl(CLUB_INFO.instagramUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram Oficial del C.D. Voleibol San Pedro"
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-90 text-white text-[11px] uppercase tracking-wider font-bold transition-all shadow-[3px_3px_0px_0px_#0e0e0e]"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-[#7a219f] via-[#b80022] to-[#9e021d] hover:opacity-95 text-white text-[11px] uppercase tracking-wider font-bold transition-all shadow-[3px_3px_0px_0px_#0e0e0e]"
               >
                 <InstagramIcon className="w-4 h-4 text-white shrink-0" />
                 <span>Instagram</span>
               </a>
               <a
-                href={CLUB_INFO.facebookUrl}
+                href={getSafeExternalUrl(CLUB_INFO.facebookUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook Oficial del C.D. Voleibol San Pedro"
@@ -112,7 +197,7 @@ export default function Footer() {
                 <span>Facebook</span>
               </a>
               <a
-                href={CLUB_INFO.whatsappUrl}
+                href={getSafeExternalUrl(CLUB_INFO.whatsappUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="WhatsApp Oficial del C.D. Voleibol San Pedro"
@@ -134,19 +219,17 @@ export default function Footer() {
               onClick={() => toggleSection('club')}
               aria-expanded={openSections.club}
               aria-controls="footer-sec-club"
-              className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-surface-container-high/60 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-surface-container-high/60 transition-colors cursor-pointer"
             >
               <span className="font-headline-sm text-sm uppercase tracking-wider text-primary font-bold">
                 Datos del Club
               </span>
-              <span
-                className={`material-symbols-outlined text-[20px] text-tertiary transition-transform duration-200 ${
+              <ChevronDown
+                className={`w-5 h-5 text-tertiary transition-transform duration-200 ${
                   openSections.club ? 'rotate-180 text-primary' : ''
                 }`}
                 aria-hidden="true"
-              >
-                expand_more
-              </span>
+              />
             </button>
             {openSections.club && (
               <div
@@ -163,37 +246,14 @@ export default function Footer() {
                 <p>
                   <span className="text-on-surface font-semibold">CIF:</span> {CLUB_INFO.cif}
                 </p>
+                {CLUB_INFO.raedNumber && (
+                  <p>
+                    <span className="text-on-surface font-semibold">Reg. RAED:</span> {CLUB_INFO.raedNumber}
+                  </p>
+                )}
                 <p>
                   <span className="text-on-surface font-semibold">Presidente:</span> {CLUB_INFO.president}
                 </p>
-                <div className="pt-2 mt-2 border-t border-white/5 flex items-center justify-between">
-                  <span className="text-on-surface font-semibold flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[15px] text-red-500" aria-hidden="true">sensors</span>
-                    <span>Retransmisión:</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsStreamingModalOpen(true)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${
-                      streamingStatus.active
-                        ? 'bg-red-600/90 hover:bg-red-700 text-white border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
-                        : 'bg-white/5 text-tertiary border-white/10 hover:text-white hover:bg-white/10 hover:border-white/20'
-                    }`}
-                    title={streamingStatus.active ? 'Retransmisión activa (Clic para finalizar)' : 'Configurar streaming de YouTube'}
-                  >
-                    {streamingStatus.active ? (
-                      <>
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                        </span>
-                        <span>Streaming</span>
-                      </>
-                    ) : (
-                      <span>Streaming</span>
-                    )}
-                  </button>
-                </div>
               </div>
             )}
           </div>
@@ -205,19 +265,17 @@ export default function Footer() {
               onClick={() => toggleSection('sede')}
               aria-expanded={openSections.sede}
               aria-controls="footer-sec-sede"
-              className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-surface-container-high/60 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-surface-container-high/60 transition-colors cursor-pointer"
             >
               <span className="font-headline-sm text-sm uppercase tracking-wider text-primary font-bold">
                 Sede y Entrenamientos
               </span>
-              <span
-                className={`material-symbols-outlined text-[20px] text-tertiary transition-transform duration-200 ${
+              <ChevronDown
+                className={`w-5 h-5 text-tertiary transition-transform duration-200 ${
                   openSections.sede ? 'rotate-180 text-primary' : ''
                 }`}
                 aria-hidden="true"
-              >
-                expand_more
-              </span>
+              />
             </button>
             {openSections.sede && (
               <div
@@ -227,18 +285,18 @@ export default function Footer() {
                 <p className="text-on-surface-variant font-medium">{CLUB_INFO.venueName}</p>
                 <p>{CLUB_INFO.venueAddress}</p>
                 <a
-                  href={CLUB_INFO.venueMapsUrl}
+                  href={safeMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-primary hover:text-white transition-colors uppercase font-bold tracking-wider pt-0.5 font-label-sm"
                 >
-                  <span className="material-symbols-outlined text-[15px]" aria-hidden="true">pin_drop</span>
+                  <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Abrir en Google Maps</span>
                 </a>
                 <div className="pt-2 border-t border-white/5 space-y-1">
                   <p className="font-semibold text-on-surface">Domicilio Social:</p>
                   <p>{CLUB_INFO.officialAddress}</p>
-                  <p className="font-semibold text-on-surface pt-1">Contacto Presidencia:</p>
+                  <p className="font-semibold text-on-surface pt-1">Contacto Club:</p>
                   <a
                     href={`tel:${CLUB_INFO.contactPhone.replace(/\s+/g, '')}`}
                     className="text-on-surface hover:text-primary transition-colors flex items-center min-h-[24px] font-mono"
@@ -263,19 +321,17 @@ export default function Footer() {
               onClick={() => toggleSection('enlaces')}
               aria-expanded={openSections.enlaces}
               aria-controls="footer-sec-enlaces"
-              className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-surface-container-high/60 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-surface-container-high/60 transition-colors cursor-pointer"
             >
               <span className="font-headline-sm text-sm uppercase tracking-wider text-primary font-bold">
                 Enlaces y FAVB
               </span>
-              <span
-                className={`material-symbols-outlined text-[20px] text-tertiary transition-transform duration-200 ${
+              <ChevronDown
+                className={`w-5 h-5 text-tertiary transition-transform duration-200 ${
                   openSections.enlaces ? 'rotate-180 text-primary' : ''
                 }`}
                 aria-hidden="true"
-              >
-                expand_more
-              </span>
+              />
             </button>
             {openSections.enlaces && (
               <div id="footer-sec-enlaces" className="px-4 pb-4 pt-2 border-t border-white/5">
@@ -302,18 +358,23 @@ export default function Footer() {
                   </li>
                   <li>
                     <Link href="/fan-zone" className="hover:text-primary transition-colors">
-                      Fan-Zone y Votación MVP
+                      Fan-Zone del Club
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/autorizaciones" className="hover:text-primary transition-colors">
+                      Portal de Autorizaciones
                     </Link>
                   </li>
                   <li>
                     <a
-                      href={CLUB_INFO.federationUrl}
+                      href={getSafeExternalUrl(CLUB_INFO.federationUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-primary hover:underline font-bold"
                     >
                       <span>Portal FAVB (favoley.net)</span>
-                      <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
+                      <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                     </a>
                   </li>
                 </ul>
@@ -328,19 +389,17 @@ export default function Footer() {
               onClick={() => toggleSection('apoya')}
               aria-expanded={openSections.apoya}
               aria-controls="footer-sec-apoya"
-              className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-surface-container-high/60 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-surface-container-high/60 transition-colors cursor-pointer"
             >
               <span className="font-headline-sm text-sm uppercase tracking-wider text-primary font-bold">
                 Apoya al Deporte Base
               </span>
-              <span
-                className={`material-symbols-outlined text-[20px] text-tertiary transition-transform duration-200 ${
+              <ChevronDown
+                className={`w-5 h-5 text-tertiary transition-transform duration-200 ${
                   openSections.apoya ? 'rotate-180 text-primary' : ''
                 }`}
                 aria-hidden="true"
-              >
-                expand_more
-              </span>
+              />
             </button>
             {openSections.apoya && (
               <div id="footer-sec-apoya" className="px-4 pb-4 pt-2 border-t border-white/5 space-y-3">
@@ -350,13 +409,13 @@ export default function Footer() {
                 <div className="flex flex-col gap-2">
                   <Link
                     href="/patrocinio"
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs uppercase tracking-wider font-bold transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs uppercase tracking-wider font-bold transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
                   >
-                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">handshake</span>
+                    <Handshake className="w-4 h-4" aria-hidden="true" />
                     <span>Dossier de Patrocinio</span>
                   </Link>
                   <a
-                    href={CLUB_INFO.whatsappUrl}
+                    href={getSafeExternalUrl(CLUB_INFO.whatsappUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#25D366] hover:bg-[#20ba59] text-black text-xs uppercase tracking-wider font-bold transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
@@ -370,7 +429,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Banda Armónica de Empresas Colaboradoras (cuadrícula 4x2 en mobile y fila limpia de 8 columnas en desktop) */}
+        {/* Banda Armónica de Empresas Colaboradoras */}
         <div className="py-5 border-t border-white/5">
           <div className="flex flex-col gap-3.5">
             <div className="flex items-center gap-2.5 shrink-0">
@@ -381,10 +440,10 @@ export default function Footer() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 items-center gap-2 sm:gap-2.5 w-full">
-              {CURRENT_SPONSORS.map((sponsor) => (
+              {FOOTER_SPONSORS.map((sponsor) => (
                 <a
                   key={sponsor.id}
-                  href={sponsor.url}
+                  href={getSafeExternalUrl(sponsor.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   title={sponsor.name}
@@ -404,10 +463,10 @@ export default function Footer() {
               ))}
               <Link
                 href="/patrocinio"
-                className="h-[56px] sm:h-[66px] px-2 flex flex-col sm:flex-row items-center justify-center gap-1 border border-dashed border-white/15 hover:border-primary text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-tertiary hover:text-primary transition-colors rounded-sm text-center"
+                className="h-[56px] sm:h-[66px] px-2 flex flex-col sm:flex-row items-center justify-center gap-1 border border-dashed border-white/20 hover:border-primary text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-tertiary hover:text-primary transition-colors rounded-sm text-center"
               >
                 <span>¿Hacemos equipo?</span>
-                <span className="material-symbols-outlined text-[14px]" aria-hidden="true">arrow_forward</span>
+                <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
               </Link>
             </div>
           </div>
@@ -416,58 +475,46 @@ export default function Footer() {
         {/* Bottom Bar: Enlaces Legales y Copyright */}
         <div className="pt-5 border-t border-white/5 space-y-3 text-xs text-tertiary">
           <div className="flex flex-wrap items-center justify-between gap-y-2.5 gap-x-6">
-            {/* Enlaces Legales Oficiales */}
             <nav aria-label="Enlaces legales" className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
               <Link href="/aviso-legal" className="hover:text-primary transition-colors">
                 Aviso Legal
               </Link>
-              <span className="text-white/20 select-none">•</span>
+              <span className="text-white/20 select-none" aria-hidden="true">•</span>
               <Link href="/privacidad" className="hover:text-primary transition-colors">
                 Política de Privacidad
               </Link>
-              <span className="text-white/20 select-none">•</span>
+              <span className="text-white/20 select-none" aria-hidden="true">•</span>
               <Link href="/cookies" className="hover:text-primary transition-colors">
                 Política de Cookies
               </Link>
-              <span className="text-white/20 select-none">•</span>
+              <span className="text-white/20 select-none" aria-hidden="true">•</span>
               <Link href="/accesibilidad" className="text-on-surface-variant hover:text-white text-xs transition-colors">
                 Accesibilidad
               </Link>
-              <span className="text-white/20 select-none">•</span>
+              <span className="text-white/20 select-none" aria-hidden="true">•</span>
               <CookieSettingsButton />
             </nav>
 
-            {/* Lema y Créditos de Desarrollo */}
             <div className="flex items-center gap-3 w-full sm:w-auto justify-start sm:justify-end sm:ml-auto">
               <span className="italic hidden md:inline">«{CLUB_INFO.motto}»</span>
-              <span className="text-white/20 select-none hidden md:inline">•</span>
+              <span className="text-white/20 select-none hidden md:inline" aria-hidden="true">•</span>
               <a
                 href="mailto:caxon2@gmail.com"
                 className="hover:text-primary transition-colors flex items-center gap-1 font-medium text-xs text-tertiary hover:text-white"
                 title="Contacto de desarrollo web"
               >
-                <span className="material-symbols-outlined text-[14px] text-primary" aria-hidden="true">code</span>
+                <Code className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                 <span>Web por <strong className="text-white/90 font-semibold">caxon2@gmail.com</strong></span>
               </a>
             </div>
           </div>
 
-          <div className="pt-2.5 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-[11px] text-tertiary/70">
-            <p>© {new Date().getFullYear()} {CLUB_INFO.federationRegisteredName} (CIF: {CLUB_INFO.cif}). Todos los derechos reservados.</p>
-            <p className="text-center sm:text-right">Portal Oficial del C.D. Voleibol San Pedro | San Pedro Alcántara (Málaga)</p>
+          <div className="pt-2.5 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-[11px] text-tertiary/80">
+            <p>© {copyrightYear} {CLUB_INFO.federationRegisteredName} (CIF: {CLUB_INFO.cif}). Todos los derechos reservados.</p>
+            <p className="text-center sm:text-right">Portal Oficial del {CLUB_INFO.name} | {CLUB_INFO.city} ({CLUB_INFO.province})</p>
           </div>
         </div>
       </div>
-
-      <StreamingModal
-        isOpen={isStreamingModalOpen}
-        onClose={() => setIsStreamingModalOpen(false)}
-        isLive={streamingStatus.active}
-        currentUrl={streamingStatus.url}
-        matchId={streamingStatus.matchId}
-        matchTitle={streamingStatus.matchTitle}
-        onSuccess={(newStatus, recordings) => updateLocalStatus(newStatus, recordings)}
-      />
     </footer>
   );
 }

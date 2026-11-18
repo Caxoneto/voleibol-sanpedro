@@ -1,53 +1,300 @@
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { syncFavbRosters } from '@/lib/favb-scraper';
-import { FAVB_PLAYERS, FAVB_STAFF } from '@/lib/favb-data';
+import { FAVB_PLAYERS, resolveCanonicalPlayerId } from '@/lib/favb-data';
+import { resolveCensusBirthDate } from '@/lib/consent-store';
+import { queryNeon, NeonUnavailableError } from '@/lib/streaming-store';
+import { checkNeonRateLimit, getClientIp, verifyAdminSessionToken } from '@/lib/rate-limiter';
+import { computeAgeInMadrid } from '@/lib/date-utils';
+import { getOtpPepper } from '@/lib/encryption';
+import type { Player } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  let force = searchParams.get('force') === 'true';
-  const teamId = searchParams.get('teamId') || undefined;
+interface CensusPrivacyRow {
+  player_id: string;
+  canonical_player_id: string | null;
+  player_name: string;
+  team_id: string;
+  birth_year: number | null;
+  birth_date: string | null;
+  birth_date_encrypted: string | null;
+  is_demo: boolean;
+}
 
-  if (force) {
-    const secFetchSite = req.headers.get('sec-fetch-site');
-    if (secFetchSite !== 'same-origin' && secFetchSite !== 'same-site') {
-      force = false;
+interface ConsentPrivacyRow {
+  player_id: string;
+  player_name: string;
+  status: string;
+  consent_social_media: boolean;
+  is_minor: boolean;
+}
+
+export type PublicSanitizedPlayer = Omit<Player, 'birthYear' | 'heightCm'> & {
+  displayName: string;
+  isAnonymized?: boolean;
+};
+
+function normalizeNameKey(raw: string): string {
+  return String(raw || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function resolveBirthDateFromRow(row: CensusPrivacyRow, canonicalId: string): string | null {
+  return resolveCensusBirthDate(row, canonicalId);
+}
+
+export async function GET(req: NextRequest) {
+  const noStoreHeaders = {
+    'Cache-Control': 'private, no-store, must-revalidate',
+    Pragma: 'no-cache',
+    'X-Content-Type-Options': 'nosniff',
+  };
+
+  try {
+    const clientIp = getClientIp(req);
+    const rl = await checkNeonRateLimit(`favb-rosters:${clientIp}`, 60, 60, 60);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Demasiadas consultas de plantillas. Espera unos segundos.' },
+        {
+          status: 429,
+          headers: { ...noStoreHeaders, 'Retry-After': String(rl.retryAfterSec) },
+        }
+      );
+    }
+  } catch (err) {
+    if (err instanceof NeonUnavailableError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Base de datos de privacidad temporalmente no disponible. No se pueden mostrar plantillas.',
+        },
+        { status: 503, headers: noStoreHeaders }
+      );
     }
   }
 
+  const { searchParams } = new URL(req.url);
+  const requestedForce = searchParams.get('force') === 'true';
+  const rawTeamId = searchParams.get('teamId') || undefined;
+  const teamId = rawTeamId && /^[a-zA-Z0-9_-]{1,64}$/.test(rawTeamId) ? rawTeamId : undefined;
+
+  let isAdmin = false;
+  if (requestedForce) {
+    const token = cookies().get('cdv_admin_session')?.value;
+    if (token) {
+      try {
+        isAdmin = await verifyAdminSessionToken(token);
+      } catch {
+        isAdmin = false;
+      }
+    }
+  }
+  const force = requestedForce && isAdmin;
+
   try {
-    const result = await syncFavbRosters(force, teamId);
+    // 1. Consulta obligatoria fail-closed en Neon antes de exponer plantillas públicas
+    const [censusRows, consentRows, result] = await Promise.all([
+      queryNeon<CensusPrivacyRow>(
+        `SELECT player_id, canonical_player_id, player_name, team_id,
+                birth_year, birth_date, birth_date_encrypted, COALESCE(is_demo, false) AS is_demo
+         FROM player_census;`
+      ),
+      queryNeon<ConsentPrivacyRow>(
+        `SELECT player_id, player_name, status, consent_social_media, is_minor
+         FROM player_consents
+         ORDER BY (CASE WHEN status = 'ACTIVE' THEN 0 ELSE 1 END), updated_at DESC;`
+      ),
+      syncFavbRosters(force, teamId),
+    ]);
+
+    // Índices canónicos para cruzar censo y consentimientos
+    const canonicalInfoById = new Map<
+      string,
+      { isMinor: boolean; isDemo: boolean }
+    >();
+    const canonicalIdByName = new Map<string, string>();
+
+    // Semilla canónica de edades conocidas del catálogo (para registros sin birth_date aún en censo)
+    const staticById = new Map(FAVB_PLAYERS.map((p) => [p.id, p]));
+    for (const p of FAVB_PLAYERS) {
+      const nKey = normalizeNameKey(`${p.firstName} ${p.lastName}`);
+      if (nKey) canonicalIdByName.set(nKey, p.id);
+    }
+
+    for (const row of censusRows) {
+      const canonicalId = resolveCanonicalPlayerId(row.canonical_player_id || row.player_id);
+      const birthDate = resolveBirthDateFromRow(row, canonicalId);
+      const staticPlayer = staticById.get(canonicalId);
+      const birthYear = row.birth_year ?? (staticPlayer?.birthYear && staticPlayer.birthYear > 0 ? staticPlayer.birthYear : null);
+      const ageEval = computeAgeInMadrid(birthDate, birthYear);
+
+      const prev = canonicalInfoById.get(canonicalId);
+      // Criterio pro-menor si existieran filas duplicadas aún no fusionadas en Neon
+      const isMinor = prev ? prev.isMinor || ageEval.isMinor : ageEval.isMinor;
+      const isDemo =
+        Boolean(row.is_demo) ||
+        row.player_id.startsWith('demo-') ||
+        row.player_id === 'p-test-prueba' ||
+        Boolean(prev?.isDemo);
+
+      canonicalInfoById.set(canonicalId, { isMinor, isDemo });
+
+      const nKey = normalizeNameKey(row.player_name);
+      if (nKey && !canonicalIdByName.has(nKey)) {
+        canonicalIdByName.set(nKey, canonicalId);
+      }
+    }
+
+    const consentByCanonicalId = new Map<string, ConsentPrivacyRow>();
+    const consentByName = new Map<string, ConsentPrivacyRow>();
+
+    for (const c of consentRows) {
+      const canonicalId = resolveCanonicalPlayerId(c.player_id);
+      const prev = consentByCanonicalId.get(canonicalId);
+      if (!prev) {
+        consentByCanonicalId.set(canonicalId, c);
+      } else if (
+        prev.player_id !== c.player_id &&
+        prev.status === 'ACTIVE' &&
+        prev.consent_social_media &&
+        (c.status !== 'ACTIVE' || !c.consent_social_media)
+      ) {
+        // Si colisionan dos IDs distintos (legado y canónico), priorizar denegación/revocación por precaución
+        consentByCanonicalId.set(canonicalId, c);
+      }
+      const nKey = normalizeNameKey(c.player_name);
+      if (nKey && !consentByName.has(nKey)) {
+        consentByName.set(nKey, c);
+      }
+    }
+
+    const sourcePlayers = teamId
+      ? result.players.filter((p) => p.teamId === teamId)
+      : result.players;
+
+    const sanitizedPlayers: PublicSanitizedPlayer[] = [];
+
+    for (const p of sourcePlayers) {
+      if (p.id.startsWith('demo-') || p.id === 'p-test-prueba') {
+        continue;
+      }
+
+      const isSlotPlaceholder = p.firstName === 'Jugador' || p.firstName === 'Jugadora';
+      if (isSlotPlaceholder) {
+        const { birthYear: _by, heightCm: _hc, ...rest } = p;
+        sanitizedPlayers.push({
+          ...rest,
+          photoUrl: '/images/player-placeholder.svg',
+          displayName: `${p.firstName} ${p.lastName}`.trim(),
+        });
+        continue;
+      }
+
+      const fullName = `${p.firstName} ${p.lastName}`.trim();
+      const nameKey = normalizeNameKey(fullName);
+      const canonicalId = resolveCanonicalPlayerId(
+        canonicalIdByName.get(nameKey) || p.id
+      );
+
+      const censusInfo = canonicalInfoById.get(canonicalId);
+      if (censusInfo?.isDemo) {
+        continue;
+      }
+
+      const consent =
+        consentByCanonicalId.get(canonicalId) ||
+        consentByCanonicalId.get(p.id) ||
+        consentByName.get(nameKey);
+
+      const staticPlayer = staticById.get(canonicalId);
+      const fallbackMinor =
+        staticPlayer && staticPlayer.birthYear > 0
+          ? computeAgeInMadrid(null, staticPlayer.birthYear).isMinor
+          : true;
+
+      const isMinor =
+        consent?.is_minor === true
+          ? true
+          : censusInfo
+          ? censusInfo.isMinor
+          : fallbackMinor;
+
+      const hasExplicitDenialOrRevocation = Boolean(
+        consent && (consent.status !== 'ACTIVE' || consent.consent_social_media === false)
+      );
+      const hasActiveSocialConsent = Boolean(
+        consent && consent.status === 'ACTIVE' && consent.consent_social_media === true
+      );
+
+      // Regla unánime: Default-Deny en menores sin consentimiento ACTIVE + Opt-Out inmediato en todos
+      const canShowName = hasExplicitDenialOrRevocation
+        ? false
+        : isMinor
+        ? hasActiveSocialConsent
+        : true;
+
+      const canShowPhoto = hasActiveSocialConsent && !hasExplicitDenialOrRevocation;
+
+      const { birthYear: _by, heightCm: _hc, ...rest } = p;
+      const dorsalLabel = p.number ? `#${p.number}` : '#?';
+      const opaqueAnonId = `anon-${crypto
+        .createHmac('sha256', getOtpPepper())
+        .update(canonicalId)
+        .digest('hex')
+        .slice(0, 12)}`;
+
+      sanitizedPlayers.push({
+        ...rest,
+        id: canShowName ? canonicalId : opaqueAnonId,
+        firstName: canShowName ? p.firstName : 'Deportista',
+        lastName: canShowName ? p.lastName : dorsalLabel,
+        displayName: canShowName ? fullName : `Deportista ${dorsalLabel}`,
+        photoUrl: canShowPhoto ? p.photoUrl || '/images/player-placeholder.svg' : '/images/player-placeholder.svg',
+        isAnonymized: !canShowName,
+      });
+    }
+
+    const filteredStaff = teamId
+      ? result.staff.filter((s) => s.teamId === teamId)
+      : result.staff;
+
     return NextResponse.json(
       {
         success: result.success,
-        players: result.players,
-        staff: result.staff,
+        players: sanitizedPlayers,
+        staff: filteredStaff,
         lastSync: result.lastSync.toISOString(),
         fromCache: result.fromCache,
         source: 'Federación Andaluza de Voleibol (favoley.net)',
       },
-      {
-        headers: {
-          'X-Content-Type-Options': 'nosniff',
-        },
-      }
+      { headers: noStoreHeaders }
     );
   } catch (error) {
+    if (error instanceof NeonUnavailableError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Base de datos de privacidad temporalmente no disponible. No se pueden mostrar plantillas.',
+        },
+        { status: 503, headers: noStoreHeaders }
+      );
+    }
+
     console.error('[API /api/favb/rosters] Error al sincronizar plantillas:', error);
     return NextResponse.json(
       {
-        success: true,
-        players: FAVB_PLAYERS,
-        staff: FAVB_STAFF,
-        lastSync: new Date().toISOString(),
-        fromCache: true,
+        success: false,
+        error: 'No se pudo obtener de forma segura el listado oficial de plantillas.',
       },
-      {
-        headers: {
-          'X-Content-Type-Options': 'nosniff',
-        },
-      }
+      { status: 503, headers: noStoreHeaders }
     );
   }
 }

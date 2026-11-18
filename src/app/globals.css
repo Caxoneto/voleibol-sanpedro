@@ -18,7 +18,7 @@
   main > :last-child { margin-bottom: 0 !important; }
 
   :focus-visible {
-    outline: 2px solid #d90429 !important;
+    outline: 2px solid #ff4d63 !important;
     outline-offset: 3px !important;
   }
 }
@@ -140,7 +140,9 @@
   width: max-content;
   animation: marquee 32s linear infinite;
 }
-.animate-marquee-smooth:hover {
+.animate-marquee-smooth:hover,
+.animate-marquee-smooth:focus-within,
+.marquee-paused .animate-marquee-smooth {
   animation-play-state: paused;
 }
 
@@ -257,16 +259,21 @@
   will-change: transform, border-color, box-shadow;
 }
 
-/* Soporte accesible para reducción de movimiento (WCAG 2.1 / 2.3.3) */
+/* Soporte accesible para reducción de movimiento (WCAG 2.1 / 2.2.2 / 2.3.3) */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto !important;
   }
 
-  /* Solo pausar animaciones decorativas de fondo; las marquesinas informativas se mantienen activas y se pausan al pasar el cursor (:hover) */
   .animate-hero-bg,
   .animate-pulse-aura,
-  .shimmer-effect::after {
+  .shimmer-effect::after,
+  .animate-marquee-smooth,
+  .animate-team-marquee,
+  .animate-venue-marquee,
+  .animate-lottery-pulse,
+  .animate-ping,
+  .animate-pulse {
     animation: none !important;
     transform: none !important;
   }

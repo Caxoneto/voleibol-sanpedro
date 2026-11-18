@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ArrowRight, ChevronLeft, ChevronRight, Home, Plane, RefreshCw } from 'lucide-react';
 import { formatMadridDate } from '@/lib/date-utils';
 import { getTeamLogo, getTeamInitials } from '@/lib/team-logos';
 import { isRestMatch } from '@/lib/match-utils';
@@ -64,9 +65,15 @@ export default function HeroMatchesCarousel({
   );
 
   const [matches, setMatches] = useState<HeroCarouselMatchItem[]>(filteredInitial);
+  const matchesRef = useRef<HeroCarouselMatchItem[]>(filteredInitial);
+  useEffect(() => {
+    matchesRef.current = matches;
+  }, [matches]);
+
   const [activeTab, setActiveTab] = useState<FilterTab>(initialHasToday ? 'today' : 'upcoming');
   const [refreshingIds, setRefreshingIds] = useState<Set<string>>(new Set());
   const userChangedTabRef = useRef<boolean>(false);
+  const lastAutoScrolledTabRef = useRef<FilterTab | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
   // Estados de navegación y desplazamiento para Desktop
@@ -169,13 +176,13 @@ export default function HeroMatchesCarousel({
     setIsDragging(false);
   };
 
-  // Actualizar un partido individual desde favoley.net
-  const refreshSingleMatch = async (matchId: string, silent = false) => {
+  // Actualizar un partido individual desde caché compartida/federación (sin ?force=true en cliente público)
+  const refreshSingleMatch = useCallback(async (matchId: string, silent = false) => {
     if (!silent) {
       setRefreshingIds((prev) => new Set(prev).add(matchId));
     }
     try {
-      const res = await fetch(`/api/favb/match/${matchId}?force=true`, { cache: 'no-store' });
+      const res = await fetch(`/api/favb/match/${encodeURIComponent(matchId)}`, { cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
       if (data && data.success && data.match) {
@@ -210,9 +217,9 @@ export default function HeroMatchesCarousel({
         });
       }
     }
-  };
+  }, []);
 
-  // Sincronización inmediata al montar + polling automático cada 45 segundos para partidos en vivo o de hoy
+  // Sincronización inmediata al montar + polling automático cada 45 segundos sin closures obsoletas
   useEffect(() => {
     const mergeSyncedMatches = (liveList: Array<Record<string, unknown>>) => {
       const liveMap = new Map(liveList.map((lm) => [String(lm.id), lm]));
@@ -254,7 +261,7 @@ export default function HeroMatchesCarousel({
     };
 
     try {
-      const cached = localStorage.getItem('cdv_synced_matches_v2');
+      const cached = window.localStorage.getItem('cdv_synced_matches_v7');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
@@ -271,10 +278,13 @@ export default function HeroMatchesCarousel({
         if (data.success && Array.isArray(data.matches) && data.matches.length > 0) {
           mergeSyncedMatches(data.matches);
           try {
-            localStorage.setItem(
-              'cdv_synced_matches_v2',
+            const safeMatches = (data.matches as Array<Record<string, unknown>>).map(
+              ({ homeRoster: _h, awayRoster: _a, ...rest }) => rest
+            );
+            window.localStorage.setItem(
+              'cdv_synced_matches_v7',
               JSON.stringify({
-                matches: data.matches,
+                matches: safeMatches,
                 lastSync: data.lastSync || new Date().toISOString(),
               })
             );
@@ -285,26 +295,25 @@ export default function HeroMatchesCarousel({
       })
       .catch(() => {});
 
-    const activeOrToday = matches.filter(
-      (m) => m.status === 'LIVE' || (m.status === 'SCHEDULED' && m.dateStr === todayStr)
-    );
-    if (activeOrToday.length === 0) return;
+    const pollActiveOrToday = () => {
+      const currentActiveOrToday = matchesRef.current.filter(
+        (m) => m.status === 'LIVE' || (m.status === 'SCHEDULED' && m.dateStr === todayStr)
+      );
+      currentActiveOrToday.forEach((m) => {
+        refreshSingleMatch(m.id, true);
+      });
+    };
 
-    activeOrToday.forEach((m) => {
-      refreshSingleMatch(m.id, true);
-    });
+    pollActiveOrToday();
 
     const timer = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        activeOrToday.forEach((m) => {
-          refreshSingleMatch(m.id, true);
-        });
+        pollActiveOrToday();
       }
     }, 45000);
 
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayStr]);
+  }, [todayStr, refreshSingleMatch]);
 
   // 1. Pestaña "Finalizados": partidos de hoy finalizados + completando con anteriores hasta 4
   const finishedMatches = useMemo(() => {
@@ -391,16 +400,16 @@ export default function HeroMatchesCarousel({
 
   const hasLiveToday = todayMatches.some((m) => m.status === 'LIVE');
 
-  // Posicionar el carrusel automáticamente en el primer partido que esté jugándose (o el próximo en horario de juego)
+  // Posicionar el carrusel al cambiar de pestaña (sin robar el scroll en refrescos de polling)
   useEffect(() => {
     const container = carouselRef.current;
     if (!container || currentList.length === 0) return;
+    if (lastAutoScrolledTabRef.current === activeTab) return;
+    lastAutoScrolledTabRef.current = activeTab;
 
     const nowMs = Date.now();
-    // 1. Buscar el primero con estado LIVE
     let targetMatch = currentList.find((m) => m.status === 'LIVE');
 
-    // 2. Si estamos en "Hoy" y ninguno figura aún como LIVE explícito, buscar el primero en ventana de juego (desde 15 min antes hasta 2h15m después del inicio) o el primer pendiente
     if (!targetMatch && activeTab === 'today') {
       targetMatch =
         currentList.find((m) => {
@@ -531,7 +540,7 @@ export default function HeroMatchesCarousel({
             <span>Hoy</span>
             {todayMatches.length > 0 && (
               <span
-                className={`px-1 py-0.2 text-[9px] font-mono ${
+                className={`px-1 py-0.5 text-[9px] font-mono ${
                   activeTab === 'today' ? 'bg-black/30 text-white' : 'bg-white/10 text-tertiary'
                 }`}
               >
@@ -569,9 +578,7 @@ export default function HeroMatchesCarousel({
                 title="Partidos anteriores"
                 className="w-7 h-7 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-tertiary transition-all rounded-xs cursor-pointer disabled:cursor-not-allowed"
               >
-                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
-                  chevron_left
-                </span>
+                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </button>
               <span className="w-px h-3.5 bg-white/10" aria-hidden="true" />
               <button
@@ -582,9 +589,7 @@ export default function HeroMatchesCarousel({
                 title="Siguientes partidos"
                 className="w-7 h-7 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-tertiary transition-all rounded-xs cursor-pointer disabled:cursor-not-allowed"
               >
-                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
-                  chevron_right
-                </span>
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           )}
@@ -594,9 +599,7 @@ export default function HeroMatchesCarousel({
             className="text-[11px] sm:text-xs text-tertiary hover:text-white uppercase font-bold flex items-center gap-1 group transition-colors"
           >
             <span>Ver todos</span>
-            <span className="material-symbols-outlined text-[15px] group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
-              arrow_forward
-            </span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
           </Link>
         </div>
       </div>
@@ -605,7 +608,7 @@ export default function HeroMatchesCarousel({
       {currentList.length === 0 ? (
         <div className="bg-surface-container-low/80 border border-white/10 p-4 text-center flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-tertiary">
-            No hay partidos registrados para hoy ({formatMadridDate(new Date())}).
+            No hay partidos registrados para hoy ({formatMadridDate(`${todayStr}T12:00:00Z`)}).
           </p>
           <button
             type="button"
@@ -613,7 +616,7 @@ export default function HeroMatchesCarousel({
               userChangedTabRef.current = true;
               setActiveTab('upcoming');
             }}
-            className="px-3 py-1 bg-primary-container text-white text-[11px] uppercase font-bold tracking-wider"
+            className="px-3 py-1 bg-primary-container hover:bg-cta-hover text-white text-[11px] uppercase font-bold tracking-wider cursor-pointer"
           >
             Ver Próximos Partidos
           </button>
@@ -629,9 +632,7 @@ export default function HeroMatchesCarousel({
               title="Anterior"
               className="hidden sm:flex absolute -left-2 top-1/2 -translate-y-1/2 z-40 w-9 h-14 bg-black/85 hover:bg-primary-container text-white items-center justify-center border border-white/20 hover:border-primary-container/80 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.6)] transition-all rounded-r cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">
-                chevron_left
-              </span>
+              <ChevronLeft className="w-6 h-6" aria-hidden="true" />
             </button>
           )}
 
@@ -644,9 +645,7 @@ export default function HeroMatchesCarousel({
               title="Siguiente"
               className="hidden sm:flex absolute -right-2 top-1/2 -translate-y-1/2 z-40 w-9 h-14 bg-black/85 hover:bg-primary-container text-white items-center justify-center border border-white/20 hover:border-primary-container/80 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.6)] transition-all rounded-l cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">
-                chevron_right
-              </span>
+              <ChevronRight className="w-6 h-6" aria-hidden="true" />
             </button>
           )}
 
@@ -698,7 +697,7 @@ export default function HeroMatchesCarousel({
                 title={`${match.categoryName}: ${match.homeTeamName} vs ${match.awayTeamName}`}
               >
                 <Link
-                  href={`/partidos?cat=${match.categoryId}#match-${match.id}`}
+                  href={`/partidos?cat=${match.categoryId}&match=${match.id}`}
                   onClick={(e) => {
                     if (hasDraggedRef.current) {
                       e.preventDefault();
@@ -729,37 +728,35 @@ export default function HeroMatchesCarousel({
                           refreshSingleMatch(match.id, false);
                         }}
                         disabled={isRefreshing}
-                        className={`w-5 h-5 flex items-center justify-center shrink-0 overflow-hidden border transition-colors ${
+                        className={`w-6 h-6 flex items-center justify-center shrink-0 overflow-hidden border transition-colors cursor-pointer ${
                           isLive
-                            ? 'bg-red-950/90 hover:bg-red-800 text-red-300 border-red-500/50'
+                            ? 'bg-red-950/90 hover:bg-red-800 text-red-200 border-red-500/50'
                             : 'bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border-white/15'
                         }`}
                         title={`Actualizar marcador desde ${match.id.startsWith('afade-') ? 'ligaafade.es' : 'favoley.net'}`}
                         aria-label="Actualizar marcador"
                       >
-                        <span
-                          className={`material-symbols-outlined text-[12px] leading-none ${
-                            isRefreshing ? 'animate-spin text-white' : ''
-                          }`}
+                        <RefreshCw
+                          className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-white' : ''}`}
                           aria-hidden="true"
-                        >
-                          sync
-                        </span>
+                        />
                       </button>
                     )}
 
                     {/* Icono de En Casa o Fuera */}
                     <span
-                      className={`w-5 h-5 flex items-center justify-center shrink-0 border ${
+                      className={`w-6 h-6 flex items-center justify-center shrink-0 border ${
                         match.isClubHome
                           ? 'text-primary bg-primary-container/15 border-primary-container/30'
                           : 'text-tertiary bg-white/5 border-white/10'
                       }`}
                       title={match.isClubHome ? 'En casa (Pabellón Sergio Scariolo)' : 'Fuera / A domicilio'}
                     >
-                      <span className="material-symbols-outlined text-[13px]" aria-hidden="true">
-                        {match.isClubHome ? 'home' : 'flight'}
-                      </span>
+                      {match.isClubHome ? (
+                        <Home className="w-3.5 h-3.5" aria-hidden="true" />
+                      ) : (
+                        <Plane className="w-3.5 h-3.5" aria-hidden="true" />
+                      )}
                     </span>
                   </div>
                 </div>
@@ -833,7 +830,7 @@ export default function HeroMatchesCarousel({
                         <span
                           key={`hdr-${idx}`}
                           className={`${
-                            compactCols ? 'w-6 sm:w-6.5' : 'w-7 sm:w-7.5'
+                            compactCols ? 'w-6 sm:w-[26px]' : 'w-7 sm:w-[30px]'
                           } text-center font-mono text-[10px] font-extrabold uppercase ${
                             col.isCurrent ? 'text-red-400' : 'text-tertiary'
                           }`}
@@ -897,7 +894,7 @@ export default function HeroMatchesCarousel({
                           <span
                             key={`home-set-${idx}`}
                             className={`${
-                              compactCols ? 'w-6 sm:w-6.5 text-xs sm:text-sm' : 'w-7 sm:w-7.5 text-sm sm:text-base'
+                              compactCols ? 'w-6 sm:w-[26px] text-xs sm:text-sm' : 'w-7 sm:w-[30px] text-sm sm:text-base'
                             } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
                               col.isCurrent
                                 ? 'bg-red-950/60 border border-red-500/40'
@@ -957,7 +954,7 @@ export default function HeroMatchesCarousel({
                           <span
                             key={`away-set-${idx}`}
                             className={`${
-                              compactCols ? 'w-6 sm:w-6.5 text-xs sm:text-sm' : 'w-7 sm:w-7.5 text-sm sm:text-base'
+                              compactCols ? 'w-6 sm:w-[26px] text-xs sm:text-sm' : 'w-7 sm:w-[30px] text-sm sm:text-base'
                             } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
                               col.isCurrent
                                 ? 'bg-red-950/60 border border-red-500/40'

@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { store, CLUB_INFO } from '@/lib/data-store';
-import { syncFavbData } from '@/lib/favb-scraper';
+import { ArrowRight, MapPin, Navigation, Trophy } from 'lucide-react';
+import { CLUB_INFO, CLUB_CATEGORIES_META, CLUB_TEAMS_META } from '@/lib/club-info';
+import { INITIAL_ARTICLES, INITIAL_MATCHES } from '@/lib/data-store';
+import { getFastFavbMatchesSnapshot } from '@/lib/favb-scraper';
 import { formatMadridDate, formatMadridDateString, formatMadridTime } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
@@ -9,44 +11,55 @@ import SponsorBanner from '@/components/SponsorBanner';
 import HeroMatchesCarousel, { HeroCarouselMatchItem } from '@/components/HeroMatchesCarousel';
 import HeroLiveBlock from '@/components/HeroLiveBlock';
 import { isRestMatch } from '@/lib/match-utils';
-import { getMatchRecordings } from '@/lib/streaming-store';
+import { getMatchRecordings, MatchRecordingsMap } from '@/lib/streaming-store';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 30;
 
 export default async function HomePage() {
-  const syncedData = await syncFavbData();
+  const syncedData = await getFastFavbMatchesSnapshot();
   const liveMap = new Map(syncedData.matches.map((m) => [m.id, m]));
-  const recordings = await getMatchRecordings();
 
-  const articles = store.getArticles().slice(0, 3);
-  const categories = store.getCategories();
-  const teams = store.getTeams();
+  let recordings: MatchRecordingsMap = {};
+  try {
+    recordings = await getMatchRecordings();
+  } catch {
+    recordings = {};
+  }
+
+  const articles = [...INITIAL_ARTICLES]
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    .slice(0, 3);
+  const categories = [...CLUB_CATEGORIES_META].sort((a, b) => a.order - b.order);
+  const teams = CLUB_TEAMS_META;
 
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const catMap = new Map(categories.map((c) => [c.id, c]));
-  const todayStr = formatMadridDateString(new Date());
+  const nowDate = new Date();
+  const nowMs = nowDate.getTime();
+  const todayStr = formatMadridDateString(nowDate);
 
-  const matches = store.getMatches().map((m) => {
-    const live = liveMap.get(m.id);
-    const videoUrl = recordings[m.id] || m.videoUrl;
-    if (!live) return { ...m, videoUrl };
-    return {
-      ...m,
-      homeTeamName: live.homeTeam || m.homeTeamName,
-      awayTeamName: live.awayTeam || m.awayTeamName,
-      isClubHome: live.isClubHome ?? m.isClubHome,
-      matchDate: live.matchDate || m.matchDate,
-      venueName: live.venue || m.venueName,
-      status: live.status,
-      statusText: live.statusText ?? m.statusText,
-      homeScore: live.homeScore ?? m.homeScore,
-      awayScore: live.awayScore ?? m.awayScore,
-      setScores: live.setScores && live.setScores.length > 0 ? live.setScores : m.setScores,
-      currentSetScore: live.currentSetScore,
-      videoUrl,
-    };
-  });
+  const matches = [...INITIAL_MATCHES]
+    .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime())
+    .map((m) => {
+      const live = liveMap.get(m.id);
+      const videoUrl = recordings[m.id] || m.videoUrl;
+      if (!live) return { ...m, videoUrl };
+      return {
+        ...m,
+        homeTeamName: live.homeTeam || m.homeTeamName,
+        awayTeamName: live.awayTeam || m.awayTeamName,
+        isClubHome: live.isClubHome ?? m.isClubHome,
+        matchDate: live.matchDate || m.matchDate,
+        venueName: live.venue || m.venueName,
+        status: live.status,
+        statusText: live.statusText ?? m.statusText,
+        homeScore: live.homeScore ?? m.homeScore,
+        awayScore: live.awayScore ?? m.awayScore,
+        setScores: live.setScores && live.setScores.length > 0 ? live.setScores : m.setScores,
+        currentSetScore: live.currentSetScore,
+        videoUrl,
+      };
+    });
 
   // Seleccionar el partido destacado entre los partidos EN JUEGO (LIVE) o el PRÓXIMO pendiente (SCHEDULED) más cercano (excluyendo descanso y aplazados)
   const pendingMatches = matches
@@ -54,7 +67,7 @@ export default async function HomePage() {
       if (isRestMatch(m)) return false;
       if (m.status === 'LIVE') return true;
       if (m.status === 'SCHEDULED') {
-        const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
+        const isPast12h = nowMs - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
         return !isPast12h;
       }
       return false;
@@ -167,9 +180,10 @@ export default async function HomePage() {
               className="group font-label-md text-xs uppercase tracking-wider text-primary hover:text-white flex items-center gap-1.5 transition-colors font-bold"
             >
               <span>Ver Calendario Completo</span>
-              <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform" aria-hidden="true">
-                arrow_forward
-              </span>
+              <ArrowRight
+                className="w-[18px] h-[18px] group-hover:translate-x-1 transition-transform"
+                aria-hidden="true"
+              />
             </Link>
           </div>
 
@@ -288,7 +302,7 @@ export default async function HomePage() {
                   {/* Venue info */}
                   <div className="bg-surface-container-lowest p-4 border-l-4 border-primary-container flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">stadium</span>
+                      <MapPin className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
                       <div>
                         <p className="font-body-sm text-sm font-semibold text-white">
                           {featuredMatch.venueName}
@@ -312,7 +326,7 @@ export default async function HomePage() {
                     href={`/partidos?categoria=${featuredCat?.id || 'cat-senior-fem'}&match=${featuredMatch.id}`}
                     className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary hover:text-white"
                   >
-                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">sports_volleyball</span>
+                    <Trophy className="w-4 h-4 shrink-0" aria-hidden="true" />
                     Ver en Centro de Partidos
                   </Link>
 
@@ -328,7 +342,7 @@ export default async function HomePage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs text-tertiary hover:text-white uppercase font-semibold"
                   >
-                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">near_me</span>
+                    <Navigation className="w-4 h-4 shrink-0" aria-hidden="true" />
                     Cómo llegar al Pabellón
                   </a>
                 </div>
@@ -532,7 +546,7 @@ export default async function HomePage() {
               className="font-label-md text-xs uppercase tracking-wider text-primary hover:text-white flex items-center gap-1.5 transition-colors font-bold"
             >
               <span>Ir a Sala de Prensa</span>
-              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_forward</span>
+              <ArrowRight className="w-[18px] h-[18px]" aria-hidden="true" />
             </Link>
           </div>
 
@@ -575,9 +589,10 @@ export default async function HomePage() {
                     className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary group-hover:text-white transition-colors"
                   >
                     <span>Leer Noticia Completa</span>
-                    <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform" aria-hidden="true">
-                      arrow_forward
-                    </span>
+                    <ArrowRight
+                      className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                      aria-hidden="true"
+                    />
                   </span>
                 </div>
               </Link>

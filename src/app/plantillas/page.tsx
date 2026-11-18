@@ -1,208 +1,173 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import {
-  INITIAL_CATEGORIES,
-  INITIAL_TEAMS,
-  INITIAL_PLAYERS,
-  INITIAL_STAFF,
-  CLUB_INFO,
-} from '@/lib/data-store';
+import { Award, CheckCircle2, CircleDot, RefreshCw, Users } from 'lucide-react';
+import { CLUB_CATEGORIES_META, CLUB_TEAMS_META, CLUB_INFO } from '@/lib/club-info';
 import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS, Player, Staff } from '@/lib/types';
 import SponsorBanner from '@/components/SponsorBanner';
 
-const ROSTERS_STORAGE_KEY = 'cdv_synced_rosters_v5';
+function formatSyncHourMadrid(iso?: string): string {
+  try {
+    const date = iso ? new Date(iso) : new Date();
+    return date.toLocaleTimeString('es-ES', {
+      timeZone: 'Europe/Madrid',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+  } catch {
+    return 'Reciente';
+  }
+}
 
-export default function PlantillasPage() {
+function PlantillasContent() {
+  const searchParams = useSearchParams();
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('senior-femenino');
   const [selectedPosition, setSelectedPosition] = useState<Position | 'ALL'>('ALL');
-  const [players, setPlayers] = useState<Player[]>(INITIAL_PLAYERS);
-  const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const catScrollRef = useRef<HTMLDivElement | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const applyMergedRosters = (incomingPlayers: Player[], incomingStaff?: Staff[]) => {
-    setPlayers((prevPlayers) => {
-      // Fusión estrictamente aditiva: ningún jugador real existente en plantilla se borra si no jugó un partido
-      const mergePlayerFields = (existing: Player, incoming: Player): Player => ({
-        ...existing,
-        ...incoming,
-        matchesCalledUp:
-          Math.max(existing.matchesCalledUp ?? 0, incoming.matchesCalledUp ?? 0) ||
-          existing.matchesCalledUp ||
-          incoming.matchesCalledUp,
-        totalClubCallUps:
-          Math.max(existing.totalClubCallUps ?? 0, incoming.totalClubCallUps ?? 0) ||
-          existing.totalClubCallUps ||
-          incoming.totalClubCallUps,
-        licenseCategory: incoming.licenseCategory ?? existing.licenseCategory,
-        otherTeamCallUps:
-          incoming.otherTeamCallUps && incoming.otherTeamCallUps.length > 0
-            ? incoming.otherTeamCallUps
-            : existing.otherTeamCallUps,
+  const showToast = useCallback((msg: string) => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setSyncFeedback(msg);
+    feedbackTimerRef.current = setTimeout(() => {
+      setSyncFeedback(null);
+      feedbackTimerRef.current = null;
+    }, 3500);
+  }, []);
+
+  // Reemplazo limpio autorizado desde servidor (respeta anonimización y revocaciones en tiempo real)
+  const applyServerRosters = useCallback(
+    (incomingPlayers: Player[], incomingStaff?: Staff[], scopedTeamId?: string) => {
+      setPlayers((prevPlayers) => {
+        const nextList = scopedTeamId
+          ? [
+              ...prevPlayers.filter((p) => p.teamId !== scopedTeamId),
+              ...incomingPlayers.filter((p) => p.teamId === scopedTeamId),
+            ]
+          : incomingPlayers;
+
+        const ordered: Player[] = [];
+        for (const team of CLUB_TEAMS_META) {
+          const teamRows = nextList
+            .filter((p) => p.teamId === team.id)
+            .sort((a, b) => a.number - b.number);
+          ordered.push(...teamRows);
+        }
+        return ordered;
       });
 
-      const mergedByTeam = new Map<string, Map<string, Player>>();
-      for (const p of [...INITIAL_PLAYERS, ...prevPlayers]) {
-        if (p.firstName !== 'Jugador' && p.firstName !== 'Jugadora') {
-          if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
-          const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
-          const existing = mergedByTeam.get(p.teamId)!.get(key);
-          mergedByTeam.get(p.teamId)!.set(key, existing ? mergePlayerFields(existing, p) : p);
-        }
+      if (Array.isArray(incomingStaff)) {
+        setStaffList((prevStaff) => {
+          if (!scopedTeamId) return incomingStaff;
+          return [
+            ...prevStaff.filter((s) => s.teamId !== scopedTeamId),
+            ...incomingStaff.filter((s) => s.teamId === scopedTeamId),
+          ];
+        });
       }
-      for (const p of incomingPlayers) {
-        if (p.firstName !== 'Jugador' && p.firstName !== 'Jugadora') {
-          if (!mergedByTeam.has(p.teamId)) mergedByTeam.set(p.teamId, new Map());
-          const key = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
-          const existing = mergedByTeam.get(p.teamId)!.get(key);
-          mergedByTeam.get(p.teamId)!.set(key, existing ? mergePlayerFields(existing, p) : p);
-        }
-      }
+    },
+    []
+  );
 
-      const result: Player[] = [];
-      for (const catTeam of INITIAL_TEAMS) {
-        const teamMap = mergedByTeam.get(catTeam.id);
-        const teamPlayers = teamMap ? Array.from(teamMap.values()) : [];
-        if (teamPlayers.length > 0) {
-          teamPlayers.sort((a, b) => a.number - b.number);
-          result.push(...teamPlayers);
-          if (teamPlayers.length < 6) {
-            const incomingPlaceholders = incomingPlayers.filter(
-              (p: Player) =>
-                p.teamId === catTeam.id &&
-                (p.firstName === 'Jugador' || p.firstName === 'Jugadora')
-            );
-            result.push(...incomingPlaceholders);
+  const fetchLiveRosters = useCallback(
+    async (manual = false, targetTeamId?: string) => {
+      if (manual) setSyncing(true);
+      try {
+        const teamQuery = targetTeamId ? `?teamId=${encodeURIComponent(targetTeamId)}` : '';
+        const res = await fetch(`/api/favb/rosters${teamQuery}`, { cache: 'no-store' });
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || !data?.success) {
+          setLoadError(
+            data?.error || 'No se pudieron consultar las plantillas oficiales en este momento.'
+          );
+          if (manual) {
+            showToast('No se pudo actualizar en este momento. Inténtalo de nuevo.');
           }
-        } else {
-          const teamPlaceholders = incomingPlayers.filter((p: Player) => p.teamId === catTeam.id);
-          result.push(...teamPlaceholders);
+          return;
         }
+
+        setLoadError(null);
+        const incomingPlayers: Player[] = Array.isArray(data.players) ? data.players : [];
+        const incomingStaff: Staff[] = Array.isArray(data.staff) ? data.staff : [];
+
+        applyServerRosters(incomingPlayers, incomingStaff, targetTeamId);
+        setLastSyncTime(formatSyncHourMadrid(data.lastSync));
+
+        if (manual) {
+          showToast('Plantillas y cuerpo técnico actualizados desde el portal oficial.');
+        }
+      } catch {
+        setLoadError('Error de conexión al cargar las plantillas oficiales.');
+        if (manual) {
+          showToast('Error de conexión al sincronizar plantillas.');
+        }
+      } finally {
+        setLoadingInitial(false);
+        if (manual) setSyncing(false);
       }
-      return result;
-    });
+    },
+    [applyServerRosters, showToast]
+  );
 
-    if (Array.isArray(incomingStaff) && incomingStaff.length > 0) {
-      setStaffList((prevStaff) => {
-        const staffMap = new Map<string, Staff>();
-        for (const s of [...INITIAL_STAFF, ...prevStaff]) {
-          staffMap.set(`${s.teamId}_${s.name.toLowerCase()}`, s);
-        }
-        for (const s of incomingStaff) {
-          staffMap.set(`${s.teamId}_${s.name.toLowerCase()}`, s);
-        }
-        return Array.from(staffMap.values());
-      });
-    }
-  };
-
-  const fetchLiveRosters = async (force = false, targetTeamId?: string) => {
-    if (force) setSyncing(true);
-    try {
-      const teamQuery = targetTeamId ? `&teamId=${encodeURIComponent(targetTeamId)}` : '';
-      const res = await fetch(`/api/favb/rosters?force=${force}${teamQuery}`, { cache: 'no-store' });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.players) && data.players.length > 0) {
-        applyMergedRosters(data.players, data.staff);
-        const formattedTime = data.lastSync
-          ? new Date(data.lastSync).toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-        setLastSyncTime(formattedTime);
-
-        try {
-          localStorage.setItem(
-            ROSTERS_STORAGE_KEY,
-            JSON.stringify({
-              players: data.players,
-              staff: data.staff || INITIAL_STAFF,
-              lastSync: data.lastSync || new Date().toISOString(),
-            })
-          );
-        } catch {
-          // Ignorar cuota de localStorage
-        }
-
-        if (force) {
-          const realCount = data.players.filter(
-            (p: Player) => p.firstName !== 'Jugador' && p.firstName !== 'Jugadora'
-          ).length;
-          setSyncFeedback(
-            `Plantillas y cuerpo técnico sincronizados con favoley.net (${realCount} licencias oficiales)`
-          );
-          setTimeout(() => setSyncFeedback(null), 3500);
-        }
-      }
-    } catch {
-      if (force) {
-        setSyncFeedback('Mostrando última plantilla oficial sincronizada.');
-        setTimeout(() => setSyncFeedback(null), 3500);
-      }
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // Hidratar categoría desde URL (?categoria= o ?category= o ?slug=) + localStorage y sincronizar con favoley.net
+  // Hidratar categoría reactivamente desde query params (?categoria=...)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const catParam =
-        params.get('categoria') || params.get('category') || params.get('slug') || params.get('team');
-      if (catParam) {
-        const normalized = catParam.trim().toLowerCase();
-        const matchedCat = INITIAL_CATEGORIES.find(
-          (c) =>
-            c.id.toLowerCase() === normalized ||
-            c.slug.toLowerCase() === normalized ||
-            c.name.toLowerCase() === normalized
-        );
-        if (matchedCat) {
-          setSelectedCategorySlug(matchedCat.slug);
-        } else {
-          const matchedTeam = INITIAL_TEAMS.find((t) => t.id.toLowerCase() === normalized);
-          if (matchedTeam) {
-            const teamCat = INITIAL_CATEGORIES.find((c) => c.id === matchedTeam.categoryId);
-            if (teamCat) setSelectedCategorySlug(teamCat.slug);
-          }
-        }
+    const catParam =
+      searchParams.get('categoria') ||
+      searchParams.get('category') ||
+      searchParams.get('slug') ||
+      searchParams.get('team');
+    if (!catParam) return;
+
+    const normalized = catParam.trim().toLowerCase();
+    const matchedCat = CLUB_CATEGORIES_META.find(
+      (c) =>
+        c.id.toLowerCase() === normalized ||
+        c.slug.toLowerCase() === normalized ||
+        c.name.toLowerCase() === normalized
+    );
+    if (matchedCat) {
+      setSelectedCategorySlug(matchedCat.slug);
+    } else {
+      const matchedTeam = CLUB_TEAMS_META.find((t) => t.id.toLowerCase() === normalized);
+      if (matchedTeam) {
+        const teamCat = CLUB_CATEGORIES_META.find((c) => c.id === matchedTeam.categoryId);
+        if (teamCat) setSelectedCategorySlug(teamCat.slug);
       }
     }
+  }, [searchParams]);
 
+  // Limpiar caché heredada y sincronizar en segundo plano (sin ?force=true en cliente público)
+  useEffect(() => {
     try {
-      const cached = localStorage.getItem(ROSTERS_STORAGE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed.players) && parsed.players.length > 0) {
-          applyMergedRosters(parsed.players, parsed.staff);
-        }
-        if (parsed.lastSync) {
-          setLastSyncTime(
-            new Date(parsed.lastSync).toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          );
-        }
-      }
+      window.localStorage.removeItem('cdv_synced_rosters_v6');
     } catch {
-      // Ignorar errores de lectura de localStorage
+      // Ignorar errores de limpieza en localStorage
     }
 
-    fetchLiveRosters(false);
+    void fetchLiveRosters(false);
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        fetchLiveRosters(true);
+        void fetchLiveRosters(false);
       }
     }, 90000);
-    return () => clearInterval(interval);
-  }, []);
+
+    return () => {
+      clearInterval(interval);
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    };
+  }, [applyServerRosters, fetchLiveRosters]);
 
   // Centrar píldora de categoría seleccionada en el scroll horizontal
   useEffect(() => {
@@ -215,20 +180,17 @@ export default function PlantillasPage() {
     }
   }, [selectedCategorySlug]);
 
-  // Encontrar la categoría seleccionada
   const activeCategory = useMemo(() => {
     return (
-      INITIAL_CATEGORIES.find((c) => c.slug === selectedCategorySlug) ||
-      INITIAL_CATEGORIES[0]
+      CLUB_CATEGORIES_META.find((c) => c.slug === selectedCategorySlug) ||
+      CLUB_CATEGORIES_META[0]
     );
   }, [selectedCategorySlug]);
 
-  // Encontrar el equipo asociado
   const activeTeam = useMemo(() => {
-    return INITIAL_TEAMS.find((t) => t.categoryId === activeCategory.id) || INITIAL_TEAMS[0];
+    return CLUB_TEAMS_META.find((t) => t.categoryId === activeCategory.id) || CLUB_TEAMS_META[0];
   }, [activeCategory]);
 
-  // Filtrar jugadores por equipo y posición
   const filteredPlayers = useMemo(() => {
     return players.filter((player) => {
       const matchTeam = player.teamId === activeTeam.id;
@@ -237,7 +199,6 @@ export default function PlantillasPage() {
     });
   }, [players, activeTeam, selectedPosition]);
 
-  // Filtrar cuerpo técnico
   const staffMembers = useMemo(() => {
     return staffList.filter((s) => s.teamId === activeTeam.id);
   }, [staffList, activeTeam]);
@@ -251,9 +212,10 @@ export default function PlantillasPage() {
     { label: 'Líberos', value: 'LIBERO' },
   ];
 
+  const isAfade = activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE');
+
   return (
     <div className="w-full min-h-screen bg-background relative overflow-hidden">
-      {/* Subtle Page-Wide Ambient Background */}
       <div
         className="pointer-events-none fixed inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-[0.14] blur-[3px] z-0"
         style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
@@ -261,7 +223,6 @@ export default function PlantillasPage() {
 
       {/* Header Banner */}
       <section className="relative w-full bg-surface-container-lowest px-4 lg:px-8 py-6 sm:py-10 border-b border-white/5 overflow-hidden">
-        {/* Background Image (Pabellón Sergio Scariolo) with slight blur */}
         <div
           className="pointer-events-none absolute inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-40 blur-[2px] scale-105 animate-hero-bg transition-transform duration-1000"
           style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
@@ -290,25 +251,26 @@ export default function PlantillasPage() {
         </div>
       </section>
 
-      {/* Selector Dinámico de Categorías + Botón Icono Actualizar */}
-      <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
+      {/* Selector Dinámico de Categorías */}
+      <section aria-label="Categorías de plantillas" className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-2.5 sm:gap-3">
           <div
             ref={catScrollRef}
             className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory flex-1"
           >
-            {INITIAL_CATEGORIES.map((cat) => {
+            {CLUB_CATEGORIES_META.map((cat) => {
               const isSelected = cat.slug === selectedCategorySlug;
               return (
                 <button
                   key={cat.id}
+                  type="button"
                   id={`plantillas-cat-pill-${cat.slug}`}
                   onClick={() => {
                     setSelectedCategorySlug(cat.slug);
                     setSelectedPosition('ALL');
                   }}
                   aria-pressed={isSelected}
-                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                     isSelected
                       ? 'bg-primary-container text-white shadow-[3px_3px_0px_0px_#0e0e0e] -translate-y-0.5'
                       : 'bg-surface-container-high text-tertiary hover:text-white hover:bg-surface-container-highest'
@@ -320,38 +282,28 @@ export default function PlantillasPage() {
             })}
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE')) {
-                setSyncing(true);
-                fetch(`/api/afade/sync?force=true`, { cache: 'no-store' })
-                  .then(() => {
-                    setLastSyncTime(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
-                    setSyncFeedback('Competición sincronizada con ligaafade.es');
-                    setTimeout(() => setSyncFeedback(null), 3500);
-                  })
-                  .finally(() => setSyncing(false));
-              } else {
-                fetchLiveRosters(true, activeTeam.id);
-              }
-            }}
-            disabled={syncing}
-            className="w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
-            title={`Sincronizar plantillas y cuerpo técnico ahora con ${activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE') ? 'ligaafade.es' : 'favoley.net'} (Última: ${lastSyncTime})`}
-            aria-label="Sincronizar plantillas"
-          >
-            <span className={`material-symbols-outlined text-[19px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
-              sync
-            </span>
-          </button>
+          {!isAfade && (
+            <button
+              type="button"
+              onClick={() => void fetchLiveRosters(true, activeTeam.id)}
+              disabled={syncing}
+              className="w-9 h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0 cursor-pointer"
+              title={`Actualizar plantillas desde favoley.net (Última: ${lastSyncTime})`}
+              aria-label="Actualizar plantillas"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </section>
 
-      {/* Aviso flotante de confirmación de sincronización */}
       {syncFeedback && (
-        <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
-          <span className="material-symbols-outlined text-emerald-400 text-[18px]" aria-hidden="true">check_circle</span>
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-fade-in"
+        >
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
           <span>{syncFeedback}</span>
         </div>
       )}
@@ -364,9 +316,9 @@ export default function PlantillasPage() {
               <span className="text-xs text-primary font-bold uppercase tracking-wider">
                 {activeTeam.division}
               </span>
-              <span className="text-tertiary">•</span>
+              <span className="text-tertiary" aria-hidden="true">•</span>
               <span className="text-[11px] font-mono text-tertiary">
-                Sincronizado con {activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE') ? 'ligaafade.es' : 'favoley.net'} ({lastSyncTime})
+                Sincronizado con {isAfade ? 'ligaafade.es' : 'favoley.net'} ({lastSyncTime})
               </span>
             </div>
             <h2 className="font-display-xl text-3xl uppercase text-white mt-1">
@@ -377,7 +329,6 @@ export default function PlantillasPage() {
             )}
           </div>
 
-          {/* Posiciones Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 sm:flex-wrap">
             <span className="text-xs text-tertiary uppercase mr-2 hidden sm:inline">
               Posición:
@@ -387,9 +338,10 @@ export default function PlantillasPage() {
               return (
                 <button
                   key={pf.value}
+                  type="button"
                   onClick={() => setSelectedPosition(pf.value)}
                   aria-pressed={isPosActive}
-                  className={`px-3 py-2 sm:py-1.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0 transition-colors ${
+                  className={`px-3 py-2 sm:py-1.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                     isPosActive
                       ? 'bg-white text-black font-bold'
                       : 'bg-surface-container-high text-tertiary hover:text-white'
@@ -402,15 +354,43 @@ export default function PlantillasPage() {
           </div>
         </div>
 
-        {/* Grid de Jugadores con Placeholders en Grises y Negro */}
-        <div className="py-6 sm:py-8">
-          {filteredPlayers.length === 0 ? (
-            (activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE')) && selectedPosition === 'ALL' ? (
+        {/* Grid de Jugadores */}
+        <div className="py-6 sm:py-8 space-y-4">
+          {loadError && filteredPlayers.length > 0 && (
+            <div role="alert" className="bg-red-950/40 border border-red-500/40 p-3 flex flex-wrap items-center justify-between gap-2 text-xs text-red-200">
+              <span>{loadError}</span>
+              <button
+                type="button"
+                onClick={() => void fetchLiveRosters(true, activeTeam.id)}
+                className="px-3 py-1 bg-primary-container hover:bg-cta-hover text-white font-bold uppercase cursor-pointer"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+          {loadingInitial && filteredPlayers.length === 0 ? (
+            <div className="bg-surface-container-low border border-white/10 p-10 text-center flex flex-col items-center justify-center gap-3">
+              <RefreshCw className="w-7 h-7 text-primary animate-spin" aria-hidden="true" />
+              <p className="text-xs uppercase font-bold tracking-wider text-white">
+                Cargando plantilla oficial y verificando privacidad...
+              </p>
+            </div>
+          ) : loadError && filteredPlayers.length === 0 ? (
+            <div role="alert" className="bg-red-950/40 border border-red-500/40 p-8 text-center flex flex-col items-center justify-center gap-3">
+              <p className="text-sm text-red-200 font-semibold">{loadError}</p>
+              <button
+                type="button"
+                onClick={() => void fetchLiveRosters(true, activeTeam.id)}
+                className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
+              >
+                Reintentar carga
+              </button>
+            </div>
+          ) : filteredPlayers.length === 0 ? (
+            isAfade && selectedPosition === 'ALL' ? (
               <div className="bg-surface-container-low border border-white/5 p-8 sm:p-14 text-center flex flex-col items-center justify-center max-w-2xl mx-auto shadow-2xl">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-container/20 flex items-center justify-center mb-4 text-primary">
-                  <span className="material-symbols-outlined text-3xl sm:text-4xl" aria-hidden="true">
-                    groups
-                  </span>
+                  <Users className="w-8 h-8" aria-hidden="true" />
                 </div>
                 <span className="px-2.5 py-1 bg-surface-container-highest text-tertiary font-bold text-[10px] uppercase tracking-widest border border-white/10 mb-3">
                   Competición Liga AFADE 26/27
@@ -424,9 +404,7 @@ export default function PlantillasPage() {
               </div>
             ) : (
               <div className="bg-surface-container-low border border-white/5 p-12 text-center flex flex-col items-center justify-center">
-                <span className="material-symbols-outlined text-4xl text-tertiary mb-2" aria-hidden="true">
-                  sports_volleyball
-                </span>
+                <CircleDot className="w-9 h-9 text-tertiary mb-2" aria-hidden="true" />
                 <h3 className="font-headline-sm text-lg uppercase text-white font-bold">
                   No hay jugadores registrados en esta posición
                 </h3>
@@ -434,8 +412,9 @@ export default function PlantillasPage() {
                   Selecciona otra demarcación o restablece el filtro para ver la plantilla completa.
                 </p>
                 <button
+                  type="button"
                   onClick={() => setSelectedPosition('ALL')}
-                  className="mt-4 px-4 py-2 bg-primary-container text-white text-xs uppercase font-bold"
+                  className="mt-4 px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs uppercase font-bold cursor-pointer"
                 >
                   Ver todos los jugadores
                 </button>
@@ -445,7 +424,9 @@ export default function PlantillasPage() {
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {filteredPlayers.map((player) => {
                 const isPlaceholderSlot =
-                  player.firstName === 'Jugador' || player.firstName === 'Jugadora';
+                  player.firstName === 'Jugador' ||
+                  player.firstName === 'Jugadora' ||
+                  player.firstName === 'Deportista';
                 const callUps = player.matchesCalledUp ?? 0;
                 const totalClubCallUps = player.totalClubCallUps ?? callUps;
                 const hasOtherCallUps =
@@ -456,24 +437,21 @@ export default function PlantillasPage() {
                     key={player.id}
                     className="group bg-surface-container-low border border-white/5 hover:border-primary-container/80 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-md hover:-translate-y-1"
                   >
-                    {/* Athletic Silhouette Placeholder & Badges */}
                     <div className="relative h-48 sm:h-72 w-full bg-[#18181b] overflow-hidden">
                       <Image
                         src={player.photoUrl || '/images/player-placeholder.svg'}
-                        alt={`${player.firstName} ${player.lastName}`}
+                        alt={`${player.firstName} ${player.lastName}`.trim()}
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-transparent to-black/20" />
 
-                      {/* Big Dorsal Number */}
                       <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3">
                         <span className="font-display-xl text-4xl sm:text-6xl text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
                           {player.number}
                         </span>
                       </div>
 
-                      {/* Roles Badges */}
                       <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex flex-col items-end gap-1">
                         {player.isCaptain && !isPlaceholderSlot && (
                           <span className="px-1.5 sm:px-2 py-0.5 bg-amber-500 text-black font-bold text-[9px] sm:text-[10px] uppercase tracking-wider shadow">
@@ -482,7 +460,7 @@ export default function PlantillasPage() {
                         )}
                         {isPlaceholderSlot ? (
                           <span className="px-1.5 sm:px-2 py-0.5 bg-surface-container-highest text-tertiary font-bold text-[9px] sm:text-[10px] uppercase tracking-wider border border-white/10 shadow">
-                            Pendiente Acta
+                            Ficha Protegida
                           </span>
                         ) : (
                           player.isHomegrown && (
@@ -493,7 +471,6 @@ export default function PlantillasPage() {
                         )}
                       </div>
 
-                      {/* Position Overlay */}
                       <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-3 sm:right-3">
                         <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-surface-container-highest/90 backdrop-blur-sm text-primary font-label-sm text-[10px] sm:text-[11px] uppercase tracking-widest font-bold inline-block truncate max-w-full">
                           {POSITION_SHORT_LABELS[player.position]}
@@ -501,7 +478,6 @@ export default function PlantillasPage() {
                       </div>
                     </div>
 
-                    {/* Player Details */}
                     <div className="p-3 sm:p-4 flex flex-col justify-between flex-1">
                       <div>
                         <h3 className="font-display-xl text-base sm:text-xl uppercase text-white leading-tight group-hover:text-primary transition-colors">
@@ -518,7 +494,7 @@ export default function PlantillasPage() {
                         </h3>
                         {isPlaceholderSlot ? (
                           <span className="text-[10px] sm:text-[11px] text-tertiary block mt-1 leading-snug">
-                            Pendiente de acta en favoley.net
+                            Identidad reservada por protección de datos
                           </span>
                         ) : (
                           player.licenseCategory && (
@@ -527,12 +503,7 @@ export default function PlantillasPage() {
                                 className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-amber-500/15 border border-amber-400/40 text-amber-300 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider leading-tight"
                                 title={`Promoción de cantera: compite con licencia oficial de categoría ${player.licenseCategory}`}
                               >
-                                <span
-                                  className="material-symbols-outlined text-[11px] sm:text-[12px] text-amber-400 shrink-0"
-                                  aria-hidden="true"
-                                >
-                                  workspace_premium
-                                </span>
+                                <Award className="w-3 h-3 text-amber-400 shrink-0" aria-hidden="true" />
                                 <span>Promoción · Lic. {player.licenseCategory}</span>
                               </span>
                             </div>
@@ -540,11 +511,9 @@ export default function PlantillasPage() {
                         )}
                       </div>
 
-                      {/* Official Participation & Physical Stats */}
                       <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/5 flex flex-col gap-2">
                         {!isPlaceholderSlot && (
                           <div className="flex flex-col gap-1.5">
-                            {/* Convocatorias Oficiales en este equipo */}
                             <div
                               className="px-2 sm:px-2.5 py-1.5 bg-surface-container-highest/70 border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-2"
                               title={`Convocado/a en ${callUps} ${callUps === 1 ? 'partido oficial' : 'partidos oficiales'} con ${activeCategory.name}`}
@@ -560,7 +529,6 @@ export default function PlantillasPage() {
                               </span>
                             </div>
 
-                            {/* Doble Dinámica / Otros Equipos del Club */}
                             {hasOtherCallUps && (
                               <div
                                 className="px-2 sm:px-2.5 py-1.5 bg-violet-500/10 border border-violet-400/25 flex flex-col gap-1"
@@ -619,7 +587,7 @@ export default function PlantillasPage() {
                                 isPlaceholderSlot ? 'text-tertiary' : 'text-emerald-400'
                               }`}
                             >
-                              {isPlaceholderSlot ? 'Pendiente' : 'Inscrito'}
+                              {isPlaceholderSlot ? 'Reservado' : 'Inscrito'}
                             </span>
                           </div>
                         </div>
@@ -693,10 +661,23 @@ export default function PlantillasPage() {
         )}
       </div>
 
-      {/* Banner de Patrocinador Exclusivo de Plantilla */}
       <div className="mt-12">
         <SponsorBanner customText="¿QUIERES SER EL PATROCINADOR DE ESTA PLANTILLA?" />
       </div>
     </div>
+  );
+}
+
+export default function PlantillasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full min-h-screen bg-surface flex items-center justify-center text-tertiary text-sm">
+          Cargando plantillas oficiales...
+        </div>
+      }
+    >
+      <PlantillasContent />
+    </Suspense>
   );
 }

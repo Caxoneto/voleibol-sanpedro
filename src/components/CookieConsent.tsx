@@ -1,45 +1,59 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { Cookie, ShieldCheck, X } from 'lucide-react';
 
 export interface CookiePreferences {
+  version: number;
+  status: 'accepted';
   necessary: boolean;
   analytics: boolean;
   preferences: boolean;
+  updatedAt: string;
+  expiresAt: string;
 }
 
-const STORAGE_KEY = 'cdvsp_cookie_consent_v1';
+const STORAGE_KEY = 'cdv_cookie_consent_v2';
+const CONSENT_VERSION = 2;
+const CONSENT_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 12 meses
 
 export default function CookieConsent() {
   const [mounted, setMounted] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [preferences, setPreferences] = useState<CookiePreferences>({
-    necessary: true,
-    analytics: false,
-    preferences: false,
-  });
+
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+
+  const closeModal = useCallback(() => {
+    setShowModal(false);
+    const prev = lastFocusedRef.current;
+    if (prev && typeof prev.focus === 'function') {
+      requestAnimationFrame(() => prev.focus());
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      setShowBanner(true);
-    } else {
-      try {
-        const parsed = JSON.parse(stored);
-        setPreferences({
-          necessary: true,
-          analytics: Boolean(parsed.analytics),
-          preferences: Boolean(parsed.preferences),
-        });
-      } catch {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (!stored) {
         setShowBanner(true);
+      } else {
+        const parsed = JSON.parse(stored) as Partial<CookiePreferences>;
+        const expiresMs = parsed.expiresAt ? new Date(parsed.expiresAt).getTime() : 0;
+        const isExpired = !Number.isFinite(expiresMs) || expiresMs <= Date.now();
+        if (parsed.version !== CONSENT_VERSION || isExpired) {
+          setShowBanner(true);
+        }
       }
+    } catch {
+      setShowBanner(true);
     }
 
     const handleOpenSettings = () => {
+      lastFocusedRef.current = document.activeElement as HTMLElement | null;
       setShowModal(true);
       setShowBanner(false);
     };
@@ -48,43 +62,73 @@ export default function CookieConsent() {
     return () => window.removeEventListener('open-cookie-settings', handleOpenSettings);
   }, []);
 
+  // Gestión de teclado (Escape + focus trap WCAG) en el modal de configuración
   useEffect(() => {
     if (!showModal) return;
+
+    const modalEl = modalRef.current;
+    if (modalEl) {
+      const focusable = modalEl.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length > 0) {
+        requestAnimationFrame(() => focusable[0].focus());
+      }
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setShowModal(false);
+        e.preventDefault();
+        closeModal();
+        return;
+      }
+
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusable = Array.from(
+          modalRef.current.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first || !modalRef.current.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else if (document.activeElement === last || !modalRef.current.contains(document.activeElement)) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showModal]);
+  }, [showModal, closeModal]);
 
-  const saveConsent = (prefs: CookiePreferences) => {
-    const finalPrefs = { ...prefs, necessary: true };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(finalPrefs));
-    setPreferences(finalPrefs);
-    setShowBanner(false);
-    setShowModal(false);
-  };
-
-  const handleAcceptAll = () => {
-    saveConsent({
-      necessary: true,
-      analytics: true,
-      preferences: true,
-    });
-  };
-
-  const handleRejectAll = () => {
-    saveConsent({
+  const acknowledgeTechnicalNotice = () => {
+    const now = new Date();
+    const record: CookiePreferences = {
+      version: CONSENT_VERSION,
+      status: 'accepted',
       necessary: true,
       analytics: false,
       preferences: false,
-    });
-  };
+      updatedAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + CONSENT_TTL_MS).toISOString(),
+    };
 
-  const handleSaveCustom = () => {
-    saveConsent(preferences);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+    } catch {
+      // Ignorar errores de almacenamiento privado / cuota
+    }
+
+    setShowBanner(false);
+    closeModal();
   };
 
   if (!mounted) return null;
@@ -95,21 +139,23 @@ export default function CookieConsent() {
       {showBanner && !showModal && (
         <aside
           role="dialog"
-          aria-label="Aviso de cookies y privacidad"
-          className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-6 bg-[#161616]/95 backdrop-blur-md border-t border-white/10 shadow-[0_-8px_32px_rgba(0,0,0,0.85)] animate-in fade-in slide-in-from-bottom-4 duration-300"
+          aria-modal="false"
+          aria-label="Aviso de cookies y almacenamiento técnico"
+          className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-6 bg-[#161616]/95 backdrop-blur-md border-t border-white/10 shadow-[0_-8px_32px_rgba(0,0,0,0.85)] animate-slide-in-bottom"
         >
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div className="flex-1 pr-2">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">cookie</span>
+                <Cookie className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
                 <span className="font-headline-sm text-sm uppercase tracking-wider text-white font-bold">
-                  POLÍTICA DE COOKIES Y PRIVACIDAD
+                  AVISO DE ALMACENAMIENTO TÉCNICO Y PRIVACIDAD
                 </span>
               </div>
               <p className="font-body-sm text-xs text-tertiary leading-relaxed max-w-4xl">
-                En el <strong>C.D. Voleibol San Pedro</strong> utilizamos cookies técnicas necesarias para el funcionamiento del portal y, de manera opcional, cookies analíticas para mejorar tu experiencia de navegación según el RGPD y la LSSI-CE. Puedes aceptar todas las cookies, rechazarlas o configurar tus preferencias en cualquier momento.{' '}
+                En el <strong className="text-white">C.D. Voleibol San Pedro</strong> utilizamos únicamente cookies y almacenamiento local estrictamente técnico y necesario para la seguridad de sesiones y la carga rápida del calendario deportivo.{' '}
+                <strong className="text-white">No empleamos cookies publicitarias, analíticas ni rastreadores de terceros</strong> (exento de consentimiento previo conforme al Art. 22.2 LSSI-CE).{' '}
                 <Link href="/cookies" className="text-primary underline hover:text-white transition-colors">
-                  Más información en nuestra Política de Cookies
+                  Ver Política de Cookies completa
                 </Link>.
               </p>
             </div>
@@ -117,168 +163,119 @@ export default function CookieConsent() {
             <div className="flex items-center gap-2 flex-wrap shrink-0 self-stretch sm:self-auto justify-end">
               <button
                 type="button"
-                onClick={() => setShowModal(true)}
-                className="px-4 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-white font-headline text-xs uppercase tracking-widest font-bold transition-all border border-white/10 rounded-sm"
+                onClick={() => {
+                  lastFocusedRef.current = document.activeElement as HTMLElement | null;
+                  setShowModal(true);
+                }}
+                className="px-4 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-white font-headline text-xs uppercase tracking-widest font-bold transition-colors border border-white/20 rounded-sm cursor-pointer"
               >
-                Configurar
+                Detalle técnico
               </button>
               <button
                 type="button"
-                onClick={handleRejectAll}
-                className="px-5 py-2.5 bg-primary-container hover:bg-primary text-on-primary font-headline font-bold text-xs uppercase tracking-widest rounded-sm transition-all"
+                onClick={acknowledgeTechnicalNotice}
+                className="px-5 py-2.5 bg-primary-container hover:bg-cta-hover text-white font-headline font-bold text-xs uppercase tracking-widest rounded-sm transition-colors cursor-pointer"
               >
-                Rechazar todas
-              </button>
-              <button
-                type="button"
-                onClick={handleAcceptAll}
-                className="px-5 py-2.5 bg-primary-container hover:bg-primary text-on-primary font-headline font-bold text-xs uppercase tracking-widest rounded-sm transition-all"
-              >
-                Aceptar todas
+                Entendido
               </button>
             </div>
           </div>
         </aside>
       )}
 
-      {/* Modal de Configuración Detallada */}
+      {/* Modal de Transparencia Técnica */}
       {showModal && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Panel de configuración de cookies"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          aria-labelledby="cookie-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
         >
-          <div className="bg-surface-container-lowest border border-white/15 max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto no-scrollbar">
+          <div
+            ref={modalRef}
+            className="bg-surface-container-lowest border border-white/15 max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto no-scrollbar"
+          >
             <button
               type="button"
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-tertiary hover:text-white p-1 transition-colors"
-              aria-label="Cerrar modal"
+              onClick={closeModal}
+              className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
+              aria-label="Cerrar información de cookies"
             >
-              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">close</span>
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
 
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-4 pr-10">
               <div className="w-10 h-10 bg-primary-container text-white flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]" aria-hidden="true">tune</span>
+                <ShieldCheck className="w-5 h-5" aria-hidden="true" />
               </div>
               <div>
-                <span className="text-[10px] uppercase tracking-widest text-primary font-bold block">
-                  Centro de Preferencias de Privacidad
+                <span className="text-[11px] uppercase tracking-widest text-primary font-bold block">
+                  Transparencia y Privacidad (Art. 22.2 LSSI-CE)
                 </span>
-                <h3 className="font-display-xl text-xl sm:text-2xl uppercase text-white">
-                  CONFIGURACIÓN DE COOKIES
+                <h3 id="cookie-modal-title" className="font-display-xl text-xl sm:text-2xl uppercase text-white">
+                  COOKIES Y ALMACENAMIENTO LOCAL
                 </h3>
               </div>
             </div>
 
             <p className="font-body-sm text-xs text-tertiary mb-6 leading-relaxed">
-              Elige qué categorías de cookies permites en tu navegador. Las cookies necesarias siempre están activas para asegurar la navegación básica, seguridad y funcionamiento técnico del portal del C.D. Voleibol San Pedro.
+              Este portal solo utiliza claves técnicas locales y cookies propias estrictamente necesarias para el funcionamiento del sitio. Puedes consultar o limpiar estos datos locales en cualquier momento desde los ajustes de tu navegador.
             </p>
 
             <div className="space-y-4 mb-6">
               {/* Cookies Técnicas */}
-              <div className="p-4 bg-surface-container-low border border-white/5 flex items-start justify-between gap-4">
+              <div className="p-4 bg-surface-container-low border border-white/10 flex items-start justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h4 className="font-headline-sm text-sm uppercase text-white font-bold">
-                      Cookies Técnicas y Obligatorias
+                      Almacenamiento Técnico y Funcional Necesario
                     </h4>
-                    <span className="px-2 py-0.5 bg-white/10 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-                      Siempre activas
+                    <span className="px-2 py-0.5 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">
+                      Siempre activo · Exento
                     </span>
                   </div>
                   <p className="font-body-sm text-xs text-tertiary leading-relaxed">
-                    Imprescindibles para que la web funcione correctamente (guardar tu consentimiento de privacidad, navegación segura y renderizado de calendarios y partidos oficiales).
+                    Incluye la sesión autenticada de secretaría (<code className="text-white">cdv_admin_session</code>), la constancia de este aviso (<code className="text-white">cdv_cookie_consent_v2</code>), el control local anti-duplicado MVP y la caché rápida local de calendarios y clasificaciones.
                   </p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={true}
-                  disabled={true}
-                  className="mt-1 w-4 h-4 accent-primary cursor-not-allowed opacity-60"
-                  aria-label="Cookies obligatorias siempre activas"
-                />
               </div>
 
-              {/* Cookies Analíticas */}
-              <div className="p-4 bg-surface-container-low border border-white/5 flex items-start justify-between gap-4">
+              {/* Analítica / Terceros */}
+              <div className="p-4 bg-surface-container-low border border-white/10 flex items-start justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h4 className="font-headline-sm text-sm uppercase text-white font-bold">
-                      Cookies Analíticas y de Rendimiento
+                      Analítica, Publicidad y Rastreadores de Terceros
                     </h4>
+                    <span className="px-2 py-0.5 bg-white/10 border border-white/15 text-tertiary text-[10px] font-bold uppercase tracking-wider">
+                      No utilizado
+                    </span>
                   </div>
                   <p className="font-body-sm text-xs text-tertiary leading-relaxed">
-                    Nos permiten medir de forma anónima el número de visitantes y páginas más consultadas para mejorar la experiencia de nuestras familias y aficionados.
+                    El portal no instala cookies de analítica web, perfiles publicitarios ni píxeles de redes sociales en ningún dispositivo.
                   </p>
                 </div>
-                <label htmlFor="cookie-analytics" className="relative inline-flex items-center cursor-pointer mt-1">
-                  <input
-                    id="cookie-analytics"
-                    aria-label="Activar cookies analíticas"
-                    type="checkbox"
-                    checked={preferences.analytics}
-                    onChange={(e) =>
-                      setPreferences((prev) => ({ ...prev, analytics: e.target.checked }))
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
-                </label>
-              </div>
-
-              {/* Cookies de Preferencias */}
-              <div className="p-4 bg-surface-container-low border border-white/5 flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-headline-sm text-sm uppercase text-white font-bold">
-                      Cookies de Personalización
-                    </h4>
-                  </div>
-                  <p className="font-body-sm text-xs text-tertiary leading-relaxed">
-                    Permiten recordar tus filtros favoritos de categoría de voleibol y opciones visuales para tus próximas visitas.
-                  </p>
-                </div>
-                <label htmlFor="cookie-preferences" className="relative inline-flex items-center cursor-pointer mt-1">
-                  <input
-                    id="cookie-preferences"
-                    aria-label="Activar cookies de preferencias"
-                    type="checkbox"
-                    checked={preferences.preferences}
-                    onChange={(e) =>
-                      setPreferences((prev) => ({ ...prev, preferences: e.target.checked }))
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
-                </label>
               </div>
             </div>
 
             <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
               <Link
                 href="/cookies"
-                onClick={() => setShowModal(false)}
-                className="text-xs text-tertiary hover:text-white underline font-medium"
+                onClick={closeModal}
+                className="text-xs text-primary hover:text-white underline font-medium"
               >
                 Ver listado completo de cookies
               </Link>
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
                   type="button"
-                  onClick={handleRejectAll}
-                  className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white text-xs uppercase font-bold tracking-wider transition-colors"
+                  onClick={acknowledgeTechnicalNotice}
+                  className="px-5 py-2.5 bg-primary-container hover:bg-cta-hover text-white text-xs uppercase font-bold tracking-wider transition-colors shadow-md cursor-pointer"
                 >
-                  Rechazar no esenciales
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveCustom}
-                  className="px-5 py-2 bg-primary-container hover:bg-secondary-container text-white text-xs uppercase font-bold tracking-wider transition-colors shadow-md"
-                >
-                  Guardar configuración
+                  Entendido
                 </button>
               </div>
             </div>

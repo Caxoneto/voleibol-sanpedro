@@ -188,229 +188,48 @@ export const FAVB_TEAMS: Team[] = [
   }
 ];
 
-export const FAVB_PLAYERS: Player[] = [
-  {
-    "id": "p-test-prueba",
-    "teamId": "team-cf-negro",
-    "number": 99,
-    "firstName": "Persona",
-    "lastName": "Prueba Prueba",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2016,
-    "heightCm": 150,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Benjamín"
-  },
-  {
-    "id": "demo-cm-1",
-    "teamId": "team-cm",
-    "number": 81,
-    "firstName": "Demo Cadete",
-    "lastName": "Uno",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2011,
-    "heightCm": 170,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Cadete"
-  },
-  {
-    "id": "demo-cm-2",
-    "teamId": "team-cm",
-    "number": 82,
-    "firstName": "Demo Cadete",
-    "lastName": "Dos",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2011,
-    "heightCm": 175,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Cadete"
-  },
-  {
-    "id": "demo-cm-3",
-    "teamId": "team-cm",
-    "number": 83,
-    "firstName": "Demo Cadete",
-    "lastName": "Tres",
-    "position": "SETTER",
-    "birthYear": 2010,
-    "heightCm": 172,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Cadete"
-  },
-  {
-    "id": "demo-cm-4",
-    "teamId": "team-cm",
-    "number": 84,
-    "firstName": "Demo Cadete",
-    "lastName": "Cuatro",
-    "position": "OPPOSITE",
-    "birthYear": 2010,
-    "heightCm": 178,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Cadete"
-  },
-  {
-    "id": "demo-cm-5",
-    "teamId": "team-cm",
-    "number": 85,
-    "firstName": "Demo Cadete",
-    "lastName": "Cinco",
-    "position": "LIBERO",
-    "birthYear": 2011,
-    "heightCm": 165,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Cadete"
-  },
-  {
-    "id": "demo-sf-1",
-    "teamId": "team-sf",
-    "number": 91,
-    "firstName": "Demo Senior",
-    "lastName": "Una",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2002,
-    "heightCm": 176,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Senior"
-  },
-  {
-    "id": "demo-sf-2",
-    "teamId": "team-sf",
-    "number": 92,
-    "firstName": "Demo Senior",
-    "lastName": "Dos",
-    "position": "SETTER",
-    "birthYear": 2003,
-    "heightCm": 171,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Senior"
-  },
-  {
-    "id": "demo-sf-3",
-    "teamId": "team-sf",
-    "number": 93,
-    "firstName": "Demo Senior",
-    "lastName": "Tres",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2001,
-    "heightCm": 182,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Senior"
-  },
-  {
-    "id": "demo-sf-4",
-    "teamId": "team-sf",
-    "number": 94,
-    "firstName": "Demo Senior",
-    "lastName": "Cuatro",
-    "position": "OPPOSITE",
-    "birthYear": 2004,
-    "heightCm": 179,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Senior"
-  },
-  {
-    "id": "demo-sf-5",
-    "teamId": "team-sf",
-    "number": 95,
-    "firstName": "Demo Senior",
-    "lastName": "Cinco",
-    "position": "LIBERO",
-    "birthYear": 2000,
-    "heightCm": 168,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 0,
-    "totalClubCallUps": 0,
-    "licenseCategory": "Senior"
-  },
-  {
-    "id": "p-team-sf-1",
-    "teamId": "team-sf",
-    "number": 1,
-    "firstName": "Marta",
-    "lastName": "Sanchez Rosado",
-    "position": "LIBERO",
-    "birthYear": 2008,
-    "heightCm": 173,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 6,
-    "totalClubCallUps": 11,
-    "licenseCategory": "Juvenil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-jf-rojo",
-        "teamName": "Juvenil Femenino Rojo",
-        "count": 5
-      }
-    ]
-  },
-  {
-    "id": "p-team-sf-2",
-    "teamId": "team-sf",
-    "number": 2,
-    "firstName": "Lola",
-    "lastName": "Ríos Osuna",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2008,
-    "heightCm": 174,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 4,
-    "totalClubCallUps": 8,
-    "licenseCategory": "Juvenil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-jf-rojo",
-        "teamName": "Juvenil Femenino Rojo",
-        "count": 4
-      }
-    ]
-  },
+export interface CanonicalFavbPlayer extends Player {
+  /** Equipos secundarios donde el/la deportista dobla convocatoria sin duplicar ficha. */
+  secondaryTeamIds?: string[];
+}
+
+/**
+ * Mapa de compatibilidad para resolver los 19 IDs duplicados eliminados hacia su playerId
+ * canónico en categoría formativa (evita ruptura con registros previos en player_census/player_consents).
+ */
+export const LEGACY_DUPLICATE_PLAYER_ID_MAP: Readonly<Record<string, string>> = {
+  "p-team-sf-1": "p-team-jf-rojo-1",
+  "p-team-sf-2": "p-team-jf-rojo-2",
+  "p-team-sf-4": "p-team-jf-rojo-3",
+  "p-team-sf-8": "p-team-jf-rojo-7",
+  "p-team-sf-12": "p-team-jf-rojo-11",
+  "p-team-sf-17": "p-team-jf-rojo-9",
+  "p-team-sm-8": "p-team-jm-2",
+  "p-team-sm-13": "p-team-jm-13",
+  "p-team-jm-1": "p-team-cm-1",
+  "p-team-jm-5": "p-team-cm-4",
+  "p-team-jm-6": "p-team-cm-9",
+  "p-team-jm-8": "p-team-cm-11",
+  "p-team-jf-rojo-4": "p-team-cf-rojo-3",
+  "p-team-cf-rojo-4": "p-team-if-rojo-4",
+  "p-team-cf-rojo-7": "p-team-if-rojo-7",
+  "p-team-cf-rojo-11": "p-team-if-rojo-9",
+  "p-team-cf-rojo-12": "p-team-if-rojo-6",
+  "p-team-cf-negro-7": "p-team-if-negro-3",
+  "p-team-cf-negro-8": "p-team-if-negro-10",
+};
+
+export function resolveCanonicalPlayerId(playerId: string): string {
+  return LEGACY_DUPLICATE_PLAYER_ID_MAP[playerId] ?? playerId;
+}
+
+/**
+ * Censo estático base FAVB saneado (147 deportistas canónicos únicos):
+ * - Purgados 11 registros de prueba/demo (p-test-prueba, demo-cm-1..5, demo-sf-1..5).
+ * - Unificados 19 deportistas con doble convocatoria bajo su ficha formativa canónica,
+ *   enlazando el segundo equipo en secondaryTeamIds y resolviendo 16 birthYear contradictorios.
+ */
+export const FAVB_PLAYERS: CanonicalFavbPlayer[] = [
   {
     "id": "p-team-sf-3",
     "teamId": "team-sf",
@@ -425,29 +244,6 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 3
-  },
-  {
-    "id": "p-team-sf-4",
-    "teamId": "team-sf",
-    "number": 4,
-    "firstName": "Lucía",
-    "lastName": "Jiménez Cuadrado",
-    "position": "LIBERO",
-    "birthYear": 2008,
-    "heightCm": 175,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 4,
-    "totalClubCallUps": 9,
-    "licenseCategory": "Juvenil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-jf-rojo",
-        "teamName": "Juvenil Femenino Rojo",
-        "count": 5
-      }
-    ]
   },
   {
     "id": "p-team-sf-5",
@@ -495,29 +291,6 @@ export const FAVB_PLAYERS: Player[] = [
     "totalClubCallUps": 6
   },
   {
-    "id": "p-team-sf-8",
-    "teamId": "team-sf",
-    "number": 11,
-    "firstName": "Luna",
-    "lastName": "Guerrero Dueñas",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2008,
-    "heightCm": 176,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 6,
-    "totalClubCallUps": 11,
-    "licenseCategory": "Juvenil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-jf-rojo",
-        "teamName": "Juvenil Femenino Rojo",
-        "count": 5
-      }
-    ]
-  },
-  {
     "id": "p-team-sf-9",
     "teamId": "team-sf",
     "number": 12,
@@ -561,29 +334,6 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 5,
     "totalClubCallUps": 5
-  },
-  {
-    "id": "p-team-sf-12",
-    "teamId": "team-sf",
-    "number": 17,
-    "firstName": "Rocio",
-    "lastName": "Valencia Artola",
-    "position": "SETTER",
-    "birthYear": 2008,
-    "heightCm": 175,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 1,
-    "totalClubCallUps": 5,
-    "licenseCategory": "Juvenil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-jf-rojo",
-        "teamName": "Juvenil Femenino Rojo",
-        "count": 4
-      }
-    ]
   },
   {
     "id": "p-team-sf-13",
@@ -644,29 +394,6 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 3
-  },
-  {
-    "id": "p-team-sf-17",
-    "teamId": "team-sf",
-    "number": 20,
-    "firstName": "Adriana",
-    "lastName": "Megens Marin",
-    "position": "OPPOSITE",
-    "birthYear": 2008,
-    "heightCm": 179,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 3,
-    "totalClubCallUps": 7,
-    "licenseCategory": "Juvenil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-jf-rojo",
-        "teamName": "Juvenil Femenino Rojo",
-        "count": 4
-      }
-    ]
   },
   {
     "id": "p-team-sf-18",
@@ -789,29 +516,6 @@ export const FAVB_PLAYERS: Player[] = [
     "totalClubCallUps": 1
   },
   {
-    "id": "p-team-sm-8",
-    "teamId": "team-sm",
-    "number": 19,
-    "firstName": "Mateo",
-    "lastName": "Perez Ruiz",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2001,
-    "heightCm": 183,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 1,
-    "totalClubCallUps": 4,
-    "licenseCategory": "Juvenil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-jm",
-        "teamName": "Juvenil Masculino",
-        "count": 3
-      }
-    ]
-  },
-  {
     "id": "p-team-sm-9",
     "teamId": "team-sm",
     "number": 22,
@@ -871,55 +575,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 1,
     "totalClubCallUps": 1
   },
-  {
-    "id": "p-team-sm-13",
-    "teamId": "team-sm",
-    "number": 99,
-    "firstName": "Gonzalo",
-    "lastName": "Galán Toro",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2002,
-    "heightCm": 187,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 1,
-    "totalClubCallUps": 5,
-    "licenseCategory": "Juvenil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-jm",
-        "teamName": "Juvenil Masculino",
-        "count": 4
-      }
-    ]
-  },
-  {
-    "id": "p-team-jm-1",
-    "teamId": "team-jm",
-    "number": 1,
-    "firstName": "Nicolás",
-    "lastName": "Serrato Rojo",
-    "position": "LIBERO",
-    "birthYear": 2010,
-    "heightCm": 178,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 4,
-    "totalClubCallUps": 6,
-    "licenseCategory": "Cadete",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-cm",
-        "teamName": "Cadete Masculino",
-        "count": 2
-      }
-    ]
-  },
+  // Unificado (canónico): p-team-jm-2 (team-jm) absorbe duplicado p-team-sm-8 (team-sm); conserva categoría formativa Juvenil (resuelve conflicto birthYear 2001 -> 2008).
   {
     "id": "p-team-jm-2",
     "teamId": "team-jm",
+    "secondaryTeamIds": [
+      "team-sm"
+    ],
     "number": 3,
     "firstName": "Mateo",
     "lastName": "Perez Ruiz",
@@ -931,6 +593,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 4,
+    "licenseCategory": "Juvenil",
     "otherTeamCallUps": [
       {
         "teamId": "team-sm",
@@ -970,52 +633,6 @@ export const FAVB_PLAYERS: Player[] = [
     "totalClubCallUps": 1
   },
   {
-    "id": "p-team-jm-5",
-    "teamId": "team-jm",
-    "number": 11,
-    "firstName": "Pedro",
-    "lastName": "Núñez Romero",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2010,
-    "heightCm": 177,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 4,
-    "totalClubCallUps": 6,
-    "licenseCategory": "Cadete",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-cm",
-        "teamName": "Cadete Masculino",
-        "count": 2
-      }
-    ]
-  },
-  {
-    "id": "p-team-jm-6",
-    "teamId": "team-jm",
-    "number": 15,
-    "firstName": "Álvaro",
-    "lastName": "González Auñón",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2010,
-    "heightCm": 179,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 1,
-    "totalClubCallUps": 3,
-    "licenseCategory": "Cadete",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-cm",
-        "teamName": "Cadete Masculino",
-        "count": 2
-      }
-    ]
-  },
-  {
     "id": "p-team-jm-7",
     "teamId": "team-jm",
     "number": 18,
@@ -1029,29 +646,6 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 4,
     "totalClubCallUps": 4
-  },
-  {
-    "id": "p-team-jm-8",
-    "teamId": "team-jm",
-    "number": 19,
-    "firstName": "Lebron Michael",
-    "lastName": "Barrozo Pérez",
-    "position": "LIBERO",
-    "birthYear": 2010,
-    "heightCm": 174,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 2,
-    "totalClubCallUps": 4,
-    "licenseCategory": "Cadete",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-cm",
-        "teamName": "Cadete Masculino",
-        "count": 2
-      }
-    ]
   },
   {
     "id": "p-team-jm-9",
@@ -1113,9 +707,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 4,
     "totalClubCallUps": 4
   },
+  // Unificado (canónico): p-team-jm-13 (team-jm) absorbe duplicado p-team-sm-13 (team-sm); conserva categoría formativa Juvenil (resuelve conflicto birthYear 2002 -> 2008).
   {
     "id": "p-team-jm-13",
     "teamId": "team-jm",
+    "secondaryTeamIds": [
+      "team-sm"
+    ],
     "number": 99,
     "firstName": "Gonzalo",
     "lastName": "Galán Toro",
@@ -1127,6 +725,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 4,
     "totalClubCallUps": 5,
+    "licenseCategory": "Juvenil",
     "otherTeamCallUps": [
       {
         "teamId": "team-sm",
@@ -1135,9 +734,13 @@ export const FAVB_PLAYERS: Player[] = [
       }
     ]
   },
+  // Unificado (canónico): p-team-jf-rojo-1 (team-jf-rojo) absorbe duplicado p-team-sf-1 (team-sf); conserva categoría formativa Juvenil.
   {
     "id": "p-team-jf-rojo-1",
     "teamId": "team-jf-rojo",
+    "secondaryTeamIds": [
+      "team-sf"
+    ],
     "number": 1,
     "firstName": "Marta",
     "lastName": "Sanchez Rosado",
@@ -1149,6 +752,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 5,
     "totalClubCallUps": 11,
+    "licenseCategory": "Juvenil",
     "otherTeamCallUps": [
       {
         "teamId": "team-sf",
@@ -1157,9 +761,13 @@ export const FAVB_PLAYERS: Player[] = [
       }
     ]
   },
+  // Unificado (canónico): p-team-jf-rojo-2 (team-jf-rojo) absorbe duplicado p-team-sf-2 (team-sf); conserva categoría formativa Juvenil.
   {
     "id": "p-team-jf-rojo-2",
     "teamId": "team-jf-rojo",
+    "secondaryTeamIds": [
+      "team-sf"
+    ],
     "number": 2,
     "firstName": "Lola",
     "lastName": "Ríos Osuna",
@@ -1171,6 +779,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 4,
     "totalClubCallUps": 8,
+    "licenseCategory": "Juvenil",
     "otherTeamCallUps": [
       {
         "teamId": "team-sf",
@@ -1179,9 +788,13 @@ export const FAVB_PLAYERS: Player[] = [
       }
     ]
   },
+  // Unificado (canónico): p-team-jf-rojo-3 (team-jf-rojo) absorbe duplicado p-team-sf-4 (team-sf); conserva categoría formativa Juvenil.
   {
     "id": "p-team-jf-rojo-3",
     "teamId": "team-jf-rojo",
+    "secondaryTeamIds": [
+      "team-sf"
+    ],
     "number": 4,
     "firstName": "Lucía",
     "lastName": "Jiménez Cuadrado",
@@ -1193,34 +806,12 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 5,
     "totalClubCallUps": 9,
+    "licenseCategory": "Juvenil",
     "otherTeamCallUps": [
       {
         "teamId": "team-sf",
         "teamName": "Senior Femenino",
         "count": 4
-      }
-    ]
-  },
-  {
-    "id": "p-team-jf-rojo-4",
-    "teamId": "team-jf-rojo",
-    "number": 5,
-    "firstName": "Marina",
-    "lastName": "Perez Cañete",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2008,
-    "heightCm": 168,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 1,
-    "totalClubCallUps": 4,
-    "licenseCategory": "Cadete",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-cf-rojo",
-        "teamName": "Cadete Femenino Rojo",
-        "count": 3
       }
     ]
   },
@@ -1254,9 +845,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 4,
     "totalClubCallUps": 4
   },
+  // Unificado (canónico): p-team-jf-rojo-7 (team-jf-rojo) absorbe duplicado p-team-sf-8 (team-sf); conserva categoría formativa Juvenil (resuelve conflicto birthYear 2008 -> 2009).
   {
     "id": "p-team-jf-rojo-7",
     "teamId": "team-jf-rojo",
+    "secondaryTeamIds": [
+      "team-sf"
+    ],
     "number": 11,
     "firstName": "Luna",
     "lastName": "Guerrero Dueñas",
@@ -1268,6 +863,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 5,
     "totalClubCallUps": 11,
+    "licenseCategory": "Juvenil",
     "otherTeamCallUps": [
       {
         "teamId": "team-sf",
@@ -1291,9 +887,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 5,
     "totalClubCallUps": 5
   },
+  // Unificado (canónico): p-team-jf-rojo-9 (team-jf-rojo) absorbe duplicado p-team-sf-17 (team-sf); conserva categoría formativa Juvenil (resuelve conflicto birthYear 2008 -> 2009).
   {
     "id": "p-team-jf-rojo-9",
     "teamId": "team-jf-rojo",
+    "secondaryTeamIds": [
+      "team-sf"
+    ],
     "number": 15,
     "firstName": "Adriana",
     "lastName": "Megens Marin",
@@ -1305,6 +905,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 4,
     "totalClubCallUps": 7,
+    "licenseCategory": "Juvenil",
     "otherTeamCallUps": [
       {
         "teamId": "team-sf",
@@ -1328,9 +929,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 4,
     "totalClubCallUps": 4
   },
+  // Unificado (canónico): p-team-jf-rojo-11 (team-jf-rojo) absorbe duplicado p-team-sf-12 (team-sf); conserva categoría formativa Juvenil (resuelve conflicto birthYear 2008 -> 2009).
   {
     "id": "p-team-jf-rojo-11",
     "teamId": "team-jf-rojo",
+    "secondaryTeamIds": [
+      "team-sf"
+    ],
     "number": 17,
     "firstName": "Rocio",
     "lastName": "Valencia Artola",
@@ -1342,6 +947,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 4,
     "totalClubCallUps": 5,
+    "licenseCategory": "Juvenil",
     "otherTeamCallUps": [
       {
         "teamId": "team-sf",
@@ -1620,9 +1226,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 2,
     "totalClubCallUps": 2
   },
+  // Unificado (canónico): p-team-cm-1 (team-cm) absorbe duplicado p-team-jm-1 (team-jm); conserva categoría formativa Cadete (resuelve conflicto birthYear 2010 -> 2011).
   {
     "id": "p-team-cm-1",
     "teamId": "team-cm",
+    "secondaryTeamIds": [
+      "team-jm"
+    ],
     "number": 1,
     "firstName": "Nicolás",
     "lastName": "Serrato Rojo",
@@ -1634,6 +1244,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 2,
     "totalClubCallUps": 6,
+    "licenseCategory": "Cadete",
     "otherTeamCallUps": [
       {
         "teamId": "team-jm",
@@ -1672,9 +1283,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 1,
     "totalClubCallUps": 1
   },
+  // Unificado (canónico): p-team-cm-4 (team-cm) absorbe duplicado p-team-jm-5 (team-jm); conserva categoría formativa Cadete (resuelve conflicto birthYear 2010 -> 2011).
   {
     "id": "p-team-cm-4",
     "teamId": "team-cm",
+    "secondaryTeamIds": [
+      "team-jm"
+    ],
     "number": 4,
     "firstName": "Pedro",
     "lastName": "Núñez Romero",
@@ -1686,6 +1301,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 2,
     "totalClubCallUps": 6,
+    "licenseCategory": "Cadete",
     "otherTeamCallUps": [
       {
         "teamId": "team-jm",
@@ -1754,9 +1370,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 2,
     "totalClubCallUps": 2
   },
+  // Unificado (canónico): p-team-cm-9 (team-cm) absorbe duplicado p-team-jm-6 (team-jm); conserva categoría formativa Cadete (resuelve conflicto birthYear 2010 -> 2011).
   {
     "id": "p-team-cm-9",
     "teamId": "team-cm",
+    "secondaryTeamIds": [
+      "team-jm"
+    ],
     "number": 15,
     "firstName": "Álvaro",
     "lastName": "González Auñón",
@@ -1768,6 +1388,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 2,
     "totalClubCallUps": 3,
+    "licenseCategory": "Cadete",
     "otherTeamCallUps": [
       {
         "teamId": "team-jm",
@@ -1791,9 +1412,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 1,
     "totalClubCallUps": 1
   },
+  // Unificado (canónico): p-team-cm-11 (team-cm) absorbe duplicado p-team-jm-8 (team-jm); conserva categoría formativa Cadete (resuelve conflicto birthYear 2010 -> 2011).
   {
     "id": "p-team-cm-11",
     "teamId": "team-cm",
+    "secondaryTeamIds": [
+      "team-jm"
+    ],
     "number": 19,
     "firstName": "Lebron Michael",
     "lastName": "Barrozo Pérez",
@@ -1805,6 +1430,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 2,
     "totalClubCallUps": 4,
+    "licenseCategory": "Cadete",
     "otherTeamCallUps": [
       {
         "teamId": "team-jm",
@@ -1858,9 +1484,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 3,
     "totalClubCallUps": 3
   },
+  // Unificado (canónico): p-team-cf-rojo-3 (team-cf-rojo) absorbe duplicado p-team-jf-rojo-4 (team-jf-rojo); conserva categoría formativa Cadete (resuelve conflicto birthYear 2008 -> 2010).
   {
     "id": "p-team-cf-rojo-3",
     "teamId": "team-cf-rojo",
+    "secondaryTeamIds": [
+      "team-jf-rojo"
+    ],
     "number": 5,
     "firstName": "Marina",
     "lastName": "Perez Cañete",
@@ -1872,34 +1502,12 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 4,
+    "licenseCategory": "Cadete",
     "otherTeamCallUps": [
       {
         "teamId": "team-jf-rojo",
         "teamName": "Juvenil Femenino Rojo",
         "count": 1
-      }
-    ]
-  },
-  {
-    "id": "p-team-cf-rojo-4",
-    "teamId": "team-cf-rojo",
-    "number": 6,
-    "firstName": "Zayra",
-    "lastName": "Ortega Gomez",
-    "position": "MIDDLE_BLOCKER",
-    "birthYear": 2011,
-    "heightCm": 173,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 2,
-    "totalClubCallUps": 5,
-    "licenseCategory": "Infantil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-if-rojo",
-        "teamName": "Infantil Femenino Rojo",
-        "count": 3
       }
     ]
   },
@@ -1932,29 +1540,6 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 3
-  },
-  {
-    "id": "p-team-cf-rojo-7",
-    "teamId": "team-cf-rojo",
-    "number": 12,
-    "firstName": "Nira",
-    "lastName": "González Pérez",
-    "position": "SETTER",
-    "birthYear": 2010,
-    "heightCm": 172,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 2,
-    "totalClubCallUps": 5,
-    "licenseCategory": "Infantil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-if-rojo",
-        "teamName": "Infantil Femenino Rojo",
-        "count": 3
-      }
-    ]
   },
   {
     "id": "p-team-cf-rojo-8",
@@ -2000,52 +1585,6 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 3
-  },
-  {
-    "id": "p-team-cf-rojo-11",
-    "teamId": "team-cf-rojo",
-    "number": 16,
-    "firstName": "Chloe Hannah",
-    "lastName": "Cerda Ynoa",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2011,
-    "heightCm": 171,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 2,
-    "totalClubCallUps": 5,
-    "licenseCategory": "Infantil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-if-rojo",
-        "teamName": "Infantil Femenino Rojo",
-        "count": 3
-      }
-    ]
-  },
-  {
-    "id": "p-team-cf-rojo-12",
-    "teamId": "team-cf-rojo",
-    "number": 20,
-    "firstName": "Daniela",
-    "lastName": "Romero Oña",
-    "position": "OPPOSITE",
-    "birthYear": 2010,
-    "heightCm": 173,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 1,
-    "totalClubCallUps": 4,
-    "licenseCategory": "Infantil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-if-rojo",
-        "teamName": "Infantil Femenino Rojo",
-        "count": 3
-      }
-    ]
   },
   {
     "id": "p-team-cf-rojo-13",
@@ -2181,52 +1720,6 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 2,
     "totalClubCallUps": 2
-  },
-  {
-    "id": "p-team-cf-negro-7",
-    "teamId": "team-cf-negro",
-    "number": 14,
-    "firstName": "Nora",
-    "lastName": "Pareja Beriguete",
-    "position": "OUTSIDE_HITTER",
-    "birthYear": 2011,
-    "heightCm": 165,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 1,
-    "totalClubCallUps": 4,
-    "licenseCategory": "Infantil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-if-negro",
-        "teamName": "Infantil Femenino Negro",
-        "count": 3
-      }
-    ]
-  },
-  {
-    "id": "p-team-cf-negro-8",
-    "teamId": "team-cf-negro",
-    "number": 15,
-    "firstName": "Valeria",
-    "lastName": "Nuñez Iglesias",
-    "position": "OPPOSITE",
-    "birthYear": 2010,
-    "heightCm": 167,
-    "photoUrl": "/images/player-placeholder.svg",
-    "isCaptain": false,
-    "isHomegrown": true,
-    "matchesCalledUp": 1,
-    "totalClubCallUps": 4,
-    "licenseCategory": "Infantil",
-    "otherTeamCallUps": [
-      {
-        "teamId": "team-if-negro",
-        "teamName": "Infantil Femenino Negro",
-        "count": 3
-      }
-    ]
   },
   {
     "id": "p-team-cf-negro-9",
@@ -2470,9 +1963,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 3,
     "totalClubCallUps": 3
   },
+  // Unificado (canónico): p-team-if-rojo-4 (team-if-rojo) absorbe duplicado p-team-cf-rojo-4 (team-cf-rojo); conserva categoría formativa Infantil (resuelve conflicto birthYear 2011 -> 2013).
   {
     "id": "p-team-if-rojo-4",
     "teamId": "team-if-rojo",
+    "secondaryTeamIds": [
+      "team-cf-rojo"
+    ],
     "number": 6,
     "firstName": "Zayra",
     "lastName": "Ortega Gomez",
@@ -2484,6 +1981,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 5,
+    "licenseCategory": "Infantil",
     "otherTeamCallUps": [
       {
         "teamId": "team-cf-rojo",
@@ -2507,9 +2005,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 3,
     "totalClubCallUps": 3
   },
+  // Unificado (canónico): p-team-if-rojo-6 (team-if-rojo) absorbe duplicado p-team-cf-rojo-12 (team-cf-rojo); conserva categoría formativa Infantil (resuelve conflicto birthYear 2010 -> 2013).
   {
     "id": "p-team-if-rojo-6",
     "teamId": "team-if-rojo",
+    "secondaryTeamIds": [
+      "team-cf-rojo"
+    ],
     "number": 10,
     "firstName": "Daniela",
     "lastName": "Romero Oña",
@@ -2521,6 +2023,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 4,
+    "licenseCategory": "Infantil",
     "otherTeamCallUps": [
       {
         "teamId": "team-cf-rojo",
@@ -2529,9 +2032,13 @@ export const FAVB_PLAYERS: Player[] = [
       }
     ]
   },
+  // Unificado (canónico): p-team-if-rojo-7 (team-if-rojo) absorbe duplicado p-team-cf-rojo-7 (team-cf-rojo); conserva categoría formativa Infantil (resuelve conflicto birthYear 2010 -> 2013).
   {
     "id": "p-team-if-rojo-7",
     "teamId": "team-if-rojo",
+    "secondaryTeamIds": [
+      "team-cf-rojo"
+    ],
     "number": 12,
     "firstName": "Nira",
     "lastName": "González Pérez",
@@ -2543,6 +2050,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 5,
+    "licenseCategory": "Infantil",
     "otherTeamCallUps": [
       {
         "teamId": "team-cf-rojo",
@@ -2566,9 +2074,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 2,
     "totalClubCallUps": 2
   },
+  // Unificado (canónico): p-team-if-rojo-9 (team-if-rojo) absorbe duplicado p-team-cf-rojo-11 (team-cf-rojo); conserva categoría formativa Infantil (resuelve conflicto birthYear 2011 -> 2013).
   {
     "id": "p-team-if-rojo-9",
     "teamId": "team-if-rojo",
+    "secondaryTeamIds": [
+      "team-cf-rojo"
+    ],
     "number": 16,
     "firstName": "Chloe Hannah",
     "lastName": "Cerda Ynoa",
@@ -2580,6 +2092,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 5,
+    "licenseCategory": "Infantil",
     "otherTeamCallUps": [
       {
         "teamId": "team-cf-rojo",
@@ -2640,9 +2153,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 3,
     "totalClubCallUps": 3
   },
+  // Unificado (canónico): p-team-if-negro-3 (team-if-negro) absorbe duplicado p-team-cf-negro-7 (team-cf-negro); conserva categoría formativa Infantil (resuelve conflicto birthYear 2011 -> 2013).
   {
     "id": "p-team-if-negro-3",
     "teamId": "team-if-negro",
+    "secondaryTeamIds": [
+      "team-cf-negro"
+    ],
     "number": 4,
     "firstName": "Nora",
     "lastName": "Pareja Beriguete",
@@ -2654,6 +2171,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 4,
+    "licenseCategory": "Infantil",
     "otherTeamCallUps": [
       {
         "teamId": "team-cf-negro",
@@ -2759,9 +2277,13 @@ export const FAVB_PLAYERS: Player[] = [
     "matchesCalledUp": 2,
     "totalClubCallUps": 2
   },
+  // Unificado (canónico): p-team-if-negro-10 (team-if-negro) absorbe duplicado p-team-cf-negro-8 (team-cf-negro); conserva categoría formativa Infantil (resuelve conflicto birthYear 2010 -> 2013).
   {
     "id": "p-team-if-negro-10",
     "teamId": "team-if-negro",
+    "secondaryTeamIds": [
+      "team-cf-negro"
+    ],
     "number": 15,
     "firstName": "Valeria",
     "lastName": "Nuñez Iglesias",
@@ -2773,6 +2295,7 @@ export const FAVB_PLAYERS: Player[] = [
     "isHomegrown": true,
     "matchesCalledUp": 3,
     "totalClubCallUps": 4,
+    "licenseCategory": "Infantil",
     "otherTeamCallUps": [
       {
         "teamId": "team-cf-negro",

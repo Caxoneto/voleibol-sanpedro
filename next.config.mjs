@@ -4,9 +4,9 @@ const isDev = process.env.NODE_ENV === 'development';
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com data:",
-  "img-src 'self' data: blob: https://images.unsplash.com https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net https://ligaafade.es",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net https://ligaafade.es",
   "connect-src 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
@@ -21,10 +21,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
       {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',

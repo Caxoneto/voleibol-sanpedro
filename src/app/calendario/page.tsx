@@ -1,28 +1,44 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  INITIAL_CATEGORIES,
-  INITIAL_TEAMS,
-  INITIAL_MATCHES,
-  CLUB_INFO,
-} from '@/lib/data-store';
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  Calendar,
+  CalendarRange,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileDown,
+  FileText,
+  Home,
+  MapPin,
+  Navigation,
+  Plane,
+  RefreshCw,
+  Scale,
+  Smartphone,
+  X,
+} from 'lucide-react';
+import { CLUB_CATEGORIES_META, CLUB_TEAMS_META, CLUB_INFO } from '@/lib/club-info';
 import { Match } from '@/lib/types';
 import {
   formatMadridDate,
   formatMadridTime,
   generateGoogleCalendarUrl,
   generateIcsContent,
+  generateMultipleIcsContent,
 } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
 import { isRestMatch } from '@/lib/match-utils';
 import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
+import { sanitizeHttpsUrl } from '@/lib/validators';
 import MatchActaModal from '@/components/MatchActaModal';
-import { Scale, FileText, Navigation } from 'lucide-react';
-import jsPDF from 'jspdf';
 
 interface RoundSummary {
   round: number;
@@ -33,11 +49,26 @@ interface RoundSummary {
   earliestPendingTime: number;
 }
 
-const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v6';
+const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v7';
+
+function formatSyncHourMadrid(iso?: string): string {
+  try {
+    const date = iso ? new Date(iso) : new Date();
+    return date.toLocaleTimeString('es-ES', {
+      timeZone: 'Europe/Madrid',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+  } catch {
+    return 'Reciente';
+  }
+}
 
 export default function CalendarioPage() {
   const { recordings } = useStreaming();
-  const [allMatches, setAllMatches] = useState<Match[]>(INITIAL_MATCHES);
+  const [allMatches, setAllMatches] = useState<Match[]>([]);
+  const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [conditionFilter, setConditionFilter] = useState<'ALL' | 'LOCAL' | 'VISITANTE'>('ALL');
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
@@ -47,49 +78,89 @@ export default function CalendarioPage() {
   const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    setNowMs(Date.now());
   }, []);
 
   const roundsScrollRef = useRef<HTMLDivElement | null>(null);
   const catScrollRef = useRef<HTMLDivElement | null>(null);
+  const venueModalRef = useRef<HTMLDivElement | null>(null);
+  const venueTriggerRef = useRef<HTMLElement | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedCategoryRef = useRef(selectedCategory);
+  useEffect(() => {
+    selectedCategoryRef.current = selectedCategory;
+  }, [selectedCategory]);
 
-  const applyLiveMatches = (liveList: Array<Record<string, unknown>>) => {
-    const liveMap = new Map(liveList.map((lm) => [String(lm.id), lm]));
-    const merged: Match[] = INITIAL_MATCHES.map((m) => {
-      const live = liveMap.get(m.id);
-      if (!live) return m;
+  const showToast = useCallback((msg: string) => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setSyncFeedback(msg);
+    feedbackTimerRef.current = setTimeout(() => {
+      setSyncFeedback(null);
+      feedbackTimerRef.current = null;
+    }, 3500);
+  }, []);
+
+  const applyLiveMatches = useCallback((liveList: Array<Record<string, unknown>>) => {
+    const mapped: Match[] = liveList.map((live) => {
+      const homeName = typeof live.homeTeam === 'string' && live.homeTeam
+        ? live.homeTeam
+        : typeof live.homeTeamName === 'string'
+        ? live.homeTeamName
+        : 'Equipo Local';
+      const awayName = typeof live.awayTeam === 'string' && live.awayTeam
+        ? live.awayTeam
+        : typeof live.awayTeamName === 'string'
+        ? live.awayTeamName
+        : 'Equipo Visitante';
+      const status =
+        live.status === 'FINISHED' ||
+        live.status === 'LIVE' ||
+        live.status === 'SCHEDULED' ||
+        live.status === 'POSTPONED' ||
+        live.status === 'CANCELLED'
+          ? (live.status as Match['status'])
+          : 'SCHEDULED';
+
       return {
-        ...m,
-        homeTeamName: typeof live.homeTeam === 'string' && live.homeTeam ? live.homeTeam : m.homeTeamName,
-        awayTeamName: typeof live.awayTeam === 'string' && live.awayTeam ? live.awayTeam : m.awayTeamName,
-        isClubHome: typeof live.isClubHome === 'boolean' ? live.isClubHome : m.isClubHome,
-        matchDate: typeof live.matchDate === 'string' && live.matchDate ? live.matchDate : m.matchDate,
-        venueName: typeof live.venue === 'string' && live.venue ? live.venue : m.venueName,
-        court: (live.court as string | undefined) ?? m.court,
-        locality: (live.locality as string | undefined) ?? m.locality,
-        googleMapsUrl: (live.googleMapsUrl as string | undefined) ?? m.googleMapsUrl,
-        referees: (live.referees as Match['referees']) ?? m.referees,
-        homeRoster: (live.homeRoster as Match['homeRoster']) ?? m.homeRoster,
-        awayRoster: (live.awayRoster as Match['awayRoster']) ?? m.awayRoster,
-        status:
-          live.status === 'FINISHED' ||
-          live.status === 'LIVE' ||
-          live.status === 'SCHEDULED' ||
-          live.status === 'POSTPONED' ||
-          live.status === 'CANCELLED'
-            ? (live.status as Match['status'])
-            : m.status,
-        statusText: typeof live.statusText === 'string' ? live.statusText : m.statusText,
-        setScores:
-          Array.isArray(live.setScores) && live.setScores.length > 0
-            ? (live.setScores as { home: number; away: number }[])
-            : m.setScores,
+        id: String(live.id),
+        teamId: typeof live.teamId === 'string' ? live.teamId : '',
+        round: typeof live.round === 'number' ? live.round : Number(live.round) || 1,
+        homeTeamName: homeName,
+        awayTeamName: awayName,
+        isClubHome: Boolean(live.isClubHome),
+        matchDate: typeof live.matchDate === 'string' ? live.matchDate : new Date().toISOString(),
+        venueName:
+          typeof live.venue === 'string' && live.venue
+            ? live.venue
+            : typeof live.venueName === 'string' && live.venueName
+            ? live.venueName
+            : CLUB_INFO.venueName,
+        court: typeof live.court === 'string' ? live.court : undefined,
+        locality: typeof live.locality === 'string' ? live.locality : undefined,
+        googleMapsUrl: typeof live.googleMapsUrl === 'string' ? live.googleMapsUrl : undefined,
+        referees: Array.isArray(live.referees) ? (live.referees as Match['referees']) : undefined,
+        homeRoster: Array.isArray(live.homeRoster) ? (live.homeRoster as Match['homeRoster']) : undefined,
+        awayRoster: Array.isArray(live.awayRoster) ? (live.awayRoster as Match['awayRoster']) : undefined,
+        homeRosterCount: typeof live.homeRosterCount === 'number' ? live.homeRosterCount : undefined,
+        awayRosterCount: typeof live.awayRosterCount === 'number' ? live.awayRosterCount : undefined,
+        status,
+        statusText: typeof live.statusText === 'string' ? live.statusText : undefined,
+        setScores: Array.isArray(live.setScores) ? (live.setScores as Match['setScores']) : [],
+        currentSetScore:
+          live.currentSetScore && typeof live.currentSetScore === 'object'
+            ? (live.currentSetScore as Match['currentSetScore'])
+            : undefined,
+        association: live.association === 'AFADE' || live.association === 'FAVB' ? live.association : undefined,
+        favbMatchUrl: typeof live.favbUrl === 'string' ? live.favbUrl : undefined,
+        videoUrl: typeof live.videoUrl === 'string' ? live.videoUrl : undefined,
       };
     });
-    setAllMatches(merged);
-  };
+    setAllMatches(mapped);
+  }, []);
 
   const handleActaMatchUpdated = (updated: Record<string, any>) => {
     if (!updated) return;
@@ -147,105 +218,152 @@ export default function CalendarioPage() {
     }
     const homeCount = Array.isArray(m.homeRoster) ? m.homeRoster.filter((p) => !p.isStaff).length : 0;
     const awayCount = Array.isArray(m.awayRoster) ? m.awayRoster.filter((p) => !p.isStaff).length : 0;
-    return homeCount + awayCount;
-  };
-
-  const fetchLiveCalendarMatches = async (force = false) => {
-    if (force) setSyncing(true);
-    try {
-      const res = await fetch(`/api/favb/sync?force=${force}`, { cache: 'no-store' });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.matches) && data.matches.length > 0) {
-        applyLiveMatches(data.matches);
-        const formattedTime = data.lastSync
-          ? new Date(data.lastSync).toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-        setLastSyncTime(formattedTime);
-
-        try {
-          localStorage.setItem(
-            MATCHES_STORAGE_KEY,
-            JSON.stringify({
-              matches: data.matches,
-              lastSync: data.lastSync || new Date().toISOString(),
-            })
-          );
-        } catch {
-          // Ignorar límite de localStorage
-        }
-
-        if (force) {
-          const isAfade = selectedCategory.includes('afade');
-          setSyncFeedback(
-            `Calendario, horarios y resultados sincronizados con ${isAfade ? 'ligaafade.es' : 'las competiciones oficiales (FAVB y Liga AFADE)'}`
-          );
-          setTimeout(() => setSyncFeedback(null), 3500);
-        }
-      }
-    } catch {
-      if (force) {
-        setSyncFeedback('Mostrando último calendario oficial sincronizado.');
-        setTimeout(() => setSyncFeedback(null), 3500);
-      }
-    } finally {
-      setSyncing(false);
+    if (homeCount + awayCount > 0) {
+      return homeCount + awayCount;
     }
+    const clubSummaryCount = m.isClubHome ? m.homeRosterCount : m.awayRosterCount;
+    if (typeof clubSummaryCount === 'number' && clubSummaryCount > 0) {
+      return clubSummaryCount;
+    }
+    return (m.homeRosterCount ?? 0) + (m.awayRosterCount ?? 0);
   };
+
+  const fetchLiveCalendarMatches = useCallback(
+    async (manual = false) => {
+      if (manual) setSyncing(true);
+      try {
+        const res = await fetch('/api/favb/sync', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.ok && data.success && Array.isArray(data.matches) && data.matches.length > 0) {
+          applyLiveMatches(data.matches);
+          setLastSyncTime(formatSyncHourMadrid(data.lastSync));
+
+          try {
+            const safeMatches = (data.matches as Array<Record<string, unknown>>).map(
+              ({ homeRoster: _h, awayRoster: _a, ...rest }) => rest
+            );
+            window.localStorage.setItem(
+              MATCHES_STORAGE_KEY,
+              JSON.stringify({
+                matches: safeMatches,
+                lastSync: data.lastSync || new Date().toISOString(),
+              })
+            );
+          } catch {
+            // Ignorar límite de localStorage
+          }
+
+          if (manual) {
+            const isAfade = selectedCategoryRef.current.includes('afade');
+            showToast(
+              `Calendario, horarios y resultados actualizados desde ${isAfade ? 'ligaafade.es' : 'las competiciones oficiales (FAVB y Liga AFADE)'}`
+            );
+          }
+        }
+      } catch {
+        if (manual) {
+          showToast('Mostrando último calendario oficial sincronizado.');
+        }
+      } finally {
+        setLoadingInitial(false);
+        if (manual) setSyncing(false);
+      }
+    },
+    [applyLiveMatches, showToast]
+  );
 
   useEffect(() => {
     try {
-      const cached = localStorage.getItem(MATCHES_STORAGE_KEY);
+      const cached = window.localStorage.getItem(MATCHES_STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
           applyLiveMatches(parsed.matches);
+          setLoadingInitial(false);
         }
         if (parsed.lastSync) {
-          setLastSyncTime(
-            new Date(parsed.lastSync).toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          );
+          setLastSyncTime(formatSyncHourMadrid(parsed.lastSync));
         }
       }
     } catch {
       // Ignorar error de lectura
     }
 
-    fetchLiveCalendarMatches(false);
+    void fetchLiveCalendarMatches(false);
+    return () => {
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    };
+  }, [applyLiveMatches, fetchLiveCalendarMatches]);
+
+  const closeVenueModal = useCallback(() => {
+    setShowVenueModal(false);
+    const prev = venueTriggerRef.current;
+    if (prev && typeof prev.focus === 'function') {
+      requestAnimationFrame(() => prev.focus());
+    }
   }, []);
 
-  // Cerrar modal del Pabellón con tecla Escape
+  // Focus trap y tecla Escape en modal del Pabellón
   useEffect(() => {
     if (!showVenueModal) return;
+
+    const modalEl = venueModalRef.current;
+    if (modalEl) {
+      const focusable = modalEl.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length > 0) {
+        requestAnimationFrame(() => focusable[0].focus());
+      }
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setShowVenueModal(false);
+        e.preventDefault();
+        closeVenueModal();
+        return;
+      }
+      if (e.key === 'Tab' && venueModalRef.current) {
+        const focusable = Array.from(
+          venueModalRef.current.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first || !venueModalRef.current.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else if (document.activeElement === last || !venueModalRef.current.contains(document.activeElement)) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showVenueModal]);
+  }, [showVenueModal, closeVenueModal]);
 
   // 1. Partidos filtrados por categoría y condición (Local / Visitante)
   const filteredMatches = useMemo(() => {
-    return allMatches.filter((match) => {
-      if (selectedCategory !== 'ALL') {
-        const team = INITIAL_TEAMS.find((t) => t.id === match.teamId);
-        if (!team || team.categoryId !== selectedCategory) return false;
-      }
-      if (conditionFilter === 'LOCAL' && !match.isClubHome) return false;
-      if (conditionFilter === 'VISITANTE' && match.isClubHome) return false;
+    return allMatches
+      .filter((match) => {
+        if (selectedCategory !== 'ALL') {
+          const team = CLUB_TEAMS_META.find((t) => t.id === match.teamId);
+          if (!team || team.categoryId !== selectedCategory) return false;
+        }
+        if (conditionFilter === 'LOCAL' && !match.isClubHome) return false;
+        if (conditionFilter === 'VISITANTE' && match.isClubHome) return false;
 
-      return true;
-    }).sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
+        return true;
+      })
+      .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
   }, [allMatches, selectedCategory, conditionFilter]);
 
-  // 2. Agrupación por Jornadas (J1, J2, J3...) para no sobrecargar el DOM en móvil
+  // 2. Agrupación por Jornadas (J1, J2, J3...)
   const roundsData = useMemo<RoundSummary[]>(() => {
     const byRound = new Map<number, Match[]>();
     for (const m of filteredMatches) {
@@ -264,14 +382,19 @@ export default function CalendarioPage() {
       const playablePending = roundMatches.filter((m) => {
         if (isRestMatch(m)) return false;
         if (m.status === 'FINISHED' || m.status === 'POSTPONED' || m.status === 'CANCELLED') return false;
-        const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
-        if (m.status === 'SCHEDULED' && isPast12h) return false;
+        if (nowMs !== null) {
+          const isPast12h = nowMs - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
+          if (m.status === 'SCHEDULED' && isPast12h) return false;
+        }
         return true;
       });
       const upcomingAny = roundMatches.filter((m) => {
         if (m.status === 'FINISHED' || m.status === 'POSTPONED' || m.status === 'CANCELLED') return false;
-        const isPast12h = Date.now() - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
-        return !isPast12h;
+        if (nowMs !== null) {
+          const isPast12h = nowMs - new Date(m.matchDate).getTime() >= 12 * 60 * 60 * 1000;
+          return !isPast12h;
+        }
+        return true;
       });
       const effectiveUpcoming = playablePending.length > 0 ? playablePending : upcomingAny;
       const firstMatch = roundMatches[0];
@@ -293,20 +416,20 @@ export default function CalendarioPage() {
     }
 
     return summaries;
-  }, [filteredMatches]);
+  }, [filteredMatches, nowMs]);
 
-  // 3. Jornada recomendada por defecto: la jornada del próximo partido pendiente más cercano cuya fecha de inicio sea actual o futura
+  // 3. Jornada recomendada por defecto
   const recommendedRound = useMemo<number | null>(() => {
     if (roundsData.length === 0) return null;
-    const now = Date.now();
-    // Jornada próxima/en curso: aquella con partidos pendientes cuya fecha oficial de inicio no pertenezca a semanas pasadas
-    const upcomingRounds = roundsData.filter((r) => {
-      const firstMatchTime = r.matches[0] ? new Date(r.matches[0].matchDate).getTime() : 0;
-      return r.hasPending && firstMatchTime >= now - 48 * 3600 * 1000;
-    });
+    if (nowMs !== null) {
+      const upcomingRounds = roundsData.filter((r) => {
+        const firstMatchTime = r.matches[0] ? new Date(r.matches[0].matchDate).getTime() : 0;
+        return r.hasPending && firstMatchTime >= nowMs - 48 * 3600 * 1000;
+      });
 
-    if (upcomingRounds.length > 0) {
-      return upcomingRounds[0].round;
+      if (upcomingRounds.length > 0) {
+        return upcomingRounds[0].round;
+      }
     }
 
     const withPending = roundsData
@@ -317,7 +440,7 @@ export default function CalendarioPage() {
       return withPending[0].round;
     }
     return roundsData[roundsData.length - 1].round;
-  }, [roundsData]);
+  }, [roundsData, nowMs]);
 
   // Actualizar jornada activa cuando cambia la categoría o si la jornada seleccionada no existe en el filtro actual
   useEffect(() => {
@@ -398,20 +521,19 @@ export default function CalendarioPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Descargar calendario completo para el móvil
+  // Descargar calendario completo válido RFC 5545 en un único VCALENDAR
   const handleDownloadFullCalendarIcs = () => {
-    const events = filteredMatches
-      .map((m) =>
-        generateIcsContent(
-          `${m.homeTeamName} vs ${m.awayTeamName}`,
-          m.venueName,
-          m.matchDate,
-          m.id
-        )
-      )
-      .join('\n');
+    const icsEvents = filteredMatches
+      .filter((m) => !isRestMatch(m))
+      .map((m) => ({
+        title: `${m.homeTeamName} vs ${m.awayTeamName}`,
+        venue: m.venueName,
+        startDateUtc: m.matchDate,
+        matchId: m.id,
+      }));
+    const icsBody = generateMultipleIcsContent(icsEvents);
 
-    const blob = new Blob([events], { type: 'text/calendar;charset=utf-8' });
+    const blob = new Blob([icsBody], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -422,87 +544,105 @@ export default function CalendarioPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Exportar calendario en PDF oficial
-  const handleExportPdf = () => {
+  // Exportar calendario en PDF oficial con carga dinámica de jsPDF y splitTextToSize (sin solapar columnas)
+  const handleExportPdf = async () => {
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
     });
 
-    // Fondo y cabecera
-    doc.setFillColor(19, 19, 19);
-    doc.rect(0, 0, 210, 35, 'F');
+    const drawHeader = () => {
+      doc.setFillColor(19, 19, 19);
+      doc.rect(0, 0, 210, 35, 'F');
 
-    doc.setTextColor(217, 4, 41);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text('C.D. VOLEIBOL SAN PEDRO', 15, 16);
+      doc.setTextColor(217, 4, 41);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.text('C.D. VOLEIBOL SAN PEDRO', 15, 16);
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.text('CALENDARIO OFICIAL DE COMPETICIÓN • TEMPORADA 2026 / 2027', 15, 24);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(
-      'Federación Andaluza de Voleibol (FAVB) • Pabellón Polideportivo Sergio Scariolo',
-      15,
-      30
-    );
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.text('CALENDARIO OFICIAL DE COMPETICIÓN • TEMPORADA 2026 / 2027', 15, 24);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(
+        'Federación Andaluza de Voleibol (FAVB) • Pabellón Polideportivo Sergio Scariolo',
+        15,
+        30
+      );
 
-    // Tabla de Partidos
-    let y = 46;
-    doc.setTextColor(30, 30, 30);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text('JORNADA', 15, y);
-    doc.text('FECHA Y HORA', 40, y);
-    doc.text('ENFRENTAMIENTO', 85, y);
-    doc.text('SEDE', 155, y);
+      let headerY = 46;
+      doc.setTextColor(30, 30, 30);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.text('JORNADA', 15, headerY);
+      doc.text('FECHA Y HORA', 38, headerY);
+      doc.text('ENFRENTAMIENTO', 76, headerY);
+      doc.text('SEDE', 150, headerY);
 
-    doc.setDrawColor(217, 4, 41);
-    doc.setLineWidth(0.5);
-    doc.line(15, y + 2, 195, y + 2);
-    y += 8;
+      doc.setDrawColor(217, 4, 41);
+      doc.setLineWidth(0.5);
+      doc.line(15, headerY + 2, 195, headerY + 2);
+      return headerY + 8;
+    };
+
+    let y = drawHeader();
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
 
     filteredMatches.forEach((m) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-
       const fecha = `${formatMadridDate(m.matchDate, {
         day: '2-digit',
         month: '2-digit',
       })} ${formatMadridTime(m.matchDate)}h`;
       const versus = `${m.homeTeamName} vs ${m.awayTeamName}`;
-      const sede = m.isClubHome ? 'Sergio Scariolo (LOCAL)' : m.venueName.substring(0, 28);
+      const sedeRaw = m.isClubHome ? 'Sergio Scariolo (LOCAL)' : m.venueName || 'Por determinar';
+
+      const versusLines = doc.splitTextToSize(versus, 70) as string[];
+      const sedeLines = doc.splitTextToSize(sedeRaw, 44) as string[];
+      const lineCount = Math.max(versusLines.length, sedeLines.length, 1);
+      const rowHeight = lineCount * 3.8 + 3.4;
+
+      if (y + rowHeight > 274) {
+        doc.addPage();
+        y = drawHeader();
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+      }
 
       if (m.isClubHome) {
         doc.setFillColor(254, 242, 242);
-        doc.rect(14, y - 4, 182, 7, 'F');
+        doc.rect(14, y - 3.6, 182, rowHeight, 'F');
       }
 
       doc.setTextColor(30, 30, 30);
       doc.text(`Jor. ${m.round}`, 15, y);
-      doc.text(fecha, 40, y);
-      doc.text(versus, 85, y);
-      doc.text(sede, 155, y);
+      doc.text(fecha, 38, y);
+      doc.text(versusLines, 76, y);
+      doc.text(sedeLines, 150, y);
 
-      y += 8;
+      y += rowHeight;
     });
 
-    // Pie de página
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text(
-      `Generado el ${new Date().toLocaleDateString('es-ES')} desde www.voleibolsanpedro.com`,
-      15,
-      285
-    );
+    const totalPages = doc.getNumberOfPages();
+    const madridGeneratedDate = formatMadridDate(new Date(), {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+    for (let page = 1; page <= totalPages; page++) {
+      doc.setPage(page);
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(
+        `Generado el ${madridGeneratedDate} (Europe/Madrid) desde voleibolsanpedro.es · Pág. ${page}/${totalPages}`,
+        15,
+        286
+      );
+    }
 
     doc.save('calendario-cd-voleibol-san-pedro.pdf');
   };
@@ -547,35 +687,34 @@ export default function CalendarioPage() {
             <button
               type="button"
               onClick={handleDownloadFullCalendarIcs}
-              className="w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-bright text-white transition-all shadow-md border border-white/10 hover:border-primary-container"
+              className="w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-bright text-white transition-all shadow-md border border-white/10 hover:border-primary-container cursor-pointer"
               title="Guardar calendario completo en mi móvil (iPhone, Android, Outlook)"
               aria-label="Guardar calendario en mi móvil"
             >
-              <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">
-                smartphone
-              </span>
+              <Smartphone className="w-[18px] h-[18px] text-primary" aria-hidden="true" />
             </button>
 
             <button
               type="button"
-              onClick={handleExportPdf}
-              className="w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-bright text-white transition-all shadow-md border border-white/10 hover:border-primary-container"
+              onClick={() => void handleExportPdf()}
+              className="w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-bright text-white transition-all shadow-md border border-white/10 hover:border-primary-container cursor-pointer"
               title="Exportar calendario en PDF imprimible"
               aria-label="Exportar PDF"
             >
-              <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">
-                picture_as_pdf
-              </span>
+              <FileDown className="w-[18px] h-[18px] text-primary" aria-hidden="true" />
             </button>
 
             <button
               type="button"
-              onClick={() => setShowVenueModal(true)}
-              className="w-9 h-9 flex items-center justify-center bg-primary-container hover:bg-secondary-container text-white transition-all shadow-xl border border-white/15"
+              onClick={(e) => {
+                venueTriggerRef.current = e.currentTarget;
+                setShowVenueModal(true);
+              }}
+              className="w-9 h-9 flex items-center justify-center bg-primary-container hover:bg-cta-hover text-white transition-all shadow-xl border border-white/15 cursor-pointer"
               title="Cómo llegar al Pabellón Polideportivo Sergio Scariolo"
               aria-label="Cómo llegar al Pabellón"
             >
-              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">near_me</span>
+              <Navigation className="w-[18px] h-[18px]" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -601,13 +740,14 @@ export default function CalendarioPage() {
             >
               Todas las categorías
             </button>
-            {INITIAL_CATEGORIES.map((cat) => (
+            {CLUB_CATEGORIES_META.map((cat) => (
               <button
                 key={cat.id}
+                type="button"
                 id={`cal-cat-pill-${cat.id}`}
                 onClick={() => handleSelectCategory(cat.id)}
                 aria-pressed={selectedCategory === cat.id}
-                className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                   selectedCategory === cat.id
                     ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e]'
                     : 'bg-surface-container-high text-tertiary hover:text-white'
@@ -621,8 +761,8 @@ export default function CalendarioPage() {
       </section>
 
       {syncFeedback && (
-        <div className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-in fade-in duration-200">
-          <span className="material-symbols-outlined text-emerald-400 text-[18px]" aria-hidden="true">check_circle</span>
+        <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
           <span>{syncFeedback}</span>
         </div>
       )}
@@ -668,15 +808,13 @@ export default function CalendarioPage() {
 
             <button
               type="button"
-              onClick={() => fetchLiveCalendarMatches(true)}
+              onClick={() => void fetchLiveCalendarMatches(true)}
               disabled={syncing}
-              className="w-9 h-9 bg-primary-container hover:bg-secondary-container disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0"
-              title={`Sincronizar calendario, horarios y resultados oficiales (FAVB y Liga AFADE) (Última: ${lastSyncTime})`}
-              aria-label="Sincronizar calendario"
+              className="w-9 h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0 cursor-pointer"
+              title={`Actualizar calendario, horarios y resultados oficiales (FAVB y Liga AFADE) (Última: ${lastSyncTime})`}
+              aria-label="Actualizar calendario"
             >
-              <span className={`material-symbols-outlined text-[18px] ${syncing ? 'animate-spin' : ''}`} aria-hidden="true">
-                sync
-              </span>
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} aria-hidden="true" />
             </button>
           </div>
 
@@ -685,9 +823,7 @@ export default function CalendarioPage() {
               {/* Fila Seleccionar Jornada */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="material-symbols-outlined text-primary text-[18px] shrink-0" aria-hidden="true">
-                    calendar_view_week
-                  </span>
+                  <CalendarRange className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
                   <span className="text-xs font-bold uppercase tracking-wider text-white truncate">
                     Seleccionar Jornada
                   </span>
@@ -695,7 +831,7 @@ export default function CalendarioPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedRound(recommendedRound)}
-                      className="ml-1 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
+                      className="ml-1 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0 cursor-pointer"
                     >
                       Ir a J{recommendedRound} (Próxima)
                     </button>
@@ -708,21 +844,21 @@ export default function CalendarioPage() {
                     type="button"
                     disabled={!prevRoundObj}
                     onClick={() => prevRoundObj && setSelectedRound(prevRoundObj.round)}
-                    className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors cursor-pointer"
                     title={prevRoundObj ? `Jornada anterior (J${prevRoundObj.round})` : 'Primera jornada'}
                     aria-label="Jornada anterior"
                   >
-                    <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_left</span>
+                    <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     disabled={!nextRoundObj}
                     onClick={() => nextRoundObj && setSelectedRound(nextRoundObj.round)}
-                    className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors cursor-pointer"
                     title={nextRoundObj ? `Siguiente jornada (J${nextRoundObj.round})` : 'Última jornada'}
                     aria-label="Siguiente jornada"
                   >
-                    <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_right</span>
+                    <ChevronRight className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -804,7 +940,14 @@ export default function CalendarioPage() {
 
         {/* Tarjetas de Partidos de la Jornada Seleccionada */}
         <div className="flex flex-col gap-3">
-          {displayedMatches.length === 0 ? (
+          {loadingInitial && allMatches.length === 0 ? (
+            <div className="bg-surface-container-low border border-white/10 p-10 text-center flex flex-col items-center gap-2">
+              <RefreshCw className="w-6 h-6 text-primary animate-spin" aria-hidden="true" />
+              <p className="text-xs uppercase font-bold tracking-wider text-white">
+                Cargando calendario oficial...
+              </p>
+            </div>
+          ) : displayedMatches.length === 0 ? (
             <div className="bg-surface-container-low border border-white/5 p-10 text-center">
               <p className="text-sm text-tertiary">
                 No hay partidos con los filtros seleccionados.
@@ -812,7 +955,7 @@ export default function CalendarioPage() {
             </div>
           ) : (
             displayedMatches.map((match) => {
-              const team = INITIAL_TEAMS.find((t) => t.id === match.teamId);
+              const team = CLUB_TEAMS_META.find((t) => t.id === match.teamId);
               const isRest = isRestMatch(match);
               const rawRecordingUrl = (mounted ? recordings[match.id] : null) || match.videoUrl;
               const recordingUrl = isValidYouTubeUrl(rawRecordingUrl) ? rawRecordingUrl : null;
@@ -884,13 +1027,14 @@ export default function CalendarioPage() {
                 match.venueName,
                 match.matchDate
               );
-              const mapsUrl =
+              const rawMapsUrl =
                 match.googleMapsUrl ||
                 (match.isClubHome
                   ? CLUB_INFO.venueMapsUrl
                   : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
                       `${match.venueName} ${match.locality || ''}`.trim()
                     )}`);
+              const mapsUrl = sanitizeHttpsUrl(rawMapsUrl, CLUB_INFO.venueMapsUrl);
 
               return (
                 <div
@@ -929,6 +1073,11 @@ export default function CalendarioPage() {
                           ) : match.status === 'CANCELLED' ? (
                             <span className="font-display-xl text-base sm:text-lg text-red-400 leading-none mt-0.5">
                               CANCELADO
+                            </span>
+                          ) : match.status === 'LIVE' ? (
+                            <span className="inline-flex items-center gap-1.5 font-display-xl text-base sm:text-lg text-red-400 leading-none mt-0.5">
+                              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0" />
+                              <span>EN JUEGO</span>
                             </span>
                           ) : (
                             <span className="font-display-xl text-xl text-primary leading-none mt-0.5">
@@ -969,9 +1118,11 @@ export default function CalendarioPage() {
                               : `Partido fuera (${match.venueName})`
                           }
                         >
-                          <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
-                            {match.isClubHome ? 'home' : 'flight'}
-                          </span>
+                          {match.isClubHome ? (
+                            <Home className="w-3.5 h-3.5" aria-hidden="true" />
+                          ) : (
+                            <Plane className="w-3.5 h-3.5" aria-hidden="true" />
+                          )}
                         </span>
 
                         <a
@@ -982,34 +1133,31 @@ export default function CalendarioPage() {
                           title="Guardar en Google Calendar"
                           aria-label="Google Calendar"
                         >
-                          <span className="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">
-                            event
-                          </span>
+                          <Calendar className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                         </a>
 
                         <button
                           type="button"
                           onClick={() => handleDownloadIcs(match)}
-                          className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
+                          className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container cursor-pointer"
                           title="Añadir a la agenda del móvil (.ics)"
                           aria-label="Añadir al móvil"
                         >
-                          <span className="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">
-                            smartphone
-                          </span>
+                          <Smartphone className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                         </button>
 
                         {match.isClubHome ? (
                           <button
                             type="button"
-                            onClick={() => setShowVenueModal(true)}
-                            className="w-7 h-7 bg-primary-container hover:bg-secondary-container text-white flex items-center justify-center transition-colors shadow"
+                            onClick={(e) => {
+                              venueTriggerRef.current = e.currentTarget;
+                              setShowVenueModal(true);
+                            }}
+                            className="w-7 h-7 bg-primary-container hover:bg-cta-hover text-white flex items-center justify-center transition-colors shadow cursor-pointer"
                             title="Ver ubicación del Pabellón Sergio Scariolo"
                             aria-label="Ubicación"
                           >
-                            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
-                              directions
-                            </span>
+                            <Navigation className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
                         ) : (
                           <a
@@ -1020,9 +1168,7 @@ export default function CalendarioPage() {
                             title={`Cómo llegar a ${match.venueName}`}
                             aria-label="Cómo llegar al pabellón visitante"
                           >
-                            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
-                              directions
-                            </span>
+                            <Navigation className="w-3.5 h-3.5" aria-hidden="true" />
                           </a>
                         )}
                       </div>
@@ -1106,9 +1252,7 @@ export default function CalendarioPage() {
 
                       {/* Funcionalidad 2: Venue con badge de Pista exacta, Localidad y enlace Cómo llegar */}
                       <div className="flex flex-wrap items-center gap-1.5 text-xs text-tertiary mt-1.5 min-w-0">
-                        <span className="material-symbols-outlined text-[15px] text-primary shrink-0" aria-hidden="true">
-                          pin_drop
-                        </span>
+                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
                         {match.court && (
                           <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
                             {match.court}
@@ -1168,7 +1312,7 @@ export default function CalendarioPage() {
                           <FileText className="w-3 h-3 shrink-0" />
                           <span>Acta / Convocatoria</span>
                           {getCalledUpCount(match) > 0 && (
-                            <span className="px-1.5 py-0.2 bg-black/40 text-white font-mono text-[9px]">
+                            <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[9px]">
                               {getCalledUpCount(match)} conv.
                             </span>
                           )}
@@ -1218,9 +1362,11 @@ export default function CalendarioPage() {
                             : `Partido fuera (${match.venueName})`
                         }
                       >
-                        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
-                          {match.isClubHome ? 'home' : 'flight'}
-                        </span>
+                        {match.isClubHome ? (
+                          <Home className="w-4 h-4" aria-hidden="true" />
+                        ) : (
+                          <Plane className="w-4 h-4" aria-hidden="true" />
+                        )}
                       </span>
 
                       <a
@@ -1231,34 +1377,31 @@ export default function CalendarioPage() {
                         title="Abrir y guardar este partido en Google Calendar"
                         aria-label="Google Calendar"
                       >
-                        <span className="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">
-                          event
-                        </span>
+                        <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
                       </a>
 
                       <button
                         type="button"
                         onClick={() => handleDownloadIcs(match)}
-                        className="w-8 h-8 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
+                        className="w-8 h-8 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container cursor-pointer"
                         title="Añadir cita a la agenda de tu móvil (Apple Calendar, Android, etc.)"
                         aria-label="Añadir a mi móvil"
                       >
-                        <span className="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">
-                          smartphone
-                        </span>
+                        <Smartphone className="w-4 h-4 text-primary" aria-hidden="true" />
                       </button>
 
                       {match.isClubHome ? (
                         <button
                           type="button"
-                          onClick={() => setShowVenueModal(true)}
-                          className="w-8 h-8 bg-primary-container hover:bg-secondary-container text-white flex items-center justify-center transition-colors shadow"
+                          onClick={(e) => {
+                            venueTriggerRef.current = e.currentTarget;
+                            setShowVenueModal(true);
+                          }}
+                          className="w-8 h-8 bg-primary-container hover:bg-cta-hover text-white flex items-center justify-center transition-colors shadow cursor-pointer"
                           title="Ubicación del Pabellón Sergio Scariolo"
                           aria-label="Ubicación"
                         >
-                          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
-                            directions
-                          </span>
+                          <Navigation className="w-4 h-4" aria-hidden="true" />
                         </button>
                       ) : (
                         <a
@@ -1269,17 +1412,15 @@ export default function CalendarioPage() {
                           title={`Cómo llegar a ${match.venueName} en Google Maps`}
                           aria-label="Cómo llegar al pabellón visitante"
                         >
-                          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
-                            directions
-                          </span>
+                          <Navigation className="w-4 h-4" aria-hidden="true" />
                         </a>
                       )}
                     </div>
                   </div>
 
-                  {/* Sello diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores */}
+                  {/* Sello diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores (desktop) */}
                   {(match.status === 'POSTPONED' || match.status === 'CANCELLED') && (
-                    <div className="pointer-events-none absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
+                    <div className="pointer-events-none hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-10 items-center justify-end">
                       <div
                         className={`-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] ${
                           match.status === 'CANCELLED'
@@ -1305,9 +1446,9 @@ export default function CalendarioPage() {
               <button
                 type="button"
                 onClick={() => setSelectedRound(prevRoundObj.round)}
-                className="px-3.5 py-2 bg-surface-container-high hover:bg-primary-container text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 border border-white/10 transition-colors"
+                className="px-3.5 py-2 bg-surface-container-high hover:bg-primary-container text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 border border-white/10 transition-colors cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                 <span>Jornada {prevRoundObj.round}</span>
               </button>
             ) : (
@@ -1318,10 +1459,10 @@ export default function CalendarioPage() {
               <button
                 type="button"
                 onClick={() => setSelectedRound(nextRoundObj.round)}
-                className="px-3.5 py-2 bg-surface-container-high hover:bg-primary-container text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 border border-white/10 transition-colors"
+                className="px-3.5 py-2 bg-surface-container-high hover:bg-primary-container text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 border border-white/10 transition-colors cursor-pointer"
               >
                 <span>Jornada {nextRoundObj.round}</span>
-                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </button>
             ) : (
               <div />
@@ -1337,20 +1478,27 @@ export default function CalendarioPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="venue-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeVenueModal();
+          }}
         >
-          <div className="bg-surface-container-lowest border-2 border-primary-container p-6 sm:p-8 max-w-xl w-full shadow-2xl relative">
+          <div
+            ref={venueModalRef}
+            className="bg-surface-container-lowest border-2 border-primary-container p-6 sm:p-8 max-w-xl w-full shadow-2xl relative"
+          >
             <button
-              onClick={() => setShowVenueModal(false)}
-              className="absolute top-4 right-4 text-tertiary hover:text-white"
+              type="button"
+              onClick={closeVenueModal}
+              className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-tertiary hover:text-white cursor-pointer"
               aria-label="Cerrar información del pabellón"
             >
-              <span className="material-symbols-outlined text-[24px]" aria-hidden="true">close</span>
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
 
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-primary-container text-white flex items-center justify-center">
-                <span className="material-symbols-outlined text-[22px]" aria-hidden="true">stadium</span>
+              <div className="w-10 h-10 bg-primary-container text-white flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5" aria-hidden="true" />
               </div>
               <div>
                 <span className="text-[10px] uppercase tracking-widest text-primary font-bold block">
@@ -1380,17 +1528,18 @@ export default function CalendarioPage() {
 
             <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
               <a
-                href={CLUB_INFO.venueMapsUrl}
+                href={sanitizeHttpsUrl(CLUB_INFO.venueMapsUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto flex-1 text-center py-3 px-4 bg-primary-container hover:bg-secondary-container text-white font-label-md text-xs uppercase tracking-wider font-bold shadow-md flex items-center justify-center gap-2"
+                className="w-full sm:w-auto flex-1 text-center py-3 px-4 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold shadow-md flex items-center justify-center gap-2"
               >
-                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">open_in_new</span>
+                <ExternalLink className="w-4 h-4" aria-hidden="true" />
                 Abrir en Google Maps
               </a>
               <button
-                onClick={() => setShowVenueModal(false)}
-                className="w-full sm:w-auto py-3 px-6 bg-surface-container-high text-on-surface font-label-md text-xs uppercase tracking-wider hover:bg-surface-bright"
+                type="button"
+                onClick={closeVenueModal}
+                className="w-full sm:w-auto py-3 px-6 bg-surface-container-high text-on-surface font-label-md text-xs uppercase tracking-wider hover:bg-surface-bright cursor-pointer"
               >
                 Cerrar
               </button>

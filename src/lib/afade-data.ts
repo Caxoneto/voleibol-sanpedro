@@ -41,7 +41,7 @@ export const AFADE_CATEGORIES: Category[] = [
     "id": "cat-senior-fem-afade",
     "name": "Senior Femenino AFADE (GB)",
     "slug": "senior-femenino-afade",
-    "order": 16,
+    "order": 14,
     "description": "Liga AFADE Málaga · Senior Femenino - GB",
     "association": "AFADE"
   },
@@ -57,7 +57,7 @@ export const AFADE_CATEGORIES: Category[] = [
     "id": "cat-infantil-fem-afade",
     "name": "Infantil Femenino AFADE (GB)",
     "slug": "infantil-femenino-afade",
-    "order": 14,
+    "order": 16,
     "description": "Liga AFADE Málaga · Infantil Femenino - GB",
     "association": "AFADE"
   }
@@ -86,6 +86,10 @@ export const AFADE_TEAMS: Team[] = [
     "season": "2026/2027"
   }
 ];
+
+export function getAfadeTeams(): Team[] {
+  return [...AFADE_TEAMS];
+}
 
 export const AFADE_PLAYERS: Player[] = [];
 
