@@ -1,0 +1,143 @@
+// Documentación viva del esquema PostgreSQL Serverless en Neon para la Intranet del Club.
+// La capa de ejecución en producción usa `queryNeon()` (src/lib/streaming-store.ts) fail-closed
+// sobre el endpoint HTTP /sql de Neon para mantener bundles ligeros en Netlify Functions.
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model IntranetUser {
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique
+  name               String
+  phone              String?
+  passwordHash       String?   @map("password_hash")
+  emailVerified      Boolean   @default(false) @map("email_verified")
+  totpSecretEnc      String?   @map("totp_secret_enc")
+  totpEnabled        Boolean   @default(false) @map("totp_enabled")
+  totpBackupCodesEnc String?   @map("totp_backup_codes_enc")
+  status             String    @default("INVITED")
+  lastLoginAt        DateTime? @map("last_login_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@map("intranet_users")
+}
+
+model IntranetOAuthAccount {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  provider          String
+  providerAccountId String   @map("provider_account_id")
+  providerEmail     String?  @map("provider_email")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([provider, providerAccountId])
+  @@map("intranet_oauth_accounts")
+}
+
+model IntranetSession {
+  id                String    @id @default(uuid()) @db.Uuid
+  tokenHash         String    @unique @map("token_hash")
+  userId            String    @map("user_id") @db.Uuid
+  ipAddress         String?   @map("ip_address")
+  userAgent         String?   @map("user_agent")
+  twoFactorVerified Boolean   @default(false) @map("two_factor_verified")
+  expiresAt         DateTime  @map("expires_at")
+  revokedAt         DateTime? @map("revoked_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@map("intranet_sessions")
+}
+
+model IntranetRole {
+  code        String  @id
+  name        String
+  description String?
+  isSystem    Boolean @default(true) @map("is_system")
+
+  @@map("intranet_roles")
+}
+
+model IntranetPermission {
+  code            String  @id
+  module          String
+  name            String
+  defaultScope    String  @map("default_scope")
+  isPresidentOnly Boolean @default(false) @map("is_president_only")
+
+  @@map("intranet_permissions")
+}
+
+model IntranetRolePermission {
+  roleCode       String @map("role_code")
+  permissionCode String @map("permission_code")
+  scope          String
+
+  @@id([roleCode, permissionCode])
+  @@map("intranet_role_permissions")
+}
+
+model IntranetUserRole {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  roleCode     String    @map("role_code")
+  teamSeasonId String?   @map("team_season_id")
+  validFrom    DateTime  @default(now()) @map("valid_from")
+  validTo      DateTime? @map("valid_to")
+  grantedBy    String?   @map("granted_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("intranet_user_roles")
+}
+
+model IntranetPermissionOverride {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  permissionCode String    @map("permission_code")
+  effect         String
+  scope          String
+  teamSeasonId   String?   @map("team_season_id")
+  reason         String?
+  validFrom      DateTime  @default(now()) @map("valid_from")
+  validTo        DateTime? @map("valid_to")
+  grantedBy      String?   @map("granted_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("intranet_permission_overrides")
+}
+
+model IntranetInvitation {
+  id            String    @id @default(uuid()) @db.Uuid
+  tokenHash     String    @unique @map("token_hash")
+  email         String
+  targetType    String    @map("target_type")
+  roleCodes     String[]  @map("role_codes")
+  teamSeasonIds String[]  @map("team_season_ids")
+  athleteId     String?   @map("athlete_id")
+  metadataJson  Json      @default("{}") @map("metadata_json")
+  invitedBy     String?   @map("invited_by") @db.Uuid
+  expiresAt     DateTime  @map("expires_at")
+  acceptedAt    DateTime? @map("accepted_at")
+  revokedAt     DateTime? @map("revoked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("intranet_invitations")
+}
+
+model IntranetAuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  actorEmail  String   @map("actor_email")
+  action      String
+  module      String
+  targetType  String?  @map("target_type")
+  targetId    String?  @map("target_id")
+  detailsJson Json     @default("{}") @map("details_json")
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("intranet_audit_logs")
+}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ChevronRight, ExternalLink, Menu, Users, X } from 'lucide-react';
+import { ChevronRight, Menu, Users, X } from 'lucide-react';
 import { CLUB_INFO } from '@/lib/club-info';
 import { InstagramIcon, FacebookIcon } from '@/components/SocialIcons';
 
@@ -157,21 +157,19 @@ export default function Navbar() {
             </a>
           </div>
 
-          {/* Botón Jugador@s hacia FeelSports */}
-          <a
-            href="https://feelsports.es/"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Portal de Jugador@s FeelSports"
-            aria-label="Portal de Jugador@s FeelSports"
+          {/* Botón Acceso Club / Familias */}
+          <Link
+            href="/acceso"
+            title="Acceso Club"
+            aria-label="Acceso Club"
             className="inline-flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold tracking-wider transition-all duration-300 shadow-[3px_3px_0px_0px_#0e0e0e] hover:shadow-[0_0_15px_rgba(217,4,41,0.5)] active:scale-95"
           >
             <Users className="w-5 h-5 shrink-0 sm:hidden" aria-hidden="true" />
-            <span className="hidden sm:inline-flex items-center gap-1.5">
-              <span>Jugador@s</span>
-              <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap">
+              <Users className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Acceso Club</span>
             </span>
-          </a>
+          </Link>
 
           {/* Mobile Menu Toggle */}
           <button
@@ -258,16 +256,14 @@ export default function Navbar() {
                 </a>
               </div>
 
-              <a
-                href="https://feelsports.es/"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/acceso"
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full text-center bg-primary-container hover:bg-cta-hover text-white py-3 font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e]"
               >
-                <span>Portal Jugador@s (FeelSports)</span>
-                <ExternalLink className="w-4 h-4" aria-hidden="true" />
-              </a>
+                <Users className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span>Acceso Club / Familias</span>
+              </Link>
             </div>
           </div>
         </div>

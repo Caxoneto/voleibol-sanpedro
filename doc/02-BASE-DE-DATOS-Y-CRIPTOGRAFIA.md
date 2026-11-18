@@ -20,12 +20,39 @@
 
 ---
 
-## 2. Cifrado de PII e Integridad Probatoria
+## 2. Tablas y Seguridad de la Intranet (`intranet_*`)
+
+> **Branch de desarrollo en Neon**: `dev-intranet` en el proyecto `voleibol-sanpedro-eu`, ejecutado vía `queryNeon()` HTTP fail-closed y definido en `prisma/schema.prisma`.
+
+### Identidad, Autenticación y RBAC
+* `intranet_users`: Usuarios de la intranet (staff, entrenadores, directiva, jugadores mayores de edad o tutores legales).
+* `intranet_oauth_accounts`: Enlaces con proveedores OAuth2 (Google, Microsoft tenant `common`).
+* `intranet_sessions`: Sesiones activas firmadas.
+* `intranet_auth_tokens`: Tokens para magic links, invitaciones y recuperación.
+* `intranet_roles` & `intranet_permissions` & `intranet_role_permissions` & `intranet_user_roles`: Sistema de roles y matriz de permisos con índice único parcial `idx_single_active_president`.
+* `intranet_permission_overrides`: Excepciones individuales `ALLOW` / `DENY` por usuario/permiso.
+* `intranet_invitations`: Gestión de invitaciones de staff y altas.
+* `intranet_audit_logs`: Registro forense de acciones en la intranet.
+
+### Estructura, Censo, Asistencia y Pagos
+* `intranet_seasons`, `intranet_team_seasons`, `intranet_team_staff`: Temporadas, equipos y asignaciones de staff (múltiples equipos por entrenador).
+* `intranet_venues`, `intranet_courts`, `intranet_training_slots`, `intranet_schedule_proposals`, `intranet_venue_closures`: Pabellones, pistas, horarios semanales, festivos y propuestas.
+* `intranet_athletes`, `intranet_athlete_teams`, `intranet_guardianships`: Deportistas, asignaciones a equipos y tutores legales.
+* `intranet_dedup_queue`: Cola de deduplicación de censo (FAVB + FeelSports).
+* `intranet_training_sessions`, `intranet_attendance_records`: Sesiones de entrenamiento y pase de lista móvil-first (5 estados, cola offline `cdv_attendance_offline_queue_v1`).
+* `intranet_substitutions`: Solicitudes y asignación de sustituciones con override temporal automático de `attendance.take`.
+* `intranet_staff_trips`, `intranet_match_assignments`: Cuadrantes técnicos de partidos (`FAVB_MATCHES`/`AFADE_MATCHES`) y expediciones de staff.
+* `intranet_products`, `intranet_price_plans`, `intranet_discount_rules`, `intranet_enrollments`, `intranet_applied_discounts`, `intranet_charges`, `intranet_payments`, `intranet_payment_allocations`: Productos, cuotas, descuentos configurables, inscripciones prorrateadas, cobros, pagos y recibos PDF.
+
+---
+
+## 3. Cifrado de PII e Integridad Probatoria
 
 ### Cifrado Autenticado (`src/lib/encryption.ts`)
 * **Formato vigente**: `v1:${ivHex}:${authTagHex}:${encryptedHex}` (AES-256-GCM con **AAD** ligado al `playerId` y nombre de campo, p. ej. `${playerId}:dni_encrypted`, `${playerId}:contact_email`, `${playerId}:parent_dni`).
 * **Lectura retrocompatible**: `decryptDataStrict` soporta lectura controlada de registros legacy `iv:tag:ct` sin prefijo `v1:`.
 * **Blind Index**: `generateBlindIndex` permite búsquedas deterministas de DNI sin exponer el valor en claro.
+* **Intranet**: TOTP 2FA (RFC 6238) con secreto y backup codes cifrados AES-256-GCM + AAD (`totp-secret:${userId}`), y cifrado específico de DNI, fecha de nacimiento, alergias y datos de pagador con respeto estricto al estado `SHREDDED`.
 
 ### Vinculación Criptográfica de OTP (`src/lib/email-otp.ts`)
 * `computeOtpCodeHash` enlaza el código con su propósito mediante el esquema `otp-v2:${purpose}:...` (`SIGN`, `REVOKE`, `RECEIPT`), preservando lectura legacy `otp-v1` solo cuando `purpose IS NULL`.
@@ -38,7 +65,7 @@
 
 ---
 
-## 3. Supresión RGPD Art. 17 (*Crypto-Shredding*)
+## 4. Supresión RGPD Art. 17 (*Crypto-Shredding*)
 
 La función `shredPlayerCryptoKey(playerId)` en `src/lib/consent-store.ts` ejecuta atómicamente:
 1. En `player_crypto_keys`: fija `wrapped_dek = NULL` y `shredded_at = NOW()`.

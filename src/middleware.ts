@@ -110,8 +110,15 @@ function isSensitiveNoStorePath(pathname: string): boolean {
     pathname.startsWith('/admin/') ||
     pathname === '/autorizaciones' ||
     pathname.startsWith('/autorizaciones/') ||
+    pathname === '/acceso' ||
+    pathname.startsWith('/acceso/') ||
+    pathname === '/club' ||
+    pathname.startsWith('/club/') ||
+    pathname === '/mi-club' ||
+    pathname.startsWith('/mi-club/') ||
     pathname.startsWith('/api/admin/') ||
-    pathname.startsWith('/api/consent/')
+    pathname.startsWith('/api/consent/') ||
+    pathname.startsWith('/api/intranet/')
   );
 }
 
@@ -154,6 +161,12 @@ export const config = {
     '/admin/:path*',
     '/autorizaciones',
     '/autorizaciones/:path*',
+    '/acceso',
+    '/acceso/:path*',
+    '/club',
+    '/club/:path*',
+    '/mi-club',
+    '/mi-club/:path*',
     '/api/:path*',
   ],
 };

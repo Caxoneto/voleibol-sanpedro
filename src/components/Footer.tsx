@@ -84,7 +84,10 @@ function getSafeExternalUrl(raw?: string | null): string {
 
 export default function Footer() {
   const pathname = usePathname();
-  const isAdminRoute = pathname?.startsWith('/admin');
+  const isAdminRoute =
+    pathname?.startsWith('/admin') ||
+    pathname?.startsWith('/club') ||
+    pathname?.startsWith('/mi-club');
   const [copyrightYear, setCopyrightYear] = useState<string>('2026');
 
   const [openSections, setOpenSections] = useState<Record<FooterSectionKey, boolean>>({

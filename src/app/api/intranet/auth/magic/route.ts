@@ -1,0 +1,125 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { queryNeon } from '@/lib/streaming-store';
+import { checkNeonRateLimit, getClientIp } from '@/lib/rate-limiter';
+import {
+  createMagicLoginToken,
+  consumeMagicLoginToken,
+  createIntranetSession,
+  setIntranetSessionCookie,
+  getPublicBaseUrl,
+} from '@/lib/intranet/auth';
+import { buildUserAccessContext } from '@/lib/intranet/rbac';
+import { ensureIntranetSeeded } from '@/lib/intranet/seed-bootstrap';
+import { handleIntranetApiError } from '@/lib/intranet/api-helpers';
+import { isStrictEmail } from '@/lib/validators';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest) {
+  try {
+    await ensureIntranetSeeded();
+    const clientIp = getClientIp(req);
+    const rl = await checkNeonRateLimit(`intranet-magic:${clientIp}`, 5, 600, 600);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Demasiadas solicitudes de enlace mágico. Inténtalo más tarde.' },
+        { status: 429 }
+      );
+    }
+
+    const body = await req.json();
+    const email = String(body?.email || '').trim().toLowerCase();
+    if (!isStrictEmail(email)) {
+      return NextResponse.json(
+        { success: false, error: 'Introduce un correo electrónico válido.' },
+        { status: 400 }
+      );
+    }
+
+    const res = await createMagicLoginToken(email);
+    if (!res.sent && res.error) {
+      return NextResponse.json({ success: false, error: res.error }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Si el correo está autorizado en el club, recibirás un enlace directo de acceso en unos segundos.',
+    });
+  } catch (err) {
+    return handleIntranetApiError(err, 'Intranet Magic Request');
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const baseUrl = getPublicBaseUrl();
+  try {
+    await ensureIntranetSeeded();
+    const rawToken = req.nextUrl.searchParams.get('token') || '';
+    if (!rawToken) {
+      return NextResponse.redirect(`${baseUrl}/acceso?error=enlace_invalido`);
+    }
+
+    const consumed = await consumeMagicLoginToken(rawToken);
+    if (!consumed) {
+      return NextResponse.redirect(`${baseUrl}/acceso?error=enlace_caducado`);
+    }
+
+    const rows = await queryNeon<{
+      id: string;
+      email: string;
+      name: string;
+      phone: string | null;
+      email_verified: boolean;
+      totp_enabled: boolean;
+      status: 'ACTIVE' | 'INVITED' | 'SUSPENDED';
+    }>(
+      `SELECT id::text, email, name, phone, email_verified, totp_enabled, status
+       FROM intranet_users
+       WHERE LOWER(email) = $1
+       LIMIT 1;`,
+      [consumed.email.toLowerCase()]
+    );
+
+    const user = rows[0];
+    if (!user) {
+      // Buscar si tiene invitación vigente para redirigir al flujo de activación
+      return NextResponse.redirect(`${baseUrl}/acceso?error=usa_tu_invitacion`);
+    }
+    if (user.status !== 'ACTIVE') {
+      return NextResponse.redirect(`${baseUrl}/acceso?error=cuenta_suspendida`);
+    }
+
+    await queryNeon(`UPDATE intranet_users SET email_verified = true WHERE id = $1::uuid;`, [user.id]);
+
+    const { rawToken: sessToken, expiresAt } = await createIntranetSession({
+      userId: user.id,
+      ipAddress: getClientIp(req),
+      userAgent: req.headers.get('user-agent'),
+      twoFactorVerified: !user.totp_enabled,
+    });
+    setIntranetSessionCookie(sessToken, expiresAt);
+
+    const ctx = await buildUserAccessContext({
+      sessionId: 'magic',
+      twoFactorVerified: !user.totp_enabled,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        emailVerified: true,
+        totpEnabled: user.totp_enabled,
+        status: user.status,
+      },
+    });
+
+    if (ctx.requiresTwoFactorChallenge || ctx.requiresTwoFactorSetup) {
+      return NextResponse.redirect(`${baseUrl}/acceso?step=2fa`);
+    }
+
+    return NextResponse.redirect(`${baseUrl}${ctx.isStaff ? '/club' : '/mi-club'}`);
+  } catch (err) {
+    console.error('[Intranet Magic GET]', err);
+    return NextResponse.redirect(`${baseUrl}/acceso?error=error_interno`);
+  }
+}

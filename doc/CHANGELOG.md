@@ -4,6 +4,20 @@ Este registro documenta el estado consolidado del proyecto y los cambios recient
 
 ---
 
+## 2026-11-18 — Sistema Interno de Club (/club), Acceso (/acceso) y Zona de Deportistas (/mi-club)
+
+* **Resumen**: Implementación completa de la Intranet del Club (`/club`), Acceso unificado (`/acceso`) y Zona de Deportistas (`/mi-club`) en la rama `feature/intranet-club` utilizando Neon branch `dev-intranet`.
+* **Módulos y Utilidades (`src/lib/intranet/`)**: Añadidos `catalog.ts`, `csv-utils.ts` (con protección contra formula injection `=, +, -, @, \t, \r` y BOM UTF-8), `seed-bootstrap.ts`, `audit.ts`, `rbac.ts`, `auth.ts`, `api-helpers.ts`, `census-sync.ts`, `payments.ts` y `pdf-receipt.ts`.
+* **Esquema de Base de Datos (`prisma/schema.prisma`)**: Tablas `intranet_*` para identidad, RBAC, permisos, sesiones, invitaciones, estructura deportiva, censo unificado, asistencia con cola offline (`cdv_attendance_offline_queue_v1`), sustituciones, desplazamientos y pagos.
+* **Componentes y UI**:
+  * `/acceso`: Acceso con contraseña, enlace mágico SMTP, OAuth2 Google/Microsoft tenant `common`, invitaciones `?invite=`, bootstrap de Presidencia y 2FA TOTP RFC 6238 con cifrado AES-256-GCM + AAD.
+  * `/club`: Intranet por roles y matriz de 40 permisos configurables por Presidencia, gestión de censo, asistencia móvil-first, sustituciones, cuadrantes de partidos, pagos y recibos PDF.
+  * `/mi-club`: Portal familiar y de deportistas (incluyendo 14–17 años) para fichas, firma/renovación RGPD y consulta de pagos y recibos en solo lectura.
+  * Actualización de `Navbar.tsx` (enlace `/acceso` sustituyendo a FeelSports) y `Footer.tsx` (pie legal compacto en `/club` y `/mi-club`).
+  * `src/middleware.ts`: Cabeceras de seguridad `no-store`/`noindex` para proteger `/acceso`, `/club`, `/mi-club` y `/api/intranet/*`.
+
+---
+
 ## 2026-11-17 — Aviso informativo RGPD en Actas con Menores Anonimizados
 
 * **Diagnóstico**: El refresco en vivo (`/api/favb/match/[id]` -> `updateMatchLiveScore`) sí sincroniza dorsales, capitanes y staff desde `favoley.net`, pero los nombres de jugadoras menores sin autorización `ACTIVE` (`consent_social_media = true`) aparecen anonimizados como `Deportista #dorsal` por la regla obligatoria `default-deny` (RGPD/LOPDGDD).
