@@ -654,10 +654,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Ventana temporal estricta en Europe/Madrid -> UTC: 2h antes hasta 24h después
+      // Ventana temporal estricta en Europe/Madrid -> UTC: desde inicio del día (o 2h antes si cruza medianoche) hasta 24h después
       const startUtcIso = madridLocalToUtcIso(madridDate, startTime);
       const endUtcIso = madridLocalToUtcIso(madridDate, endTime);
-      const validFromIso = new Date(new Date(startUtcIso).getTime() - 2 * 60 * 60 * 1000).toISOString();
+      const dayStartMs = new Date(madridLocalToUtcIso(madridDate, '00:00')).getTime();
+      const twoHoursBeforeMs = new Date(startUtcIso).getTime() - 2 * 60 * 60 * 1000;
+      const validFromIso = new Date(Math.min(dayStartMs, twoHoursBeforeMs)).toISOString();
       const validToIso = new Date(new Date(endUtcIso).getTime() + 24 * 60 * 60 * 1000).toISOString();
 
       const teamRows = await queryNeon<{ name: string }>(
