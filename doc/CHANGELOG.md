@@ -10,7 +10,7 @@ Este registro documenta el estado consolidado del proyecto y los cambios recient
 * **Módulos y Utilidades (`src/lib/intranet/`)**: Añadidos `catalog.ts`, `csv-utils.ts` (con protección contra formula injection `=, +, -, @, \t, \r` y BOM UTF-8), `seed-bootstrap.ts`, `audit.ts`, `rbac.ts`, `auth.ts`, `api-helpers.ts`, `census-sync.ts`, `payments.ts` y `pdf-receipt.ts`.
 * **Esquema de Base de Datos (`prisma/schema.prisma`)**: Tablas `intranet_*` para identidad, RBAC, permisos, sesiones, invitaciones, estructura deportiva, censo unificado, asistencia con cola offline (`cdv_attendance_offline_queue_v1`), sustituciones, desplazamientos y pagos.
 * **Componentes y UI**:
-  * `/acceso`: Acceso con contraseña, enlace mágico SMTP, OAuth2 Google/Microsoft tenant `common`, invitaciones `?invite=`, bootstrap de Presidencia y 2FA TOTP RFC 6238 con cifrado AES-256-GCM + AAD.
+  * `/acceso`: Acceso con contraseña, enlace mágico SMTP, OAuth2 Google/Microsoft tenant `common`, invitaciones `?invite=` y bootstrap de Presidencia (acceso sin 2FA por decisión del club).
   * `/club`: Intranet por roles y matriz de 40 permisos configurables por Presidencia, gestión de censo, asistencia móvil-first, sustituciones, cuadrantes de partidos, pagos y recibos PDF.
   * `/mi-club`: Portal familiar y de deportistas (incluyendo 14–17 años) para fichas, firma/renovación RGPD y consulta de pagos y recibos en solo lectura.
   * Actualización de `Navbar.tsx` (enlace `/acceso` sustituyendo a FeelSports) y `Footer.tsx` (pie legal compacto en `/club` y `/mi-club`).

@@ -77,20 +77,20 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       ipAddress: clientIp,
       userAgent: req.headers.get('user-agent'),
-      twoFactorVerified: !user.totp_enabled,
+      twoFactorVerified: true,
     });
     setIntranetSessionCookie(rawToken, expiresAt);
 
     const ctx = await buildUserAccessContext({
       sessionId: 'new',
-      twoFactorVerified: !user.totp_enabled,
+      twoFactorVerified: true,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         phone: user.phone,
         emailVerified: user.email_verified,
-        totpEnabled: user.totp_enabled,
+        totpEnabled: false,
         status: user.status,
       },
     });
@@ -100,21 +100,17 @@ export async function POST(req: NextRequest) {
       actorEmail: user.email,
       action: 'LOGIN_PASSWORD',
       module: 'Auth',
-      details: { totpRequired: ctx.requiresTwoFactorChallenge || ctx.requiresTwoFactorSetup },
+      details: { totpRequired: false },
       ipAddress: clientIp,
     });
 
     return NextResponse.json({
       success: true,
-      requiresTwoFactorChallenge: ctx.requiresTwoFactorChallenge,
-      requiresTwoFactorSetup: ctx.requiresTwoFactorSetup,
+      requiresTwoFactorChallenge: false,
+      requiresTwoFactorSetup: false,
       isStaff: ctx.isStaff,
       isMemberPortal: ctx.isMemberPortal,
-      redirectTo: ctx.requiresTwoFactorChallenge || ctx.requiresTwoFactorSetup
-        ? '/acceso?step=2fa'
-        : ctx.isStaff
-        ? '/club'
-        : '/mi-club',
+      redirectTo: ctx.isStaff ? '/club' : '/mi-club',
     });
   } catch (err) {
     return handleIntranetApiError(err, 'Intranet Login');

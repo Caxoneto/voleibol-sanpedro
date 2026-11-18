@@ -26,7 +26,7 @@ src/
 | `/fan-zone` | `src/app/fan-zone/page.tsx` | Votación MVP del partido (`"FanVote"`) y comunidad. |
 | `/patrocinio` | `src/app/patrocinio/page.tsx` | Dossier y formulario de contacto para patrocinadores. |
 | `/autorizaciones` | `src/app/autorizaciones/page.tsx` | Portal oficial de autorizaciones (flujo estándar y acceso directo `?directToken=`), firma electrónica simple OTP + PDF. |
-| `/acceso` | `src/app/acceso/page.tsx` | Acceso unificado a la Intranet y Zona de Deportistas (contraseña, enlace mágico SMTP, OAuth2 Google/Microsoft tenant `common`, activación de invitaciones `?invite=`, configuración inicial del Presidente y TOTP 2FA). |
+| `/acceso` | `src/app/acceso/page.tsx` | Acceso unificado a la Intranet y Zona de Deportistas (contraseña, enlace mágico SMTP, OAuth2 Google/Microsoft tenant `common`, activación de invitaciones `?invite=` y configuración inicial del Presidente; sin 2FA). |
 
 ### Legales y Cumplimiento
 | Ruta | Archivo | Contenido |
@@ -72,7 +72,7 @@ src/
 * `POST /api/admin/direct-link-batch` — Genera lote de hasta 200 enlaces y envía emails en bloques (omitiendo `isSigned` y `isShredded`).
 
 ### Intranet y Portal de Socios (`/api/intranet/*`)
-* `/api/intranet/auth/me`, `login`, `logout`, `magic`, `2fa`, `bootstrap`, `invite`, `oauth/[provider]`, `oauth/[provider]/callback` — Gestión de identidad, autenticación multi-canal, OAuth2 tenant `common`, invitaciones y 2FA TOTP.
+* `/api/intranet/auth/me`, `login`, `logout`, `magic`, `bootstrap`, `invite`, `oauth/[provider]`, `oauth/[provider]/callback` — Gestión de identidad, autenticación multi-canal, OAuth2 tenant `common` e invitaciones (acceso sin 2FA por decisión del club).
 * `/api/intranet/gov` — Panel de Presidencia, asignaciones de equipos y matriz RBAC de permisos.
 * `/api/intranet/structure` — Temporadas, equipos, pabellones, pistas y horarios.
 * `/api/intranet/census` — Sincronización y gestión avanzada del censo unificado y cuotas.

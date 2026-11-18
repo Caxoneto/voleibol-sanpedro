@@ -6,7 +6,6 @@ import {
   Check,
   CheckCircle2,
   Copy,
-  KeyRound,
   Loader2,
   Lock,
   Mail,
@@ -351,7 +350,6 @@ export default function ClubGobiernoPage() {
       (u) =>
         u.id !== session.user.id &&
         u.status === 'ACTIVE' &&
-        u.totpEnabled &&
         u.roles.some((r) => r.roleCode !== 'TUTOR' && r.roleCode !== 'JUGADOR')
     );
   }, [govData, session.user.id]);
@@ -958,16 +956,6 @@ export default function ClubGobiernoPage() {
                               : u.status === 'INVITED'
                               ? 'Invitado'
                               : 'Suspendido'}
-                          </span>
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] uppercase font-bold border ${
-                              u.totpEnabled
-                                ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
-                                : 'bg-amber-950/40 text-amber-300 border-amber-500/30'
-                            }`}
-                          >
-                            <KeyRound className="w-3 h-3" aria-hidden="true" />
-                            {u.totpEnabled ? '2FA Activo' : '2FA Pendiente'}
                           </span>
                         </div>
 
@@ -1613,9 +1601,8 @@ export default function ClubGobiernoPage() {
                     Zona Restringida · Transferencia de Presidencia
                   </h2>
                   <p className="text-xs sm:text-sm text-tertiary mt-1">
-                    Traspasa la autoridad máxima del club a otro miembro activo del staff con
-                    verificación en dos pasos (2FA) habilitada. Tu cuenta pasará automáticamente al
-                    rol de <strong className="text-on-surface">Directivo</strong>.
+                    Traspasa la autoridad máxima del club a otro miembro activo del staff. Tu cuenta
+                    pasará automáticamente al rol de <strong className="text-on-surface">Directivo</strong>.
                   </p>
                 </div>
               </div>
@@ -1623,7 +1610,7 @@ export default function ClubGobiernoPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                    Sucesor designado (solo ACTIVE + 2FA activo)
+                    Sucesor designado (staff activo)
                   </label>
                   <select
                     value={transferSuccessorId}
@@ -1639,7 +1626,7 @@ export default function ClubGobiernoPage() {
                   </select>
                   {eligibleSuccessors.length === 0 && (
                     <p className="text-[11px] text-amber-300 mt-1">
-                      Ningún otro miembro del staff activo tiene aún 2FA (TOTP) activado.
+                      No hay otros miembros del staff en estado activo disponibles todavía.
                     </p>
                   )}
                 </div>

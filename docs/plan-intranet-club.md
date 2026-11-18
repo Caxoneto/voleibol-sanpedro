@@ -11,7 +11,7 @@
 | :--- | :--- |
 | Ubicación | Misma app Next.js: `/club` (staff) y `/mi-club` (deportistas y familias) |
 | Capa de datos | **Prisma** + driver adapter de Neon (`-pooler`, `sslmode=require`), adaptando el esquema de la rama de pagos con roles N:M |
-| Autenticación | **Better Auth autoalojado** en Neon: email + contraseña, Google, Microsoft (Hotmail/Outlook/Live), enlace mágico y 2FA (obligatorio en Presidente y Tesorería). **Sin registro abierto** (solo por invitación) |
+| Autenticación | Autenticación propia en Neon (`scrypt`, sesiones revocables): email + contraseña, Google, Microsoft (Hotmail/Outlook/Live) y enlace mágico (sin 2FA). **Sin registro abierto** (solo por invitación) |
 | Rol Presidente | **Único** en BD, con control total para crear staff, asignar varios equipos a cada entrenador y **decidir qué permisos da o revoca** a cada rol o usuario |
 | FeelSports | **Se abandona.** Su funcionalidad se integra en la web (CSV pedido para migración inicial) |
 | Staff | Alta y asignación a uno o varios equipos **desde la propia aplicación** |
@@ -72,7 +72,7 @@ flowchart TD
   - Crear, editar y desactivar perfiles de staff.
   - **Decidir libremente qué permisos da o quita**, tanto editando las plantillas de cada rol como aplicando excepciones individuales por usuario.
   - Asignar o desasignar **equipos** a cada entrenador (**un entrenador puede llevar varios equipos**, como primer entrenador o ayudante).
-  - Transferir la presidencia (el sucesor acepta con 2FA; el anterior pasa a `DIRECTIVO`).
+  - Transferir la presidencia (con verificación de contraseña actual; el anterior pasa a `DIRECTIVO`).
   - Exportar masivamente datos personales.
 - **Acceso de emergencia:** el usuario por variables de entorno (`ADMIN_USER`) se mantiene únicamente como acceso de recuperación si se pierde la cuenta del Presidente, quedando registrado en auditoría.
 
@@ -339,7 +339,7 @@ erDiagram
 ### 4.1 Estructura deportiva: equipos, entrenadores, pabellones y pistas
 
 - **Temporadas y equipos:** carga inicial con los 13 equipos FAVB + AFADE. Clonado rápido al abrir nueva temporada.
-- **Asignación de entrenadores (🔒 Presidente):** alta de perfil de staff desde la web (o importación CSV), envío automático de invitación por email para definir contraseña y 2FA, y asignación a uno o varios equipos (primer entrenador / ayudante) con vigencia.
+- **Asignación de entrenadores (🔒 Presidente):** alta de perfil de staff desde la web (o importación CSV), envío automático de invitación por email para definir contraseña, y asignación a uno o varios equipos (primer entrenador / ayudante) con vigencia.
 - **Pabellones y pistas:** pistas configurables (pista 1, pista 2, central, media pista), detección automática de solapamientos horarios, cierres/festivos y vista semanal de ocupación integrada con los partidos en casa de la FAVB.
 
 ### 4.2 Asistencia (solo staff)
@@ -410,7 +410,7 @@ sequenceDiagram
 ## 5. Seguridad y RGPD
 
 - **Contraseñas y sesiones:** Argon2id/bcrypt vía Better Auth; sesiones revocables en BD; cookies `HttpOnly`, `Secure`, `SameSite=Lax`.
-- **2FA:** obligatorio para `PRESIDENTE` y `TESORERIA`.
+- **2FA:** desactivado por decisión del club.
 - **Sin registro abierto:** altas únicamente con invitación válida; vinculación OAuth condicionada a email verificado coincidente.
 - **Rate limiting persistente** en Neon (sustituyendo al actual en memoria).
 - **Autorización en servidor** en cada Server Action y API Route (`can(user, permiso, ámbito)`).
@@ -436,7 +436,7 @@ flowchart LR
 
 | Fase | Entregables | Tamaño |
 | :--- | :--- | :---: |
-| **F0 Cimientos** | Prisma + adapter Neon, branch `dev` de Neon, migraciones; Better Auth (email+pass, Google, Microsoft, enlace mágico, 2FA); motor de permisos configurable; Presidente inicial; `/acceso`, layout `/club`, `middleware`, auditoría, rate limit persistente; test compatibilidad Next 14 | M |
+| **F0 Cimientos** | Esquema en Neon `dev-intranet`, motor auth (`scrypt`, sesiones revocables, Google, Microsoft, enlace mágico, sin 2FA); motor de permisos configurable; Presidente inicial; `/acceso`, layout `/club`, `middleware`, auditoría, rate limit persistente | M |
 | **F1 Gobierno y estructura** | Panel del Presidente (staff por invitación, edición de roles/permisos/excepciones, asignación de entrenadores a N equipos), temporadas/equipos, pabellones, pistas, horarios, cierres, conflictos | M |
 | **F2 Censo** | Importadores FAVB, `player_census`, `player_consents` y CSV FeelSports; deduplicación y cola de revisión; CRUD fichas, bajas, invitaciones | M |
 | **F3 Asistencia, sustituciones y desplazamientos** | Pantalla "Hoy" móvil (5 estados, offline, invitados), informes; flujo de sustituciones con permiso temporal; cuadrante de desplazamientos/cobertura técnica de jornada y conflictos | M-L |

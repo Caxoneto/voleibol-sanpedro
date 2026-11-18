@@ -216,11 +216,9 @@ export async function buildUserAccessContext(params: {
     ownAthleteId !== null ||
     guardianAthleteIds.length > 0;
 
-  const mandatory2fa = roles.some(
-    (r) => r.roleCode === 'PRESIDENTE' || r.roleCode === 'TESORERIA'
-  );
-  const requiresTwoFactorSetup = mandatory2fa && !user.totpEnabled;
-  const requiresTwoFactorChallenge = user.totpEnabled && !twoFactorVerified;
+  // Verificación 2FA desactivada por decisión del club
+  const requiresTwoFactorSetup = false;
+  const requiresTwoFactorChallenge = false;
 
   // Resolver catálogo efectivo de permisos
   const effectivePermissions: Record<string, EffectivePermissionGrant> = {};

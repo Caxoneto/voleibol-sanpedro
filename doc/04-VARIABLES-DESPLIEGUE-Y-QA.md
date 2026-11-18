@@ -65,7 +65,7 @@ Antes de solicitar o ejecutar un despliegue a producción:
    * Generación de PDF en 1 página A4 (`pdf-consent.ts`) para los 5 perfiles (14–17, blanco, +18, legado mixto, nombres largos) y simetría HMAC `v2`/`v3`.
    * Integridad de censo/consentimientos (`integrityAlerts: 0`).
    * Flujos de OTP por propósito (`SIGN` / `RECEIPT` / `REVOKE`), bloqueo `SHREDDED`, rechazo `400` ante booleanos ausentes y exención de `mode: 'inspect'` en `failBucket`.
-   * Pruebas de Intranet (`/acceso`, `/club`, `/mi-club`) con RBAC, 2FA TOTP y cifrado.
+   * Pruebas de Intranet (`/acceso`, `/club`, `/mi-club`) con RBAC y cifrado.
 3. **QA Visual E2E en Desktop (`1440x900`) y Mobile (`375x812`)**:
    * `scrollWidth <= clientWidth` en todas las rutas públicas, `/autorizaciones`, `/acceso`, `/club`, `/mi-club`, `/privacidad`, `/cookies` y `/admin/consentimientos`.
    * Imágenes cargadas (`naturalWidth > 0`) y `0` errores JS inesperados en consola.

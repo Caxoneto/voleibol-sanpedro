@@ -922,12 +922,12 @@ export async function POST(req: NextRequest) {
         [successorUserId]
       );
       const successor = successorRows[0];
-      if (!successor || successor.status !== 'ACTIVE' || !successor.totp_enabled) {
+      if (!successor || successor.status !== 'ACTIVE') {
         return NextResponse.json(
           {
             success: false,
             error:
-              'El sucesor debe ser un miembro del staff en estado ACTIVE y con autenticación 2FA (TOTP) activada.',
+              'El sucesor debe ser un miembro del staff en estado ACTIVE.',
           },
           { status: 400 }
         );

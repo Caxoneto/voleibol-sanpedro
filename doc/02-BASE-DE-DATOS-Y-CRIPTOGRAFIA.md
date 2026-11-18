@@ -52,7 +52,7 @@
 * **Formato vigente**: `v1:${ivHex}:${authTagHex}:${encryptedHex}` (AES-256-GCM con **AAD** ligado al `playerId` y nombre de campo, p. ej. `${playerId}:dni_encrypted`, `${playerId}:contact_email`, `${playerId}:parent_dni`).
 * **Lectura retrocompatible**: `decryptDataStrict` soporta lectura controlada de registros legacy `iv:tag:ct` sin prefijo `v1:`.
 * **Blind Index**: `generateBlindIndex` permite búsquedas deterministas de DNI sin exponer el valor en claro.
-* **Intranet**: TOTP 2FA (RFC 6238) con secreto y backup codes cifrados AES-256-GCM + AAD (`totp-secret:${userId}`), y cifrado específico de DNI, fecha de nacimiento, alergias y datos de pagador con respeto estricto al estado `SHREDDED`.
+* **Intranet**: Contraseñas con `scrypt`, tokens de sesión/invitación por hash HMAC-SHA256, acceso sin 2FA por decisión del club, y cifrado AES-256-GCM + AAD específico de DNI, fecha de nacimiento, alergias y datos de pagador con respeto estricto al estado `SHREDDED`.
 
 ### Vinculación Criptográfica de OTP (`src/lib/email-otp.ts`)
 * `computeOtpCodeHash` enlaza el código con su propósito mediante el esquema `otp-v2:${purpose}:...` (`SIGN`, `REVOKE`, `RECEIPT`), preservando lectura legacy `otp-v1` solo cuando `purpose IS NULL`.

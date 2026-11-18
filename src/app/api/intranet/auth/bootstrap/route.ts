@@ -70,14 +70,14 @@ export async function POST(req: NextRequest) {
       userId,
       ipAddress: clientIp,
       userAgent: req.headers.get('user-agent'),
-      twoFactorVerified: false,
+      twoFactorVerified: true,
     });
     setIntranetSessionCookie(rawToken, expiresAt);
 
     return NextResponse.json({
       success: true,
-      requiresTwoFactorSetup: true,
-      redirectTo: '/acceso?step=2fa',
+      requiresTwoFactorSetup: false,
+      redirectTo: '/club',
     });
   } catch (err) {
     return handleIntranetApiError(err, 'Intranet Bootstrap President');

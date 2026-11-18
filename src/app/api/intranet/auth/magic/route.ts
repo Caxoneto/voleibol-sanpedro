@@ -95,27 +95,23 @@ export async function GET(req: NextRequest) {
       userId: user.id,
       ipAddress: getClientIp(req),
       userAgent: req.headers.get('user-agent'),
-      twoFactorVerified: !user.totp_enabled,
+      twoFactorVerified: true,
     });
     setIntranetSessionCookie(sessToken, expiresAt);
 
     const ctx = await buildUserAccessContext({
       sessionId: 'magic',
-      twoFactorVerified: !user.totp_enabled,
+      twoFactorVerified: true,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         phone: user.phone,
         emailVerified: true,
-        totpEnabled: user.totp_enabled,
+        totpEnabled: false,
         status: user.status,
       },
     });
-
-    if (ctx.requiresTwoFactorChallenge || ctx.requiresTwoFactorSetup) {
-      return NextResponse.redirect(`${baseUrl}/acceso?step=2fa`);
-    }
 
     return NextResponse.redirect(`${baseUrl}${ctx.isStaff ? '/club' : '/mi-club'}`);
   } catch (err) {

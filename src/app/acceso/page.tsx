@@ -244,13 +244,7 @@ function AccesoPageContent() {
     return () => controller.abort();
   }, [inviteToken, loadingMe, presidentExists]);
 
-  const needsTwoFactorView = useMemo(() => {
-    if (!session) return false;
-    if (session.requiresTwoFactorSetup || session.requiresTwoFactorChallenge) return true;
-    if (stepParam === '2fa' && !session.user.totpEnabled) return true;
-    if (backupCodes && backupCodes.length > 0) return true;
-    return false;
-  }, [session, stepParam, backupCodes]);
+  const needsTwoFactorView = false;
 
   // Obtener secreto TOTP si estamos en vista 2FA y el usuario aún no tiene TOTP activado
   useEffect(() => {
@@ -324,8 +318,8 @@ function AccesoPageContent() {
         setGlobalError(data?.error || 'No se pudo inicializar la cuenta de Presidente.');
         return;
       }
-      setGlobalSuccess('Presidencia inicializada. Configura ahora tu doble factor (2FA) obligatorio.');
-      await fetchMe();
+      setGlobalSuccess('Presidencia inicializada correctamente. Entrando al panel...');
+      routerRef.current.replace('/club');
     } catch {
       setGlobalError('Error de conexión al inicializar la Presidencia.');
     } finally {
@@ -685,7 +679,7 @@ function AccesoPageContent() {
               ) : (
                 <ShieldCheck className="w-4 h-4" aria-hidden="true" />
               )}
-              <span>{bsBusy ? 'Configurando Presidencia...' : 'Crear Cuenta de Presidente y Pasar a 2FA'}</span>
+              <span>{bsBusy ? 'Configurando Presidencia...' : 'Crear Cuenta de Presidente y Entrar al Panel'}</span>
             </button>
           </form>
         </section>
@@ -1185,16 +1179,6 @@ function AccesoPageContent() {
               >
                 <span>Autorizaciones LOPD</span>
                 <ArrowRight className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-              </Link>
-            )}
-
-            {!session.user.totpEnabled && (
-              <Link
-                href="/acceso?step=2fa"
-                className="flex items-center justify-between gap-2 px-4 py-3 bg-surface-container-low hover:border-primary border border-white/10 text-on-surface font-label-md text-xs uppercase tracking-wider font-bold"
-              >
-                <span>Configurar 2FA opcional</span>
-                <KeyRound className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
               </Link>
             )}
           </div>

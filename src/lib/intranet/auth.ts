@@ -195,7 +195,7 @@ export async function createIntranetSession(params: {
       params.userId,
       params.ipAddress || null,
       params.userAgent ? params.userAgent.slice(0, 300) : null,
-      Boolean(params.twoFactorVerified),
+      params.twoFactorVerified ?? true,
       expiresAt.toISOString(),
     ]
   );
@@ -297,17 +297,14 @@ export async function getIntranetSession(): Promise<IntranetAccessContext | null
 }
 
 /**
- * Exige una sesión activa y verificada (incluyendo 2FA cuando es obligatorio o está habilitado).
+ * Exige una sesión activa y verificada.
  */
-export async function requireIntranetSession(options?: {
+export async function requireIntranetSession(_options?: {
   allowPendingTwoFactor?: boolean;
 }): Promise<IntranetAccessContext> {
   const ctx = await getIntranetSession();
   if (!ctx) {
     throw new IntranetAuthError('Debes iniciar sesión para acceder.');
-  }
-  if (!options?.allowPendingTwoFactor && (ctx.requiresTwoFactorChallenge || ctx.requiresTwoFactorSetup)) {
-    throw new IntranetAuthError('Se requiere completar la verificación en dos pasos (2FA).');
   }
   return ctx;
 }

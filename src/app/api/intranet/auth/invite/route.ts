@@ -192,8 +192,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      requiresTwoFactorSetup: ctx.requiresTwoFactorSetup,
-      redirectTo: ctx.requiresTwoFactorSetup ? '/acceso?step=2fa' : ctx.isStaff ? '/club' : '/mi-club',
+      requiresTwoFactorSetup: false,
+      redirectTo: ctx.isStaff ? '/club' : '/mi-club',
     });
   } catch (err) {
     return handleIntranetApiError(err, 'Intranet Invite Accept');
