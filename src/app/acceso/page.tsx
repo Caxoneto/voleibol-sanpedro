@@ -1284,16 +1284,16 @@ function AccesoPageContent() {
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="login-email" className="block text-xs font-semibold text-on-surface mb-1">
-                    Correo electrónico
+                    Correo electrónico o usuario
                   </label>
                   <input
                     id="login-email"
-                    type="email"
+                    type="text"
                     required
-                    autoComplete="email"
+                    autoComplete="username"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="usuario@voleibolsanpedro.es"
+                    placeholder="caxon o usuario@voleibolsanpedro.es"
                     className="w-full bg-surface border border-white/15 px-3 py-2.5 text-sm text-on-surface focus:border-primary-container focus:outline-none"
                   />
                 </div>

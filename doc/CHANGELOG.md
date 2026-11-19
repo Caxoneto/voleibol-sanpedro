@@ -4,6 +4,12 @@ Este registro documenta el estado consolidado del proyecto y los cambios recient
 
 ---
 
+## 2026-11-19 — Soporte de inicio de sesión por nombre de usuario en `/acceso`
+
+* **Cambio**: `/acceso` (`#login-email` como `type="text"`) y `POST /api/intranet/auth/login` permiten ahora iniciar sesión tanto mediante correo electrónico como mediante nombre de usuario/alias local registrado en `intranet_users` manteniendo el rate limiting por IP y por identificador.
+
+---
+
 ## 2026-11-18 (Rev. Seguridad) — Auditoría `/security-audit` y Endurecimiento de la Intranet
 
 * **Control de Acceso y Ámbitos RBAC (`src/lib/intranet/rbac.ts`, `auth/me`, `census`, `ClubShell`)**:

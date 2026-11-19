@@ -31,17 +31,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const email = String(body?.email || '').trim().toLowerCase();
+    const identifier = String(body?.email || '').trim().toLowerCase();
     const password = String(body?.password || '');
+    const isUsername = /^[a-z0-9._-]{3,64}$/.test(identifier);
 
-    if (!isStrictEmail(email) || !password) {
+    if ((!isStrictEmail(identifier) && !isUsername) || !password) {
       return NextResponse.json(
-        { success: false, error: 'Introduce tu correo electrónico y contraseña.' },
+        { success: false, error: 'Introduce tu correo electrónico (o usuario) y contraseña.' },
         { status: 400 }
       );
     }
 
-    const acctRl = await checkNeonRateLimit(`intranet-login-acct:${email}`, 8, 600, 900);
+    const acctRl = await checkNeonRateLimit(`intranet-login-acct:${identifier}`, 8, 600, 900);
     if (!acctRl.allowed) {
       return NextResponse.json(
         {
@@ -65,14 +66,16 @@ export async function POST(req: NextRequest) {
       `SELECT id::text, email, name, phone, password_hash, email_verified, totp_enabled, status
        FROM intranet_users
        WHERE LOWER(email) = $1
+          OR ($2::boolean = true AND (LOWER(name) = $1 OR LOWER(SPLIT_PART(email, '@', 1)) = $1))
+       ORDER BY CASE WHEN LOWER(email) = $1 THEN 0 WHEN LOWER(name) = $1 THEN 1 ELSE 2 END ASC
        LIMIT 1;`,
-      [email]
+      [identifier, !identifier.includes('@')]
     );
 
     const user = rows[0];
     if (!user || user.status !== 'ACTIVE' || !verifyIntranetPassword(password, user.password_hash)) {
       await recordAuditLog({
-        actorEmail: email,
+        actorEmail: identifier,
         action: 'LOGIN_FAILED',
         module: 'Auth',
         details: { reason: !user ? 'NOT_FOUND' : user.status !== 'ACTIVE' ? 'INACTIVE' : 'BAD_PASSWORD' },

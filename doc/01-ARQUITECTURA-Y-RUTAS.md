@@ -26,7 +26,7 @@ src/
 | `/fan-zone` | `src/app/fan-zone/page.tsx` | Votación MVP del partido (`"FanVote"`) y comunidad. |
 | `/patrocinio` | `src/app/patrocinio/page.tsx` | Dossier y formulario de contacto para patrocinadores. |
 | `/autorizaciones` | `src/app/autorizaciones/page.tsx` | Portal oficial de autorizaciones (flujo estándar y acceso directo `?directToken=`), firma electrónica simple OTP + PDF. |
-| `/acceso` | `src/app/acceso/page.tsx` | Acceso unificado a la Intranet y Zona de Deportistas (contraseña, enlace mágico SMTP, OAuth2 Google/Microsoft tenant `common`, activación de invitaciones `?invite=` y configuración inicial del Presidente; sin 2FA). |
+| `/acceso` | `src/app/acceso/page.tsx` | Acceso unificado a la Intranet y Zona de Deportistas (correo o nombre de usuario + contraseña, enlace mágico SMTP, OAuth2 Google/Microsoft tenant `common`, activación de invitaciones `?invite=` y configuración inicial del Presidente; sin 2FA). |
 
 ### Legales y Cumplimiento
 | Ruta | Archivo | Contenido |
