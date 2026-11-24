@@ -801,36 +801,77 @@ export async function consumeMagicLoginToken(rawToken: string): Promise<{
 }
 
 // ==========================================
-// OAUTH2 (GOOGLE Y MICROSOFT TENANT COMMON)
+// OAUTH2 (GOOGLE OIDC)
 // ==========================================
 
-export type OAuthProviderKey = 'google' | 'microsoft';
+export type OAuthProviderKey = 'google';
 
 export function getOAuthProviderConfig(provider: OAuthProviderKey) {
   const callbackUrl = `${getPublicBaseUrl()}/api/intranet/auth/oauth/${provider}/callback`;
-  if (provider === 'google') {
-    const clientId = process.env.GOOGLE_CLIENT_ID?.trim() || '';
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() || '';
-    return {
-      configured: Boolean(clientId && clientSecret),
-      clientId,
-      clientSecret,
-      callbackUrl,
-      authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-      tokenUrl: 'https://oauth2.googleapis.com/token',
-      scopes: 'openid email profile',
-    };
-  }
-  const clientId = process.env.MICROSOFT_CLIENT_ID?.trim() || '';
-  const clientSecret = process.env.MICROSOFT_CLIENT_SECRET?.trim() || '';
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim() || '';
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() || '';
   return {
     configured: Boolean(clientId && clientSecret),
     clientId,
     clientSecret,
     callbackUrl,
-    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    scopes: 'openid email profile User.Read',
+    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    scopes: 'openid email profile',
+  };
+}
+
+/**
+ * Comprueba si una cuenta no-staff sigue bloqueada por tener solicitudes de inscripción
+ * pendientes de validación administrativa o fichas sin verificar (sin invitación aceptada).
+ */
+export async function isMemberBlockedByPendingApproval(
+  userId: string,
+  ctx: IntranetAccessContext
+): Promise<{ blocked: boolean; pendingRequests: number; pendingAthletes: number }> {
+  if (ctx.isStaff) {
+    return { blocked: false, pendingRequests: 0, pendingAthletes: 0 };
+  }
+
+  const linkedAthleteIds = Array.from(
+    new Set([...(ctx.ownAthleteId ? [ctx.ownAthleteId] : []), ...ctx.guardianAthleteIds])
+  );
+
+  const [athleteStatusRows, regReqRows] = await Promise.all([
+    linkedAthleteIds.length > 0
+      ? queryNeon<{ id: string; status: string; has_accepted_invite: boolean }>(
+          `SELECT
+             a.id,
+             a.status,
+             EXISTS (
+               SELECT 1 FROM intranet_invitations inv
+               WHERE inv.athlete_id = a.id AND inv.accepted_at IS NOT NULL
+             ) AS has_accepted_invite
+           FROM intranet_athletes a
+           WHERE a.id = ANY($1::text[])
+             AND a.status <> 'SHREDDED';`,
+          [linkedAthleteIds]
+        )
+      : Promise.resolve([]),
+    queryNeon<{ id: string; status: string }>(
+      `SELECT id::text AS id, status
+       FROM intranet_registration_requests
+       WHERE user_id = $1::uuid
+          OR ($2::int > 0 AND athlete_id = ANY($3::text[]));`,
+      [userId, linkedAthleteIds.length, linkedAthleteIds]
+    ),
+  ]);
+
+  const hasVerifiedAthlete = athleteStatusRows.some((a) => a.status === 'VERIFICADO');
+  const pendingRequests = regReqRows.filter((r) => r.status === 'PENDING').length;
+  const pendingAthletes = athleteStatusRows.filter(
+    (a) => a.status === 'PENDIENTE_VALIDAR' && !a.has_accepted_invite
+  ).length;
+
+  return {
+    blocked: !hasVerifiedAthlete && (pendingRequests > 0 || pendingAthletes > 0),
+    pendingRequests,
+    pendingAthletes,
   };
 }
 

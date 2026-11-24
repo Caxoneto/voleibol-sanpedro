@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { INITIAL_ARTICLES } from '@/lib/data-store';
+import { INITIAL_ARTICLES } from '@/lib/public-content';
 
 function getCanonicalSiteUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -59,6 +59,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${baseUrl}/patrocinio`,
+      lastModified: staticLastModified,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/proteccion-menor`,
       lastModified: staticLastModified,
       changeFrequency: 'monthly',
       priority: 0.7,

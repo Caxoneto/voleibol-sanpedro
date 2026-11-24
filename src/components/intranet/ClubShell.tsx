@@ -13,16 +13,18 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   ArrowLeftRight,
+  Bell,
   Building2,
   Bus,
   ChevronRight,
   ClipboardCheck,
   CreditCard,
-  FileCheck2,
   LayoutDashboard,
   Loader2,
   LogOut,
   Menu,
+  Radio,
+  ShieldAlert,
   ShieldCheck,
   UserCheck,
   Users,
@@ -30,6 +32,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { ROLES_CATALOG, type RoleCode } from '@/lib/intranet/catalog';
+import { useStreaming } from '@/lib/use-streaming';
 
 export interface IntranetMeUser {
   id: string;
@@ -71,6 +74,8 @@ export interface IntranetMeSession {
   effectivePermissions: string[];
   staffEffectivePermissions?: string[];
   effectivePermissionScopes?: Record<string, string>;
+  pendingRegistrationsCount?: number;
+  pendingLopiviCount?: number;
 }
 
 export interface IntranetMeResponse {
@@ -79,7 +84,7 @@ export interface IntranetMeResponse {
   presidentExists: boolean;
   oauth: {
     google: boolean;
-    microsoft: boolean;
+    microsoft?: boolean;
   };
   session: IntranetMeSession | null;
 }
@@ -106,6 +111,8 @@ interface NavItem {
   href: string;
   icon: LucideIcon;
   visible: boolean;
+  badgeCount?: number;
+  isLive?: boolean;
 }
 
 const ROLE_NAME_MAP = new Map(ROLES_CATALOG.map((r) => [r.code, r.name]));
@@ -115,6 +122,8 @@ export default function ClubShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const routerRef = useRef(router);
   routerRef.current = router;
+
+  const { status: streamingStatus } = useStreaming();
 
   const loadedRef = useRef(false);
   const [loading, setLoading] = useState(true);
@@ -145,11 +154,14 @@ export default function ClubShell({ children }: { children: ReactNode }) {
         if (
           !data?.authenticated ||
           !s ||
-          !s.isStaff ||
           s.requiresTwoFactorSetup ||
           s.requiresTwoFactorChallenge
         ) {
           routerRef.current.replace('/acceso');
+          return;
+        }
+        if (!s.isStaff) {
+          routerRef.current.replace(s.isMemberPortal ? '/mi-club' : '/acceso');
           return;
         }
         loadedRef.current = true;
@@ -162,7 +174,21 @@ export default function ClubShell({ children }: { children: ReactNode }) {
     }
 
     loadSession();
-    return () => controller.abort();
+    const handleRefreshMe = () => {
+      void fetch('/api/intranet/auth/me', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: IntranetMeResponse | null) => {
+          if (data?.authenticated && data.session) {
+            setSession(data.session);
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('cdv-refresh-me', handleRefreshMe);
+    return () => {
+      controller.abort();
+      window.removeEventListener('cdv-refresh-me', handleRefreshMe);
+    };
   }, []);
 
   const permSet = useMemo(() => {
@@ -173,6 +199,28 @@ export default function ClubShell({ children }: { children: ReactNode }) {
       raw.filter((code) => scopes[code] !== 'PROPIO' || code === 'substitution.request')
     );
   }, [session]);
+
+  const canAutoCheckReminders = Boolean(session?.isPresident || permSet.has('attendance.reports'));
+
+  useEffect(() => {
+    if (!session || !canAutoCheckReminders) return;
+    let cancelled = false;
+    const pingReminders = () => {
+      if (cancelled) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void fetch('/api/intranet/attendance/check-reminders', {
+        method: 'POST',
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    pingReminders();
+    const timer = setInterval(pingReminders, 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [session, canAutoCheckReminders]);
 
   const contextValue = useMemo<ClubSessionContextValue | null>(() => {
     if (!session) return null;
@@ -221,15 +269,24 @@ export default function ClubShell({ children }: { children: ReactNode }) {
         visible: hasAny(['trip.view', 'trip.manage']),
       },
       {
+        id: 'streaming',
+        label: 'Streaming',
+        href: '/club/streaming',
+        icon: Radio,
+        visible: hasAny(['web.streaming']),
+        isLive: streamingStatus.active,
+      },
+      {
         id: 'censo',
-        label: 'Censo',
+        label: 'Jugadoras/es',
         href: '/club/censo',
         icon: Users,
         visible: hasAny(['athlete.view_basic']),
+        badgeCount: session.pendingRegistrationsCount || 0,
       },
       {
         id: 'estructura',
-        label: 'Estructura',
+        label: 'Cuadrante',
         href: '/club/estructura',
         icon: Building2,
         visible: hasAny([
@@ -253,11 +310,12 @@ export default function ClubShell({ children }: { children: ReactNode }) {
         ]),
       },
       {
-        id: 'autorizaciones',
-        label: 'Autorizaciones',
-        href: '/admin/consentimientos',
-        icon: FileCheck2,
-        visible: hasAny(['consent.manage', 'consent.view_status']),
+        id: 'proteccion-menor',
+        label: 'Protección Menor',
+        href: '/club/proteccion-menor',
+        icon: ShieldAlert,
+        visible: session.isPresident,
+        badgeCount: session.pendingLopiviCount || 0,
       },
       {
         id: 'gobierno',
@@ -267,7 +325,7 @@ export default function ClubShell({ children }: { children: ReactNode }) {
         visible: session.isPresident || permSet.has('audit.view'),
       },
     ].filter((item) => item.visible);
-  }, [session, permSet]);
+  }, [session, permSet, streamingStatus.active]);
 
   const roleLabels = useMemo(() => {
     if (!session) return [];
@@ -286,7 +344,7 @@ export default function ClubShell({ children }: { children: ReactNode }) {
     try {
       await fetch('/api/intranet/auth/logout', { method: 'POST' });
     } catch {
-      // Continuar con redirección segura aunque falle la red
+      // Continuar con redirección segura
     } finally {
       routerRef.current.replace('/acceso');
     }
@@ -294,36 +352,42 @@ export default function ClubShell({ children }: { children: ReactNode }) {
 
   if (loading || !session || !contextValue) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-16">
-        <div className="bg-surface-container border border-white/10 px-6 py-8 flex flex-col items-center gap-3 max-w-sm w-full text-center shadow-brutal-dark">
-          <Loader2 className="w-7 h-7 text-primary-container animate-spin" aria-hidden="true" />
-          <p className="font-headline-sm text-sm uppercase tracking-wider text-on-surface">
-            Verificando sesión de staff
-          </p>
-          <p className="text-xs text-tertiary">
-            Comprobando credenciales y permisos del club...
-          </p>
+      <div className="min-h-[60vh] flex items-center justify-center px-4 py-16">
+        <div className="bg-surface-container border border-white/10 px-6 py-6 flex items-center gap-3 max-w-xs w-full justify-center shadow-brutal-dark">
+          <Loader2 className="w-5 h-5 text-primary-container animate-spin shrink-0" aria-hidden="true" />
+          <span className="font-headline-sm text-xs uppercase tracking-wider text-on-surface font-bold">
+            Cargando intranet...
+          </span>
         </div>
       </div>
     );
   }
 
   const activeNav = navItems.find((item) => isActive(item.href)) || navItems[0];
+  const primaryRole = roleLabels[0] || 'Staff';
+  const extraRolesCount = Math.max(0, roleLabels.length - 1);
+
+  const showPendingRegBanner =
+    (session.pendingRegistrationsCount || 0) > 0 && !pathname?.startsWith('/club/censo');
+  const showPendingLopiviBanner =
+    session.isPresident &&
+    (session.pendingLopiviCount || 0) > 0 &&
+    !pathname?.startsWith('/club/proteccion-menor');
 
   return (
     <ClubSessionContext.Provider value={contextValue}>
-      <div className="w-full max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
-        {/* Barra móvil compacta (no fija, respeta pt-28 del main global) */}
+      <div className="w-full max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-clip">
+        {/* Barra móvil compacta */}
         <div className="lg:hidden mb-4 bg-surface-container border border-white/10 shadow-[4px_4px_0px_0px_#0e0e0e]">
-          <div className="flex items-center justify-between gap-2 px-3.5 py-3">
+          <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
             <div className="min-w-0 flex items-center gap-2.5">
-              <span className="w-2 h-8 bg-primary-container shrink-0" aria-hidden="true" />
+              <span className="w-1.5 h-7 bg-primary-container shrink-0" aria-hidden="true" />
               <div className="min-w-0">
-                <p className="text-[10px] font-label-sm uppercase tracking-widest text-primary font-bold truncate">
-                  Intranet Staff · {activeNav?.label || 'Panel'}
-                </p>
                 <p className="text-sm font-bold text-on-surface truncate">
-                  {session.user.name}
+                  {activeNav?.label || 'Intranet'}
+                </p>
+                <p className="text-[11px] text-tertiary truncate">
+                  {session.user.name} · {primaryRole}
                 </p>
               </div>
             </div>
@@ -343,7 +407,7 @@ export default function ClubShell({ children }: { children: ReactNode }) {
               ) : (
                 <>
                   <Menu className="w-4 h-4 text-primary" aria-hidden="true" />
-                  <span>Módulos</span>
+                  <span>Menú</span>
                 </>
               )}
             </button>
@@ -355,17 +419,6 @@ export default function ClubShell({ children }: { children: ReactNode }) {
               aria-label="Navegación móvil de intranet"
               className="border-t border-white/10 bg-surface-container-low px-3 py-3 space-y-2 animate-slide-in-top"
             >
-              <div className="flex flex-wrap gap-1.5 pb-2 border-b border-white/10">
-                {roleLabels.map((role) => (
-                  <span
-                    key={role}
-                    className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold bg-primary-container/20 text-primary border border-primary-container/40"
-                  >
-                    {role}
-                  </span>
-                ))}
-              </div>
-
               <div className="grid grid-cols-1 gap-1">
                 {navItems.map((item) => {
                   const Icon = item.icon;
@@ -385,7 +438,19 @@ export default function ClubShell({ children }: { children: ReactNode }) {
                         <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                         <span className="truncate">{item.label}</span>
                       </span>
-                      <ChevronRight className="w-4 h-4 shrink-0 opacity-70" aria-hidden="true" />
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        {item.isLive && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-600 text-white rounded">
+                            LIVE
+                          </span>
+                        )}
+                        {item.badgeCount && item.badgeCount > 0 ? (
+                          <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-400 text-black rounded-full">
+                            {item.badgeCount}
+                          </span>
+                        ) : null}
+                        <ChevronRight className="w-4 h-4 opacity-70" aria-hidden="true" />
+                      </span>
                     </Link>
                   );
                 })}
@@ -419,36 +484,30 @@ export default function ClubShell({ children }: { children: ReactNode }) {
           {/* Barra lateral Desktop */}
           <aside
             aria-label="Menú lateral del Staff"
-            className="hidden lg:flex lg:w-64 shrink-0 flex-col bg-surface-container border border-white/10 shadow-[4px_4px_0px_0px_#0e0e0e] sticky top-28"
+            className="hidden lg:flex lg:w-60 shrink-0 flex-col bg-surface-container border border-white/10 shadow-[4px_4px_0px_0px_#0e0e0e] sticky top-28"
           >
-            {/* Cabecera perfil */}
-            <div className="p-4 border-b border-white/10 bg-surface-container-low">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 bg-primary-container shrink-0" aria-hidden="true" />
-                <span className="font-label-sm text-[10px] uppercase tracking-widest text-primary font-bold">
-                  Intranet · Área Staff
-                </span>
-              </div>
-              <p className="font-headline text-base font-bold text-on-surface truncate">
+            {/* Cabecera perfil compacta */}
+            <div className="p-3.5 border-b border-white/10 bg-surface-container-low">
+              <p className="font-headline text-sm font-bold text-on-surface truncate">
                 {session.user.name}
               </p>
-              <p className="text-xs text-tertiary truncate mt-0.5">
-                {session.user.email}
-              </p>
-              <div className="flex flex-wrap gap-1.5 mt-3">
-                {roleLabels.map((role) => (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold bg-primary-container/20 text-primary border border-primary-container/40 truncate">
+                  {primaryRole}
+                </span>
+                {extraRolesCount > 0 && (
                   <span
-                    key={role}
-                    className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold bg-primary-container/20 text-primary border border-primary-container/40"
+                    className="px-1.5 py-0.5 text-[10px] font-bold bg-surface-container-high text-tertiary border border-white/10 shrink-0"
+                    title={roleLabels.join(', ')}
                   >
-                    {role}
+                    +{extraRolesCount}
                   </span>
-                ))}
+                )}
               </div>
             </div>
 
             {/* Navegación principal */}
-            <nav aria-label="Módulos de la intranet" className="p-2.5 space-y-1">
+            <nav aria-label="Módulos de la intranet" className="p-2 space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
@@ -457,7 +516,7 @@ export default function ClubShell({ children }: { children: ReactNode }) {
                     key={item.id}
                     href={item.href}
                     aria-current={active ? 'page' : undefined}
-                    className={`flex items-center justify-between gap-2 px-3 py-2.5 text-xs font-label-md uppercase tracking-wider font-bold transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-label-md uppercase tracking-wider font-bold transition-all ${
                       active
                         ? 'bg-primary-container text-white shadow-[3px_3px_0px_0px_#0e0e0e]'
                         : 'text-on-surface/85 hover:text-white hover:bg-surface-container-high'
@@ -467,14 +526,27 @@ export default function ClubShell({ children }: { children: ReactNode }) {
                       <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                       <span className="truncate">{item.label}</span>
                     </span>
-                    {active && <ChevronRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      {item.isLive && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-600 text-white rounded">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                          LIVE
+                        </span>
+                      )}
+                      {item.badgeCount && item.badgeCount > 0 ? (
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-400 text-black rounded-full">
+                          {item.badgeCount}
+                        </span>
+                      ) : null}
+                      {active && <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />}
+                    </span>
                   </Link>
                 );
               })}
             </nav>
 
             {/* Acciones inferiores */}
-            <div className="p-3 border-t border-white/10 space-y-2 bg-surface-container-low/60">
+            <div className="p-2.5 border-t border-white/10 space-y-1.5 bg-surface-container-low/60">
               {session.isMemberPortal && (
                 <Link
                   href="/mi-club"
@@ -498,7 +570,53 @@ export default function ClubShell({ children }: { children: ReactNode }) {
           </aside>
 
           {/* Contenido de la ruta */}
-          <div className="flex-1 min-w-0 w-full">{children}</div>
+          <div className="flex-1 min-w-0 w-full space-y-4">
+            {(showPendingRegBanner || showPendingLopiviBanner) && (
+              <div
+                role="status"
+                className="flex flex-wrap items-center justify-between gap-2 bg-amber-950/35 border border-amber-500/35 px-3.5 py-2 text-xs text-amber-100"
+              >
+                <div className="flex flex-wrap items-center gap-3 min-w-0">
+                  <Bell className="w-3.5 h-3.5 text-amber-300 shrink-0" aria-hidden="true" />
+                  {showPendingRegBanner && (
+                    <span>
+                      <strong>{session.pendingRegistrationsCount}</strong>{' '}
+                      {session.pendingRegistrationsCount === 1
+                        ? 'inscripción pendiente'
+                        : 'inscripciones pendientes'}
+                    </span>
+                  )}
+                  {showPendingLopiviBanner && (
+                    <span className="text-rose-200">
+                      <strong>{session.pendingLopiviCount}</strong>{' '}
+                      {session.pendingLopiviCount === 1
+                        ? 'comunicación LOPIVI activa'
+                        : 'comunicaciones LOPIVI activas'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {showPendingRegBanner && (
+                    <Link
+                      href="/club/censo?tab=inscripciones"
+                      className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-black font-bold uppercase tracking-wider text-[10px]"
+                    >
+                      Revisar altas
+                    </Link>
+                  )}
+                  {showPendingLopiviBanner && (
+                    <Link
+                      href="/club/proteccion-menor"
+                      className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white font-bold uppercase tracking-wider text-[10px]"
+                    >
+                      Ver LOPIVI
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+            {children}
+          </div>
         </div>
       </div>
     </ClubSessionContext.Provider>

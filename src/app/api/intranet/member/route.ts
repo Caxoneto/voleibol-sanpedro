@@ -3,6 +3,7 @@ import { queryNeon } from '@/lib/streaming-store';
 import { getClientIp } from '@/lib/rate-limiter';
 import {
   computeAgeInMadrid,
+  formatMadridDateString,
   formatMadridTime,
   parseBirthDateParts,
 } from '@/lib/date-utils';
@@ -36,6 +37,16 @@ import { refreshOverdueCharges } from '@/lib/intranet/payments';
 import { getPaymentMethodLabel } from '@/lib/intranet/pdf-receipt';
 
 export const dynamic = 'force-dynamic';
+
+const WEEKDAY_LABELS: Record<number, string> = {
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miércoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sábado',
+  7: 'Domingo',
+};
 
 function roundMoney(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -77,6 +88,27 @@ export async function GET(req: NextRequest) {
     }
 
     if (accessibleIds.length === 0) {
+      if (!session.isStaff) {
+        const pendingReqs = await queryNeon<{ cnt: string }>(
+          `SELECT COUNT(*)::text AS cnt
+           FROM intranet_registration_requests
+           WHERE user_id = $1::uuid AND status = 'PENDING';`,
+          [session.user.id]
+        );
+        const pendingCount = Number(pendingReqs[0]?.cnt || 0);
+        if (pendingCount > 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: 'PENDING_ADMIN_APPROVAL',
+              pendingRegistrationCount: pendingCount,
+              error:
+                'Tu inscripción y autorizaciones ya están registradas, pero aún están pendientes de aceptación y asignación de equipo por parte de la administración del club.',
+            },
+            { status: 403 }
+          );
+        }
+      }
       return NextResponse.json({
         success: true,
         user: {
@@ -87,39 +119,132 @@ export async function GET(req: NextRequest) {
         },
         selectedAthleteId: null,
         athletes: [],
+        pendingRegistrationCount: 0,
+        bankIban: process.env.CLUB_BANK_IBAN?.trim() || null,
+      });
+    }
+
+    const [allAthleteRows, regReqRows, acceptedInviteRows] = await Promise.all([
+      queryNeon<{
+        id: string;
+        first_name: string;
+        last_name: string;
+        birth_year: number | null;
+        birth_date_enc: string | null;
+        birth_date_verified: boolean;
+        gender: string;
+        shirt_size: string | null;
+        jersey_number: number | null;
+        emergency_contact_name: string | null;
+        emergency_contact_phone: string | null;
+        status: string;
+        verified_at: string | null;
+      }>(
+        `SELECT
+           id, first_name, last_name, birth_year, birth_date_enc, birth_date_verified,
+           gender, shirt_size, jersey_number, emergency_contact_name, emergency_contact_phone,
+           status, verified_at::text
+         FROM intranet_athletes
+         WHERE id = ANY($1::text[])
+           AND status <> 'SHREDDED'
+         ORDER BY last_name ASC, first_name ASC;`,
+        [accessibleIds]
+      ),
+      queryNeon<{ athlete_id: string; status: string }>(
+        `SELECT athlete_id, status
+         FROM intranet_registration_requests
+         WHERE user_id = $1::uuid OR athlete_id = ANY($2::text[]);`,
+        [session.user.id, accessibleIds]
+      ),
+      queryNeon<{ athlete_id: string }>(
+        `SELECT DISTINCT athlete_id
+         FROM intranet_invitations
+         WHERE athlete_id = ANY($1::text[]) AND accepted_at IS NOT NULL;`,
+        [accessibleIds]
+      ),
+    ]);
+
+    const pendingReqSet = new Set(
+      regReqRows.filter((r) => r.status === 'PENDING').map((r) => r.athlete_id)
+    );
+    const rejectedReqSet = new Set(
+      regReqRows.filter((r) => r.status === 'REJECTED').map((r) => r.athlete_id)
+    );
+    const invitedSet = new Set(acceptedInviteRows.map((i) => i.athlete_id));
+
+    const pendingAthleteSet = new Set<string>(pendingReqSet);
+    for (const a of allAthleteRows) {
+      if (a.status === 'PENDIENTE_VALIDAR' && !invitedSet.has(a.id) && !rejectedReqSet.has(a.id)) {
+        pendingAthleteSet.add(a.id);
+      }
+    }
+    const pendingRegistrationCount = pendingAthleteSet.size;
+
+    const athleteRows = session.isStaff
+      ? allAthleteRows
+      : allAthleteRows.filter((a) => {
+          if (a.status === 'VERIFICADO') return true;
+          if (pendingReqSet.has(a.id) || rejectedReqSet.has(a.id)) return false;
+          if (a.status === 'PENDIENTE_VALIDAR') return invitedSet.has(a.id);
+          return true;
+        });
+
+    if (!session.isStaff && athleteRows.length === 0) {
+      if (
+        pendingRegistrationCount > 0 ||
+        allAthleteRows.some((a) => a.status === 'PENDIENTE_VALIDAR')
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'PENDING_ADMIN_APPROVAL',
+            pendingRegistrationCount,
+            error:
+              'Tu inscripción y autorizaciones ya están registradas, pero aún están pendientes de aceptación y asignación de equipo por parte de la administración del club. Recibirás un correo en cuanto se active tu acceso.',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    if (
+      requestedAthleteId &&
+      !session.isStaff &&
+      !athleteRows.some((a) => a.id === requestedAthleteId)
+    ) {
+      throw new IntranetForbiddenError(
+        'La ficha solicitada aún está pendiente de aceptación administrativa.'
+      );
+    }
+
+    const visibleIds = athleteRows.map((a) => a.id);
+    if (visibleIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: session.user.id,
+          name: session.user.name,
+          email: session.user.email,
+          phone: session.user.phone,
+        },
+        selectedAthleteId: null,
+        athletes: [],
+        pendingRegistrationCount,
         bankIban: process.env.CLUB_BANK_IBAN?.trim() || null,
       });
     }
 
     await refreshOverdueCharges();
 
-    const [athleteRows, teamRows, guardianRows, consentRows, enrollmentRows, chargeRows, paymentRows] =
-      await Promise.all([
-        queryNeon<{
-          id: string;
-          first_name: string;
-          last_name: string;
-          birth_year: number | null;
-          birth_date_enc: string | null;
-          birth_date_verified: boolean;
-          gender: string;
-          shirt_size: string | null;
-          jersey_number: number | null;
-          emergency_contact_name: string | null;
-          emergency_contact_phone: string | null;
-          status: string;
-          verified_at: string | null;
-        }>(
-          `SELECT
-             id, first_name, last_name, birth_year, birth_date_enc, birth_date_verified,
-             gender, shirt_size, jersey_number, emergency_contact_name, emergency_contact_phone,
-             status, verified_at::text
-           FROM intranet_athletes
-           WHERE id = ANY($1::text[])
-             AND status <> 'SHREDDED'
-           ORDER BY last_name ASC, first_name ASC;`,
-          [accessibleIds]
-        ),
+    const [
+      teamRows,
+      guardianRows,
+      consentRows,
+      enrollmentRows,
+      chargeRows,
+      paymentRows,
+      attendanceRows,
+    ] = await Promise.all([
         queryNeon<{
           athlete_id: string;
           team_season_id: string;
@@ -136,7 +261,7 @@ export async function GET(req: NextRequest) {
            INNER JOIN intranet_team_seasons ts ON ts.id = at2.team_season_id
            WHERE at2.athlete_id = ANY($1::text[])
            ORDER BY at2.is_primary DESC, ts.sort_order ASC;`,
-          [accessibleIds]
+          [visibleIds]
         ),
         queryNeon<{
           athlete_id: string;
@@ -150,7 +275,7 @@ export async function GET(req: NextRequest) {
            FROM intranet_guardianships
            WHERE athlete_id = ANY($1::text[])
            ORDER BY is_primary_payer DESC, created_at ASC;`,
-          [accessibleIds]
+          [visibleIds]
         ),
         queryNeon<{
           player_id: string;
@@ -172,7 +297,7 @@ export async function GET(req: NextRequest) {
              signature_method, document_hash, created_at::text
            FROM player_consents
            WHERE player_id = ANY($1::text[]);`,
-          [accessibleIds]
+          [visibleIds]
         ),
         queryNeon<{
           id: string;
@@ -196,7 +321,7 @@ export async function GET(req: NextRequest) {
            INNER JOIN intranet_price_plans pp ON pp.id = e.price_plan_id
            WHERE e.athlete_id = ANY($1::text[])
            ORDER BY e.created_at DESC;`,
-          [accessibleIds]
+          [visibleIds]
         ),
         queryNeon<{
           id: string;
@@ -220,7 +345,7 @@ export async function GET(req: NextRequest) {
            WHERE athlete_id = ANY($1::text[])
              AND status <> 'ANULADO'
            ORDER BY due_madrid_date ASC, installment_number ASC;`,
-          [accessibleIds]
+          [visibleIds]
         ),
         queryNeon<{
           id: string;
@@ -241,9 +366,98 @@ export async function GET(req: NextRequest) {
            WHERE athlete_id = ANY($1::text[])
              AND status = 'COMPLETED'
            ORDER BY paid_madrid_date DESC, created_at DESC;`,
-          [accessibleIds]
+          [visibleIds]
+        ),
+        queryNeon<{
+          session_id: string;
+          athlete_id: string;
+          madrid_date: string;
+          starts_at_utc: string;
+          ends_at_utc: string;
+          team_name: string;
+          status: string;
+          absence_reason: string | null;
+          notes: string | null;
+        }>(
+          `SELECT
+             ar.session_id::text AS session_id,
+             ar.athlete_id,
+             s.madrid_date,
+             s.starts_at_utc::text AS starts_at_utc,
+             s.ends_at_utc::text AS ends_at_utc,
+             COALESCE(ts.name, s.team_season_id) AS team_name,
+             ar.status,
+             ar.absence_reason,
+             ar.notes
+           FROM intranet_attendance_records ar
+           INNER JOIN intranet_training_sessions s ON s.id = ar.session_id
+           LEFT JOIN intranet_team_seasons ts ON ts.id = s.team_season_id
+           WHERE ar.athlete_id = ANY($1::text[])
+             AND s.status <> 'CANCELLED'
+             AND COALESCE(ar.is_guest, false) = false
+           ORDER BY s.starts_at_utc DESC, s.madrid_date DESC;`,
+          [visibleIds]
         ),
       ]);
+
+    const visibleTeamIds = Array.from(new Set(teamRows.map((t) => t.team_season_id)));
+    const trainingSlotRows =
+      visibleTeamIds.length > 0
+        ? await queryNeon<{
+            team_season_id: string;
+            team_name: string;
+            weekday: number;
+            start_time: string;
+            end_time: string;
+            venue_name: string;
+            court_name: string;
+          }>(
+            `SELECT
+               ts2.team_season_id,
+               t.name AS team_name,
+               ts2.weekday,
+               ts2.start_time,
+               ts2.end_time,
+               v.name AS venue_name,
+               c.name AS court_name
+             FROM intranet_training_slots ts2
+             INNER JOIN intranet_courts c ON c.id = ts2.court_id
+             INNER JOIN intranet_venues v ON v.id = c.venue_id
+             INNER JOIN intranet_team_seasons t ON t.id = ts2.team_season_id
+             WHERE ts2.team_season_id = ANY($1::text[])
+               AND ts2.is_active = true
+             ORDER BY ts2.weekday ASC, ts2.start_time ASC;`,
+            [visibleTeamIds]
+          )
+        : [];
+
+    const scheduleByTeam = new Map<
+      string,
+      Array<{
+        teamSeasonId: string;
+        teamName: string;
+        weekday: number;
+        weekdayLabel: string;
+        startTime: string;
+        endTime: string;
+        venueName: string;
+        courtName: string;
+      }>
+    >();
+    for (const sl of trainingSlotRows) {
+      const list = scheduleByTeam.get(sl.team_season_id) || [];
+      list.push({
+        teamSeasonId: sl.team_season_id,
+        teamName: sl.team_name,
+        weekday: sl.weekday,
+        weekdayLabel: WEEKDAY_LABELS[sl.weekday] || `Día ${sl.weekday}`,
+        startTime: sl.start_time,
+        endTime: sl.end_time,
+        venueName: sl.venue_name,
+        courtName: sl.court_name,
+      });
+      scheduleByTeam.set(sl.team_season_id, list);
+    }
 
     const teamsByAthlete = new Map<string, Array<Record<string, unknown>>>();
     for (const t of teamRows) {
@@ -268,6 +482,13 @@ export async function GET(req: NextRequest) {
 
     const consentByAthlete = new Map(consentRows.map((c) => [c.player_id, c]));
 
+    const attendanceByAthlete = new Map<string, typeof attendanceRows>();
+    for (const row of attendanceRows) {
+      const list = attendanceByAthlete.get(row.athlete_id) || [];
+      list.push(row);
+      attendanceByAthlete.set(row.athlete_id, list);
+    }
+
     const athletesPayload = athleteRows.map((a) => {
       const isGuardian = session.guardianAthleteIds.includes(a.id);
       const isOwnAccount = session.ownAthleteId === a.id;
@@ -277,6 +498,13 @@ export async function GET(req: NextRequest) {
 
       const fullName = `${a.first_name} ${a.last_name}`.trim();
       const teams = teamsByAthlete.get(a.id) || [];
+      const trainingSchedule = teams
+        .flatMap((t) => scheduleByTeam.get(String(t.teamSeasonId)) || [])
+        .sort((s1, s2) =>
+          s1.weekday !== s2.weekday
+            ? s1.weekday - s2.weekday
+            : s1.startTime.localeCompare(s2.startTime)
+        );
       const guardian = guardianByAthlete.get(a.id);
       const c = consentByAthlete.get(a.id);
 
@@ -370,6 +598,37 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      const rawAttRows = attendanceByAthlete.get(a.id) || [];
+      let presentCount = 0;
+      let lateCount = 0;
+      let justifiedCount = 0;
+      let unjustifiedCount = 0;
+      let injuredCount = 0;
+
+      for (const r of rawAttRows) {
+        if (r.status === 'PRESENTE') presentCount += 1;
+        else if (r.status === 'RETRASO') lateCount += 1;
+        else if (r.status === 'FALTA_JUSTIFICADA') justifiedCount += 1;
+        else if (r.status === 'FALTA_INJUSTIFICADA') unjustifiedCount += 1;
+        else if (r.status === 'LESIONADO_ASISTE') injuredCount += 1;
+      }
+
+      const totalSessions = rawAttRows.length;
+      const attendedCount = presentCount + lateCount + injuredCount;
+      const ratePercent =
+        totalSessions > 0 ? Math.round((attendedCount / totalSessions) * 1000) / 10 : 0;
+
+      const recentRecords = rawAttRows.slice(0, 30).map((r) => ({
+        sessionId: r.session_id,
+        madridDate: r.madrid_date || formatMadridDateString(r.starts_at_utc),
+        startTime: formatMadridTime(r.starts_at_utc),
+        endTime: formatMadridTime(r.ends_at_utc),
+        teamName: r.team_name,
+        status: r.status,
+        absenceReason: r.absence_reason,
+        notes: r.notes,
+      }));
+
       return {
         id: a.id,
         firstName: a.first_name,
@@ -389,6 +648,7 @@ export async function GET(req: NextRequest) {
         isOwnAccount,
         isGuardianView: isGuardian,
         teams,
+        trainingSchedule,
         guardian:
           guardian && !isOwnMinor
             ? {
@@ -430,6 +690,16 @@ export async function GET(req: NextRequest) {
             totalOverdue,
           },
         },
+        attendance: {
+          totalSessions,
+          presentCount,
+          lateCount,
+          justifiedCount,
+          unjustifiedCount,
+          injuredCount,
+          ratePercent,
+          recentRecords,
+        },
       };
     });
 
@@ -443,6 +713,7 @@ export async function GET(req: NextRequest) {
       },
       selectedAthleteId: requestedAthleteId || athletesPayload[0]?.id || null,
       athletes: athletesPayload,
+      pendingRegistrationCount,
       bankIban: process.env.CLUB_BANK_IBAN?.trim() || null,
     });
   } catch (err) {
@@ -480,11 +751,12 @@ export async function POST(req: NextRequest) {
       last_name: string;
       birth_year: number | null;
       birth_date_enc: string | null;
+      birth_date_verified: boolean;
       status: string;
       primary_team_id: string | null;
     }>(
       `SELECT
-         a.id, a.first_name, a.last_name, a.birth_year, a.birth_date_enc, a.status,
+         a.id, a.first_name, a.last_name, a.birth_year, a.birth_date_enc, a.birth_date_verified, a.status,
          (SELECT at2.team_season_id FROM intranet_athlete_teams at2
           WHERE at2.athlete_id = a.id ORDER BY at2.is_primary DESC LIMIT 1) AS primary_team_id
        FROM intranet_athletes a
@@ -507,8 +779,124 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!session.isStaff && athlete.status !== 'VERIFICADO') {
+      const [regRows, invRows] = await Promise.all([
+        queryNeon<{ status: string }>(
+          `SELECT status FROM intranet_registration_requests WHERE athlete_id = $1 LIMIT 1;`,
+          [athleteId]
+        ),
+        queryNeon<{ id: string }>(
+          `SELECT id::text AS id FROM intranet_invitations WHERE athlete_id = $1 AND accepted_at IS NOT NULL LIMIT 1;`,
+          [athleteId]
+        ),
+      ]);
+      const isPendingApproval =
+        regRows.some((r) => r.status === 'PENDING' || r.status === 'REJECTED') ||
+        (athlete.status === 'PENDIENTE_VALIDAR' && invRows.length === 0);
+      if (isPendingApproval) {
+        throw new IntranetForbiddenError(
+          'Esta ficha está pendiente de aceptación administrativa por parte del club.'
+        );
+      }
+    }
+
     const existingBirthDate = safeDecryptBirthDate(athlete.birth_date_enc, athleteId);
     const currentAgeEval = computeAgeInMadrid(existingBirthDate, athlete.birth_year);
+
+    if (action === 'get_consent_receipt') {
+      if (currentAgeEval.isMinor && !isGuardian) {
+        throw new IntranetForbiddenError(
+          'Solo el padre, madre o tutor legal o un deportista mayor de edad puede descargar el justificante completo.'
+        );
+      }
+
+      const consentRows = await queryNeon<{
+        id: string;
+        player_name: string;
+        team_id: string;
+        is_minor: boolean;
+        is_minor_14_to_17: boolean | null;
+        signer_name: string;
+        signer_dni: string;
+        signer_relationship: string;
+        signer_email: string;
+        signer_phone: string;
+        consent_social_media: boolean;
+        consent_streaming: boolean;
+        consent_press: boolean;
+        consent_travel: boolean | null;
+        signature_method: string | null;
+        signature_data: string;
+        document_hash: string;
+        signed_at_iso: string | null;
+        created_at: string;
+        status: string;
+      }>(
+        `SELECT
+           id::text AS id, player_name, team_id, is_minor, is_minor_14_to_17,
+           signer_name, signer_dni, signer_relationship, signer_email, signer_phone,
+           consent_social_media, consent_streaming, consent_press, consent_travel,
+           signature_method, signature_data, document_hash, signed_at_iso,
+           created_at::text AS created_at, status
+         FROM player_consents
+         WHERE player_id = $1
+         LIMIT 1;`,
+        [athleteId]
+      );
+
+      const c = consentRows[0];
+      if (!c || c.status !== 'ACTIVE') {
+        return NextResponse.json(
+          { success: false, error: 'No existe una autorización RGPD vigente para este deportista.' },
+          { status: 404 }
+        );
+      }
+
+      const decDni = decryptDataStrict(c.signer_dni, `${athleteId}:signer_dni`);
+      const decEmail = decryptDataStrict(c.signer_email, `${athleteId}:signer_email`);
+      const decPhone = decryptDataStrict(c.signer_phone, `${athleteId}:signer_phone`);
+      const decSig = decryptDataStrict(c.signature_data, `${athleteId}:signature_data`);
+
+      await recordAuditLog({
+        actorUserId: session.user.id,
+        actorEmail: session.user.email,
+        action: 'VIEW_CONSENT_RECEIPT',
+        module: 'Autorizaciones',
+        targetType: 'ATHLETE',
+        targetId: athleteId,
+        details: { consentId: c.id },
+        ipAddress: clientIp,
+      });
+
+      const resolvedTeamId = athlete.primary_team_id || c.team_id;
+      return NextResponse.json({
+        success: true,
+        receipt: {
+          consentId: c.id,
+          playerId: athleteId,
+          playerName: c.player_name,
+          teamId: resolvedTeamId,
+          teamName: getClubTeamNameById(resolvedTeamId),
+          birthYear: athlete.birth_year,
+          birthDate: existingBirthDate,
+          isMinor: c.is_minor,
+          isMinor14To17: Boolean(c.is_minor_14_to_17 ?? currentAgeEval.isMinor14To17),
+          signerName: c.signer_name,
+          signerDni: decDni.ok ? decDni.value : '',
+          signerRelationship: c.signer_relationship,
+          signerPhone: decPhone.ok ? decPhone.value : '',
+          signerEmail: decEmail.ok ? decEmail.value : '',
+          consentSocialMedia: c.consent_social_media,
+          consentStreaming: c.consent_streaming,
+          consentPress: c.consent_press,
+          consentTravel: c.consent_travel === true,
+          signatureMethod: (c.signature_method || 'OTP_EMAIL') as 'OTP_EMAIL' | 'DIGITAL_WEB' | 'PRESENCIAL',
+          signatureData: decSig.ok ? decSig.value : '',
+          documentHash: c.document_hash,
+          signedAt: c.signed_at_iso || c.created_at,
+        },
+      });
+    }
 
     if (action === 'complete_onboarding_profile') {
       if (!isGuardian && currentAgeEval.age !== null && currentAgeEval.age < 14) {
@@ -537,6 +925,14 @@ export async function POST(req: NextRequest) {
       let bdYear: number | null = null;
       let bdEnc: string | null = null;
       if (birthDateRaw) {
+        if (
+          !isGuardian &&
+          (currentAgeEval.isMinor || athlete.birth_date_verified || currentAgeEval.age === null)
+        ) {
+          throw new IntranetForbiddenError(
+            'No puedes modificar ni cambiar a mayoría de edad una ficha de menor verificada sin validación del club o de tu representante legal.'
+          );
+        }
         const parts = parseBirthDateParts(birthDateRaw);
         if (!parts) {
           return NextResponse.json(
@@ -550,6 +946,11 @@ export async function POST(req: NextRequest) {
         bdIso = `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
         bdYear = parts.year;
         const newAgeEval = computeAgeInMadrid(bdIso, bdYear);
+        if (!isGuardian && newAgeEval.isMinor) {
+          throw new IntranetForbiddenError(
+            'No puedes modificar ni cambiar a mayoría de edad una ficha de menor verificada sin validación del club o de tu representante legal.'
+          );
+        }
         if (!isGuardian && newAgeEval.age !== null && newAgeEval.age < 14) {
           throw new IntranetForbiddenError(
             'Los menores de 14 años deben verificar su ficha a través de su representante legal.'

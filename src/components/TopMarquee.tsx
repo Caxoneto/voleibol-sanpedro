@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { CLUB_INFO } from '@/lib/club-info';
 import { useStreaming } from '@/lib/use-streaming';
-import { formatMadridDate } from '@/lib/date-utils';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 export default function TopMarquee() {
   const { todayMatches, upcomingMatches, hydrated } = useStreaming();
@@ -24,16 +24,7 @@ export default function TopMarquee() {
 
   let nextMatchText = 'TEMPORADA OFICIAL 2026 / 2027 EN MARCHA';
   if (nextPending) {
-    let formattedDate = nextPending.dateStr;
-    try {
-      formattedDate = formatMadridDate(`${nextPending.dateStr}T12:00:00Z`, {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'short',
-      });
-    } catch {
-      formattedDate = nextPending.dateStr;
-    }
+    const formattedDate = formatDisplayDate(nextPending.dateStr);
     nextMatchText = `PRÓXIMO PARTIDO: ${nextPending.homeTeam} vs. ${nextPending.awayTeam} — ${formattedDate} ${nextPending.timeStr}h (${nextPending.venue})`;
   }
 
@@ -49,7 +40,7 @@ export default function TopMarquee() {
 
   return (
     <div
-      className={`w-full bg-primary-container text-white py-1.5 relative shadow-[0px_4px_16px_rgba(217,4,41,0.4)] z-50 flex items-center ${
+      className={`w-full h-9 bg-primary-container text-white relative shadow-[0px_4px_16px_rgba(217,4,41,0.4)] z-50 flex items-center ${
         effectivePaused ? 'marquee-paused' : ''
       }`}
     >
@@ -97,12 +88,12 @@ export default function TopMarquee() {
         aria-pressed={effectivePaused}
         aria-label={effectivePaused ? 'Reanudar cinta informativa' : 'Pausar cinta informativa'}
         title={effectivePaused ? 'Reanudar cinta informativa' : 'Pausar cinta informativa'}
-        className="shrink-0 mr-2 sm:mr-3 w-7 h-7 flex items-center justify-center rounded-sm bg-black/35 hover:bg-black/55 border border-white/30 text-white transition-colors cursor-pointer"
+        className="shrink-0 mr-1.5 sm:mr-2.5 w-9 h-9 flex items-center justify-center rounded-none bg-black/35 hover:bg-black/55 border-l border-white/25 text-white transition-colors active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
       >
         {effectivePaused ? (
-          <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+          <Play className="w-4 h-4 fill-current" aria-hidden="true" />
         ) : (
-          <Pause className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+          <Pause className="w-4 h-4 fill-current" aria-hidden="true" />
         )}
       </button>
     </div>

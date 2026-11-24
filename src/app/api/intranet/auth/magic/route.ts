@@ -7,6 +7,7 @@ import {
   createIntranetSession,
   setIntranetSessionCookie,
   getPublicBaseUrl,
+  isMemberBlockedByPendingApproval,
 } from '@/lib/intranet/auth';
 import { buildUserAccessContext } from '@/lib/intranet/rbac';
 import { ensureIntranetSeeded } from '@/lib/intranet/seed-bootstrap';
@@ -84,16 +85,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      await queryNeon(`UPDATE intranet_users SET email_verified = true WHERE id = $1::uuid;`, [user.id]);
-
-      const { rawToken: sessToken, expiresAt } = await createIntranetSession({
-        userId: user.id,
-        ipAddress: clientIp,
-        userAgent: req.headers.get('user-agent'),
-        twoFactorVerified: true,
-      });
-      setIntranetSessionCookie(sessToken, expiresAt);
-
       const ctx = await buildUserAccessContext({
         sessionId: 'magic',
         twoFactorVerified: true,
@@ -107,6 +98,42 @@ export async function POST(req: NextRequest) {
           status: user.status,
         },
       });
+
+      const pendingApproval = await isMemberBlockedByPendingApproval(user.id, ctx);
+      if (pendingApproval.blocked) {
+        await recordAuditLog({
+          actorUserId: user.id,
+          actorEmail: user.email,
+          action: 'LOGIN_BLOCKED_PENDING_APPROVAL',
+          module: 'Auth',
+          details: {
+            method: 'MAGIC_LINK',
+            pendingRequests: pendingApproval.pendingRequests,
+            pendingAthletes: pendingApproval.pendingAthletes,
+          },
+          ipAddress: clientIp,
+        });
+
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'PENDING_ADMIN_APPROVAL',
+            error:
+              'Tu inscripción y autorizaciones ya están registradas, pero aún están pendientes de aceptación y asignación de equipo por parte de la administración del club. Recibirás un correo en cuanto se active tu acceso.',
+          },
+          { status: 403 }
+        );
+      }
+
+      await queryNeon(`UPDATE intranet_users SET email_verified = true WHERE id = $1::uuid;`, [user.id]);
+
+      const { rawToken: sessToken, expiresAt } = await createIntranetSession({
+        userId: user.id,
+        ipAddress: clientIp,
+        userAgent: req.headers.get('user-agent'),
+        twoFactorVerified: true,
+      });
+      setIntranetSessionCookie(sessToken, expiresAt);
 
       await recordAuditLog({
         actorUserId: user.id,

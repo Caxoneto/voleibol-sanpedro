@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: 'Aviso Legal | C.D. Voleibol San Pedro',
   description:
     'Información legal, datos identificativos y condiciones de uso del portal oficial del C.D. Voleibol San Pedro según el Art. 10 de la LSSI-CE.',
+  alternates: {
+    canonical: '/aviso-legal',
+  },
 };
 
 export default function AvisoLegalPage() {

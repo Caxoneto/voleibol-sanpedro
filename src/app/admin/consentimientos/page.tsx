@@ -227,7 +227,7 @@ function useModalFocusTrap(
   modalRef: React.RefObject<HTMLDivElement | null>,
   onClose: () => void
 ) {
-  const triggerRef = useRef<HTMLElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
   const wasOpenRef = useRef(false);
   const onCloseRef = useRef(onClose);
 
@@ -240,13 +240,15 @@ function useModalFocusTrap(
       const justOpened = !wasOpenRef.current;
       wasOpenRef.current = true;
       if (justOpened) {
-        triggerRef.current = document.activeElement as HTMLElement | null;
+        lastFocusedRef.current = document.activeElement as HTMLElement | null;
         const modal = modalRef.current;
         if (modal && !modal.contains(document.activeElement)) {
           const focusable = modal.querySelectorAll<HTMLElement>(
             'button:not([disabled]), [href], input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
           );
-          focusable[0]?.focus();
+          if (focusable.length > 0) {
+            requestAnimationFrame(() => focusable[0]?.focus());
+          }
         }
       }
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -279,7 +281,11 @@ function useModalFocusTrap(
     }
     if (wasOpenRef.current) {
       wasOpenRef.current = false;
-      triggerRef.current?.focus();
+      const prev = lastFocusedRef.current;
+      if (prev && typeof prev.focus === 'function') {
+        requestAnimationFrame(() => prev.focus());
+      }
+      lastFocusedRef.current = null;
     }
   }, [isOpen, modalRef]);
 }
@@ -1728,9 +1734,9 @@ export default function AdminConsentimientosPage() {
   if (!isAuthenticated) {
     return (
       <div className="w-full min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-surface-container-lowest border border-white/10 rounded-2xl p-8 space-y-6 shadow-2xl">
+        <div className="max-w-md w-full bg-surface-container-lowest border border-white/10 rounded-none p-8 space-y-6 shadow-brutal-dark">
           <div className="text-center space-y-2">
-            <div className="w-12 h-12 bg-primary-container text-white rounded-xl flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 bg-primary-container text-white rounded-none flex items-center justify-center mx-auto">
               <Lock className="w-6 h-6" aria-hidden="true" />
             </div>
             <h1 className="text-xl font-bold text-white uppercase tracking-wider">
@@ -1753,7 +1759,7 @@ export default function AdminConsentimientosPage() {
                 onChange={(e) => setUsernameInput(e.target.value)}
                 required
                 placeholder="admin"
-                className="w-full bg-surface-container-low border border-white/15 rounded-lg px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-primary"
+                className="w-full bg-surface-container-low border border-white/15 rounded-none px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-primary"
               />
             </div>
 
@@ -1768,12 +1774,12 @@ export default function AdminConsentimientosPage() {
                 onChange={(e) => setPasswordInput(e.target.value)}
                 required
                 placeholder="••••••••••••"
-                className="w-full bg-surface-container-low border border-white/15 rounded-lg px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-primary"
+                className="w-full bg-surface-container-low border border-white/15 rounded-none px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-primary"
               />
             </div>
 
             {loginError && (
-              <div role="alert" className="p-3 bg-red-950/60 border border-red-500/40 rounded-lg flex items-center gap-2 text-xs text-red-200">
+              <div role="alert" className="p-3 bg-red-950/60 border border-red-500/40 rounded-none flex items-center gap-2 text-xs text-red-200">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" aria-hidden="true" />
                 <span>{loginError}</span>
               </div>
@@ -1782,7 +1788,7 @@ export default function AdminConsentimientosPage() {
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full py-3 bg-primary-container hover:bg-cta-hover text-white font-bold text-sm uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-40 shadow-lg cursor-pointer"
+              className="w-full py-3 bg-primary-container hover:bg-cta-hover active:translate-x-[1px] active:translate-y-[1px] text-white font-bold text-sm uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-2 disabled:opacity-40 shadow-brutal-dark cursor-pointer"
             >
               {isLoggingIn ? <span>Accediendo...</span> : <span>Iniciar Sesión</span>}
             </button>
@@ -1802,7 +1808,7 @@ export default function AdminConsentimientosPage() {
   ).length;
 
   const massEmailSummaryBanner = massEmailSummary ? (
-    <div role="status" className="p-3.5 rounded-xl border border-white/15 bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+    <div role="status" className="p-3.5 rounded-none border border-white/15 bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
       <div className="space-y-1.5">
         <div className="font-bold text-white flex flex-wrap items-center gap-3">
           <span className="text-emerald-400">
@@ -1831,7 +1837,7 @@ export default function AdminConsentimientosPage() {
               type="button"
               disabled={isSendingMassEmails}
               onClick={() => handleSendMassEmails(massEmailSummary.failedItems.map((f) => f.playerId))}
-              className="px-2 py-0.5 bg-red-800 hover:bg-red-700 text-white font-bold uppercase rounded cursor-pointer"
+              className="px-2 py-0.5 bg-red-800 hover:bg-red-700 text-white font-bold uppercase rounded-none cursor-pointer"
             >
               Reintentar fallidos
             </button>
@@ -1867,7 +1873,7 @@ export default function AdminConsentimientosPage() {
             type="button"
             onClick={() => loadDashboardData()}
             disabled={isLoading}
-            className="p-2.5 bg-surface-container-high hover:bg-surface-container-highest border border-white/10 rounded-lg text-white/85 hover:text-white transition-colors cursor-pointer"
+            className="p-2.5 bg-surface-container-high hover:bg-surface-container-highest border border-white/10 rounded-none text-white/85 hover:text-white transition-colors cursor-pointer"
             aria-label="Refrescar datos del panel"
             title="Refrescar datos"
           >
@@ -1876,9 +1882,9 @@ export default function AdminConsentimientosPage() {
           <button
             type="button"
             onClick={() => setShowStreamingModal(true)}
-            className={`inline-flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-lg border transition-colors cursor-pointer ${
+            className={`inline-flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-none border transition-colors cursor-pointer ${
               streamingStatus.active
-                ? 'bg-emerald-700 hover:bg-emerald-600 border-emerald-400/50 text-white'
+                ? 'bg-emerald-700 hover:bg-emerald-600 active:translate-x-[1px] active:translate-y-[1px] border-emerald-400/50 text-white'
                 : 'bg-surface-container-high hover:bg-surface-bright border-white/15 text-white'
             }`}
           >
@@ -1888,7 +1894,7 @@ export default function AdminConsentimientosPage() {
           <button
             type="button"
             onClick={openCensusModal}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-white/15 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase tracking-wider rounded-none border border-white/15 transition-colors cursor-pointer"
           >
             <Users className="w-4 h-4 text-primary" aria-hidden="true" />
             <span>Censo Masivo</span>
@@ -1896,7 +1902,7 @@ export default function AdminConsentimientosPage() {
           <button
             type="button"
             onClick={() => handleOpenBatchModal()}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-colors shadow-lg cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-primary-container hover:bg-cta-hover active:translate-x-[1px] active:translate-y-[1px] text-white text-xs font-bold uppercase tracking-wider rounded-none transition-colors shadow-brutal-dark cursor-pointer"
           >
             <Layers className="w-4 h-4" aria-hidden="true" />
             <span>Generar Lote {selectedPlayerIds.length > 0 ? `(${selectedPlayerIds.length})` : ''}</span>
@@ -1904,7 +1910,7 @@ export default function AdminConsentimientosPage() {
           <button
             type="button"
             onClick={handleExportCsv}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-emerald-500/30 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-emerald-700 hover:bg-emerald-600 active:translate-x-[1px] active:translate-y-[1px] text-white text-xs font-bold uppercase tracking-wider rounded-none border border-emerald-500/30 transition-colors cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />
             <span>Exportar CSV</span>
@@ -1912,7 +1918,7 @@ export default function AdminConsentimientosPage() {
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-950/60 hover:bg-red-900 text-red-100 text-xs font-bold uppercase tracking-wider rounded-lg border border-red-500/40 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-950/60 hover:bg-red-900 text-red-100 text-xs font-bold uppercase tracking-wider rounded-none border border-red-500/40 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" aria-hidden="true" />
             <span>Salir</span>
@@ -1926,7 +1932,7 @@ export default function AdminConsentimientosPage() {
           <div
             role="status"
             aria-live="polite"
-            className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs font-semibold ${
+            className={`p-3.5 rounded-none border flex items-center justify-between gap-3 text-xs font-semibold ${
               toast.kind === 'error'
                 ? 'bg-red-950/70 border-red-500/50 text-red-100'
                 : toast.kind === 'success'
@@ -1954,7 +1960,7 @@ export default function AdminConsentimientosPage() {
         )}
 
         {loadError && (
-          <div role="alert" className="p-4 bg-red-950/60 border border-red-500/40 rounded-xl flex items-center justify-between gap-3 text-xs text-red-200">
+          <div role="alert" className="p-4 bg-red-950/60 border border-red-500/40 rounded-none flex items-center justify-between gap-3 text-xs text-red-200">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0" aria-hidden="true" />
               <span>{loadError}</span>
@@ -1962,7 +1968,7 @@ export default function AdminConsentimientosPage() {
             <button
               type="button"
               onClick={loadDashboardData}
-              className="px-3 py-1.5 bg-red-900 hover:bg-red-800 text-white font-bold uppercase rounded cursor-pointer"
+              className="px-3 py-1.5 bg-red-900 hover:bg-red-800 text-white font-bold uppercase rounded-none cursor-pointer"
             >
               Reintentar
             </button>
@@ -1971,7 +1977,7 @@ export default function AdminConsentimientosPage() {
 
         {/* Alerta visible si existen registros con integridad comprometida */}
         {data && (data.stats.integrityAlerts || 0) > 0 && (
-          <div role="alert" className="p-4 bg-amber-950/60 border border-amber-500/50 rounded-xl flex items-center gap-3 text-xs text-amber-100">
+          <div role="alert" className="p-4 bg-amber-950/60 border border-amber-500/50 rounded-none flex items-center gap-3 text-xs text-amber-100">
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" aria-hidden="true" />
             <span>
               <strong>Atención de Auditoría:</strong> Se han detectado <strong>{data.stats.integrityAlerts}</strong> autorización(es) con alerta de verificación criptográfica o descifrado. Revisa la columna de integridad.
@@ -1982,7 +1988,7 @@ export default function AdminConsentimientosPage() {
         {/* Tarjetas KPI Globales */}
         {data && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-5 space-y-2">
+            <div className="bg-surface-container-lowest border border-white/10 rounded-none p-5 space-y-2">
               <span className="text-[11px] font-bold text-tertiary uppercase tracking-wider block">
                 Total Licencias Club
               </span>
@@ -1995,7 +2001,7 @@ export default function AdminConsentimientosPage() {
               </div>
             </div>
 
-            <div className="bg-surface-container-lowest border border-emerald-500/30 rounded-xl p-5 space-y-2">
+            <div className="bg-surface-container-lowest border border-emerald-500/30 rounded-none p-5 space-y-2">
               <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
                 <span>Firmadas Activas</span>
                 <span className="text-emerald-400 font-bold">{data.stats.percentSigned}%</span>
@@ -2009,7 +2015,7 @@ export default function AdminConsentimientosPage() {
               </div>
             </div>
 
-            <div className="bg-surface-container-lowest border border-amber-500/30 rounded-xl p-5 space-y-2">
+            <div className="bg-surface-container-lowest border border-amber-500/30 rounded-none p-5 space-y-2">
               <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
                 Pendientes de Firma
               </span>
@@ -2022,7 +2028,7 @@ export default function AdminConsentimientosPage() {
               </div>
             </div>
 
-            <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-5 space-y-2">
+            <div className="bg-surface-container-lowest border border-white/10 rounded-none p-5 space-y-2">
               <span className="text-[11px] font-bold text-primary uppercase tracking-wider block">
                 Cesión de Imagen
               </span>
@@ -2046,7 +2052,7 @@ export default function AdminConsentimientosPage() {
 
         {/* Semáforo por Equipos */}
         {data && (
-          <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-6 space-y-4">
+          <div className="bg-surface-container-lowest border border-white/10 rounded-none p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-primary" aria-hidden="true" />
@@ -2073,9 +2079,9 @@ export default function AdminConsentimientosPage() {
                     type="button"
                     onClick={() => setSelectedTeamFilter(isSelected ? 'ALL' : t.teamId)}
                     aria-pressed={isSelected}
-                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                    className={`p-3 rounded-none border text-left transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-primary-container/25 border-primary-container shadow-lg'
+                        ? 'bg-primary-container/25 border-primary-container shadow-brutal-dark'
                         : isComplete
                           ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/60'
                           : 'bg-surface-container-low border-white/10 hover:border-white/25'
@@ -2104,7 +2110,7 @@ export default function AdminConsentimientosPage() {
         )}
 
         {/* Barra de Filtros */}
-        <div className="bg-surface-container-lowest border border-white/10 rounded-xl p-5 space-y-4">
+        <div className="bg-surface-container-lowest border border-white/10 rounded-none p-5 space-y-4">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             <div className="relative flex-1">
               <label htmlFor="admin-search-input" className="sr-only">
@@ -2117,7 +2123,7 @@ export default function AdminConsentimientosPage() {
                 placeholder="Buscar por deportista, firmante o DNI..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-surface-container-low border border-white/15 rounded-lg pl-9 pr-3 py-2 text-base sm:text-sm text-white focus:outline-none focus:border-primary placeholder-white/30"
+                className="w-full bg-surface-container-low border border-white/15 rounded-none pl-9 pr-3 py-2 text-base sm:text-sm text-white focus:outline-none focus:border-primary placeholder-white/60"
               />
             </div>
 
@@ -2130,7 +2136,7 @@ export default function AdminConsentimientosPage() {
                 id="admin-status-filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'SIGNED' | 'PENDING' | 'SHREDDED')}
-                className="bg-surface-container-low border border-white/15 rounded-lg px-3 py-2 text-base sm:text-xs text-white focus:outline-none focus:border-primary"
+                className="bg-surface-container-low border border-white/15 rounded-none px-3 py-2 text-base sm:text-xs text-white focus:outline-none focus:border-primary"
               >
                 <option value="ALL">Todos los Estados</option>
                 <option value="PENDING">Solo Pendientes</option>
@@ -2161,7 +2167,7 @@ export default function AdminConsentimientosPage() {
 
         {/* Barra Contextual de Acciones por Lote */}
         {selectedPlayerIds.length > 0 && (
-          <div className="bg-primary-container/15 border border-primary-container/50 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-lg">
+          <div className="bg-primary-container/15 border border-primary-container/50 rounded-none p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-brutal-dark">
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs font-bold text-white">
                 <span className="w-2.5 h-2.5 rounded-full bg-primary-container" aria-hidden="true" />
@@ -2178,7 +2184,7 @@ export default function AdminConsentimientosPage() {
                 type="button"
                 disabled={isSendingMassEmails || pendingSelectedIds.length === 0}
                 onClick={() => handleSendMassEmails(pendingSelectedIds)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-md transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-none shadow-md transition-colors cursor-pointer"
               >
                 {isSendingMassEmails ? (
                   <>
@@ -2195,7 +2201,7 @@ export default function AdminConsentimientosPage() {
               <button
                 type="button"
                 onClick={() => handleOpenBatchModal()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-md transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-container hover:bg-cta-hover active:translate-x-[1px] active:translate-y-[1px] text-white text-xs font-bold uppercase tracking-wider rounded-none shadow-md transition-colors cursor-pointer"
               >
                 <Layers className="w-4 h-4" aria-hidden="true" />
                 <span>Generar Enlaces ({selectedPlayerIds.length})</span>
@@ -2203,7 +2209,7 @@ export default function AdminConsentimientosPage() {
               <button
                 type="button"
                 onClick={() => setSelectedPlayerIds([])}
-                className="px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white/85 hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                className="px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white/85 hover:text-white text-xs font-semibold rounded-none transition-colors cursor-pointer"
               >
                 Deseleccionar todos
               </button>
@@ -2214,7 +2220,7 @@ export default function AdminConsentimientosPage() {
         {!showBatchModal && massEmailSummaryBanner}
 
         {/* Tabla de Jugadores */}
-        <div className="bg-surface-container-lowest border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+        <div className="bg-surface-container-lowest border border-white/10 rounded-none overflow-hidden shadow-brutal-dark">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-container-low border-b border-white/10 text-[11px] font-bold text-white uppercase tracking-wider">
@@ -2233,7 +2239,7 @@ export default function AdminConsentimientosPage() {
                           : 'Seleccionar todos los visibles'
                       }
                       onClick={handleToggleSelectAll}
-                      className="min-w-[28px] min-h-[28px] inline-flex items-center justify-center rounded hover:bg-white/10 transition-colors cursor-pointer"
+                      className="min-w-[28px] min-h-[28px] inline-flex items-center justify-center rounded-none hover:bg-white/10 transition-colors cursor-pointer"
                     >
                       {selectedPlayerIds.length === filteredPlayers.length && filteredPlayers.length > 0 ? (
                         <CheckSquare className="w-4 h-4 text-primary" aria-hidden="true" />
@@ -2348,12 +2354,12 @@ export default function AdminConsentimientosPage() {
                             aria-checked={isRowSelected}
                             aria-label={`${isRowSelected ? 'Deseleccionar' : 'Seleccionar'} a ${p.playerName}`}
                             onClick={() => handleToggleSelectPlayer(p.playerId)}
-                            className="min-w-[28px] min-h-[28px] inline-flex items-center justify-center rounded hover:bg-white/10 cursor-pointer transition-colors"
+                            className="min-w-[28px] min-h-[28px] inline-flex items-center justify-center rounded-none hover:bg-white/10 cursor-pointer transition-colors"
                           >
                             {isRowSelected ? (
                               <CheckSquare className="w-4 h-4 text-primary" aria-hidden="true" />
                             ) : (
-                              <Square className="w-4 h-4 text-white/40 hover:text-white" aria-hidden="true" />
+                              <Square className="w-4 h-4 text-white/75 hover:text-white" aria-hidden="true" />
                             )}
                           </button>
                         </td>
@@ -2362,7 +2368,7 @@ export default function AdminConsentimientosPage() {
                           <div className="flex items-center gap-2 font-bold text-white text-sm">
                             <span>{p.playerName}</span>
                             {p.isDemo && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 border border-amber-400/40 text-amber-200">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-none text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 border border-amber-400/40 text-amber-200">
                                 Test
                               </span>
                             )}
@@ -2373,12 +2379,12 @@ export default function AdminConsentimientosPage() {
                           </div>
                           <div className="flex flex-wrap items-center gap-1 mt-1">
                             {p.dniLast5 && (
-                              <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-mono text-white/80">
+                              <span className="px-1.5 py-0.5 rounded-none bg-white/5 border border-white/10 text-[9px] font-mono text-white/80">
                                 DNI ····{p.dniLast5}
                               </span>
                             )}
                             <span
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-semibold border ${
+                              className={`px-1.5 py-0.5 rounded-none text-[9px] font-semibold border ${
                                 p.hasCensusEmail
                                   ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-300'
                                   : 'bg-amber-950/40 border-amber-500/30 text-amber-300'
@@ -2393,18 +2399,18 @@ export default function AdminConsentimientosPage() {
 
                         <td className="py-3.5 px-3">
                           {p.isShredded ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-neutral-800 border border-white/25 text-white/90 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-neutral-800 border border-white/25 text-white/90 whitespace-nowrap">
                               <ShieldOff className="w-3 h-3 text-amber-300" aria-hidden="true" />
                               <span>Suprimido Art. 17</span>
                             </span>
                           ) : p.isSigned ? (
                             <div className="space-y-1">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 whitespace-nowrap">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-400" aria-hidden="true" />
                                 <span>Completado</span>
                               </span>
                               {p.integrityVerified === false ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-950/80 border border-amber-400/50 text-amber-200 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-bold uppercase bg-amber-950/80 border border-amber-400/50 text-amber-200 whitespace-nowrap">
                                   <ShieldAlert className="w-3 h-3 text-amber-300" aria-hidden="true" />
                                   <span>Alerta Integridad</span>
                                 </span>
@@ -2416,7 +2422,7 @@ export default function AdminConsentimientosPage() {
                               )}
                             </div>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-950/70 border border-red-500/40 text-red-300 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-red-950/70 border border-red-500/40 text-red-300 whitespace-nowrap">
                               <Clock className="w-3 h-3 text-red-400" aria-hidden="true" />
                               <span>Pendiente</span>
                             </span>
@@ -2463,7 +2469,7 @@ export default function AdminConsentimientosPage() {
                                   </span>
                                 )
                               ) : (
-                                <span className="text-red-300 font-bold bg-red-950/60 px-1.5 py-0.5 rounded text-[10px]">
+                                <span className="text-red-300 font-bold bg-red-950/60 px-1.5 py-0.5 rounded-none text-[10px]">
                                   ✕ NO
                                 </span>
                               )}
@@ -2481,7 +2487,7 @@ export default function AdminConsentimientosPage() {
                                 <span>SÍ</span>
                               </span>
                             ) : (
-                              <span className="text-red-300 font-bold text-[10px] bg-red-950/60 px-1.5 py-0.5 rounded">
+                              <span className="text-red-300 font-bold text-[10px] bg-red-950/60 px-1.5 py-0.5 rounded-none">
                                 ✕ NO
                               </span>
                             )
@@ -2493,15 +2499,15 @@ export default function AdminConsentimientosPage() {
                         <td className="py-3.5 px-3 text-center">
                           {p.isSigned ? (
                             p.signatureMethod === 'OTP_EMAIL' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-cyan-950/70 border border-cyan-500/40 text-cyan-200 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-cyan-950/70 border border-cyan-500/40 text-cyan-200 whitespace-nowrap">
                                 DIGITAL + OTP
                               </span>
                             ) : p.signatureMethod === 'PRESENCIAL' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-950/70 border border-amber-500/40 text-amber-200 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-amber-950/70 border border-amber-500/40 text-amber-200 whitespace-nowrap">
                                 PRESENCIAL
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-950/70 border border-blue-500/40 text-blue-200 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-blue-950/70 border border-blue-500/40 text-blue-200 whitespace-nowrap">
                                 DIGITAL WEB
                               </span>
                             )
@@ -2526,7 +2532,7 @@ export default function AdminConsentimientosPage() {
                             <button
                               type="button"
                               onClick={() => handleOpenDirectLinkModal(p)}
-                              className="min-w-[28px] min-h-[28px] p-1.5 bg-primary-container/25 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 rounded transition-colors cursor-pointer inline-flex items-center justify-center"
+                              className="min-w-[28px] min-h-[28px] p-1.5 bg-primary-container/25 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 rounded-none transition-colors cursor-pointer inline-flex items-center justify-center"
                               aria-label={`Gestionar ficha y enlace de ${p.playerName}`}
                               title="Gestionar ficha, enlace directo y enviar solicitud por email"
                             >
@@ -2539,7 +2545,7 @@ export default function AdminConsentimientosPage() {
                                   type="button"
                                   disabled={downloadingPdfId === p.playerId}
                                   onClick={() => handleDownloadPdf(p)}
-                                  className="min-w-[28px] min-h-[28px] p-1.5 bg-surface-container-high hover:bg-surface-bright text-white rounded transition-colors cursor-pointer inline-flex items-center justify-center disabled:opacity-50"
+                                  className="min-w-[28px] min-h-[28px] p-1.5 bg-surface-container-high hover:bg-surface-bright text-white rounded-none transition-colors cursor-pointer inline-flex items-center justify-center disabled:opacity-50"
                                   aria-label={`Descargar PDF de ${p.playerName}`}
                                   title="Descargar Resguardo PDF Oficial"
                                 >
@@ -2552,7 +2558,7 @@ export default function AdminConsentimientosPage() {
                                 <button
                                   type="button"
                                   onClick={() => requestRevoke(p)}
-                                  className="min-w-[28px] min-h-[28px] p-1.5 bg-amber-950/60 hover:bg-amber-800 text-amber-200 rounded transition-colors cursor-pointer inline-flex items-center justify-center"
+                                  className="min-w-[28px] min-h-[28px] p-1.5 bg-amber-950/60 hover:bg-amber-800 text-amber-200 rounded-none transition-colors cursor-pointer inline-flex items-center justify-center"
                                   aria-label={`Revocar autorización de ${p.playerName}`}
                                   title="Revocar autorización (Art. 7.3)"
                                 >
@@ -2561,7 +2567,7 @@ export default function AdminConsentimientosPage() {
                                 <button
                                   type="button"
                                   onClick={() => requestShred(p)}
-                                  className="min-w-[28px] min-h-[28px] p-1.5 bg-red-950/60 hover:bg-red-800 text-red-200 rounded transition-colors cursor-pointer inline-flex items-center justify-center"
+                                  className="min-w-[28px] min-h-[28px] p-1.5 bg-red-950/60 hover:bg-red-800 text-red-200 rounded-none transition-colors cursor-pointer inline-flex items-center justify-center"
                                   aria-label={`Suprimir clave RGPD de ${p.playerName}`}
                                   title="Supresión irreversible Art. 17 RGPD (Crypto-Shredding)"
                                 >
@@ -2593,11 +2599,11 @@ export default function AdminConsentimientosPage() {
         >
           <div
             ref={directModalRef}
-            className="bg-surface-container-lowest border border-white/10 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl my-8 max-h-[92vh] overflow-y-auto"
+            className="bg-surface-container-lowest border border-white/15 rounded-none max-w-2xl w-full p-6 space-y-4 shadow-brutal-dark my-8 max-h-[92vh] overflow-y-auto"
           >
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 bg-primary-container text-white text-[10px] font-bold uppercase rounded">
+                <span className="px-2 py-0.5 bg-primary-container text-white text-[10px] font-bold uppercase rounded-none">
                   GESTIÓN DE FIRMA
                 </span>
                 <h3 id="direct-modal-title" className="text-sm font-bold text-white uppercase tracking-wider">
@@ -2607,18 +2613,18 @@ export default function AdminConsentimientosPage() {
               <button
                 type="button"
                 onClick={closeDirectModal}
-                className="text-tertiary hover:text-white p-1.5 cursor-pointer"
+                className="w-10 h-10 rounded-none inline-flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 border border-transparent hover:border-white/15 transition-colors cursor-pointer shrink-0"
                 aria-label="Cerrar ventana de gestión de firma"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface-container-low rounded-xl border border-white/5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface-container-low rounded-none border border-white/5">
               <div>
                 <div className="text-sm font-bold text-white flex items-center gap-2 flex-wrap">
                   <span>{directLinkPlayer.playerName}</span>
-                  <span className="px-1.5 py-0.5 bg-white/10 text-white/90 text-[10px] font-semibold rounded">
+                  <span className="px-1.5 py-0.5 bg-white/10 text-white/90 text-[10px] font-semibold rounded-none">
                     {directLinkPlayer.teamName}
                   </span>
                 </div>
@@ -2641,7 +2647,7 @@ export default function AdminConsentimientosPage() {
               </div>
             ) : directLinkData ? (
               <div className="space-y-4">
-                <div className="space-y-3 p-4 bg-surface-container-low/60 rounded-xl border border-white/10">
+                <div className="space-y-3 p-4 bg-surface-container-low/60 rounded-none border border-white/10">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                       <Edit2 className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
@@ -2671,7 +2677,7 @@ export default function AdminConsentimientosPage() {
                         value={directLinkPlayer.isMinor ? prefillName : directLinkPlayer.playerName}
                         onChange={(e) => setPrefillName(e.target.value)}
                         placeholder="Nombre completo"
-                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-base sm:text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full bg-surface-container-high border border-white/15 rounded-none px-3 py-2 text-base sm:text-xs text-white placeholder-white/60 focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
 
@@ -2685,7 +2691,7 @@ export default function AdminConsentimientosPage() {
                         value={prefillDni}
                         onChange={(e) => setPrefillDni(e.target.value.toUpperCase())}
                         placeholder="00000001R"
-                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-base sm:text-xs font-mono text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                        className="w-full bg-surface-container-high border border-white/15 rounded-none px-3 py-2 text-base sm:text-xs font-mono text-white placeholder-white/60 focus:outline-none focus:border-primary"
                       />
                       {!prefillDni.trim() && directLinkPlayer.dniLast5 && (
                         <span className="text-[10px] text-tertiary mt-1 block">
@@ -2703,7 +2709,7 @@ export default function AdminConsentimientosPage() {
                         disabled={!directLinkPlayer.isMinor}
                         value={directLinkPlayer.isMinor ? prefillRelationship : 'PROPIO_JUGADOR'}
                         onChange={(e) => setPrefillRelationship(e.target.value)}
-                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-base sm:text-xs text-white focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full bg-surface-container-high border border-white/15 rounded-none px-3 py-2 text-base sm:text-xs text-white focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {directLinkPlayer.isMinor ? (
                           <>
@@ -2727,7 +2733,7 @@ export default function AdminConsentimientosPage() {
                         value={prefillPhone}
                         onChange={(e) => setPrefillPhone(e.target.value)}
                         placeholder="600 000 000"
-                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-base sm:text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                        className="w-full bg-surface-container-high border border-white/15 rounded-none px-3 py-2 text-base sm:text-xs text-white placeholder-white/60 focus:outline-none focus:border-primary"
                       />
                     </div>
 
@@ -2741,7 +2747,7 @@ export default function AdminConsentimientosPage() {
                         value={prefillEmail}
                         onChange={(e) => setPrefillEmail(e.target.value)}
                         placeholder="contacto@ejemplo.com"
-                        className="w-full bg-surface-container-high border border-white/15 rounded-lg px-3 py-2 text-base sm:text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                        className="w-full bg-surface-container-high border border-white/15 rounded-none px-3 py-2 text-base sm:text-xs text-white placeholder-white/60 focus:outline-none focus:border-primary"
                       />
                     </div>
                   </div>
@@ -2749,7 +2755,7 @@ export default function AdminConsentimientosPage() {
                   {prefillNotice && (
                     <div
                       role={prefillNotice.kind === 'error' ? 'alert' : 'status'}
-                      className={`p-2.5 rounded-lg text-xs border ${
+                      className={`p-2.5 rounded-none text-xs border ${
                         prefillNotice.kind === 'error'
                           ? 'bg-red-950/60 border-red-500/40 text-red-200'
                           : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
@@ -2761,7 +2767,7 @@ export default function AdminConsentimientosPage() {
                 </div>
 
                 {/* Enlace directo + envío email */}
-                <div className="space-y-3 p-4 bg-surface-container-low/60 rounded-xl border border-white/10">
+                <div className="space-y-3 p-4 bg-surface-container-low/60 rounded-none border border-white/10">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label htmlFor="direct-url-readonly" className="block text-xs font-bold text-white/85 uppercase tracking-wider">
@@ -2775,7 +2781,7 @@ export default function AdminConsentimientosPage() {
                         type="text"
                         readOnly
                         value={directLinkData.directUrl}
-                        className="w-full bg-surface-container-low border border-white/15 rounded-lg px-3 py-2 text-xs font-mono text-white/90 select-all"
+                        className="w-full bg-surface-container-low border border-white/15 rounded-none px-3 py-2 text-xs font-mono text-white/90 select-all"
                       />
                       <button
                         type="button"
@@ -2787,7 +2793,7 @@ export default function AdminConsentimientosPage() {
                             setTimeout(() => setCopiedLink(false), 2500);
                           } catch {}
                         }}
-                        className={`px-3 py-2 rounded-lg text-xs font-bold uppercase transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                        className={`px-3 py-2 rounded-none text-xs font-bold uppercase transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer ${
                           copiedLink
                             ? 'bg-emerald-700 text-white'
                             : 'bg-surface-container-high hover:bg-surface-bright text-white'
@@ -2813,7 +2819,7 @@ export default function AdminConsentimientosPage() {
                             });
                           }
                         }}
-                        className="p-2 bg-surface-container-high hover:bg-surface-bright text-white rounded-lg transition-colors shrink-0"
+                        className="p-2 bg-surface-container-high hover:bg-surface-bright text-white rounded-none transition-colors shrink-0"
                         aria-label="Abrir enlace directo en nueva pestaña"
                       >
                         <ExternalLink className="w-4 h-4" aria-hidden="true" />
@@ -2829,7 +2835,7 @@ export default function AdminConsentimientosPage() {
                       type="button"
                       disabled={isSendingInviteEmail || !prefillEmail.trim()}
                       onClick={handleSendDirectLinkEmail}
-                      className="py-2.5 px-4 bg-primary-container hover:bg-cta-hover disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors inline-flex items-center justify-center gap-2 shadow-md cursor-pointer shrink-0"
+                      className="py-2.5 px-4 bg-primary-container hover:bg-cta-hover active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider rounded-none transition-colors inline-flex items-center justify-center gap-2 shadow-md cursor-pointer shrink-0"
                     >
                       {isSendingInviteEmail ? (
                         <>
@@ -2853,7 +2859,7 @@ export default function AdminConsentimientosPage() {
                     <button
                       type="button"
                       onClick={handleDownloadDraftPdf}
-                      className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer border border-white/10"
+                      className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase tracking-wider rounded-none transition-colors cursor-pointer border border-white/10"
                     >
                       <Download className="w-4 h-4 text-primary" aria-hidden="true" />
                       <span>Descargar PDF Presencial</span>
@@ -2861,20 +2867,20 @@ export default function AdminConsentimientosPage() {
                   </div>
 
                   {directLinkPlayer.isShredded ? (
-                    <div className="p-3 bg-red-950/40 border border-red-500/30 rounded-xl text-xs text-red-200">
+                    <div className="p-3 bg-red-950/40 border border-red-500/30 rounded-none text-xs text-red-200">
                       Ficha suprimida conforme al Art. 17 RGPD. No se permite registrar nuevas firmas presenciales.
                     </div>
                   ) : directLinkPlayer.isSigned ? (
-                    <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-xs text-emerald-200">
+                    <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-none text-xs text-emerald-200">
                       Esta ficha ya tiene una autorización activa registrada ({directLinkPlayer.signatureMethod === 'PRESENCIAL' ? 'Presencial' : 'Digital'}). Para sustituirla, revócala primero desde la tabla principal.
                     </div>
                   ) : (
-                    <div className="p-3.5 bg-surface-container-low/60 border border-white/10 rounded-xl space-y-3">
+                    <div className="p-3.5 bg-surface-container-low/60 border border-white/10 rounded-none space-y-3">
                       <span className="text-xs font-bold text-white block">
                         Registrar hoja física firmada en mano:
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div className="p-2.5 bg-black/25 rounded-lg border border-white/10 space-y-2">
+                        <div className="p-2.5 bg-black/25 rounded-none border border-white/10 space-y-2">
                           <span className="font-semibold text-white/90 flex items-center gap-1.5">
                             <Camera className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
                             <span>Imágenes</span>
@@ -2885,7 +2891,7 @@ export default function AdminConsentimientosPage() {
                               role="radio"
                               aria-checked={inPersonImage === true}
                               onClick={() => setInPersonImage(true)}
-                              className={`py-1.5 px-2 rounded border font-bold text-[11px] cursor-pointer transition-colors ${
+                              className={`py-1.5 px-2 rounded-none border font-bold text-[11px] cursor-pointer transition-colors ${
                                 inPersonImage === true
                                   ? 'bg-emerald-950/70 border-emerald-400 text-emerald-200'
                                   : 'bg-surface-container-high border-white/10 text-tertiary hover:text-white'
@@ -2898,7 +2904,7 @@ export default function AdminConsentimientosPage() {
                               role="radio"
                               aria-checked={inPersonImage === false}
                               onClick={() => setInPersonImage(false)}
-                              className={`py-1.5 px-2 rounded border font-bold text-[11px] cursor-pointer transition-colors ${
+                              className={`py-1.5 px-2 rounded-none border font-bold text-[11px] cursor-pointer transition-colors ${
                                 inPersonImage === false
                                   ? 'bg-red-950/70 border-red-400 text-red-200'
                                   : 'bg-surface-container-high border-white/10 text-tertiary hover:text-white'
@@ -2908,7 +2914,7 @@ export default function AdminConsentimientosPage() {
                             </button>
                           </div>
                         </div>
-                        <div className="p-2.5 bg-black/25 rounded-lg border border-white/10 space-y-2">
+                        <div className="p-2.5 bg-black/25 rounded-none border border-white/10 space-y-2">
                           <span className="font-semibold text-white/90 flex items-center gap-1.5">
                             <Bus className="w-3.5 h-3.5 text-blue-400 shrink-0" aria-hidden="true" />
                             <span>Desplazamientos</span>
@@ -2919,7 +2925,7 @@ export default function AdminConsentimientosPage() {
                               role="radio"
                               aria-checked={inPersonTravel === true}
                               onClick={() => setInPersonTravel(true)}
-                              className={`py-1.5 px-2 rounded border font-bold text-[11px] cursor-pointer transition-colors ${
+                              className={`py-1.5 px-2 rounded-none border font-bold text-[11px] cursor-pointer transition-colors ${
                                 inPersonTravel === true
                                   ? 'bg-emerald-950/70 border-emerald-400 text-emerald-200'
                                   : 'bg-surface-container-high border-white/10 text-tertiary hover:text-white'
@@ -2932,7 +2938,7 @@ export default function AdminConsentimientosPage() {
                               role="radio"
                               aria-checked={inPersonTravel === false}
                               onClick={() => setInPersonTravel(false)}
-                              className={`py-1.5 px-2 rounded border font-bold text-[11px] cursor-pointer transition-colors ${
+                              className={`py-1.5 px-2 rounded-none border font-bold text-[11px] cursor-pointer transition-colors ${
                                 inPersonTravel === false
                                   ? 'bg-red-950/70 border-red-400 text-red-200'
                                   : 'bg-surface-container-high border-white/10 text-tertiary hover:text-white'
@@ -2948,7 +2954,7 @@ export default function AdminConsentimientosPage() {
                           type="button"
                           disabled={isRegisteringInPerson}
                           onClick={handleRegisterInPerson}
-                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold uppercase tracking-wider rounded-none transition-colors cursor-pointer disabled:opacity-50"
                         >
                           <ClipboardCheck className="w-4 h-4" aria-hidden="true" />
                           <span>{isRegisteringInPerson ? 'Registrando...' : 'Registrar Firma Presencial'}</span>
@@ -2964,7 +2970,7 @@ export default function AdminConsentimientosPage() {
               <button
                 type="button"
                 onClick={closeDirectModal}
-                className="px-4 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-lg cursor-pointer"
+                className="px-4 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-none cursor-pointer"
               >
                 Cerrar
               </button>
@@ -2985,18 +2991,18 @@ export default function AdminConsentimientosPage() {
         >
           <div
             ref={batchModalRef}
-            className="bg-surface-container-lowest border border-white/10 rounded-2xl max-w-4xl w-full p-5 sm:p-6 space-y-4 shadow-2xl my-6 max-h-[92vh] flex flex-col"
+            className="bg-surface-container-lowest border border-white/15 rounded-none max-w-4xl w-full p-5 sm:p-6 space-y-4 shadow-brutal-dark my-6 max-h-[92vh] flex flex-col"
           >
             <div className="flex justify-between items-center border-b border-white/10 pb-3 shrink-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 bg-primary-container text-white text-[10px] font-bold uppercase rounded">
+                <span className="px-2 py-0.5 bg-primary-container text-white text-[10px] font-bold uppercase rounded-none">
                   LOTE DE ENLACES
                 </span>
                 <h3 id="batch-modal-title" className="text-sm font-bold text-white uppercase tracking-wider">
                   Enlaces Directos y Envío Paginado por Email
                 </h3>
                 {batchItems.length > 0 && (
-                  <span className="px-2 py-0.5 bg-white/10 text-white/90 text-xs font-semibold rounded-full">
+                  <span className="px-2 py-0.5 bg-white/10 text-white/90 text-xs font-semibold rounded-none">
                     {batchItems.length} deportistas
                   </span>
                 )}
@@ -3004,7 +3010,7 @@ export default function AdminConsentimientosPage() {
               <button
                 type="button"
                 onClick={closeBatchModal}
-                className="text-tertiary hover:text-white p-1.5 cursor-pointer"
+                className="w-10 h-10 rounded-none inline-flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 border border-transparent hover:border-white/15 transition-colors cursor-pointer shrink-0"
                 aria-label="Cerrar modal de lote"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
@@ -3022,7 +3028,7 @@ export default function AdminConsentimientosPage() {
               </div>
             ) : (
               <>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-surface-container-low rounded-xl border border-white/5 shrink-0">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-surface-container-low rounded-none border border-white/5 shrink-0">
                   <div className="relative flex-1">
                     <label htmlFor="batch-search-input" className="sr-only">
                       Filtrar enlaces del lote
@@ -3034,7 +3040,7 @@ export default function AdminConsentimientosPage() {
                       placeholder="Buscar por deportista, equipo, firmante o email..."
                       value={batchSearchQuery}
                       onChange={(e) => setBatchSearchQuery(e.target.value)}
-                      className="w-full bg-surface-container-high border border-white/15 rounded-lg pl-9 pr-3 py-1.5 text-base sm:text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary"
+                      className="w-full bg-surface-container-high border border-white/15 rounded-none pl-9 pr-3 py-1.5 text-base sm:text-xs text-white placeholder-white/60 focus:outline-none focus:border-primary"
                     />
                   </div>
 
@@ -3047,7 +3053,7 @@ export default function AdminConsentimientosPage() {
                           batchItems.filter((it) => !it.isSigned && !it.isShredded).map((it) => it.playerId)
                         )
                       }
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-cta-hover disabled:opacity-40 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer shadow-md"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-cta-hover active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-40 text-white text-xs font-bold uppercase tracking-wider rounded-none transition-colors cursor-pointer shadow-md"
                     >
                       {isSendingMassEmails ? (
                         <>
@@ -3069,7 +3075,7 @@ export default function AdminConsentimientosPage() {
                     <button
                       type="button"
                       onClick={handleCopyAllBatchMessages}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-white/10 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase tracking-wider rounded-none border border-white/10 transition-colors cursor-pointer"
                     >
                       {copiedAllBatch ? (
                         <>
@@ -3087,7 +3093,7 @@ export default function AdminConsentimientosPage() {
                     <button
                       type="button"
                       onClick={handleExportBatchCsv}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-emerald-500/30 transition-colors cursor-pointer shadow-md"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 active:translate-x-[1px] active:translate-y-[1px] text-white text-xs font-bold uppercase tracking-wider rounded-none border border-emerald-500/30 transition-colors cursor-pointer shadow-md"
                     >
                       <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />
                       <span>Descargar CSV</span>
@@ -3119,12 +3125,12 @@ export default function AdminConsentimientosPage() {
                     return (
                       <div
                         key={item.playerId}
-                        className="p-3.5 bg-surface-container-low/70 border border-white/10 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3"
+                        className="p-3.5 bg-surface-container-low/70 border border-white/10 rounded-none flex flex-col md:flex-row md:items-center justify-between gap-3"
                       >
                         <div className="space-y-1 min-w-[220px]">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-bold text-white">{item.playerName}</span>
-                            <span className="px-1.5 py-0.5 bg-white/10 text-white/85 text-[10px] font-semibold rounded">
+                            <span className="px-1.5 py-0.5 bg-white/10 text-white/85 text-[10px] font-semibold rounded-none">
                               {item.teamName}
                             </span>
                           </div>
@@ -3150,7 +3156,7 @@ export default function AdminConsentimientosPage() {
                                 {item.signerEmail ? ` · ${item.signerEmail}` : ''}
                               </span>
                             ) : (
-                              <span className="text-white/40 italic">Sin datos de contacto en censo</span>
+                              <span className="text-white/75 italic">Sin datos de contacto en censo</span>
                             )}
                           </div>
                         </div>
@@ -3161,7 +3167,7 @@ export default function AdminConsentimientosPage() {
                             readOnly
                             aria-label={`Enlace directo para ${item.playerName}`}
                             value={item.directUrl}
-                            className="flex-1 bg-surface-container-high border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-white/85 select-all"
+                            className="flex-1 bg-surface-container-high border border-white/10 rounded-none px-2.5 py-1.5 text-[11px] font-mono text-white/85 select-all"
                           />
                           <div className="flex items-center gap-1.5 shrink-0 justify-end">
                             <button
@@ -3173,7 +3179,7 @@ export default function AdminConsentimientosPage() {
                                   setTimeout(() => setCopiedBatchId(null), 2000);
                                 } catch {}
                               }}
-                              className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 cursor-pointer ${
+                              className={`px-2.5 py-1.5 text-xs font-semibold rounded-none transition-colors flex items-center gap-1 cursor-pointer ${
                                 copiedBatchId === item.playerId
                                   ? 'bg-emerald-700 text-white'
                                   : 'bg-surface-container-high hover:bg-surface-bright text-white/90'
@@ -3193,10 +3199,10 @@ export default function AdminConsentimientosPage() {
                               type="button"
                               disabled={isSendingThis || !item.signerEmail || item.isSigned || item.isShredded}
                               onClick={() => handleSendBatchItemEmail(item)}
-                              className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-colors cursor-pointer disabled:opacity-40 ${
+                              className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold uppercase rounded-none transition-colors cursor-pointer disabled:opacity-40 ${
                                 isEmailSent
                                   ? 'bg-emerald-700 text-white'
-                                  : 'bg-primary-container hover:bg-cta-hover text-white'
+                                  : 'bg-primary-container hover:bg-cta-hover active:translate-x-[1px] active:translate-y-[1px] text-white'
                               }`}
                             >
                               {isSendingThis ? (
@@ -3213,7 +3219,7 @@ export default function AdminConsentimientosPage() {
                               href={item.directUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 bg-surface-container-high hover:bg-surface-bright text-white/85 hover:text-white rounded-lg transition-colors"
+                              className="p-1.5 bg-surface-container-high hover:bg-surface-bright text-white/85 hover:text-white rounded-none transition-colors"
                               aria-label={`Abrir enlace directo de ${item.playerName}`}
                             >
                               <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
@@ -3231,7 +3237,7 @@ export default function AdminConsentimientosPage() {
               <button
                 type="button"
                 onClick={closeBatchModal}
-                className="px-4 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-lg cursor-pointer"
+                className="px-4 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-none cursor-pointer"
               >
                 Cerrar
               </button>
@@ -3252,11 +3258,11 @@ export default function AdminConsentimientosPage() {
         >
           <div
             ref={censusModalRef}
-            className="bg-surface-container-lowest border border-white/15 rounded-2xl max-w-5xl w-full p-5 sm:p-6 space-y-4 shadow-2xl my-6 max-h-[92vh] flex flex-col"
+            className="bg-surface-container-lowest border border-white/15 rounded-none max-w-5xl w-full p-5 sm:p-6 space-y-4 shadow-brutal-dark my-6 max-h-[92vh] flex flex-col"
           >
             <div className="flex justify-between items-center border-b border-white/10 pb-3 shrink-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 bg-primary-container text-white text-[10px] font-bold uppercase rounded">
+                <span className="px-2 py-0.5 bg-primary-container text-white text-[10px] font-bold uppercase rounded-none">
                   CARGA MASIVA CENSO
                 </span>
                 <h3 id="census-modal-title" className="text-sm font-bold text-white uppercase tracking-wider">
@@ -3266,7 +3272,7 @@ export default function AdminConsentimientosPage() {
               <button
                 type="button"
                 onClick={closeCensusModal}
-                className="text-tertiary hover:text-white p-1.5 cursor-pointer"
+                className="w-10 h-10 rounded-none inline-flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 border border-transparent hover:border-white/15 transition-colors cursor-pointer shrink-0"
                 aria-label="Cerrar modal de censo masivo"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
@@ -3278,7 +3284,7 @@ export default function AdminConsentimientosPage() {
                 <button
                   type="button"
                   onClick={() => setCensusMode('CSV')}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold uppercase cursor-pointer ${
+                  className={`px-3 py-2 rounded-none text-xs font-bold uppercase cursor-pointer ${
                     censusMode === 'CSV'
                       ? 'bg-primary-container text-white'
                       : 'bg-surface-container-high text-tertiary hover:text-white'
@@ -3289,7 +3295,7 @@ export default function AdminConsentimientosPage() {
                 <button
                   type="button"
                   onClick={() => setCensusMode('TABLE')}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold uppercase cursor-pointer ${
+                  className={`px-3 py-2 rounded-none text-xs font-bold uppercase cursor-pointer ${
                     censusMode === 'TABLE'
                       ? 'bg-primary-container text-white'
                       : 'bg-surface-container-high text-tertiary hover:text-white'
@@ -3302,7 +3308,7 @@ export default function AdminConsentimientosPage() {
               <button
                 type="button"
                 onClick={handleDownloadCensusTemplateCsv}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-lg border border-white/15 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-none border border-white/15 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                 <span>Descargar Plantilla CSV</span>
@@ -3311,14 +3317,14 @@ export default function AdminConsentimientosPage() {
 
             {censusMode === 'CSV' ? (
               <div className="space-y-3 flex-1 overflow-y-auto">
-                <div className="p-3 bg-surface-container-low border border-white/10 rounded-lg text-xs text-tertiary space-y-1.5">
+                <div className="p-3 bg-surface-container-low border border-white/10 rounded-none text-xs text-tertiary space-y-1.5">
                   <p>
                     Columnas admitidas: <code className="text-white">playerId;dni;birthDate;contactEmail;contactPhone;parentName;parentDni;parentRelationship</code>.
                   </p>
                   <p>
                     Formato de fecha: <strong className="text-white">DD/MM/AAAA</strong> (o YYYY-MM-DD). Deja vacías las celdas que no quieras modificar.
                   </p>
-                  <label htmlFor="census-file-input" className="inline-flex items-center gap-2 px-3 py-2 mt-1 bg-surface-container-high hover:bg-surface-bright text-white font-bold uppercase text-[11px] rounded cursor-pointer border border-white/15">
+                  <label htmlFor="census-file-input" className="inline-flex items-center gap-2 px-3 py-2 mt-1 bg-surface-container-high hover:bg-surface-bright text-white font-bold uppercase text-[11px] rounded-none cursor-pointer border border-white/15">
                     <Upload className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                     <span>Seleccionar archivo .CSV</span>
                     <input
@@ -3341,7 +3347,7 @@ export default function AdminConsentimientosPage() {
                     value={censusCsvText}
                     onChange={(e) => setCensusCsvText(e.target.value)}
                     placeholder={'playerId;dni;birthDate;contactEmail;contactPhone;parentName;parentDni;parentRelationship\np-sf-1;00000001R;15/04/2003;deportista@ejemplo.es;600111222;;;PROPIO_JUGADOR'}
-                    className="w-full bg-surface-container-low border border-white/15 rounded-lg p-3 text-base sm:text-xs font-mono text-white focus:outline-none focus:border-primary"
+                    className="w-full bg-surface-container-low border border-white/15 rounded-none p-3 text-base sm:text-xs font-mono text-white focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
@@ -3355,7 +3361,7 @@ export default function AdminConsentimientosPage() {
                     id="census-team-select"
                     value={censusTableTeamId}
                     onChange={(e) => handleCensusTeamSwitch(e.target.value)}
-                    className="bg-surface-container-low border border-white/15 rounded-lg px-3 py-2 text-base sm:text-xs text-white focus:outline-none focus:border-primary"
+                    className="bg-surface-container-low border border-white/15 rounded-none px-3 py-2 text-base sm:text-xs text-white focus:outline-none focus:border-primary"
                   >
                     {data?.teams.map((t) => (
                       <option key={t.teamId} value={t.teamId}>
@@ -3365,7 +3371,7 @@ export default function AdminConsentimientosPage() {
                   </select>
                 </div>
 
-                <div className="overflow-x-auto border border-white/10 rounded-lg">
+                <div className="overflow-x-auto border border-white/10 rounded-none">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-surface-container-low text-[10px] uppercase text-white/90 border-b border-white/10">
                       <tr>
@@ -3410,7 +3416,7 @@ export default function AdminConsentimientosPage() {
                                   prev.map((r, i) => (i === idx ? { ...r, dni: val } : r))
                                 );
                               }}
-                              className="w-28 bg-surface-container-high border border-white/15 rounded px-2 py-1 text-xs font-mono text-white"
+                              className="w-28 bg-surface-container-high border border-white/15 rounded-none px-2 py-1 text-xs font-mono text-white"
                             />
                           </td>
                           <td className="p-1.5">
@@ -3425,7 +3431,7 @@ export default function AdminConsentimientosPage() {
                                   prev.map((r, i) => (i === idx ? { ...r, birthDate: val } : r))
                                 );
                               }}
-                              className="w-28 bg-surface-container-high border border-white/15 rounded px-2 py-1 text-xs text-white"
+                              className="w-28 bg-surface-container-high border border-white/15 rounded-none px-2 py-1 text-xs text-white"
                             />
                           </td>
                           <td className="p-1.5">
@@ -3440,7 +3446,7 @@ export default function AdminConsentimientosPage() {
                                   prev.map((r, i) => (i === idx ? { ...r, contactEmail: val } : r))
                                 );
                               }}
-                              className="w-44 bg-surface-container-high border border-white/15 rounded px-2 py-1 text-xs text-white"
+                              className="w-44 bg-surface-container-high border border-white/15 rounded-none px-2 py-1 text-xs text-white"
                             />
                           </td>
                           <td className="p-1.5">
@@ -3455,7 +3461,7 @@ export default function AdminConsentimientosPage() {
                                   prev.map((r, i) => (i === idx ? { ...r, contactPhone: val } : r))
                                 );
                               }}
-                              className="w-28 bg-surface-container-high border border-white/15 rounded px-2 py-1 text-xs text-white"
+                              className="w-28 bg-surface-container-high border border-white/15 rounded-none px-2 py-1 text-xs text-white"
                             />
                           </td>
                           <td className="p-1.5">
@@ -3471,7 +3477,7 @@ export default function AdminConsentimientosPage() {
                                   prev.map((r, i) => (i === idx ? { ...r, parentName: val } : r))
                                 );
                               }}
-                              className="w-40 bg-surface-container-high border border-white/15 rounded px-2 py-1 text-xs text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="w-40 bg-surface-container-high border border-white/15 rounded-none px-2 py-1 text-xs text-white disabled:opacity-40 disabled:cursor-not-allowed"
                             />
                           </td>
                           <td className="p-1.5">
@@ -3487,7 +3493,7 @@ export default function AdminConsentimientosPage() {
                                   prev.map((r, i) => (i === idx ? { ...r, parentDni: val } : r))
                                 );
                               }}
-                              className="w-28 bg-surface-container-high border border-white/15 rounded px-2 py-1 text-xs font-mono text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="w-28 bg-surface-container-high border border-white/15 rounded-none px-2 py-1 text-xs font-mono text-white disabled:opacity-40 disabled:cursor-not-allowed"
                             />
                           </td>
                           <td className="p-1.5">
@@ -3500,7 +3506,7 @@ export default function AdminConsentimientosPage() {
                                   prev.map((r, i) => (i === idx ? { ...r, parentRelationship: val } : r))
                                 );
                               }}
-                              className="w-36 bg-surface-container-high border border-white/15 rounded px-2 py-1 text-xs text-white"
+                              className="w-36 bg-surface-container-high border border-white/15 rounded-none px-2 py-1 text-xs text-white"
                             >
                               <option value="">Sin cambio</option>
                               {row.isMinor !== false ? (
@@ -3526,7 +3532,7 @@ export default function AdminConsentimientosPage() {
             {censusResult && (
               <div
                 role="status"
-                className={`p-3 rounded-lg border text-xs space-y-1 shrink-0 ${
+                className={`p-3 rounded-none border text-xs space-y-1 shrink-0 ${
                   censusResult.errors.length > 0
                     ? 'bg-amber-950/60 border-amber-500/40 text-amber-100'
                     : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-100'
@@ -3549,7 +3555,7 @@ export default function AdminConsentimientosPage() {
               <button
                 type="button"
                 onClick={closeCensusModal}
-                className="px-4 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-lg cursor-pointer"
+                className="px-4 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-none cursor-pointer"
               >
                 Cerrar
               </button>
@@ -3557,7 +3563,7 @@ export default function AdminConsentimientosPage() {
                 type="button"
                 disabled={isSavingCensus}
                 onClick={handleSaveCensusBatch}
-                className="inline-flex items-center gap-2 px-5 py-2 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white text-xs font-bold uppercase rounded-lg cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2 bg-primary-container hover:bg-cta-hover active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-50 text-white text-xs font-bold uppercase rounded-none cursor-pointer"
               >
                 {isSavingCensus ? (
                   <>
@@ -3585,7 +3591,7 @@ export default function AdminConsentimientosPage() {
         >
           <div
             ref={confirmModalRef}
-            className="bg-surface-container-lowest border border-white/20 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+            className="bg-surface-container-lowest border border-white/15 rounded-none max-w-md w-full p-6 space-y-4 shadow-brutal-dark"
           >
             <div className="flex items-start justify-between gap-3">
               <h3 id="confirm-dialog-title" className="text-base font-bold text-white uppercase tracking-wide">
@@ -3595,7 +3601,7 @@ export default function AdminConsentimientosPage() {
                 type="button"
                 disabled={isConfirmingAction}
                 onClick={closeConfirmDialog}
-                className="text-tertiary hover:text-white p-1 cursor-pointer"
+                className="w-10 h-10 rounded-none inline-flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 border border-transparent hover:border-white/15 transition-colors cursor-pointer shrink-0"
                 aria-label="Cerrar confirmación"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
@@ -3607,7 +3613,7 @@ export default function AdminConsentimientosPage() {
                 type="button"
                 disabled={isConfirmingAction}
                 onClick={closeConfirmDialog}
-                className="px-4 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-lg cursor-pointer"
+                className="px-4 py-2 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase rounded-none cursor-pointer"
               >
                 Cancelar
               </button>
@@ -3625,10 +3631,10 @@ export default function AdminConsentimientosPage() {
                     setIsConfirmingAction(false);
                   }
                 }}
-                className={`inline-flex items-center gap-2 px-4 py-2 text-white text-xs font-bold uppercase rounded-lg cursor-pointer disabled:opacity-50 ${
+                className={`inline-flex items-center gap-2 px-4 py-2 text-white text-xs font-bold uppercase rounded-none cursor-pointer disabled:opacity-50 ${
                   confirmDialog.danger
                     ? 'bg-red-700 hover:bg-red-600'
-                    : 'bg-primary-container hover:bg-cta-hover'
+                    : 'bg-primary-container hover:bg-cta-hover active:translate-x-[1px] active:translate-y-[1px]'
                 }`}
               >
                 {isConfirmingAction && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}

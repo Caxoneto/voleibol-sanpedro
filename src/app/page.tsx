@@ -1,8 +1,10 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, MapPin, Navigation, Trophy } from 'lucide-react';
-import { CLUB_INFO, CLUB_CATEGORIES_META, CLUB_TEAMS_META } from '@/lib/club-info';
-import { INITIAL_ARTICLES, INITIAL_MATCHES } from '@/lib/data-store';
+import { ArrowRight, MapPin, Trophy } from 'lucide-react';
+import { CLUB_INFO, CLUB_CATEGORIES_META, CLUB_TEAMS_META, getTeamColorTheme } from '@/lib/club-info';
+import { INITIAL_ARTICLES } from '@/lib/public-content';
+import { INITIAL_MATCHES } from '@/lib/data-store';
 import { getFastFavbMatchesSnapshot } from '@/lib/favb-scraper';
 import { formatMadridDate, formatMadridDateString, formatMadridTime } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
@@ -14,6 +16,12 @@ import { isRestMatch } from '@/lib/match-utils';
 import { getMatchRecordings, MatchRecordingsMap } from '@/lib/streaming-store';
 
 export const revalidate = 30;
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: '/',
+  },
+};
 
 export default async function HomePage() {
   const syncedData = await getFastFavbMatchesSnapshot();
@@ -91,8 +99,8 @@ export default async function HomePage() {
     .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime())
     .slice(0, 3);
 
-  // Excluir rigurosamente partidos donde el equipo descansa del carrusel de Inicio
-  const carouselMatches: HeroCarouselMatchItem[] = matches
+  // Excluir rigurosamente partidos donde el equipo descansa y limitar el payload al subconjunto relevante del carrusel
+  const allCarouselCandidates: HeroCarouselMatchItem[] = matches
     .filter((m) => !isRestMatch(m))
     .map((m) => {
       const team = teamMap.get(m.teamId);
@@ -121,14 +129,54 @@ export default async function HomePage() {
       };
     });
 
+  const selectedCarouselIds = new Set<string>();
+  const carouselMatches: HeroCarouselMatchItem[] = [];
+  const pushCarouselMatch = (item: HeroCarouselMatchItem) => {
+    if (!selectedCarouselIds.has(item.id)) {
+      selectedCarouselIds.add(item.id);
+      carouselMatches.push(item);
+    }
+  };
+
+  // 1) Todos los de hoy y todos los en directo
+  for (const item of allCarouselCandidates) {
+    if (item.status === 'LIVE' || item.dateStr === todayStr) {
+      pushCarouselMatch(item);
+    }
+  }
+
+  // 2) Últimos 8 finalizados más recientes
+  const recentFinishedCandidates = allCarouselCandidates
+    .filter((item) => item.status === 'FINISHED')
+    .sort((a, b) => new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime())
+    .slice(0, 8);
+  recentFinishedCandidates.forEach(pushCarouselMatch);
+
+  // 3) Hasta 2 próximos partidos programados por categoría
+  const upcomingPerCategory = new Map<string, number>();
+  for (const item of allCarouselCandidates) {
+    if (item.status === 'SCHEDULED' || item.status === 'POSTPONED' || item.status === 'CANCELLED') {
+      const count = upcomingPerCategory.get(item.categoryId) ?? 0;
+      if (count < 2 && (item.dateStr >= todayStr || count === 0)) {
+        upcomingPerCategory.set(item.categoryId, count + 1);
+        pushCarouselMatch(item);
+      }
+    }
+  }
+
   return (
     <div className="w-full flex flex-col">
       {/* Hero Section */}
       <section className="relative w-full overflow-hidden bg-surface-container-lowest pt-2 pb-6 sm:pt-4 sm:pb-8 flex flex-col justify-start">
-        {/* Background Image with Ambient Zoom */}
-        <div
-          className="absolute inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-40 animate-hero-bg transition-transform duration-1000"
-          style={{ backgroundImage: "url('/images/hero-spike.png')" }}
+        {/* Background Image with Priority Discovery for LCP */}
+        <Image
+          src="/images/hero-spike.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center mix-blend-luminosity opacity-40 animate-hero-bg transition-transform duration-1000 pointer-events-none"
+          aria-hidden="true"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
@@ -226,7 +274,11 @@ export default async function HomePage() {
                       {featuredMatch.isClubHome ? (
                         <Link
                           href={`/plantillas?categoria=${featuredCat?.id || 'cat-senior-fem'}`}
-                          className="font-display-xl text-base sm:text-xl uppercase text-white hover:text-primary hover:underline decoration-primary underline-offset-4 leading-tight transition-colors"
+                          className={`font-display-xl text-base sm:text-xl uppercase hover:underline underline-offset-4 leading-tight transition-colors ${
+                            getTeamColorTheme(featuredCat?.name || featuredMatch.homeTeamName).colorKey
+                              ? `${getTeamColorTheme(featuredCat?.name || featuredMatch.homeTeamName).textClass} decoration-current`
+                              : 'text-white hover:text-primary decoration-primary'
+                          }`}
                           title={`Ver plantilla de ${featuredCat?.name || 'nuestro equipo'}`}
                         >
                           {featuredMatch.homeTeamName}
@@ -257,6 +309,18 @@ export default async function HomePage() {
                       <span className="text-[10px] text-tertiary uppercase mt-1 leading-tight">
                         {featuredCat?.name || 'Liga FAVB'}
                       </span>
+                      {(featuredMatch.status === 'POSTPONED' || featuredMatch.status === 'CANCELLED') && (
+                        <span
+                          className={`mt-2 px-2.5 py-0.5 border font-display-xl text-xs tracking-wider uppercase font-black rounded-[2px] ${
+                            featuredMatch.status === 'CANCELLED'
+                              ? 'bg-red-950/95 text-red-200 border-red-500'
+                              : 'bg-amber-500/95 text-black border-amber-200'
+                          }`}
+                        >
+                          {featuredMatch.statusText?.toUpperCase() ||
+                            (featuredMatch.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
+                        </span>
+                      )}
                     </div>
 
                     {/* Away Team */}
@@ -279,7 +343,11 @@ export default async function HomePage() {
                       {!featuredMatch.isClubHome ? (
                         <Link
                           href={`/plantillas?categoria=${featuredCat?.id || 'cat-senior-fem'}`}
-                          className="font-display-xl text-base sm:text-xl uppercase text-on-surface hover:text-primary hover:underline decoration-primary underline-offset-4 leading-tight transition-colors"
+                          className={`font-display-xl text-base sm:text-xl uppercase hover:underline underline-offset-4 leading-tight transition-colors ${
+                            getTeamColorTheme(featuredCat?.name || featuredMatch.awayTeamName).colorKey
+                              ? `${getTeamColorTheme(featuredCat?.name || featuredMatch.awayTeamName).textClass} decoration-current`
+                              : 'text-on-surface hover:text-primary decoration-primary'
+                          }`}
                           title={`Ver plantilla de ${featuredCat?.name || 'nuestro equipo'}`}
                         >
                           {featuredMatch.awayTeamName}
@@ -299,12 +367,24 @@ export default async function HomePage() {
                     </div>
                   </div>
 
-                  {/* Venue info */}
+                  {/* Venue info enlazado directamente a Google Maps */}
                   <div className="bg-surface-container-lowest p-4 border-l-4 border-primary-container flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
+                    <a
+                      href={
+                        featuredMatch.isClubHome
+                          ? CLUB_INFO.venueMapsUrl
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                              `${featuredMatch.venueName} Andalucía`
+                            )}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-start gap-2.5 group/venue"
+                      title={`Abrir ${featuredMatch.venueName} en Google Maps`}
+                    >
+                      <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
                       <div>
-                        <p className="font-body-sm text-sm font-semibold text-white">
+                        <p className="font-body-sm text-sm font-semibold text-white group-hover/venue:text-primary group-hover/venue:underline transition-colors">
                           {featuredMatch.venueName}
                         </p>
                         <p className="text-xs text-tertiary">
@@ -313,8 +393,14 @@ export default async function HomePage() {
                             : 'Desplazamiento Oficial • Partido Visitante'}
                         </p>
                       </div>
-                    </div>
-                    <span className="px-3 py-1 bg-white/10 text-white text-xs font-bold uppercase tracking-wider border border-white/10">
+                    </a>
+                    <span
+                      className={`px-3 py-1 text-xs font-bold uppercase tracking-wider border ${
+                        getTeamColorTheme(featuredCat?.name || '').colorKey
+                          ? `${getTeamColorTheme(featuredCat?.name || '').activeBgClass} ${getTeamColorTheme(featuredCat?.name || '').borderClass} ${getTeamColorTheme(featuredCat?.name || '').activeTextClass}`
+                          : 'bg-white/10 text-white border-white/10'
+                      }`}
+                    >
                       {featuredCat?.name || 'Competición FAVB'}
                     </span>
                   </div>
@@ -329,39 +415,7 @@ export default async function HomePage() {
                     <Trophy className="w-4 h-4 shrink-0" aria-hidden="true" />
                     Ver en Centro de Partidos
                   </Link>
-
-                  <a
-                    href={
-                      featuredMatch.isClubHome
-                        ? CLUB_INFO.venueMapsUrl
-                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                            `${featuredMatch.venueName} Andalucía`
-                          )}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-tertiary hover:text-white uppercase font-semibold"
-                  >
-                    <Navigation className="w-4 h-4 shrink-0" aria-hidden="true" />
-                    Cómo llegar al Pabellón
-                  </a>
                 </div>
-
-                {/* Sello diagonal prominente de APLAZADO / CANCELADO */}
-                {(featuredMatch.status === 'POSTPONED' || featuredMatch.status === 'CANCELLED') && (
-                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden">
-                    <div
-                      className={`-rotate-12 transform px-8 py-2 border-2 font-display-xl text-2xl sm:text-3xl tracking-[0.2em] uppercase font-black shadow-[0_8px_32px_rgba(0,0,0,0.85)] select-none ${
-                        featuredMatch.status === 'CANCELLED'
-                          ? 'bg-red-950/95 text-red-200 border-red-500'
-                          : 'bg-amber-500/95 text-black border-amber-200'
-                      }`}
-                    >
-                      {featuredMatch.statusText?.toUpperCase() ||
-                        (featuredMatch.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -401,8 +455,16 @@ export default async function HomePage() {
                     {/* Cabecera con Jornada, Fecha y Encabezados de Sets formato tenis */}
                     <div className="relative z-10 pointer-events-none flex items-center justify-between gap-2 text-[11px] text-tertiary uppercase pb-2 border-b border-white/5">
                       <span className="truncate">
-                        <strong className="text-primary font-bold">{matchCat?.name || 'FAVB'}</strong> • J{match.round}{' '}
-                        • {formatMadridDate(match.matchDate, { day: 'numeric', month: 'short' })}
+                        <strong
+                          className={`font-bold ${
+                            getTeamColorTheme(matchCat?.name || '').colorKey
+                              ? getTeamColorTheme(matchCat?.name || '').textClass
+                              : 'text-primary'
+                          }`}
+                        >
+                          {matchCat?.name || 'FAVB'}
+                        </strong>{' '}
+                        • J{match.round} • {formatMadridDate(match.matchDate)}
                       </span>
 
                       <div className="flex items-center gap-1 shrink-0">
@@ -435,7 +497,11 @@ export default async function HomePage() {
                           {match.isClubHome ? (
                             <Link
                               href={`/plantillas?categoria=${matchCatId}`}
-                              className="pointer-events-auto inline-flex items-center min-h-[28px] py-1 text-xs sm:text-sm text-primary font-bold truncate hover:underline decoration-primary underline-offset-2"
+                              className={`pointer-events-auto inline-flex items-center min-h-[28px] py-1 text-xs sm:text-sm font-bold truncate hover:underline underline-offset-2 ${
+                                getTeamColorTheme(matchCat?.name || match.homeTeamName).colorKey
+                                  ? `${getTeamColorTheme(matchCat?.name || match.homeTeamName).textClass} decoration-current`
+                                  : 'text-primary decoration-primary'
+                              }`}
                               title={`Ver plantilla de ${matchCat?.name || 'nuestro equipo'}`}
                             >
                               {match.homeTeamName}
@@ -451,7 +517,7 @@ export default async function HomePage() {
                           {match.setScores.map((set, sIdx) => (
                             <span
                               key={`recent-home-${sIdx}`}
-                              className={`w-7 sm:w-7.5 h-7 flex items-center justify-center font-mono text-xs sm:text-sm font-extrabold leading-none bg-white/[0.04] rounded-[2px] ${getScoreColor(
+                              className={`w-6 sm:w-7 h-7 flex items-center justify-center font-mono text-xs sm:text-sm font-extrabold leading-none bg-white/[0.04] rounded-[2px] ${getScoreColor(
                                 set.home,
                                 set.away
                               )}`}
@@ -483,7 +549,11 @@ export default async function HomePage() {
                           {!match.isClubHome ? (
                             <Link
                               href={`/plantillas?categoria=${matchCatId}`}
-                              className="pointer-events-auto inline-flex items-center min-h-[28px] py-1 text-xs sm:text-sm text-primary font-bold truncate hover:underline decoration-primary underline-offset-2"
+                              className={`pointer-events-auto inline-flex items-center min-h-[28px] py-1 text-xs sm:text-sm font-bold truncate hover:underline underline-offset-2 ${
+                                getTeamColorTheme(matchCat?.name || match.awayTeamName).colorKey
+                                  ? `${getTeamColorTheme(matchCat?.name || match.awayTeamName).textClass} decoration-current`
+                                  : 'text-primary decoration-primary'
+                              }`}
                               title={`Ver plantilla de ${matchCat?.name || 'nuestro equipo'}`}
                             >
                               {match.awayTeamName}
@@ -499,7 +569,7 @@ export default async function HomePage() {
                           {match.setScores.map((set, sIdx) => (
                             <span
                               key={`recent-away-${sIdx}`}
-                              className={`w-6 sm:w-7 py-0.5 text-center font-mono text-xs sm:text-sm font-extrabold leading-none bg-white/[0.04] rounded-[2px] ${getScoreColor(
+                              className={`w-6 sm:w-7 h-7 flex items-center justify-center font-mono text-xs sm:text-sm font-extrabold leading-none bg-white/[0.04] rounded-[2px] ${getScoreColor(
                                 set.away,
                                 set.home
                               )}`}
@@ -508,7 +578,7 @@ export default async function HomePage() {
                             </span>
                           ))}
                           <span
-                            className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 py-0.5 text-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.07] ${getScoreColor(
+                            className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getScoreColor(
                               scoreResult.awaySetsWon,
                               scoreResult.homeSetsWon
                             )}`}
@@ -563,6 +633,7 @@ export default async function HomePage() {
                       src={art.coverImageUrl}
                       alt={art.title}
                       fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
                       className={`${art.coverImageUrl.includes('loteria') ? 'object-contain p-2' : 'object-cover'} transition-transform duration-500 group-hover:scale-105`}
                     />
                     <div className="absolute top-3 left-3 px-2 py-1 bg-primary-container text-white text-[10px] font-bold uppercase tracking-wider shadow">

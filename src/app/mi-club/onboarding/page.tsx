@@ -311,7 +311,7 @@ function OnboardingWizardInner() {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-3 sm:px-6 py-8 space-y-6 overflow-x-hidden">
+    <div className="w-full max-w-3xl mx-auto px-3 sm:px-6 py-8 space-y-6 overflow-x-clip">
       {/* Cabecera y progreso */}
       <div className="bg-surface-container border border-white/10 p-5 shadow-[4px_4px_0px_0px_#0e0e0e]">
         <span className="text-[11px] font-label-sm uppercase tracking-widest text-primary font-bold">
@@ -380,10 +380,11 @@ function OnboardingWizardInner() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+              <label htmlFor="onb-act-name" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                 Tu nombre completo *
               </label>
               <input
+                id="onb-act-name"
                 type="text"
                 required
                 value={actName}
@@ -393,10 +394,11 @@ function OnboardingWizardInner() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+              <label htmlFor="onb-act-phone" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                 Teléfono de contacto
               </label>
               <input
+                id="onb-act-phone"
                 type="tel"
                 value={actPhone}
                 onChange={(e) => setActPhone(e.target.value)}
@@ -408,10 +410,11 @@ function OnboardingWizardInner() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+              <label htmlFor="onb-act-pass" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                 Contraseña (mín. 8 caracteres) *
               </label>
               <input
+                id="onb-act-pass"
                 type="password"
                 required
                 minLength={8}
@@ -421,10 +424,11 @@ function OnboardingWizardInner() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+              <label htmlFor="onb-act-pass-confirm" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                 Repetir contraseña *
               </label>
               <input
+                id="onb-act-pass-confirm"
                 type="password"
                 required
                 minLength={8}
@@ -438,7 +442,7 @@ function OnboardingWizardInner() {
           <button
             type="submit"
             disabled={busy || !inviteToken}
-            className="w-full py-3 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full py-3 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
           >
             <span>{busy ? 'Activando cuenta...' : 'Activar Cuenta y Continuar'}</span>
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
@@ -463,10 +467,11 @@ function OnboardingWizardInner() {
 
           {athletes.length > 1 && (
             <div>
-              <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+              <label htmlFor="onb-athlete-select" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                 Deportista a verificar
               </label>
               <select
+                id="onb-athlete-select"
                 value={selectedAthleteId}
                 onChange={(e) => {
                   const next = athletes.find((a) => a.id === e.target.value);
@@ -501,10 +506,11 @@ function OnboardingWizardInner() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                  <label htmlFor="onb-em-name" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                     Contacto de emergencia (Nombre) *
                   </label>
                   <input
+                    id="onb-em-name"
                     type="text"
                     required
                     value={emName}
@@ -514,10 +520,11 @@ function OnboardingWizardInner() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                  <label htmlFor="onb-em-phone" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                     Teléfono de emergencia *
                   </label>
                   <input
+                    id="onb-em-phone"
                     type="tel"
                     required
                     value={emPhone}
@@ -530,10 +537,11 @@ function OnboardingWizardInner() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
-                    Fecha nacimiento
+                  <label htmlFor="onb-birth-date" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                    Fecha de nacimiento
                   </label>
                   <input
+                    id="onb-birth-date"
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
@@ -541,10 +549,11 @@ function OnboardingWizardInner() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                  <label htmlFor="onb-shirt-size" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                     Talla equipación
                   </label>
                   <select
+                    id="onb-shirt-size"
                     value={shirtSize}
                     onChange={(e) => setShirtSize(e.target.value)}
                     className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
@@ -558,10 +567,11 @@ function OnboardingWizardInner() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                  <label htmlFor="onb-contact-phone" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                     Teléfono contacto
                   </label>
                   <input
+                    id="onb-contact-phone"
                     type="tel"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
@@ -573,7 +583,7 @@ function OnboardingWizardInner() {
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full py-3 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-3 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center gap-2 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
               >
                 <span>{busy ? 'Verificando ficha...' : 'Confirmar Ficha y Continuar a RGPD'}</span>
                 <ArrowRight className="w-4 h-4" aria-hidden="true" />
@@ -700,12 +710,13 @@ function OnboardingWizardInner() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                  <label htmlFor="onb-signer-name" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                     {currentAthlete.ageEvaluation.isMinor
                       ? 'Nombre Padre / Madre / Tutor *'
                       : 'Nombre Deportista (+18) *'}
                   </label>
                   <input
+                    id="onb-signer-name"
                     type="text"
                     required
                     readOnly={!currentAthlete.ageEvaluation.isMinor}
@@ -719,10 +730,11 @@ function OnboardingWizardInner() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                  <label htmlFor="onb-signer-dni" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                     DNI / NIE / Pasaporte *
                   </label>
                   <input
+                    id="onb-signer-dni"
                     type="text"
                     required
                     value={signerDni}
@@ -733,10 +745,11 @@ function OnboardingWizardInner() {
                 </div>
                 {currentAthlete.ageEvaluation.isMinor && (
                   <div>
-                    <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                    <label htmlFor="onb-signer-rel" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                       Parentesco *
                     </label>
                     <select
+                      id="onb-signer-rel"
                       value={signerRel}
                       onChange={(e) =>
                         setSignerRel(e.target.value as 'PADRE' | 'MADRE' | 'TUTOR_LEGAL')
@@ -750,10 +763,11 @@ function OnboardingWizardInner() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                  <label htmlFor="onb-signer-phone" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                     Teléfono
                   </label>
                   <input
+                    id="onb-signer-phone"
                     type="tel"
                     value={signerPhone}
                     onChange={(e) => setSignerPhone(e.target.value)}
@@ -821,7 +835,7 @@ function OnboardingWizardInner() {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="flex-1 py-3 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                  className="flex-1 py-3 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider active:translate-x-[1px] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
                 >
                   {busy ? 'Finalizando alta...' : 'Firmar y Entrar en Mi Club'}
                 </button>

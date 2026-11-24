@@ -55,11 +55,13 @@ export async function recordAuditLog(input: AuditLogInput): Promise<void> {
 export async function listAuditLogs(filters?: {
   module?: string;
   search?: string;
+  actor?: string;
   limit?: number;
 }): Promise<AuditLogEntry[]> {
   const limit = Math.min(Math.max(1, Number(filters?.limit || 80)), 250);
   const mod = filters?.module?.trim() || null;
   const search = filters?.search?.trim() ? `%${filters.search.trim().toLowerCase()}%` : null;
+  const actor = filters?.actor?.trim() || null;
 
   const rows = await queryNeon<{
     id: string;
@@ -92,9 +94,10 @@ export async function listAuditLogs(filters?: {
          OR LOWER(action) LIKE $2
          OR LOWER(COALESCE(target_id, '')) LIKE $2
        )
+       AND ($4::text IS NULL OR LOWER(actor_email) = LOWER($4))
      ORDER BY created_at DESC
      LIMIT $3;`,
-    [mod, search, limit]
+    [mod, search, limit, actor]
   );
 
   return rows.map((r) => ({

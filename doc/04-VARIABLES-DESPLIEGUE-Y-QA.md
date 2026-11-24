@@ -13,11 +13,11 @@
 | `ADMIN_SESSION_SECRET` | Secreto de firma para cookies de sesión `/admin/*`. | Sí |
 | `INTRANET_SESSION_SECRET` | Secreto de firma para sesiones de la Intranet (obligatoria en prod si distinta de `ADMIN_SESSION_SECRET`). | Opcional |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | Credenciales de acceso al panel `/admin/consentimientos`. | Sí |
-| `STREAMING_ADMIN_PASSWORD` | Clave de gestión del estado de streaming (`/api/streaming`). | Sí |
+| `STREAMING_ADMIN_PASSWORD` | Legacy opcional (retirada de la UI; `/api/streaming` autoriza ahora por sesión staff con permiso `web.streaming` o sesión `/admin`). | No |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` (o `ZOHO_SMTP_PASS`) | Salida SMTP oficial (`info@voleibolsanpedro.es`, Zoho Mail EU). | Sí |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Credenciales OAuth2 Google para acceso a la Intranet. | Opcional |
-| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Credenciales OAuth2 Microsoft tenant `common` para acceso a la Intranet. | Opcional |
-| `NETLIFY_CRON_SECRET` | Secreto para proteger las tareas programadas de Netlify (avisos de pagos, etc.). | Opcional |
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Deshabilitadas / Retiradas (OAuth2 Microsoft desactivado; solo Google OAuth activo). | No |
+| `NETLIFY_CRON_SECRET` | Secreto para proteger las Netlify Scheduled Functions (`attendance-15m-reminders.mts` cada 15 min y `monthly-payment-reminders.mts` tras el día 5). Cabecera `x-cron-secret` exenta de `Origin` en `src/middleware.ts` únicamente en esas 2 rutas. | Sí (si crons activos) |
 | `CLUB_BANK_IBAN` | IBAN bancario del club para domiciliaciones y avisos de pago. | Opcional |
 | `CONSENT_CLUB_CC_EMAIL` | Copia opcional de secretaría en envíos de consentimiento. | Opcional |
 | `NEXT_PUBLIC_SITE_URL` | URL base canónica (`https://voleibolsanpedro.es`). | Sí |
@@ -28,29 +28,22 @@
 
 ---
 
-## 2. Almacenamiento Local y Cookies (`localStorage`)
+## 2. Almacenamiento Local y Cookies Técnicas
 
 * [`src/components/CookieConsent.tsx`](../src/components/CookieConsent.tsx) utiliza la clave `localStorage` **`cdv_cookie_consent_v2`**.
 * La cola offline de asistencia en `/club/asistencia` utiliza la clave **`cdv_attendance_offline_queue_v1`** para sincronización móvil-first.
-* El portal emplea únicamente cookies y almacenamiento técnico necesario conforme al **Art. 22.2 LSSI-CE** (sin analítica ni publicidad comportamental).
+* La página `/cookies` detalla expresamente las cookies técnicas de sesión intranet **`cdv_intranet_session`** y el flujo temporal OAuth PKCE **`cdv_oauth_tx`**, empleando exclusivamente almacenamiento técnico necesario (Art. 22.2 LSSI-CE, sin analítica ni publicidad).
 
 ---
 
-## 3. Particularidades de Netlify y Runtime
+## 3. Particularidades de Netlify, Runtime y Optimización de Imágenes
 
 * **Zona horaria**: `netlify.toml` define `TZ = "UTC"`. Toda lógica de negocio con fechas, rangos de jornada, filtros de calendario y sellado de horas en PDF/emails debe convertir explícitamente a **`Europe/Madrid`**.
+* **Optimización de imágenes en origen**: Las imágenes de `public/images/**`, `/og-cover.jpg`, `/favicon-32.png`, `/apple-touch-icon.png` y `/images/wallpapers/*` se optimizan en origen mediante `sharp`, manteniendo `images: { unoptimized: true }` en `next.config.mjs` (0 créditos de CDN de imagen en Netlify).
 * **Optimización de créditos**:
   * Validar siempre primero en local (`http://localhost:3000`).
   * **Nunca** ejecutar `netlify deploy --prod` tras un `git push` si Auto-Deploy por Git está activo (duplicaría el consumo de créditos).
   * **Nunca** hacer `git push` ni deploy a producción sin aprobación explícita del usuario.
-
----
-
-## 3. Cookies y Privacidad (`LSSI-CE`)
-
-* [`src/components/CookieConsent.tsx`](../src/components/CookieConsent.tsx) utiliza la clave `localStorage` **`cdv_cookie_consent_v2`**.
-* El portal emplea únicamente cookies/almacenamiento técnico necesario (sin analítica ni publicidad comportamental), por lo que el banner es **puramente informativo** conforme al **Art. 22.2 LSSI-CE** (sin toggles ficticios de preferencias).
-* Si en el futuro se cambia el texto o esquema de consentimiento de cookies, incrementar siempre la versión de la clave (`_v3`, etc.).
 
 ---
 

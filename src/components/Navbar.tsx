@@ -89,9 +89,9 @@ export default function Navbar() {
 
   return (
     <nav aria-label="Navegación principal" className="w-full bg-[#131313] border-b border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.7)] relative z-40">
-      <div className="h-20 max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between">
+      <div className="h-20 max-w-[1440px] mx-auto px-4 lg:px-6 xl:px-8 flex items-center justify-between gap-2 xl:gap-4">
         {/* Brand Logo */}
-        <Link href="/" className="group flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <Link href="/" className="group flex items-center gap-2.5 sm:gap-3 min-w-0 shrink-0">
           <div className="relative w-10 h-10 overflow-hidden rounded-none border border-white/15 group-hover:border-primary-container transition-colors shrink-0">
             <Image
               src="/images/logo.jpg"
@@ -101,7 +101,7 @@ export default function Navbar() {
             />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="font-display-xl text-xl sm:text-2xl tracking-wider uppercase text-on-surface leading-none group-hover:text-primary transition-colors whitespace-nowrap">
+            <span className="font-display-xl text-xl sm:text-2xl xl:text-xl 2xl:text-2xl tracking-wider uppercase text-on-surface leading-none group-hover:text-primary transition-colors whitespace-nowrap">
               C.D.V. SAN PEDRO
             </span>
             <span className="font-label-sm text-[10px] uppercase tracking-widest text-primary font-bold whitespace-nowrap mt-0.5">
@@ -111,7 +111,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <div className="hidden xl:flex items-center gap-6">
+        <div className="hidden xl:flex items-center gap-3 2xl:gap-5 shrink-0">
           {navLinks.map((link) => {
             const active = isActive(link.href);
             return (
@@ -119,7 +119,7 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 aria-current={active ? 'page' : undefined}
-                className={`nav-link font-label-md text-xs uppercase tracking-wider pb-1 transition-colors ${
+                className={`nav-link font-label-md text-[11px] 2xl:text-xs uppercase tracking-wide 2xl:tracking-wider pb-1 transition-colors whitespace-nowrap ${
                   active
                     ? 'active-link text-primary font-bold'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -162,7 +162,7 @@ export default function Navbar() {
             href="/acceso"
             title="Acceso Club"
             aria-label="Acceso Club"
-            className="inline-flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold tracking-wider transition-all duration-300 shadow-[3px_3px_0px_0px_#0e0e0e] hover:shadow-[0_0_15px_rgba(217,4,41,0.5)] active:scale-95"
+            className="inline-flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold tracking-wider transition-all duration-300 shadow-[3px_3px_0px_0px_#0e0e0e] hover:shadow-[0_0_15px_rgba(217,4,41,0.5)] active:translate-x-[1px] active:translate-y-[1px]"
           >
             <Users className="w-5 h-5 shrink-0 sm:hidden" aria-hidden="true" />
             <span className="hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap">
@@ -209,7 +209,7 @@ export default function Navbar() {
                 type="button"
                 onClick={closeDrawer}
                 aria-label="Cerrar menú móvil"
-                className="w-8 h-8 flex items-center justify-center text-tertiary hover:text-white bg-surface-container-high rounded cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center text-tertiary hover:text-white bg-surface-container-high border border-white/15 rounded-none cursor-pointer"
               >
                 <X className="w-4 h-4" aria-hidden="true" />
               </button>
@@ -259,7 +259,7 @@ export default function Navbar() {
               <Link
                 href="/acceso"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center bg-primary-container hover:bg-cta-hover text-white py-3 font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e]"
+                className="w-full text-center bg-primary-container hover:bg-cta-hover text-white py-3 font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px]"
               >
                 <Users className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>Acceso Club / Familias</span>

@@ -2,20 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-canvas: #131313;
+  --bg-surface-low: #1c1b1b;
+  --bg-surface: #201f1f;
+  --bg-surface-high: #2a2a2a;
+  --bg-surface-highest: #353534;
+  --text-primary: #e5e2e1;
+  --text-secondary: #bbc7dd;
+  --accent-primary: #d90429;
+  --accent-hover: #ff4d63;
+  --shadow-brutal-color: #0e0e0e;
+}
+
 @layer base {
   html, body {
     margin: 0;
     padding: 0;
-    background-color: #131313;
-    color: #e5e2e1;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
   }
   
   body {
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   main > :first-child { margin-top: 0 !important; }
   main > :last-child { margin-bottom: 0 !important; }
+
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"] {
+    color-scheme: dark;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+    cursor: pointer;
+  }
 
   :focus-visible {
     outline: 2px solid #ff4d63 !important;
@@ -155,17 +184,6 @@
   animation-play-state: paused;
 }
 
-.animate-venue-marquee {
-  display: inline-flex;
-  width: max-content;
-  animation: marquee 16s linear infinite;
-}
-.group:hover .animate-venue-marquee,
-:hover > .animate-venue-marquee,
-.animate-venue-marquee:hover {
-  animation-play-state: paused;
-}
-
 .mask-fade-edges {
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 90%, transparent 100%);
   mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 90%, transparent 100%);
@@ -220,43 +238,20 @@
   width: 100%;
 }
 
-/* Sharp athletic button hover effect */
-.btn-athletic {
-  position: relative;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.btn-athletic:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0px 0px #0e0e0e;
-}
-.btn-athletic-crimson:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0px 0px #d90429;
-}
-
-/* Animación de Lotería de Navidad basada en indicador dinámico: escala progresiva y cambio de color alternado */
-@keyframes scaleAndColorChange {
+/* Animación de Lotería de Navidad optimizada en GPU (solo transform) */
+@keyframes lotteryPulseScale {
   0% {
     transform: scale(1);
-    border-color: #f59e0b;
-    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
   }
   100% {
-    transform: scale(1.18);
-    border-color: #d90429;
-    box-shadow: 0 16px 36px rgba(217, 4, 41, 0.72), 0 0 24px rgba(245, 158, 11, 0.45);
+    transform: scale(1.12);
   }
 }
 
 .animate-lottery-pulse {
-  animation-name: scaleAndColorChange;
-  animation-duration: 1.6s;
-  animation-timing-function: ease-in-out;
-  animation-delay: 0.4s;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
-  animation-fill-mode: both;
-  will-change: transform, border-color, box-shadow;
+  box-shadow: 0 8px 24px rgba(217, 4, 41, 0.45), 0 0 14px rgba(245, 158, 11, 0.35);
+  animation: lotteryPulseScale 1.6s ease-in-out 0.4s infinite alternate both;
+  will-change: transform;
 }
 
 /* Soporte accesible para reducción de movimiento (WCAG 2.1 / 2.2.2 / 2.3.3) */
@@ -270,8 +265,10 @@
   .shimmer-effect::after,
   .animate-marquee-smooth,
   .animate-team-marquee,
-  .animate-venue-marquee,
   .animate-lottery-pulse,
+  .animate-fade-in,
+  .animate-slide-in-top,
+  .animate-slide-in-bottom,
   .animate-ping,
   .animate-pulse {
     animation: none !important;

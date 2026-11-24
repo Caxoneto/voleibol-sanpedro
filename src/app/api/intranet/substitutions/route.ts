@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryNeon } from '@/lib/streaming-store';
+import { getClientIp } from '@/lib/rate-limiter';
 import { requireIntranetSession } from '@/lib/intranet/auth';
 import {
   assertCan,
@@ -41,14 +42,6 @@ function timeToMinutes(hhmm: string): number {
 
 function intervalsOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
-}
-
-function getClientIp(req: NextRequest): string | null {
-  return (
-    req.headers.get('x-nf-client-connection-ip') ||
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    null
-  );
 }
 
 function escapeHtml(text: string): string {
@@ -473,81 +466,6 @@ export async function POST(req: NextRequest) {
 
     const action = String(body.action || '').trim();
     const ipAddress = getClientIp(req);
-
-    if (action === 'request_substitution') {
-      assertCan(ctx, 'substitution.request');
-
-      const teamSeasonId = String(body.teamSeasonId || '').trim();
-      const madridDate = String(body.madridDate || '').trim();
-      const startTime = String(body.startTime || '').trim();
-      const endTime = String(body.endTime || '').trim();
-      const reason = String(body.reason || '').trim().slice(0, 400);
-      const sessionId = body.sessionId ? String(body.sessionId).trim() : null;
-
-      if (!teamSeasonId) {
-        return NextResponse.json(
-          { success: false, error: 'Selecciona el equipo de la sesión.' },
-          { status: 400 }
-        );
-      }
-      if (!YMD_REGEX.test(madridDate)) {
-        return NextResponse.json(
-          { success: false, error: 'Fecha no válida (YYYY-MM-DD).' },
-          { status: 400 }
-        );
-      }
-      if (!HHMM_REGEX.test(startTime) || !HHMM_REGEX.test(endTime) || endTime <= startTime) {
-        return NextResponse.json(
-          { success: false, error: 'Franja horaria no válida (HH:MM).' },
-          { status: 400 }
-        );
-      }
-      if (reason.length < 3) {
-        return NextResponse.json(
-          { success: false, error: 'Indica el motivo de la sustitución.' },
-          { status: 400 }
-        );
-      }
-      if (sessionId && !UUID_REGEX.test(sessionId)) {
-        return NextResponse.json(
-          { success: false, error: 'Identificador de sesión no válido.' },
-          { status: 400 }
-        );
-      }
-
-      if (
-        !ctx.isPresident &&
-        !can(ctx, 'substitution.assign') &&
-        ctx.staffTeamIds.length > 0 &&
-        !ctx.staffTeamIds.includes(teamSeasonId)
-      ) {
-        throw new IntranetForbiddenError(
-          'Solo puedes solicitar sustituciones para tus equipos asignados.'
-        );
-      }
-
-      const inserted = await queryNeon<{ id: string }>(
-        `INSERT INTO intranet_substitutions (
-           session_id, team_season_id, madrid_date, start_time, end_time,
-           absent_user_id, reason, status
-         ) VALUES ($1::uuid, $2, $3, $4, $5, $6::uuid, $7, 'OPEN')
-         RETURNING id::text AS id;`,
-        [sessionId, teamSeasonId, madridDate, startTime, endTime, ctx.user.id, reason]
-      );
-
-      await recordAuditLog({
-        actorUserId: ctx.user.id,
-        actorEmail: ctx.user.email,
-        action: 'REQUEST_SUBSTITUTION',
-        module: 'Sustituciones',
-        targetType: 'SUBSTITUTION',
-        targetId: inserted[0]?.id || null,
-        details: { teamSeasonId, madridDate, startTime, endTime, reason },
-        ipAddress,
-      });
-
-      return NextResponse.json({ success: true, substitutionId: inserted[0]?.id });
-    }
 
     if (action === 'assign_substitute') {
       const substitutionId = body.substitutionId ? String(body.substitutionId).trim() : null;

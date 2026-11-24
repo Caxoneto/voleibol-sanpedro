@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import {
   X,
   RefreshCw,
   MapPin,
-  Navigation,
   Scale,
   Users,
   Shield,
@@ -21,8 +19,13 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { MatchReferee, MatchRosterPerson, SetScore, MatchStatus } from '@/lib/types';
-import { CLUB_CATEGORIES_META, CLUB_TEAMS_META, CLUB_INFO } from '@/lib/club-info';
-import { formatMadridDate, formatMadridTime } from '@/lib/date-utils';
+import {
+  CLUB_CATEGORIES_META,
+  CLUB_TEAMS_META,
+  CLUB_INFO,
+  formatPlayerNameWithInitials,
+} from '@/lib/club-info';
+import { formatDisplayDate, formatMadridTime } from '@/lib/date-utils';
 import { calculateMatchScore } from '@/lib/volleyball-rules';
 import { getTeamLogo } from '@/lib/team-logos';
 import { sanitizeHttpsUrl } from '@/lib/validators';
@@ -201,7 +204,7 @@ export default function MatchActaModal({
     const modalEl = modalRef.current;
     if (modalEl) {
       const focusable = modalEl.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
       );
       if (focusable.length > 0) {
         requestAnimationFrame(() => focusable[0].focus());
@@ -217,7 +220,7 @@ export default function MatchActaModal({
       if (e.key === 'Tab' && modalRef.current) {
         const focusable = Array.from(
           modalRef.current.querySelectorAll<HTMLElement>(
-            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
           )
         );
         if (focusable.length === 0) return;
@@ -259,14 +262,7 @@ export default function MatchActaModal({
   const competitionSub =
     teamObj?.division || matchData.competitionName || matchData.competitionCode || (isAfade ? 'Liga AFADE' : 'FAVB');
 
-  const dateDisplay =
-    matchData.dateStr ||
-    formatMadridDate(matchData.matchDate, {
-      weekday: 'short',
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+  const dateDisplay = formatDisplayDate(matchData.dateStr || matchData.matchDate);
   const timeDisplay = matchData.timeStr || formatMadridTime(matchData.matchDate);
 
   const setScores = matchData.setScores || [];
@@ -342,7 +338,7 @@ export default function MatchActaModal({
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 border border-zinc-700 text-zinc-300 text-[11px] font-bold uppercase tracking-wider">
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-container-high border border-white/15 text-on-surface text-[11px] font-bold uppercase tracking-wider">
         <Clock className="w-3.5 h-3.5 text-primary" />
         Programado
       </span>
@@ -360,10 +356,10 @@ export default function MatchActaModal({
 
     return (
       <div
-        className={`flex flex-col border bg-zinc-950/90 transition-all ${
+        className={`flex flex-col border bg-surface-container-lowest/95 transition-all ${
           isSanPedro
             ? 'border-primary-container/80 shadow-[0_0_20px_rgba(217,4,41,0.12)]'
-            : 'border-zinc-800'
+            : 'border-white/10'
         }`}
       >
         {/* Cabecera del Equipo */}
@@ -371,7 +367,7 @@ export default function MatchActaModal({
           className={`p-3.5 sm:p-4 border-b flex items-center justify-between gap-3 ${
             isSanPedro
               ? 'bg-gradient-to-r from-primary-container/25 via-primary-container/10 to-transparent border-primary-container/40'
-              : 'bg-zinc-900/70 border-zinc-800'
+              : 'bg-surface-container-low border-white/10'
           }`}
         >
           <div className="flex items-center gap-3 min-w-0">
@@ -384,11 +380,11 @@ export default function MatchActaModal({
             />
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-tertiary">
                   {sideLabel}
                 </span>
                 {isSanPedro && (
-                  <span className="px-1.5 py-0.5 bg-primary-container text-white text-[9px] font-bold uppercase tracking-wider">
+                  <span className="px-1.5 py-0.5 bg-primary-container text-white text-[10px] font-bold uppercase tracking-wider">
                     Nuestro Club
                   </span>
                 )}
@@ -404,7 +400,7 @@ export default function MatchActaModal({
             </div>
           </div>
 
-          <span className="px-2 py-1 bg-zinc-900 border border-zinc-700/80 text-zinc-300 font-mono text-[11px] font-bold shrink-0">
+          <span className="px-2 py-1 bg-surface-container-high border border-white/15 text-on-surface font-mono text-[11px] font-bold shrink-0">
             {players.length} {players.length === 1 ? 'jugador/a' : 'convocados/as'}
           </span>
         </div>
@@ -412,12 +408,12 @@ export default function MatchActaModal({
         {/* Contenido de la Convocatoria */}
         <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between space-y-4">
           {roster.length === 0 ? (
-            <div className="py-8 px-4 text-center space-y-2.5 bg-zinc-900/40 border border-dashed border-zinc-800">
-              <Users className="w-7 h-7 text-zinc-500 mx-auto" />
-              <p className="text-xs text-zinc-300 font-semibold">
+            <div className="py-8 px-4 text-center space-y-2.5 bg-surface-container-low/60 border border-dashed border-white/10">
+              <Users className="w-7 h-7 text-tertiary mx-auto" />
+              <p className="text-xs text-on-surface font-semibold">
                 Convocatoria pendiente de publicación oficial en el acta federativa
               </p>
-              <p className="text-[11px] text-zinc-500 max-w-xs mx-auto">
+              <p className="text-[11px] text-tertiary max-w-xs mx-auto">
                 Las alineaciones y dorsales oficiales aparecen en cuanto el colegio arbitral cierra o valida la inscripción previa al encuentro.
               </p>
               <div className="pt-1">
@@ -436,31 +432,14 @@ export default function MatchActaModal({
             <>
               {/* Jugadores/as Convocados/as */}
               <div className="space-y-2">
-                {players.some((p) => p.name.startsWith('Deportista #')) && (
-                  <div className="p-2.5 bg-zinc-900/70 border border-zinc-800 rounded text-[11px] text-zinc-300 flex items-start gap-2 leading-snug">
-                    <Shield className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>
-                      {isSanPedro ? (
-                        <>
-                          Nombres de menores ocultos por protección de datos (RGPD) hasta contar con autorización activa.{' '}
-                          <Link href="/autorizaciones" className="text-primary underline hover:text-white font-semibold">
-                            Gestionar autorizaciones
-                          </Link>
-                        </>
-                      ) : (
-                        'Nombres de menores rivales anonimizados por protección de datos (RGPD).'
-                      )}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-400 pb-1 border-b border-zinc-800/80">
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-tertiary pb-1 border-b border-white/10">
                   <span>Jugadores / Jugadoras en Acta</span>
                   <span>Dorsal · Rol</span>
                 </div>
 
-                <div className="divide-y divide-zinc-800/60">
+                <div className="divide-y divide-white/10">
                   {players.map((p, idx) => {
-                    const isAnonymized = p.name.startsWith('Deportista #');
+                    const formattedPlayerName = formatPlayerNameWithInitials(p.name).displayName || p.name;
                     return (
                     <div
                       key={`${idx}-${p.dorsal || 'nd'}-${p.name}`}
@@ -471,19 +450,13 @@ export default function MatchActaModal({
                           className={`w-8 h-7 flex items-center justify-center font-mono text-xs font-extrabold border shrink-0 ${
                             isSanPedro
                               ? 'bg-primary-container/20 border-primary-container/50 text-primary'
-                              : 'bg-zinc-900 border-zinc-700 text-white'
+                              : 'bg-surface-container-high border-white/15 text-white'
                           }`}
                         >
                           {p.dorsal ? `#${p.dorsal}` : '—'}
                         </span>
-                        <span
-                          className={`text-xs sm:text-sm truncate ${
-                            isAnonymized
-                              ? 'font-medium text-zinc-400 italic'
-                              : 'font-semibold text-zinc-100'
-                          }`}
-                        >
-                          {p.name}
+                        <span className="text-xs sm:text-sm truncate font-semibold text-on-surface">
+                          {formattedPlayerName}
                         </span>
                       </div>
 
@@ -514,14 +487,14 @@ export default function MatchActaModal({
               </div>
 
               {/* Cuerpo Técnico / Oficiales */}
-              <div className="pt-2 border-t border-zinc-800">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-tertiary mb-2">
                   <UserCheck className="w-3.5 h-3.5 text-primary" />
                   <span>Cuerpo Técnico / Oficiales</span>
                 </div>
 
                 {staffList.length === 0 ? (
-                  <p className="text-[11px] text-zinc-500 italic">
+                  <p className="text-[11px] text-tertiary italic">
                     Sin oficiales adicionales registrados en acta.
                   </p>
                 ) : (
@@ -531,7 +504,7 @@ export default function MatchActaModal({
                       return (
                         <div
                           key={`staff-${st.name}-${sIdx}`}
-                          className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-zinc-900/80 border border-zinc-800 text-xs"
+                          className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-surface-container-low border border-white/10 text-xs"
                         >
                           <span className="font-semibold text-white truncate">{st.name}</span>
                           <span className="px-2 py-0.5 bg-primary-container/20 border border-primary-container/40 text-primary text-[10px] font-bold uppercase tracking-wider shrink-0">
@@ -560,14 +533,14 @@ export default function MatchActaModal({
     >
       <div
         ref={modalRef}
-        className="bg-zinc-950 border-2 border-zinc-800 w-full max-w-5xl max-h-[92vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.9)] relative overflow-hidden"
+        className="bg-surface-container-lowest border-2 border-white/15 w-full max-w-5xl max-h-[92vh] flex flex-col shadow-brutal-dark relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Barra Superior de Acento Club */}
         <div className="h-1.5 w-full bg-gradient-to-r from-primary-container via-red-500 to-primary-container shrink-0" />
 
         {/* Cabecera Fija del Modal */}
-        <div className="p-4 sm:p-5 bg-zinc-900/90 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="p-4 sm:p-5 bg-surface-container-low border-b border-white/10 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
             <span className="px-2 py-0.5 bg-primary-container text-white font-display-xl text-sm uppercase tracking-wider">
               J{matchData.round}
@@ -582,7 +555,7 @@ export default function MatchActaModal({
                 </h2>
                 {renderStatusBadge()}
               </div>
-              <p className="text-[11px] text-zinc-400 uppercase tracking-wider mt-1 truncate">
+              <p className="text-[11px] text-tertiary uppercase tracking-wider mt-1 truncate">
                 {competitionSub} · ID #{resolvedFavbId}
               </p>
             </div>
@@ -593,7 +566,7 @@ export default function MatchActaModal({
               type="button"
               onClick={() => fetchLiveActa(true)}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-primary-container text-zinc-200 hover:text-white border border-zinc-700 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-primary-container text-on-surface hover:text-white border border-white/15 text-xs font-bold uppercase tracking-wider transition-colors active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-50 cursor-pointer"
               title="Consultar y refrescar acta en vivo desde la federación"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-white' : ''}`} />
@@ -604,7 +577,7 @@ export default function MatchActaModal({
               href={officialExternalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-bold uppercase tracking-wider transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface hover:text-white border border-white/15 text-xs font-bold uppercase tracking-wider transition-colors"
               title={`Abrir ficha oficial en ${isAfade ? 'ligaafade.es' : 'favoley.net'}`}
             >
               <span className="hidden sm:inline">Web Oficial</span>
@@ -614,7 +587,7 @@ export default function MatchActaModal({
             <button
               type="button"
               onClick={handleClose}
-              className="w-8 h-8 flex items-center justify-center bg-zinc-900 hover:bg-primary-container text-zinc-300 hover:text-white border border-zinc-700 transition-colors cursor-pointer"
+              className="w-10 h-10 flex items-center justify-center bg-surface-container hover:bg-primary-container text-on-surface hover:text-white border border-white/15 transition-colors cursor-pointer"
               aria-label="Cerrar modal de acta"
             >
               <X className="w-4 h-4" aria-hidden="true" />
@@ -629,9 +602,10 @@ export default function MatchActaModal({
             <button
               type="button"
               onClick={() => setFeedbackMsg(null)}
-              className="text-zinc-400 hover:text-white"
+              aria-label="Cerrar aviso"
+              className="w-9 h-9 flex items-center justify-center text-tertiary hover:text-white cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
         )}
@@ -639,10 +613,10 @@ export default function MatchActaModal({
         {/* Cuerpo Scrollable del Acta */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
           {/* 1. Marcador Principal y Parciales por Set */}
-          <div className="bg-zinc-900/60 border border-zinc-800 p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-zinc-800 text-xs text-zinc-400">
+          <div className="bg-surface-container-low/80 border border-white/10 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-white/10 text-xs text-tertiary">
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 text-zinc-200 font-semibold">
+                <span className="inline-flex items-center gap-1.5 text-on-surface font-semibold">
                   <Calendar className="w-3.5 h-3.5 text-primary" />
                   {dateDisplay}
                 </span>
@@ -651,7 +625,7 @@ export default function MatchActaModal({
                   {timeDisplay}h
                 </span>
               </div>
-              <span className="font-mono text-[11px] uppercase text-zinc-400">
+              <span className="font-mono text-[11px] uppercase text-tertiary">
                 Jornada {matchData.round}
               </span>
             </div>
@@ -667,7 +641,7 @@ export default function MatchActaModal({
                   className="w-11 h-11 sm:w-12 sm:h-12 object-contain shrink-0"
                 />
                 <div className="min-w-0">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-tertiary block">
                     Equipo Local
                   </span>
                   <h3
@@ -682,7 +656,7 @@ export default function MatchActaModal({
               </div>
 
               {/* Marcador Global y Sets */}
-              <div className="md:col-span-4 flex flex-col items-center justify-center py-2 px-3 bg-zinc-950 border border-zinc-800">
+              <div className="md:col-span-4 flex flex-col items-center justify-center py-2 px-3 bg-surface-container-lowest border border-white/10">
                 {totalSets &&
                 (matchData.status === 'FINISHED' ||
                   matchData.status === 'LIVE' ||
@@ -696,7 +670,7 @@ export default function MatchActaModal({
                       >
                         {totalSets.home}
                       </span>
-                      <span className="text-zinc-600 text-2xl">-</span>
+                      <span className="text-tertiary text-2xl">-</span>
                       <span
                         className={
                           totalSets.away > totalSets.home ? 'text-emerald-400' : 'text-white'
@@ -707,16 +681,16 @@ export default function MatchActaModal({
                     </div>
 
                     {setScores.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap justify-center mt-2.5 pt-2 border-t border-zinc-800/80 w-full">
+                      <div className="flex items-center gap-1.5 flex-wrap justify-center mt-2.5 pt-2 border-t border-white/10 w-full">
                         {setScores.map((s, idx) => (
                           <div
                             key={`modal-set-${idx}`}
-                            className="px-2 py-0.5 bg-zinc-900 border border-zinc-800 text-center"
+                            className="px-2 py-0.5 bg-surface-container border border-white/10 text-center"
                           >
-                            <span className="block text-[9px] font-mono text-zinc-500 uppercase">
+                            <span className="block text-[10px] font-mono text-tertiary uppercase">
                               S{idx + 1}
                             </span>
-                            <span className="font-mono text-xs font-bold text-zinc-200">
+                            <span className="font-mono text-xs font-bold text-on-surface">
                               <span className={s.home > s.away ? 'text-emerald-400' : ''}>
                                 {s.home}
                               </span>
@@ -735,7 +709,7 @@ export default function MatchActaModal({
                     <span className="font-display-xl text-2xl text-primary tracking-widest">
                       VS
                     </span>
-                    <span className="block text-[10px] font-mono uppercase text-zinc-400 mt-0.5">
+                    <span className="block text-[10px] font-mono uppercase text-tertiary mt-0.5">
                       {matchData.statusText || 'Encuentro Programado'}
                     </span>
                   </div>
@@ -745,7 +719,7 @@ export default function MatchActaModal({
               {/* Equipo Visitante */}
               <div className="md:col-span-4 flex items-center md:justify-end gap-3 min-w-0">
                 <div className="min-w-0 md:text-right order-2 md:order-1">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-tertiary block">
                     Equipo Visitante
                   </span>
                   <h3
@@ -771,7 +745,7 @@ export default function MatchActaModal({
           {/* 2. Sede, Pista Exacta y Ubicación + Designaciones Arbitrales */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Sede, Pista y Ubicación */}
-            <div className="lg:col-span-6 bg-zinc-900/50 border border-zinc-800 p-4 flex flex-col justify-between gap-3">
+            <div className="lg:col-span-6 bg-surface-container-low/70 border border-white/10 p-4 flex flex-col justify-between gap-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
@@ -786,46 +760,46 @@ export default function MatchActaModal({
                   )}
                 </div>
 
-                <p className="text-sm font-bold text-white leading-snug">{venueDisplay}</p>
-
-                {matchData.locality && (
-                  <p className="text-xs text-zinc-400">
-                    Localidad: <strong className="text-zinc-200">{matchData.locality}</strong>
-                  </p>
-                )}
-              </div>
-
-              <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-[11px] text-zinc-400">
-                  {isHomeSanPedro ? 'Sede Oficial C.D. Voleibol San Pedro' : 'Desplazamiento Visitante'}
-                </span>
                 <a
                   href={mapsLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-container hover:bg-secondary-container text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
+                  className="inline-flex items-start gap-2 text-sm font-bold text-white hover:text-primary transition-colors group/venue"
+                  title={`Abrir ubicación de ${venueDisplay} en Google Maps`}
                 >
-                  <Navigation className="w-3.5 h-3.5" />
-                  <span>Cómo llegar (Maps)</span>
+                  <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                  <span className="group-hover/venue:underline">{venueDisplay}</span>
                 </a>
+
+                {matchData.locality && (
+                  <p className="text-xs text-tertiary">
+                    Localidad: <strong className="text-on-surface">{matchData.locality}</strong>
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-[11px] text-tertiary">
+                  {isHomeSanPedro ? 'Sede Oficial C.D. Voleibol San Pedro' : 'Desplazamiento Visitante'}
+                </span>
               </div>
             </div>
 
             {/* Designaciones Arbitrales */}
-            <div className="lg:col-span-6 bg-zinc-900/50 border border-zinc-800 p-4 flex flex-col justify-between gap-3">
+            <div className="lg:col-span-6 bg-surface-container-low/70 border border-white/10 p-4 flex flex-col justify-between gap-3">
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
                     <Scale className="w-3.5 h-3.5" />
                     Designaciones Arbitrales (CTA FAVB)
                   </span>
-                  <span className="text-[10px] font-mono text-zinc-400">
+                  <span className="text-[10px] font-mono text-tertiary">
                     {referees.length > 0 ? `${referees.length} colegiados/as` : 'Pendiente'}
                   </span>
                 </div>
 
                 {referees.length === 0 ? (
-                  <div className="py-3 px-3 bg-zinc-950/60 border border-zinc-800/80 text-xs text-zinc-400">
+                  <div className="py-3 px-3 bg-surface-container-lowest/70 border border-white/10 text-xs text-tertiary">
                     Designación arbitral pendiente de publicación oficial en el acta del encuentro.
                   </div>
                 ) : (
@@ -833,16 +807,16 @@ export default function MatchActaModal({
                     {referees.map((ref, idx) => (
                       <div
                         key={`ref-${idx}-${ref.name}`}
-                        className="flex items-center justify-between gap-2 px-3 py-1.5 bg-zinc-950 border border-zinc-800 text-xs"
+                        className="flex items-center justify-between gap-2 px-3 py-1.5 bg-surface-container-lowest border border-white/10 text-xs"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="px-1.5 py-0.5 bg-zinc-800 text-zinc-300 font-mono text-[10px] font-bold uppercase shrink-0">
+                          <span className="px-1.5 py-0.5 bg-surface-container-high text-on-surface font-mono text-[10px] font-bold uppercase shrink-0">
                             {ref.role}
                           </span>
                           <span className="font-semibold text-white truncate">{ref.name}</span>
                         </div>
                         {ref.isTrainee && (
-                          <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[9px] font-bold uppercase tracking-wider shrink-0">
+                          <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold uppercase tracking-wider shrink-0">
                             EN PRÁCTICAS
                           </span>
                         )}
@@ -878,7 +852,7 @@ export default function MatchActaModal({
             </div>
 
             {loading && homeRoster.length === 0 && awayRoster.length === 0 ? (
-              <div className="p-8 bg-zinc-900/50 border border-zinc-800 text-center space-y-2">
+              <div className="p-8 bg-surface-container-low border border-white/10 text-center space-y-2">
                 <RefreshCw className="w-6 h-6 text-primary animate-spin mx-auto" />
                 <p className="text-xs font-bold uppercase tracking-wider text-white">
                   Consultando acta oficial en directo con favoley.net...
@@ -894,10 +868,10 @@ export default function MatchActaModal({
         </div>
 
         {/* Pie del Modal */}
-        <div className="p-3.5 sm:px-6 bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between gap-3 shrink-0 text-xs">
-          <span className="text-zinc-400 text-[11px] truncate">
+        <div className="p-3.5 sm:px-6 bg-surface-container-low border-t border-white/10 flex items-center justify-between gap-3 shrink-0 text-xs">
+          <span className="text-tertiary text-[11px] truncate">
             Datos oficiales sincronizados con{' '}
-            <strong className="text-zinc-200">
+            <strong className="text-on-surface">
               {isAfade ? 'Liga AFADE (ligaafade.es)' : 'Federación Andaluza de Voleibol (favoley.net)'}
             </strong>
           </span>
@@ -905,7 +879,7 @@ export default function MatchActaModal({
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold uppercase tracking-wider text-xs transition-colors shrink-0 cursor-pointer"
+            className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-white font-bold uppercase tracking-wider text-xs border border-white/15 active:translate-x-[1px] active:translate-y-[1px] transition-colors shrink-0 cursor-pointer"
           >
             Cerrar
           </button>

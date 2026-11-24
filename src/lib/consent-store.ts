@@ -2258,9 +2258,16 @@ export async function revokePlayerConsentByOtp(params: {
   };
 }
 
+function isMissingRelationOrColumnError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const code = 'code' in err ? String((err as { code?: unknown }).code || '') : '';
+  const msg = 'message' in err ? String((err as { message?: unknown }).message || '') : '';
+  return code === '42P01' || code === '42703' || /does not exist/i.test(msg);
+}
+
 /**
  * Ejecuta *crypto-shredding* RGPD (Art. 5.1.e / Art. 17) destruyendo la DEK envuelta en `player_crypto_keys`
- * y suprimiendo PII de tablas mutables sin violar el trigger append-only `trg_immutable_player_consents_audit`.
+ * y suprimiendo PII de tablas mutables (censo e intranet) sin violar el trigger append-only `trg_immutable_player_consents_audit`.
  */
 export async function shredPlayerCryptoKey(
   playerId: string
@@ -2322,6 +2329,101 @@ export async function shredPlayerCryptoKey(
      WHERE player_id = $1;`,
     [canonicalId]
   );
+
+  // Purga completa RGPD Art. 17 en tablas de intranet (si el esquema intranet está desplegado)
+  try {
+    const athRows = await queryNeon<{ user_id: string | null }>(
+      `SELECT user_id::text AS user_id
+       FROM intranet_athletes
+       WHERE id = $1
+       LIMIT 1;`,
+      [canonicalId]
+    );
+    const linkedUserId = athRows[0]?.user_id || null;
+
+    await queryNeon(
+      `UPDATE intranet_athletes
+       SET status = 'SHREDDED',
+           first_name = '[SUPRIMIDO]',
+           last_name = '',
+           full_name_normalized = '',
+           birth_year = NULL,
+           birth_date_enc = NULL,
+           birth_date_verified = false,
+           dni_last5 = NULL,
+           dni_enc = NULL,
+           dni_blind_index = NULL,
+           emergency_contact_name = NULL,
+           emergency_contact_phone = NULL,
+           medical_allergies_enc = NULL,
+           user_id = NULL,
+           updated_at = NOW()
+       WHERE id = $1;`,
+      [canonicalId]
+    );
+
+    if (linkedUserId) {
+      await queryNeon(
+        `DELETE FROM intranet_sessions WHERE user_id = $1::uuid;`,
+        [linkedUserId]
+      );
+    }
+
+    await queryNeon(`DELETE FROM intranet_guardianships WHERE athlete_id = $1;`, [canonicalId]);
+    await queryNeon(`DELETE FROM intranet_athlete_teams WHERE athlete_id = $1;`, [canonicalId]);
+
+    try {
+      await queryNeon(
+        `UPDATE intranet_registration_requests
+         SET guardian_name = NULL,
+             contact_email = '[suprimido]',
+             contact_phone = NULL,
+             pending_payload_enc = NULL
+         WHERE athlete_id = $1;`,
+        [canonicalId]
+      );
+    } catch (regErr) {
+      if (!isMissingRelationOrColumnError(regErr)) throw regErr;
+      await queryNeon(
+        `UPDATE intranet_registration_requests
+         SET guardian_name = NULL,
+             contact_email = '[suprimido]',
+             contact_phone = NULL
+         WHERE athlete_id = $1;`,
+        [canonicalId]
+      ).catch((fallbackErr) => {
+        if (!isMissingRelationOrColumnError(fallbackErr)) throw fallbackErr;
+      });
+    }
+
+    try {
+      await queryNeon(
+        `UPDATE intranet_enrollments
+         SET payer_name = '[SUPRIMIDO RGPD]',
+             payer_email = NULL,
+             payer_dni_enc = NULL,
+             updated_at = NOW()
+         WHERE athlete_id = $1;`,
+        [canonicalId]
+      );
+    } catch (enrErr) {
+      if (!isMissingRelationOrColumnError(enrErr)) throw enrErr;
+      await queryNeon(
+        `UPDATE intranet_enrollments
+         SET payer_name = '[SUPRIMIDO RGPD]',
+             payer_email = NULL,
+             payer_dni_enc = NULL
+         WHERE athlete_id = $1;`,
+        [canonicalId]
+      ).catch((fallbackErr) => {
+        if (!isMissingRelationOrColumnError(fallbackErr)) throw fallbackErr;
+      });
+    }
+  } catch (err) {
+    if (!isMissingRelationOrColumnError(err)) {
+      throw err;
+    }
+  }
 
   return { success: true };
 }

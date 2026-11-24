@@ -9,6 +9,7 @@ import {
   unsealOAuthTxCookie,
   createIntranetSession,
   setIntranetSessionCookie,
+  isMemberBlockedByPendingApproval,
   type OAuthProviderKey,
 } from '@/lib/intranet/auth';
 import { buildUserAccessContext } from '@/lib/intranet/rbac';
@@ -23,10 +24,10 @@ export async function GET(
 ) {
   const baseUrl = getPublicBaseUrl();
   const providerRaw = context.params.provider?.toLowerCase();
-  if (providerRaw !== 'google' && providerRaw !== 'microsoft') {
+  if (providerRaw !== 'google') {
     return NextResponse.redirect(`${baseUrl}/acceso?error=proveedor_no_soportado`);
   }
-  const provider: OAuthProviderKey = providerRaw;
+  const provider: OAuthProviderKey = 'google';
 
   try {
     await ensureIntranetSeeded();
@@ -77,52 +78,28 @@ export async function GET(
       return NextResponse.redirect(`${baseUrl}/acceso?error=oauth_sin_token`);
     }
 
-    let providerAccountId = '';
-    let providerEmail = '';
-    let emailVerified = false;
-    let displayName = '';
-
-    if (provider === 'google') {
-      const profileRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
-        headers: { Authorization: `Bearer ${tokenJson.access_token}` },
-      });
-      if (!profileRes.ok) {
-        return NextResponse.redirect(`${baseUrl}/acceso?error=oauth_perfil_fallido`);
-      }
-      const p = (await profileRes.json()) as {
-        sub?: string;
-        email?: string;
-        email_verified?: boolean;
-        name?: string;
-      };
-      providerAccountId = String(p.sub || '');
-      providerEmail = String(p.email || '').trim().toLowerCase();
-      emailVerified = Boolean(p.email_verified);
-      displayName = String(p.name || providerEmail);
-    } else {
-      const profileRes = await fetch('https://graph.microsoft.com/v1.0/me', {
-        headers: { Authorization: `Bearer ${tokenJson.access_token}` },
-      });
-      if (!profileRes.ok) {
-        return NextResponse.redirect(`${baseUrl}/acceso?error=oauth_perfil_fallido`);
-      }
-      const p = (await profileRes.json()) as {
-        id?: string;
-        mail?: string;
-        userPrincipalName?: string;
-        displayName?: string;
-      };
-      providerAccountId = String(p.id || '');
-      providerEmail = String(p.mail || p.userPrincipalName || '').trim().toLowerCase();
-      emailVerified = Boolean(providerEmail);
-      displayName = String(p.displayName || providerEmail);
+    const profileRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+      headers: { Authorization: `Bearer ${tokenJson.access_token}` },
+    });
+    if (!profileRes.ok) {
+      return NextResponse.redirect(`${baseUrl}/acceso?error=oauth_perfil_fallido`);
     }
+    const p = (await profileRes.json()) as {
+      sub?: string;
+      email?: string;
+      email_verified?: boolean;
+      name?: string;
+    };
+    const providerAccountId = String(p.sub || '');
+    const providerEmail = String(p.email || '').trim().toLowerCase();
+    const emailVerified = p.email_verified === true;
+    const displayName = String(p.name || providerEmail);
 
     if (!providerAccountId || !providerEmail || !emailVerified) {
       return NextResponse.redirect(`${baseUrl}/acceso?error=oauth_email_no_verificado`);
     }
 
-    const dbProvider = provider === 'google' ? 'GOOGLE' : 'MICROSOFT';
+    const dbProvider = 'GOOGLE';
 
     // 1. Buscar cuenta OAuth ya vinculada
     const linked = await queryNeon<{ user_id: string }>(
@@ -190,6 +167,37 @@ export async function GET(
       return NextResponse.redirect(`${baseUrl}/acceso?error=cuenta_inactiva`);
     }
 
+    const ctx = await buildUserAccessContext({
+      sessionId: 'oauth',
+      twoFactorVerified: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        emailVerified: true,
+        totpEnabled: false,
+        status: user.status,
+      },
+    });
+
+    const pendingApproval = await isMemberBlockedByPendingApproval(user.id, ctx);
+    if (pendingApproval.blocked) {
+      await recordAuditLog({
+        actorUserId: user.id,
+        actorEmail: user.email,
+        action: 'LOGIN_BLOCKED_PENDING_APPROVAL',
+        module: 'Auth',
+        details: {
+          method: `OAUTH_${dbProvider}`,
+          pendingRequests: pendingApproval.pendingRequests,
+          pendingAthletes: pendingApproval.pendingAthletes,
+        },
+        ipAddress: clientIp,
+      });
+      return NextResponse.redirect(`${baseUrl}/acceso?error=pendiente_aprobacion`);
+    }
+
     await queryNeon(
       `INSERT INTO intranet_oauth_accounts (user_id, provider, provider_account_id, provider_email)
        VALUES ($1::uuid, $2, $3, $4)
@@ -204,20 +212,6 @@ export async function GET(
       twoFactorVerified: true,
     });
     setIntranetSessionCookie(rawToken, expiresAt);
-
-    const ctx = await buildUserAccessContext({
-      sessionId: 'oauth',
-      twoFactorVerified: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-        emailVerified: true,
-        totpEnabled: false,
-        status: user.status,
-      },
-    });
 
     await recordAuditLog({
       actorUserId: user.id,

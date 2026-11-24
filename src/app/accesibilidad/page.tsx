@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: 'Declaración de Accesibilidad | C.D. Voleibol San Pedro',
   description:
     'Declaración de accesibilidad web del portal oficial del C.D. Voleibol San Pedro conforme a la Norma UNE-EN 301 549:2022, WCAG 2.1 nivel AA y Ley 11/2023.',
+  alternates: {
+    canonical: '/accesibilidad',
+  },
 };
 
 export default function AccesibilidadPage() {

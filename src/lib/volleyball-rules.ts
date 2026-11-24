@@ -51,6 +51,10 @@ export function calculateMatchScore(setScores: SetScore[]): MatchScoreResult {
         homePoints = 0;
       }
     }
+  } else if (setScores.length <= 3 && (homeSetsWon === 2 || awaySetsWon === 2)) {
+    // Modalidad minivoley (Alevín / Benjamín FAVB): mejor de 3 sets (2 pts ganador, 1 pt perdedor)
+    homePoints = isHomeWinner ? 2 : 1;
+    awayPoints = isHomeWinner ? 1 : 2;
   }
 
   return {

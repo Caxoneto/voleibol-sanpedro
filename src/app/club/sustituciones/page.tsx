@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertCircle,
   ArrowLeftRight,
   Calendar,
   CheckCircle2,
@@ -15,7 +14,9 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useClubSession } from '@/components/intranet/ClubShell';
-import { formatMadridDateString } from '@/lib/date-utils';
+import IntranetModal from '@/components/intranet/IntranetModal';
+import { formatDisplayDate, formatMadridDateString } from '@/lib/date-utils';
+import { getShortTeamLabelInFamily, getTeamColorTheme, groupByCategoryFamily } from '@/lib/club-info';
 
 interface TeamOption {
   id: string;
@@ -82,14 +83,6 @@ interface SubstitutionsApiResponse {
   substitutions: SubstitutionItem[];
 }
 
-const REASON_PRESETS = [
-  'Enfermedad / Indisposición',
-  'Motivo laboral',
-  'Viaje / Desplazamiento',
-  'Exámenes / Estudios',
-  'Asunto familiar',
-];
-
 function getIsoWeekdayFromYmd(ymd: string): number {
   const [y, m, d] = ymd.split('-').map(Number);
   if (!y || !m || !d) return 1;
@@ -104,7 +97,6 @@ function toMins(hhmm: string): number {
 
 export default function ClubSustitucionesPage() {
   const { session, hasPermission } = useClubSession();
-  const canRequest = hasPermission('substitution.request');
   const canAssign = hasPermission('substitution.assign');
 
   const todayMadrid = useMemo(() => formatMadridDateString(new Date()), []);
@@ -114,16 +106,6 @@ export default function ClubSustitucionesPage() {
   const [data, setData] = useState<SubstitutionsApiResponse | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'ASSIGNED' | 'CANCELLED'>('ALL');
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-
-  // Formulario de solicitud
-  const [reqForm, setReqForm] = useState({
-    teamSeasonId: '',
-    madridDate: todayMadrid,
-    startTime: '18:00',
-    endTime: '19:30',
-    reason: '',
-  });
-  const [submittingReq, setSubmittingReq] = useState(false);
 
   // Selección de sustituto por tarjeta
   const [selectedCoachBySubId, setSelectedCoachBySubId] = useState<Record<string, string>>({});
@@ -158,10 +140,6 @@ export default function ClubSustitucionesPage() {
       const typed = json as SubstitutionsApiResponse;
       setData(typed);
 
-      setReqForm((prev) => ({
-        ...prev,
-        teamSeasonId: prev.teamSeasonId || typed.availableTeams[0]?.id || '',
-      }));
       setDirectForm((prev) => ({
         ...prev,
         teamSeasonId: prev.teamSeasonId || typed.allTeams[0]?.id || '',
@@ -180,43 +158,6 @@ export default function ClubSustitucionesPage() {
     void loadData(controller.signal);
     return () => controller.abort();
   }, [loadData]);
-
-  async function handleRequestSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmittingReq(true);
-    setFeedback(null);
-    try {
-      const res = await fetch('/api/intranet/substitutions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'request_substitution',
-          teamSeasonId: reqForm.teamSeasonId,
-          madridDate: reqForm.madridDate,
-          startTime: reqForm.startTime,
-          endTime: reqForm.endTime,
-          reason: reqForm.reason,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'No se pudo enviar la solicitud.');
-      }
-      setReqForm((prev) => ({ ...prev, reason: '' }));
-      setFeedback({
-        type: 'ok',
-        text: 'Solicitud de sustitución enviada. Coordinación podrá asignar un sustituto libre.',
-      });
-      await loadData();
-    } catch (err) {
-      setFeedback({
-        type: 'err',
-        text: err instanceof Error ? err.message : 'Error enviando solicitud.',
-      });
-    } finally {
-      setSubmittingReq(false);
-    }
-  }
 
   async function handleAssignSubstitute(sub: SubstitutionItem) {
     const substituteUserId =
@@ -248,8 +189,8 @@ export default function ClubSustitucionesPage() {
       setFeedback({
         type: 'ok',
         text: json.emailSent
-          ? 'Sustituto asignado, permiso temporal attendance.take concedido (-2h/+24h) y aviso enviado por email.'
-          : 'Sustituto asignado y permiso temporal attendance.take concedido (-2h/+24h).',
+          ? 'Sustituto asignado, permiso temporal de asistencia concedido (-2h/+24h) y aviso enviado por email.'
+          : 'Sustituto asignado y permiso temporal de asistencia concedido (-2h/+24h).',
       });
       await loadData();
     } catch (err) {
@@ -290,8 +231,8 @@ export default function ClubSustitucionesPage() {
       setFeedback({
         type: 'ok',
         text: json.emailSent
-          ? 'Cobertura directa asignada con permiso temporal attendance.take y aviso por email.'
-          : 'Cobertura directa asignada con permiso temporal attendance.take.',
+          ? 'Cobertura directa asignada con permiso temporal de asistencia y aviso por email.'
+          : 'Cobertura directa asignada con permiso temporal de asistencia.',
       });
       await loadData();
     } catch (err) {
@@ -379,32 +320,27 @@ export default function ClubSustitucionesPage() {
   return (
     <div className="space-y-5 pb-12">
       {/* Cabecera */}
-      <header className="bg-surface-container border border-white/10 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e]">
+      <header className="bg-surface-container border border-white/10 p-4 sm:p-5 shadow-[4px_4px_0px_0px_#0e0e0e]">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <ArrowLeftRight className="w-4 h-4 text-primary-container" aria-hidden="true" />
-              <span className="font-label-sm text-[10px] uppercase tracking-widest text-primary font-bold">
-                Continuidad Técnica
-              </span>
-            </div>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <ArrowLeftRight className="w-5 h-5 text-primary-container shrink-0" aria-hidden="true" />
             <h1 className="font-headline-lg-mobile sm:font-headline-lg text-2xl sm:text-3xl font-bold uppercase tracking-wide text-white">
               Sustituciones de Entrenadores
             </h1>
-            <p className="text-xs sm:text-sm text-tertiary mt-1">
-              Solicitudes de cobertura y asignación de sustitutos libres con permiso temporal automático.
-            </p>
           </div>
 
           {canAssign && (
-            <button
-              type="button"
-              onClick={() => setDirectModalOpen(true)}
-              className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-cta hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0px_0px_#0e0e0e] cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" aria-hidden="true" />
-              <span>Asignación Directa</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setDirectModalOpen(true)}
+                disabled={loading || !data}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-cta hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0px_0px_#0e0e0e] cursor-pointer disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                <span>Asignar sustitución</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -469,399 +405,210 @@ export default function ClubSustitucionesPage() {
       )}
 
       {!loading && data && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          {/* Columna izquierda: Formulario Solicitar sustitución */}
-          {canRequest && (
-            <section className="lg:col-span-4 bg-surface-container border border-white/10 p-4 sm:p-5 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
-              <div className="border-b border-white/10 pb-3">
-                <h2 className="font-headline text-base font-bold uppercase text-white">
-                  Solicitar Sustitución
-                </h2>
-                <p className="text-xs text-tertiary mt-0.5">
-                  Avisa con antelación para que Coordinación asigne cobertura en pista.
-                </p>
-              </div>
+        <section className="w-full space-y-4">
+          {/* Filtros de estado */}
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { id: 'ALL', label: `Todas (${counts.total})` },
+                { id: 'OPEN', label: `Pendientes (${counts.open})` },
+                { id: 'ASSIGNED', label: `Asignadas (${counts.assigned})` },
+                { id: 'CANCELLED', label: `Canceladas (${counts.cancelled})` },
+              ] as const
+            ).map((pill) => (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => setStatusFilter(pill.id)}
+                className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border cursor-pointer ${
+                  statusFilter === pill.id
+                    ? 'bg-primary-container text-white border-primary-container'
+                    : 'bg-surface-container text-tertiary border-white/10 hover:text-white'
+                }`}
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
 
-              <form onSubmit={handleRequestSubmit} className="space-y-3">
-                <div>
-                  <label
-                    htmlFor="sub-req-team"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1"
-                  >
-                    Equipo
-                  </label>
-                  <select
-                    id="sub-req-team"
-                    required
-                    value={reqForm.teamSeasonId}
-                    onChange={(e) =>
-                      setReqForm((prev) => ({ ...prev, teamSeasonId: e.target.value }))
-                    }
-                    className="w-full bg-surface-container-lowest border border-white/20 px-3 py-2 text-sm text-white outline-none focus:border-primary-container"
-                  >
-                    {data.availableTeams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="sub-req-date"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1"
-                  >
-                    Fecha de la sesión (Madrid)
-                  </label>
-                  <input
-                    id="sub-req-date"
-                    type="date"
-                    required
-                    value={reqForm.madridDate}
-                    onChange={(e) =>
-                      setReqForm((prev) => ({ ...prev, madridDate: e.target.value }))
-                    }
-                    className="w-full bg-surface-container-lowest border border-white/20 px-3 py-2 text-sm text-white outline-none focus:border-primary-container"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <label
-                      htmlFor="sub-req-start"
-                      className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1"
-                    >
-                      Hora inicio
-                    </label>
-                    <input
-                      id="sub-req-start"
-                      type="time"
-                      required
-                      value={reqForm.startTime}
-                      onChange={(e) =>
-                        setReqForm((prev) => ({ ...prev, startTime: e.target.value }))
-                      }
-                      className="w-full bg-surface-container-lowest border border-white/20 px-3 py-2 text-sm text-white outline-none focus:border-primary-container"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="sub-req-end"
-                      className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1"
-                    >
-                      Hora fin
-                    </label>
-                    <input
-                      id="sub-req-end"
-                      type="time"
-                      required
-                      value={reqForm.endTime}
-                      onChange={(e) =>
-                        setReqForm((prev) => ({ ...prev, endTime: e.target.value }))
-                      }
-                      className="w-full bg-surface-container-lowest border border-white/20 px-3 py-2 text-sm text-white outline-none focus:border-primary-container"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="sub-req-reason"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1"
-                  >
-                    Motivo
-                  </label>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {REASON_PRESETS.map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() =>
-                          setReqForm((prev) => ({ ...prev, reason: preset }))
-                        }
-                        className="px-2 py-1 text-[10px] font-bold bg-surface-container-low hover:bg-surface-container-high border border-white/10 text-tertiary hover:text-white cursor-pointer"
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
-                  <textarea
-                    id="sub-req-reason"
-                    required
-                    rows={2}
-                    value={reqForm.reason}
-                    onChange={(e) =>
-                      setReqForm((prev) => ({ ...prev, reason: e.target.value }))
-                    }
-                    placeholder="Detalla brevemente el motivo de tu ausencia..."
-                    className="w-full bg-surface-container-lowest border border-white/20 px-3 py-2 text-sm text-white outline-none focus:border-primary-container"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submittingReq || !reqForm.teamSeasonId}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-cta hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0px_0px_#0e0e0e] cursor-pointer disabled:opacity-50"
-                >
-                  {submittingReq ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <ArrowLeftRight className="w-4 h-4" />
-                  )}
-                  <span>{submittingReq ? 'Enviando...' : 'Enviar Solicitud'}</span>
-                </button>
-              </form>
-            </section>
-          )}
-
-          {/* Columna derecha: Listado de coberturas */}
-          <section
-            className={`${canRequest ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-4`}
-          >
-            {/* Filtros de estado */}
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  { id: 'ALL', label: `Todas (${counts.total})` },
-                  { id: 'OPEN', label: `Pendientes (${counts.open})` },
-                  { id: 'ASSIGNED', label: `Asignadas (${counts.assigned})` },
-                  { id: 'CANCELLED', label: `Canceladas (${counts.cancelled})` },
-                ] as const
-              ).map((pill) => (
-                <button
-                  key={pill.id}
-                  type="button"
-                  onClick={() => setStatusFilter(pill.id)}
-                  className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border cursor-pointer ${
-                    statusFilter === pill.id
-                      ? 'bg-primary-container text-white border-primary-container'
-                      : 'bg-surface-container text-tertiary border-white/10 hover:text-white'
-                  }`}
-                >
-                  {pill.label}
-                </button>
-              ))}
+          {filteredSubs.length === 0 ? (
+            <div className="bg-surface-container border border-white/10 p-6 text-center text-sm text-tertiary">
+              Sin sustituciones registradas.
             </div>
+          ) : (
+            <div className="space-y-3.5">
+              {filteredSubs.map((sub) => {
+                const sortedCoaches = [...sub.coachAvailability].sort((a, b) => {
+                  if (a.available !== b.available) return a.available ? -1 : 1;
+                  return a.coachName.localeCompare(b.coachName, 'es');
+                });
+                const defaultFreeId =
+                  sortedCoaches.find((c) => c.available)?.coachId ||
+                  sortedCoaches[0]?.coachId ||
+                  '';
+                const currentSelectedCoachId =
+                  selectedCoachBySubId[sub.id] ?? sub.substituteUserId ?? defaultFreeId;
 
-            {filteredSubs.length === 0 ? (
-              <div className="bg-surface-container border border-white/10 p-6 text-center text-sm text-tertiary">
-                No hay solicitudes de sustitución en esta vista.
-              </div>
-            ) : (
-              <div className="space-y-3.5">
-                {filteredSubs.map((sub) => {
-                  const sortedCoaches = [...sub.coachAvailability].sort((a, b) => {
-                    if (a.available !== b.available) return a.available ? -1 : 1;
-                    return a.coachName.localeCompare(b.coachName, 'es');
-                  });
-                  const defaultFreeId =
-                    sortedCoaches.find((c) => c.available)?.coachId ||
-                    sortedCoaches[0]?.coachId ||
-                    '';
-                  const currentSelectedCoachId =
-                    selectedCoachBySubId[sub.id] ?? sub.substituteUserId ?? defaultFreeId;
+                const isOpen = sub.status === 'OPEN';
+                const isAssigned = sub.status === 'ASSIGNED' || sub.status === 'COMPLETED';
+                const isCancelled = sub.status === 'CANCELLED';
 
-                  const isOpen = sub.status === 'OPEN';
-                  const isAssigned = sub.status === 'ASSIGNED' || sub.status === 'COMPLETED';
-                  const isCancelled = sub.status === 'CANCELLED';
-
-                  return (
-                    <article
-                      key={sub.id}
-                      className={`bg-surface-container border p-4 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-3 ${
-                        isOpen
-                          ? 'border-amber-400/50'
-                          : isAssigned
-                          ? 'border-emerald-500/40'
-                          : 'border-white/10 opacity-70'
-                      }`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${
-                                isOpen
-                                  ? 'bg-amber-950/60 text-amber-200 border-amber-400/50'
-                                  : isAssigned
-                                  ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50'
-                                  : 'bg-rose-950/60 text-rose-300 border-rose-500/40'
-                              }`}
-                            >
-                              {isOpen
-                                ? 'Pendiente cobertura'
+                return (
+                  <article
+                    key={sub.id}
+                    className={`bg-surface-container border p-4 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-3 ${
+                      isOpen
+                        ? 'border-amber-400/50'
+                        : isAssigned
+                        ? 'border-emerald-500/40'
+                        : 'border-white/10 opacity-70'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${
+                              isOpen
+                                ? 'bg-amber-950/60 text-amber-200 border-amber-400/50'
                                 : isAssigned
-                                ? 'Cubierta'
-                                : 'Cancelada'}
-                            </span>
-                            <span className="text-xs text-tertiary capitalize flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-                              {sub.madridDateFormatted} ({sub.madridDate})
-                            </span>
-                            <span className="text-xs font-bold text-white flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-                              {sub.startTime} – {sub.endTime}
-                            </span>
-                          </div>
-
-                          <h3 className="font-headline text-base sm:text-lg font-bold text-white mt-1.5">
-                            {sub.teamName}
-                          </h3>
-                          <p className="text-xs text-tertiary mt-0.5">
-                            Solicita: <strong className="text-white">{sub.absentUserName}</strong> ·
-                            Motivo: <span className="text-on-surface">{sub.reason}</span>
-                          </p>
+                                ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50'
+                                : 'bg-rose-950/60 text-rose-300 border-rose-500/40'
+                            }`}
+                          >
+                            {isOpen
+                              ? 'Pendiente cobertura'
+                              : isAssigned
+                              ? 'Cubierta'
+                              : 'Cancelada'}
+                          </span>
+                          <span className="text-xs text-tertiary flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                            {formatDisplayDate(sub.madridDate)}
+                          </span>
+                          <span className="text-xs font-bold text-white flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                            {sub.startTime} – {sub.endTime}
+                          </span>
                         </div>
 
-                        {sub.canCancel && (
-                          <button
-                            type="button"
-                            onClick={() => void handleCancelSub(sub.id)}
-                            disabled={cancellingSubId === sub.id}
-                            className="self-start inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface-container-low hover:bg-rose-950/60 border border-white/15 hover:border-rose-500/40 text-[11px] font-bold uppercase text-rose-300 cursor-pointer shrink-0"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>{cancellingSubId === sub.id ? 'Cancelando...' : 'Cancelar'}</span>
-                          </button>
-                        )}
+                        <h2
+                          className={`font-headline text-base sm:text-lg font-bold mt-1.5 ${
+                            getTeamColorTheme(sub.teamName).colorKey
+                              ? getTeamColorTheme(sub.teamName).textClass
+                              : 'text-white'
+                          }`}
+                        >
+                          {sub.teamName}
+                        </h2>
+                        <p className="text-xs text-tertiary mt-0.5">
+                          Entrenador cubierto: <strong className="text-white">{sub.absentUserName}</strong> ·
+                          Motivo: <span className="text-on-surface">{sub.reason}</span>
+                        </p>
                       </div>
 
-                      {/* Estado asignado + aviso permiso temporal */}
-                      {isAssigned && sub.substituteUserName && (
-                        <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div className="flex items-start gap-2">
-                            <UserCheck
-                              className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"
-                              aria-hidden="true"
-                            />
-                            <div className="text-xs">
-                              <p className="text-emerald-200">
-                                Sustituto asignado:{' '}
-                                <strong className="text-white">{sub.substituteUserName}</strong>
-                                {sub.assignedByName && (
-                                  <span className="text-emerald-200/70">
-                                    {' '}
-                                    (por {sub.assignedByName})
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-[11px] text-emerald-300/90 flex items-center gap-1 mt-0.5">
-                                <ShieldCheck className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                                <span>
-                                  Permiso temporal automático <code>attendance.take</code> activo
-                                  {sub.overrideValidFromMadrid && sub.overrideValidToMadrid
-                                    ? ` (${sub.overrideValidFromMadrid} → ${sub.overrideValidToMadrid})`
-                                    : ' (-2h a +24h)'}
-                                </span>
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+                      {sub.canCancel && (
+                        <button
+                          type="button"
+                          onClick={() => void handleCancelSub(sub.id)}
+                          disabled={cancellingSubId === sub.id}
+                          className="self-start inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface-container-low hover:bg-rose-950/60 border border-white/15 hover:border-rose-500/40 text-[11px] font-bold uppercase text-rose-300 cursor-pointer shrink-0"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>{cancellingSubId === sub.id ? 'Cancelando...' : 'Cancelar'}</span>
+                        </button>
                       )}
+                    </div>
 
-                      {/* Selector de sustituto para Coordinador / Presidente */}
-                      {!isCancelled && sub.canAssignHere && (
-                        <div className="bg-surface-container-low border border-white/10 p-3 space-y-2.5">
-                          <div className="flex items-start gap-2 text-[11px] text-amber-200/90">
-                            <ShieldCheck
-                              className="w-4 h-4 text-amber-300 shrink-0 mt-0.5"
-                              aria-hidden="true"
-                            />
-                            <span>
-                              Al asignar un sustituto se le concederá{' '}
-                              <strong>permiso temporal automático de asistencia</strong> (
-                              <code>attendance.take</code>) para este equipo desde 2h antes hasta
-                              24h después de la sesión.
-                            </span>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <select
-                              value={currentSelectedCoachId}
-                              onChange={(e) =>
-                                setSelectedCoachBySubId((prev) => ({
-                                  ...prev,
-                                  [sub.id]: e.target.value,
-                                }))
-                              }
-                              aria-label={`Seleccionar sustituto para ${sub.teamName}`}
-                              className="flex-1 min-w-0 bg-surface-container-lowest border border-white/20 px-3 py-2 text-xs sm:text-sm text-white outline-none focus:border-primary-container"
-                            >
-                              {sortedCoaches.map((c) => (
-                                <option key={c.coachId} value={c.coachId}>
-                                  {c.available
-                                    ? `[LIBRE] ${c.coachName}`
-                                    : `[CONFLICTO: ${c.conflicts[0]}] ${c.coachName}`}
-                                </option>
-                              ))}
-                            </select>
-
-                            <button
-                              type="button"
-                              onClick={() => void handleAssignSubstitute(sub)}
-                              disabled={assigningSubId === sub.id || !currentSelectedCoachId}
-                              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-cta hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50 shrink-0"
-                            >
-                              {assigningSubId === sub.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                              )}
-                              <span>{isAssigned ? 'Reasignar' : 'Asignar Sustituto'}</span>
-                            </button>
-                          </div>
+                    {/* Estado asignado + pill compacto de rango horario */}
+                    {isAssigned && sub.substituteUserName && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <div className="inline-flex items-center gap-1.5 text-xs text-emerald-200 min-w-0">
+                          <UserCheck
+                            className="w-4 h-4 text-emerald-400 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <span className="truncate">
+                            Sustituto: <strong className="text-white">{sub.substituteUserName}</strong>
+                            {sub.assignedByName && (
+                              <span className="text-emerald-200/70"> ({sub.assignedByName})</span>
+                            )}
+                          </span>
                         </div>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-950/60 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 shrink-0">
+                          <ShieldCheck className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                          <span>
+                            {sub.overrideValidFromMadrid && sub.overrideValidToMadrid
+                              ? `${sub.overrideValidFromMadrid} → ${sub.overrideValidToMadrid}`
+                              : 'Permiso -2h / +24h'}
+                          </span>
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Selector de sustituto para Coordinador / Presidente */}
+                    {!isCancelled && sub.canAssignHere && (
+                      <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row gap-2">
+                        <select
+                          value={currentSelectedCoachId}
+                          onChange={(e) =>
+                            setSelectedCoachBySubId((prev) => ({
+                              ...prev,
+                              [sub.id]: e.target.value,
+                            }))
+                          }
+                          aria-label={`Seleccionar sustituto para ${sub.teamName}`}
+                          className="flex-1 min-w-0 bg-surface-container-lowest border border-white/20 px-3 py-2 text-xs sm:text-sm text-white outline-none focus:border-primary-container"
+                        >
+                          {sortedCoaches.map((c) => (
+                            <option key={c.coachId} value={c.coachId}>
+                              {c.available
+                                ? `[LIBRE] ${c.coachName}`
+                                : `[CONFLICTO: ${c.conflicts[0]}] ${c.coachName}`}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => void handleAssignSubstitute(sub)}
+                          disabled={assigningSubId === sub.id || !currentSelectedCoachId}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-cta hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50 shrink-0"
+                        >
+                          {assigningSubId === sub.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          )}
+                          <span>{isAssigned ? 'Reasignar' : 'Asignar'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       )}
 
-      {/* ==================== MODAL ASIGNACIÓN DIRECTA ==================== */}
-      {directModalOpen && data && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Asignación directa de sustituto"
-          className="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4"
-        >
-          <form
-            onSubmit={handleDirectAssignSubmit}
-            className="bg-surface-container border border-white/20 w-full sm:max-w-lg p-4 sm:p-5 space-y-4 shadow-[6px_6px_0px_0px_#0e0e0e] max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="font-headline text-base font-bold uppercase text-white">
-                Asignación Directa de Cobertura
-              </h3>
-              <button
-                type="button"
-                onClick={() => setDirectModalOpen(false)}
-                className="p-1 text-tertiary hover:text-white cursor-pointer"
-                aria-label="Cerrar"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="bg-amber-950/30 border border-amber-500/30 p-3 text-xs text-amber-200 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-300" />
-              <span>
-                Otorga automáticamente el permiso temporal <code>attendance.take</code> para el
-                equipo elegido (-2h antes hasta +24h después).
-              </span>
-            </div>
-
+      {/* ==================== MODAL ASIGNAR SUSTITUCIÓN ==================== */}
+      <IntranetModal
+        isOpen={directModalOpen && Boolean(data)}
+        onClose={() => setDirectModalOpen(false)}
+        title="Asignar Sustitución"
+        subtitle="Asigna cobertura técnica con permiso temporal automático de asistencia (-2h/+24h)"
+        size="md"
+      >
+        {data && (
+          <form onSubmit={handleDirectAssignSubmit} className="space-y-4">
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
+                <label htmlFor="sust-direct-team" className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
                   Equipo
                 </label>
                 <select
+                  id="sust-direct-team"
                   required
                   value={directForm.teamSeasonId}
                   onChange={(e) =>
@@ -869,20 +616,27 @@ export default function ClubSustitucionesPage() {
                   }
                   className="w-full bg-surface-container-lowest border border-white/20 px-3 py-2 text-sm text-white"
                 >
-                  {data.allTeams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
+                  {groupByCategoryFamily(data.allTeams, (t) => `${t.id} ${t.name}`).map(
+                    ({ family, items: familyTeams }) => (
+                      <optgroup key={family.code} label={family.label}>
+                        {familyTeams.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {getShortTeamLabelInFamily(t.name, family.code)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )
+                  )}
                 </select>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
+                  <label htmlFor="sust-direct-date" className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
                     Fecha (Madrid)
                   </label>
                   <input
+                    id="sust-direct-date"
                     type="date"
                     required
                     value={directForm.madridDate}
@@ -893,10 +647,11 @@ export default function ClubSustitucionesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
+                  <label htmlFor="sust-direct-start" className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
                     Inicio
                   </label>
                   <input
+                    id="sust-direct-start"
                     type="time"
                     required
                     value={directForm.startTime}
@@ -907,10 +662,11 @@ export default function ClubSustitucionesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
+                  <label htmlFor="sust-direct-end" className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
                     Fin
                   </label>
                   <input
+                    id="sust-direct-end"
                     type="time"
                     required
                     value={directForm.endTime}
@@ -923,10 +679,11 @@ export default function ClubSustitucionesPage() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
+                <label htmlFor="sust-direct-absent" className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
                   Entrenador cubierto (ausente)
                 </label>
                 <select
+                  id="sust-direct-absent"
                   value={directForm.absentUserId}
                   onChange={(e) =>
                     setDirectForm((prev) => ({ ...prev, absentUserId: e.target.value }))
@@ -942,10 +699,11 @@ export default function ClubSustitucionesPage() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
+                <label htmlFor="sust-direct-sub" className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
                   Entrenador sustituto asignado
                 </label>
                 <select
+                  id="sust-direct-sub"
                   required
                   value={directForm.substituteUserId}
                   onChange={(e) =>
@@ -968,10 +726,11 @@ export default function ClubSustitucionesPage() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
+                <label htmlFor="sust-direct-reason" className="block text-[10px] font-bold uppercase tracking-wider text-tertiary mb-1">
                   Motivo / Observaciones
                 </label>
                 <input
+                  id="sust-direct-reason"
                   type="text"
                   required
                   value={directForm.reason}
@@ -983,11 +742,11 @@ export default function ClubSustitucionesPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
               <button
                 type="button"
                 onClick={() => setDirectModalOpen(false)}
-                className="px-4 py-2 border border-white/15 text-xs font-bold uppercase text-tertiary cursor-pointer"
+                className="px-4 py-2 border border-white/15 text-xs font-bold uppercase text-tertiary hover:text-white cursor-pointer"
               >
                 Cancelar
               </button>
@@ -1000,8 +759,8 @@ export default function ClubSustitucionesPage() {
               </button>
             </div>
           </form>
-        </div>
-      )}
+        )}
+      </IntranetModal>
     </div>
   );
 }

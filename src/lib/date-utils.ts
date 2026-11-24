@@ -124,22 +124,63 @@ export function parseMadridDateTimeSafe(dateInput: string | Date): Date {
 }
 
 /**
- * Devuelve la fecha formateada en lenguaje natural español en la zona horaria de Madrid.
- * Ej: "Sábado, 12 de Octubre"
+ * Formatea una fecha estrictamente como "dd/MM/yyyy" en la zona horaria de Madrid.
+ * Soporta Date, ISO strings, "YYYY-MM-DD", "dd/MM/yyyy" o textos mixtos con "YYYY-MM-DD".
+ */
+export function formatDisplayDate(dateInput?: string | Date | null): string {
+  if (!dateInput) return '—';
+
+  if (typeof dateInput === 'string') {
+    const raw = dateInput.trim();
+    if (!raw) return '—';
+
+    const exactYmd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (exactYmd) {
+      return `${exactYmd[3]}/${exactYmd[2]}/${exactYmd[1]}`;
+    }
+
+    const exactDmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (exactDmy) {
+      return `${exactDmy[1].padStart(2, '0')}/${exactDmy[2].padStart(2, '0')}/${exactDmy[3]}`;
+    }
+
+    // Cadena mixta no ISO estándar (ej. "2026-11-28 · 19:45")
+    if (!/^\d{4}-\d{2}-\d{2}[T\s]/.test(raw) && /\b\d{4}-\d{2}-\d{2}\b/.test(raw)) {
+      return raw.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3/$2/$1');
+    }
+  }
+
+  const date = parseMadridDateTimeSafe(dateInput);
+  if (Number.isNaN(date.getTime()) || date.getTime() === 0) {
+    return typeof dateInput === 'string' && dateInput.trim() ? dateInput.trim() : '—';
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: TIMEZONE_MADRID,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+/**
+ * Devuelve la fecha formateada como "dd/MM/yyyy" en la zona horaria de Madrid
+ * (o "HH:mm" si las opciones solicitan únicamente hora).
  */
 export function formatMadridDate(
   dateInput: string | Date,
-  options: Intl.DateTimeFormatOptions = {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }
+  options?: Intl.DateTimeFormatOptions
 ): string {
-  const date = parseMadridDateTimeSafe(dateInput);
-  return new Intl.DateTimeFormat('es-ES', {
-    timeZone: TIMEZONE_MADRID,
-    ...options,
-  }).format(date);
+  if (
+    options &&
+    options.hour !== undefined &&
+    options.day === undefined &&
+    options.month === undefined &&
+    options.year === undefined
+  ) {
+    return formatMadridTime(dateInput);
+  }
+  return formatDisplayDate(dateInput);
 }
 
 /**

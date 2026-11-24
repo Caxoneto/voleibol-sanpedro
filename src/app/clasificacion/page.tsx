@@ -4,12 +4,17 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { CheckCircle2, ChevronDown, HelpCircle, Info, RefreshCw, Scale } from 'lucide-react';
-import { CLUB_CATEGORIES_META } from '@/lib/club-info';
+import {
+  CLUB_CATEGORIES_META,
+  getClubCategoryIdByStandingsTeam,
+  getTeamColorTheme,
+} from '@/lib/club-info';
 import { Standings } from '@/lib/types';
 import { getTeamLogo } from '@/lib/team-logos';
 import SponsorBanner from '@/components/SponsorBanner';
+import CategoryTeamSelectorBar from '@/components/CategoryTeamSelectorBar';
 
-const STANDINGS_STORAGE_KEY = 'cdv_synced_standings_v5';
+const STANDINGS_STORAGE_KEY = 'cdv_synced_standings_v6';
 
 function formatSyncHourMadrid(iso?: string): string {
   try {
@@ -184,6 +189,78 @@ const CATEGORY_STANDINGS_RULES: Record<string, CategoryStandingRule> = {
     summaryNote:
       'Puestos 1º y 2º clasifican a Semifinales por el Título de Liga Plata (1º al 4º) · Del 3º al 9º disputan cruces finales del 5º al 18º puesto',
   },
+  'cat-alevin-masc-rojo': {
+    topCut: 4,
+    topLabel: 'Puestos 1-4 · Fase Final Provincial Alevín Masculino',
+    summaryNote:
+      'Modalidad Minivoley Alevín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Sistema de concentraciones · Top 4 a Fase Final FAVB Málaga',
+  },
+  'cat-alevin-masc-negro': {
+    topCut: 4,
+    topLabel: 'Puestos 1-4 · Fase Final Provincial Alevín Masculino',
+    summaryNote:
+      'Modalidad Minivoley Alevín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Sistema de concentraciones · Top 4 a Fase Final FAVB Málaga',
+  },
+  'cat-alevin-fem-rojo': {
+    topCut: 4,
+    topLabel: 'Puestos 1-4 · Fase Final Liga Oro Alevín Femenino',
+    summaryNote:
+      'Liga Oro (grupo único de 10 equipos) · Modalidad Alevín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones FAVB Málaga',
+  },
+  'cat-alevin-fem-negro': {
+    topCut: 4,
+    topLabel: 'Puestos 1-4 · Fase Final Liga Oro Alevín Femenino',
+    summaryNote:
+      'Liga Oro (grupo único de 10 equipos) · Modalidad Alevín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones FAVB Málaga',
+  },
+  'cat-alevin-fem-azul': {
+    topCut: 2,
+    topLabel: 'Puestos 1-2 · Semifinales / Fase Final Liga Plata',
+    summaryNote:
+      'Liga Plata Grupo 1 (8 equipos) · Modalidad Alevín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones FAVB Málaga',
+  },
+  'cat-alevin-fem-rosa': {
+    topCut: 2,
+    topLabel: 'Puestos 1-2 · Semifinales / Fase Final Liga Plata',
+    summaryNote:
+      'Liga Plata Grupo 1 (8 equipos) · Modalidad Alevín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones FAVB Málaga',
+  },
+  'cat-alevin-fem-verde': {
+    topCut: 2,
+    topLabel: 'Puestos 1-2 · Semifinales / Fase Final Liga Plata',
+    summaryNote:
+      'Liga Plata Grupo 1 (8 equipos) · Modalidad Alevín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones FAVB Málaga',
+  },
+  'cat-alevin-fem-blanco': {
+    topCut: 2,
+    topLabel: 'Puestos 1-2 · Semifinales / Fase Final Liga Plata',
+    summaryNote:
+      'Liga Plata Grupo 2 (8 equipos) · Modalidad Alevín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones FAVB Málaga',
+  },
+  'cat-alevin-fem-gris': {
+    topCut: 2,
+    topLabel: 'Puestos 1-2 · Semifinales / Fase Final Liga Plata',
+    summaryNote:
+      'Liga Plata Grupo 2 (8 equipos) · Modalidad Alevín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones FAVB Málaga',
+  },
+  'cat-benjamin-masc': {
+    topCut: 2,
+    topLabel: 'Puestos 1-2 · Clasificación Provincial Benjamín Masculino',
+    summaryNote:
+      'Modalidad Minivoley Benjamín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones provinciales FAVB Málaga',
+  },
+  'cat-benjamin-fem-rojo': {
+    topCut: 2,
+    topLabel: 'Puestos 1-2 · Clasificación Provincial Benjamín Femenino',
+    summaryNote:
+      'Modalidad Minivoley Benjamín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones provinciales FAVB Málaga',
+  },
+  'cat-benjamin-fem-negro': {
+    topCut: 2,
+    topLabel: 'Puestos 1-2 · Clasificación Provincial Benjamín Femenino',
+    summaryNote:
+      'Modalidad Minivoley Benjamín (sets a 15 pts · 2 pts victoria, 1 pt derrota) · Concentraciones provinciales FAVB Málaga',
+  },
   'cat-senior-fem-afade': {
     topCut: 2,
     topLabel: 'Puestos 1-2 · Playoff / Fase Final por el Título Municipal AFADE',
@@ -305,7 +382,6 @@ export default function ClasificacionPage() {
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [showLegendDropdown, setShowLegendDropdown] = useState<boolean>(false);
   const [showRulesDropdown, setShowRulesDropdown] = useState<boolean>(false);
-  const catScrollRef = useRef<HTMLDivElement | null>(null);
   const selectedCatIdRef = useRef<string>(selectedCatId);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -396,18 +472,6 @@ export default function ClasificacionPage() {
     };
   }, [fetchLiveStandings]);
 
-  // Centrar píldora de categoría seleccionada en el scroll horizontal
-  useEffect(() => {
-    const container = catScrollRef.current;
-    const pill = document.getElementById(`clasif-cat-pill-${selectedCatId}`);
-    if (container && pill) {
-      const targetLeft =
-        pill.offsetLeft - (container.clientWidth - pill.clientWidth) / 2;
-      const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
-      container.scrollTo({ left: Math.max(0, Math.min(maxScroll, targetLeft)), behavior: 'smooth' });
-    }
-  }, [selectedCatId]);
-
   const availableCategories =
     allStandings.length > 0
       ? CLUB_CATEGORIES_META.filter((c) => allStandings.some((s) => s.categoryId === c.id))
@@ -421,7 +485,7 @@ export default function ClasificacionPage() {
   const categoryRule = CATEGORY_STANDINGS_RULES[selectedCatId] || DEFAULT_STANDING_RULE;
 
   return (
-    <div className="w-full min-h-screen bg-background relative overflow-hidden">
+    <div className="w-full min-h-screen bg-background relative overflow-x-clip">
       {/* Subtle Page-Wide Ambient Background */}
       <div
         className="pointer-events-none fixed inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-[0.14] blur-[3px] z-0"
@@ -452,46 +516,28 @@ export default function ClasificacionPage() {
         </div>
       </section>
 
-      {/* Tabs por categoría + Botón Icono Actualizar */}
-      <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-2.5 sm:gap-3">
-          <div
-            ref={catScrollRef}
-            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory flex-1"
-          >
-            {availableCategories.map((cat) => {
-              const isSelected = cat.id === selectedCatId;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  id={`clasif-cat-pill-${cat.id}`}
-                  onClick={() => setSelectedCatId(cat.id)}
-                  aria-pressed={isSelected}
-                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 cursor-pointer ${
-                    isSelected
-                      ? 'bg-primary-container text-white shadow-[3px_3px_0px_0px_#0e0e0e] -translate-y-0.5'
-                      : 'bg-surface-container-high text-tertiary hover:text-white'
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              );
-            })}
-          </div>
-
+      {/* Selector de Categorías y Equipos + Botón Icono Actualizar */}
+      <CategoryTeamSelectorBar
+        items={availableCategories}
+        selectedValue={selectedCatId}
+        valueKey="id"
+        idPrefix="clasif-cat-pill-"
+        defaultOpenSelected
+        ariaLabel="Categorías y equipos de clasificación"
+        onSelect={(catId) => setSelectedCatId(catId)}
+        rightSlot={
           <button
             type="button"
             onClick={() => void fetchLiveStandings(true)}
             disabled={syncing}
-            className="w-9 h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0 cursor-pointer"
+            className="w-10 h-10 sm:w-9 sm:h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] transition-all shrink-0 cursor-pointer"
             title={`Actualizar clasificación desde ${isAfade ? 'ligaafade.es' : 'favoley.net'} (Última: ${lastSyncTime})`}
             aria-label="Actualizar clasificación"
           >
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
-        </div>
-      </section>
+        }
+      />
 
       {syncFeedback && (
         <div
@@ -517,13 +563,25 @@ export default function ClasificacionPage() {
                 Sincronizado con {isAfade ? 'ligaafade.es' : 'favoley.net'} ({lastSyncTime})
               </span>
             </div>
-            <h2 className="font-display-xl text-3xl uppercase text-white mt-0.5">
+            <h2
+              className={`font-display-xl text-3xl uppercase mt-0.5 ${
+                getTeamColorTheme(activeCategory.name).colorKey
+                  ? getTeamColorTheme(activeCategory.name).textClass
+                  : 'text-white'
+              }`}
+            >
               {activeCategory.name}
             </h2>
-            <p className="text-xs text-tertiary mt-1.5 flex items-center gap-1.5">
-              <Scale className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-              <span>{categoryRule.summaryNote}</span>
-            </p>
+            <details className="group mt-1.5">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold text-tertiary hover:text-white transition-colors [&::-webkit-details-marker]:hidden">
+                <Scale className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
+                <span>Ver formato de fase y clasificación</span>
+                <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <p className="mt-1.5 pl-5 text-xs text-tertiary leading-relaxed max-w-2xl">
+                {categoryRule.summaryNote}
+              </p>
+            </details>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-tertiary">
@@ -847,9 +905,12 @@ export default function ClasificacionPage() {
                         />
                         {team.isCurrentClub ? (
                           <Link
-                            href={`/plantillas?categoria=${selectedCatId}`}
+                            href={`/plantillas?categoria=${getClubCategoryIdByStandingsTeam(
+                              team.teamName,
+                              selectedCatId
+                            )}`}
                             className="text-primary hover:underline decoration-primary underline-offset-4 transition-colors text-xs sm:text-sm leading-tight whitespace-nowrap sm:whitespace-normal"
-                            title={`Ver plantilla de ${activeCategory.name}`}
+                            title={`Ver plantilla de ${team.teamName}`}
                           >
                             {team.teamName}
                           </Link>
@@ -859,7 +920,7 @@ export default function ClasificacionPage() {
                           </span>
                         )}
                         {team.isCurrentClub && (
-                          <span className="hidden xl:inline-block px-2 py-0.5 bg-primary-container text-white text-[9px] uppercase font-bold tracking-wider shrink-0">
+                          <span className="hidden xl:inline-block px-2 py-0.5 bg-primary-container text-white text-[10px] uppercase font-bold tracking-wider shrink-0">
                             Nuestro Club
                           </span>
                         )}
@@ -942,8 +1003,8 @@ export default function ClasificacionPage() {
           </table>
         </div>
 
-        {/* Leyenda Desplegable de Siglas de la Tabla (Especialmente útil en Mobile) */}
-        <section className="bg-surface-container-low border border-white/10 p-5">
+        {/* Leyenda Desplegable de Siglas de la Tabla */}
+        <section className="bg-surface-container-low border border-white/10 px-4 py-3">
           <button
             type="button"
             onClick={() => setShowLegendDropdown(!showLegendDropdown)}
@@ -951,19 +1012,14 @@ export default function ClasificacionPage() {
             aria-controls="table-legend-content"
             className="w-full flex items-center justify-between text-left group cursor-pointer"
           >
-            <div className="flex items-center gap-3">
-              <HelpCircle className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
-              <div>
-                <h3 className="font-headline-sm text-sm uppercase text-white font-bold group-hover:text-primary transition-colors">
-                  Leyenda de Siglas y Estadísticas de la Tabla
-                </h3>
-                <span className="text-xs text-tertiary">
-                  Toca para ver qué significa cada abreviatura de la cabecera (PTS, PG3, PG2, PP1, PP0, CS, PF, PC, CP...)
-                </span>
-              </div>
+            <div className="flex items-center gap-2.5">
+              <HelpCircle className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+              <h3 className="font-headline-sm text-xs sm:text-sm uppercase text-white font-bold group-hover:text-primary transition-colors">
+                Leyenda de Siglas de la Tabla (PTS, PG3, CS, CP...)
+              </h3>
             </div>
             <ChevronDown
-              className={`w-6 h-6 text-tertiary transition-transform duration-200 shrink-0 ${
+              className={`w-5 h-5 text-tertiary transition-transform duration-200 shrink-0 ${
                 showLegendDropdown ? 'rotate-180' : ''
               }`}
               aria-hidden="true"
@@ -973,7 +1029,7 @@ export default function ClasificacionPage() {
           {showLegendDropdown && (
             <div
               id="table-legend-content"
-              className="mt-5 pt-5 border-t border-white/10 animate-fade-in"
+              className="mt-4 pt-4 border-t border-white/10 animate-fade-in"
             >
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
                 {TABLE_ACRONYMS_LEGEND.map((item) => (
@@ -998,7 +1054,7 @@ export default function ClasificacionPage() {
         </section>
 
         {/* Criterio Oficial de Puntuación FAVB / RFEVB como Desplegable */}
-        <section className="bg-surface-container-low border border-white/10 p-5">
+        <section className="bg-surface-container-low border border-white/10 px-4 py-3">
           <button
             type="button"
             onClick={() => setShowRulesDropdown(!showRulesDropdown)}
@@ -1006,19 +1062,14 @@ export default function ClasificacionPage() {
             aria-controls="favb-rules-content"
             className="w-full flex items-center justify-between text-left group cursor-pointer"
           >
-            <div className="flex items-center gap-3">
-              <Info className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
-              <div>
-                <h3 className="font-headline-sm text-sm uppercase text-white font-bold group-hover:text-primary transition-colors">
-                  Criterio Oficial de Puntuación {isAfade ? 'Liga AFADE / RFEVB' : 'FAVB / RFEVB'}
-                </h3>
-                <span className="text-xs text-tertiary">
-                  Haz clic para ver cómo se calculan los puntos oficiales según sets ganados
-                </span>
-              </div>
+            <div className="flex items-center gap-2.5">
+              <Info className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+              <h3 className="font-headline-sm text-xs sm:text-sm uppercase text-white font-bold group-hover:text-primary transition-colors">
+                Criterio Oficial de Puntuación {isAfade ? 'Liga AFADE / RFEVB' : 'FAVB / RFEVB'}
+              </h3>
             </div>
             <ChevronDown
-              className={`w-6 h-6 text-tertiary transition-transform duration-200 shrink-0 ${
+              className={`w-5 h-5 text-tertiary transition-transform duration-200 shrink-0 ${
                 showRulesDropdown ? 'rotate-180' : ''
               }`}
               aria-hidden="true"
@@ -1026,7 +1077,7 @@ export default function ClasificacionPage() {
           </button>
 
           {showRulesDropdown && (
-            <div id="favb-rules-content" className="mt-6 pt-6 border-t border-white/10 space-y-4 animate-fade-in">
+            <div id="favb-rules-content" className="mt-4 pt-4 border-t border-white/10 space-y-4 animate-fade-in">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                 <div className="p-4 bg-surface-container-lowest border-l-4 border-emerald-500">
                   <span className="font-bold text-white uppercase block">Victoria 3-0 o 3-1</span>

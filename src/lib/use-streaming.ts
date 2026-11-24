@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 
 export interface StreamingStatus {
   active: boolean;
@@ -136,6 +137,7 @@ interface SharedStreamingState {
   recordings: MatchRecordingsMap;
   todayMatches: StreamingMatchOption[];
   upcomingMatches: StreamingMatchOption[];
+  recentMatches: StreamingMatchOption[];
   loading: boolean;
   hydrated: boolean;
 }
@@ -145,14 +147,36 @@ let sharedState: SharedStreamingState = {
   recordings: {},
   todayMatches: [],
   upcomingMatches: [],
+  recentMatches: [],
   loading: true,
   hydrated: false,
 };
 
 let lastTodayJson = '[]';
 let lastUpcomingJson = '[]';
+let lastRecentJson = '[]';
 let lastStatusJson = JSON.stringify(DEFAULT_STATUS);
 let lastRecordingsJson = '{}';
+
+const POLLING_DISABLED_PREFIXES = [
+  '/privacidad',
+  '/aviso-legal',
+  '/cookies',
+  '/accesibilidad',
+  '/acceso',
+  '/inscripcion',
+  '/autorizaciones',
+  '/mi-club',
+  '/club',
+  '/admin',
+];
+
+function isPollingDisabledRoute(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return POLLING_DISABLED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
 
 const listeners = new Set<() => void>();
 let subscriberCount = 0;
@@ -160,9 +184,54 @@ let pollingTimer: ReturnType<typeof setInterval> | null = null;
 let inFlightFetch: Promise<void> | null = null;
 let storageHydrated = false;
 let windowListenerBound = false;
+let visibilityListenerBound = false;
+let initialFetchTriggered = false;
+let lastFetchAtMs = 0;
+let currentRoutePathname: string | null = null;
 
 function notifyListeners() {
   listeners.forEach((listener) => listener());
+}
+
+function stopPollingTimer() {
+  if (pollingTimer) {
+    clearInterval(pollingTimer);
+    pollingTimer = null;
+  }
+}
+
+function syncPollingSchedule() {
+  stopPollingTimer();
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (subscriberCount <= 0) return;
+  if (isPollingDisabledRoute(currentRoutePathname)) return;
+  if (document.visibilityState !== 'visible') return;
+
+  pollingTimer = setInterval(() => {
+    if (
+      typeof document !== 'undefined' &&
+      document.visibilityState === 'visible' &&
+      !isPollingDisabledRoute(currentRoutePathname)
+    ) {
+      void fetchSharedStatus();
+    }
+  }, 30000);
+}
+
+function handleVisibilityChange() {
+  if (typeof document === 'undefined') return;
+  if (document.visibilityState === 'hidden') {
+    stopPollingTimer();
+    return;
+  }
+  if (document.visibilityState === 'visible') {
+    if (!isPollingDisabledRoute(currentRoutePathname)) {
+      if (Date.now() - lastFetchAtMs > 10000) {
+        void fetchSharedStatus();
+      }
+      syncPollingSchedule();
+    }
+  }
 }
 
 function hydrateSharedFromStorageOnce() {
@@ -190,6 +259,7 @@ async function fetchSharedStatus(): Promise<void> {
   if (inFlightFetch) return inFlightFetch;
 
   inFlightFetch = (async () => {
+    lastFetchAtMs = Date.now();
     try {
       const res = await fetch('/api/streaming', { cache: 'no-store' });
       const data = res.ok ? await res.json().catch(() => null) : null;
@@ -238,6 +308,15 @@ async function fetchSharedStatus(): Promise<void> {
           }
         }
 
+        let nextRecent = sharedState.recentMatches;
+        if (Array.isArray(data.recentMatches)) {
+          const recentJson = JSON.stringify(data.recentMatches);
+          if (recentJson !== lastRecentJson) {
+            nextRecent = data.recentMatches;
+            lastRecentJson = recentJson;
+          }
+        }
+
         try {
           window.localStorage.setItem(STORAGE_KEY_STATUS, newStatusJson);
         } catch {
@@ -249,6 +328,7 @@ async function fetchSharedStatus(): Promise<void> {
           recordings: nextRecordings,
           todayMatches: nextToday,
           upcomingMatches: nextUpcoming,
+          recentMatches: nextRecent,
           loading: false,
           hydrated: true,
         };
@@ -313,17 +393,25 @@ function handleWindowStreamingEvent(e: Event) {
 }
 
 export function useStreaming() {
+  const pathname = usePathname();
   // Inicialización determinista idéntica entre SSR y primer render CSR para evitar hydration mismatch
   const [snapshot, setSnapshot] = useState<SharedStreamingState>(() => ({
     status: { ...DEFAULT_STATUS },
     recordings: {},
     todayMatches: [],
     upcomingMatches: [],
+    recentMatches: [],
     loading: true,
     hydrated: false,
   }));
 
   useEffect(() => {
+    currentRoutePathname = pathname;
+    syncPollingSchedule();
+  }, [pathname]);
+
+  useEffect(() => {
+    currentRoutePathname = pathname;
     const syncSnapshot = () => setSnapshot(sharedState);
     listeners.add(syncSnapshot);
     subscriberCount += 1;
@@ -331,13 +419,14 @@ export function useStreaming() {
     hydrateSharedFromStorageOnce();
     syncSnapshot();
 
-    if (subscriberCount === 1) {
+    if (!initialFetchTriggered) {
+      initialFetchTriggered = true;
       void fetchSharedStatus();
-      pollingTimer = setInterval(() => {
-        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-          void fetchSharedStatus();
-        }
-      }, 30000);
+    }
+
+    if (!visibilityListenerBound && typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      visibilityListenerBound = true;
     }
 
     if (!windowListenerBound && typeof window !== 'undefined') {
@@ -345,13 +434,16 @@ export function useStreaming() {
       windowListenerBound = true;
     }
 
+    syncPollingSchedule();
+
     return () => {
       listeners.delete(syncSnapshot);
       subscriberCount = Math.max(0, subscriberCount - 1);
       if (subscriberCount === 0) {
-        if (pollingTimer) {
-          clearInterval(pollingTimer);
-          pollingTimer = null;
+        stopPollingTimer();
+        if (visibilityListenerBound && typeof document !== 'undefined') {
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+          visibilityListenerBound = false;
         }
         if (windowListenerBound && typeof window !== 'undefined') {
           window.removeEventListener(STREAMING_EVENT, handleWindowStreamingEvent);
@@ -359,6 +451,7 @@ export function useStreaming() {
         }
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refetch = useCallback(() => fetchSharedStatus(), []);
@@ -406,6 +499,7 @@ export function useStreaming() {
     recordings: snapshot.recordings,
     todayMatches: snapshot.todayMatches,
     upcomingMatches: snapshot.upcomingMatches,
+    recentMatches: snapshot.recentMatches,
     loading: snapshot.loading,
     hydrated: snapshot.hydrated,
     refetch,

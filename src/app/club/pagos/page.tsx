@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   BadgePercent,
   Ban,
   CheckCircle2,
-  CreditCard,
+  ChevronDown,
   Download,
-  FileSpreadsheet,
   FileText,
   Filter,
   Loader2,
@@ -20,19 +19,14 @@ import {
   ShieldAlert,
   TrendingUp,
   UserPlus,
-  X,
 } from 'lucide-react';
 import { useClubSession } from '@/components/intranet/ClubShell';
+import IntranetModal from '@/components/intranet/IntranetModal';
 import { buildCsvString } from '@/lib/intranet/csv-utils';
-import { formatMadridDateString } from '@/lib/date-utils';
+import { formatDisplayDate, formatMadridDateString } from '@/lib/date-utils';
+import { getShortTeamLabelInFamily, groupByCategoryFamily } from '@/lib/club-info';
 
-type TabKey =
-  | 'resumen'
-  | 'cargos'
-  | 'inscripciones'
-  | 'productos'
-  | 'descuentos'
-  | 'importar';
+type TabKey = 'resumen' | 'cargos' | 'inscripciones' | 'productos' | 'descuentos';
 
 interface PricePlanItem {
   id: string;
@@ -275,7 +269,6 @@ export default function ClubPagosPage() {
   const canManageDiscounts = hasPermission('discounts.manage');
   const canApplyDiscounts = hasPermission('discounts.apply');
   const canReports = hasPermission('payments.reports');
-  const canImportCsv = canRecord && hasPermission('athlete.import');
 
   const [activeTab, setActiveTab] = useState<TabKey>('resumen');
   const [loading, setLoading] = useState(true);
@@ -283,6 +276,7 @@ export default function ClubPagosPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sendingChargeReminderId, setSendingChargeReminderId] = useState<string | null>(null);
 
   // Filtros Cargos y Cobros
   const [searchQuery, setSearchQuery] = useState('');
@@ -292,6 +286,11 @@ export default function ClubPagosPage() {
 
   // Modales
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [enrollmentModalOpen, setEnrollmentModalOpen] = useState(false);
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [pricePlanModalOpen, setPricePlanModalOpen] = useState(false);
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
+
   const [payAthleteId, setPayAthleteId] = useState('');
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'POS_TERMINAL'>('BANK_TRANSFER');
@@ -351,15 +350,6 @@ export default function ClubPagosPage() {
   const [discStackable, setDiscStackable] = useState(false);
   const [discMaxCap, setDiscMaxCap] = useState('');
   const [discRequiresReason, setDiscRequiresReason] = useState(false);
-
-  // FeelSports CSV
-  const [csvText, setCsvText] = useState('');
-  const [csvResult, setCsvResult] = useState<{
-    importedCharges: number;
-    importedPayments: number;
-    skippedRows: number;
-    errors: string[];
-  } | null>(null);
 
   const fetchPaymentsData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -585,8 +575,35 @@ export default function ClubPagosPage() {
     }
   }
 
+  async function handleSendSingleChargeReminder(c: ChargeItem) {
+    setSendingChargeReminderId(c.id);
+    setErrorMsg(null);
+    setToastMsg(null);
+    try {
+      const res = await fetch('/api/intranet/payments/send-reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chargeId: c.id }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setErrorMsg(
+          json.error || json.warning || `No se pudo enviar el aviso para ${c.athleteName}.`
+        );
+        return;
+      }
+      setToastMsg(`Aviso enviado correctamente a ${c.athleteName} (${c.concept}).`);
+      await fetchPaymentsData();
+    } catch {
+      setErrorMsg('Error de red al enviar el aviso de pago.');
+    } finally {
+      setSendingChargeReminderId(null);
+    }
+  }
+
   function openPaymentModal(preselectAthleteId?: string, preselectAmount?: number) {
     const targetId = preselectAthleteId || data?.athletes[0]?.id || '';
+    setErrorMsg(null);
     setPayAthleteId(targetId);
     setPayAmount(preselectAmount ? preselectAmount.toFixed(2) : '');
     setPayMethod('BANK_TRANSFER');
@@ -594,6 +611,95 @@ export default function ClubPagosPage() {
     setPayReference('');
     setPayNotes('');
     setPaymentModalOpen(true);
+  }
+
+  function openEnrollmentModal() {
+    setErrorMsg(null);
+    setEnrAthleteId('');
+    setEnrProductId('');
+    setEnrPlanId('');
+    setEnrStartMonth(9);
+    setEnrDiscountIds([]);
+    setEnrManualActive(false);
+    setEnrManualLabel('');
+    setEnrManualType('PERCENTAGE');
+    setEnrManualValue('');
+    setEnrManualReason('');
+    setEnrPayerName('');
+    setEnrPayerEmail('');
+    setEnrPayerDni('');
+    setEnrNotes('');
+    setEnrollmentModalOpen(true);
+  }
+
+  function openProductModal(product?: ProductItem) {
+    setErrorMsg(null);
+    if (product) {
+      setProdId(product.id);
+      setProdName(product.name);
+      setProdType(product.productType);
+      setProdRecurring(product.isRecurring);
+      setProdDescription(product.description || '');
+    } else {
+      setProdId(null);
+      setProdName('');
+      setProdType('SEASON_FEE');
+      setProdRecurring(true);
+      setProdDescription('');
+    }
+    setProductModalOpen(true);
+  }
+
+  function openPricePlanModal(productId?: string, plan?: PricePlanItem) {
+    setErrorMsg(null);
+    if (plan) {
+      setPlanId(plan.id);
+      setPlanTargetProductId(productId || plan.productId);
+      setPlanName(plan.name);
+      setPlanPeriodicity(plan.periodicity);
+      setPlanTotalAmount(String(plan.totalAmount));
+      setPlanInstallments(String(plan.installmentsCount));
+      setPlanDueDay(String(plan.dueDay));
+      setPlanActiveMonths(plan.activeMonths);
+      setPlanProration(plan.prorationMode);
+    } else {
+      setPlanId(null);
+      setPlanTargetProductId(productId || data?.products[0]?.id || '');
+      setPlanName('');
+      setPlanPeriodicity('MONTHLY');
+      setPlanTotalAmount('');
+      setPlanInstallments('9');
+      setPlanDueDay('5');
+      setPlanActiveMonths([9, 10, 11, 12, 1, 2, 3, 4, 5]);
+      setPlanProration('BY_REMAINING_MONTHS');
+    }
+    setPricePlanModalOpen(true);
+  }
+
+  function openDiscountModal(rule?: DiscountRuleItem) {
+    setErrorMsg(null);
+    if (rule) {
+      setDiscId(rule.id);
+      setDiscName(rule.name);
+      setDiscKind(rule.kind);
+      setDiscValueType(rule.valueType);
+      setDiscValue(String(rule.value));
+      setDiscProductIds(rule.applicableProductIds);
+      setDiscStackable(rule.stackable);
+      setDiscMaxCap(rule.maxDiscountAmount ? String(rule.maxDiscountAmount) : '');
+      setDiscRequiresReason(rule.requiresReason);
+    } else {
+      setDiscId(null);
+      setDiscName('');
+      setDiscKind('SIBLING');
+      setDiscValueType('PERCENTAGE');
+      setDiscValue('');
+      setDiscProductIds([]);
+      setDiscStackable(false);
+      setDiscMaxCap('');
+      setDiscRequiresReason(false);
+    }
+    setDiscountModalOpen(true);
   }
 
   async function handleRecordPaymentSubmit(e: React.FormEvent) {
@@ -662,11 +768,18 @@ export default function ClubPagosPage() {
       'Inscripción creada y cargos generados correctamente.'
     );
     if (ok) {
+      setEnrollmentModalOpen(false);
+      setEnrAthleteId('');
+      setEnrProductId('');
+      setEnrPlanId('');
       setEnrDiscountIds([]);
       setEnrManualActive(false);
       setEnrManualLabel('');
       setEnrManualValue('');
       setEnrManualReason('');
+      setEnrPayerName('');
+      setEnrPayerEmail('');
+      setEnrPayerDni('');
       setEnrNotes('');
     }
   }
@@ -686,6 +799,7 @@ export default function ClubPagosPage() {
       prodId ? 'Producto actualizado.' : 'Producto creado.'
     );
     if (ok) {
+      setProductModalOpen(false);
       setProdId(null);
       setProdName('');
       setProdDescription('');
@@ -710,6 +824,7 @@ export default function ClubPagosPage() {
       planId ? 'Modalidad actualizada.' : 'Modalidad de pago añadida.'
     );
     if (ok) {
+      setPricePlanModalOpen(false);
       setPlanId(null);
       setPlanName('');
       setPlanTotalAmount('');
@@ -735,32 +850,12 @@ export default function ClubPagosPage() {
       discId ? 'Regla de descuento actualizada.' : 'Regla de descuento creada.'
     );
     if (ok) {
+      setDiscountModalOpen(false);
       setDiscId(null);
       setDiscName('');
       setDiscValue('');
       setDiscMaxCap('');
       setDiscProductIds([]);
-    }
-  }
-
-  async function handleCsvImportSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setCsvResult(null);
-    const res = await postPaymentAction(
-      {
-        action: 'import_feelsports_payments_csv',
-        seasonId: data?.currentSeasonId,
-        csvText,
-      },
-      'Importación histórica de FeelSports completada.'
-    );
-    if (res) {
-      setCsvResult({
-        importedCharges: res.importedCharges || 0,
-        importedPayments: res.importedPayments || 0,
-        skippedRows: res.skippedRows || 0,
-        errors: Array.isArray(res.errors) ? res.errors : [],
-      });
     }
   }
 
@@ -785,8 +880,8 @@ export default function ClubPagosPage() {
   return (
     <div className="space-y-6 w-full min-w-0">
       {/* Cabecera */}
-      <div className="bg-surface-container border border-white/10 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e]">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <header className="bg-surface-container border border-white/10 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e]">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 bg-primary-container shrink-0" aria-hidden="true" />
@@ -797,9 +892,6 @@ export default function ClubPagosPage() {
             <h1 className="font-headline text-2xl sm:text-3xl font-bold uppercase text-white tracking-tight">
               Gestión de Pagos y Productos
             </h1>
-            <p className="text-xs sm:text-sm text-tertiary mt-1">
-              Control económico, cargos periódicos, descuentos configurables, recibos PDF y avisos por email.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -807,30 +899,42 @@ export default function ClubPagosPage() {
               <button
                 type="button"
                 onClick={() => openPaymentModal()}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase tracking-wider font-bold shadow-[3px_3px_0px_0px_#0e0e0e] transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase tracking-wider font-bold shadow-[3px_3px_0px_0px_#0e0e0e] transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>Registrar Cobro</span>
               </button>
             )}
+            {(canRecord || canReports) && (
+              <button
+                type="button"
+                onClick={handleSendReminders}
+                disabled={busy || !data}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-label-md uppercase tracking-wider font-bold text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Mail className="w-3.5 h-3.5 shrink-0 text-primary" aria-hidden="true" />
+                <span>Enviar avisos</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={!data}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-label-md uppercase tracking-wider font-bold text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5 shrink-0 text-primary" aria-hidden="true" />
+              <span>Exportar CSV</span>
+            </button>
             <button
               type="button"
               onClick={() => fetchPaymentsData()}
               disabled={loading || busy}
-              className="inline-flex items-center gap-2 px-3 py-2.5 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-label-md uppercase tracking-wider font-bold text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-label-md uppercase tracking-wider font-bold text-on-surface transition-colors cursor-pointer disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
               <span>Actualizar</span>
             </button>
           </div>
-        </div>
-
-        {/* Aviso Redsys aparcado */}
-        <div className="mt-4 px-3.5 py-2.5 bg-surface-container-low border border-white/10 text-xs text-tertiary flex items-start gap-2.5">
-          <CreditCard className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-          <span>
-            <strong className="text-on-surface">Métodos operativos activos:</strong> Efectivo, Transferencia Bancaria y TPV Físico. La pasarela online Redsys + Bizum permanece aparcada hasta su activación bancaria definitiva.
-          </span>
         </div>
 
         {/* Pestañas */}
@@ -841,31 +945,25 @@ export default function ClubPagosPage() {
         >
           {(
             [
-              { id: 'resumen', label: 'Resumen e Informes', icon: TrendingUp, show: true },
+              { id: 'resumen', label: 'Resumen', icon: TrendingUp, show: true },
               { id: 'cargos', label: 'Cargos y Cobros', icon: FileText, show: true },
               {
                 id: 'inscripciones',
-                label: 'Inscripciones',
+                label: 'Cuotas Asignadas',
                 icon: UserPlus,
                 show: canRecord || canApplyDiscounts,
               },
               {
                 id: 'productos',
-                label: 'Productos y Modalidades',
+                label: 'Productos',
                 icon: Package,
                 show: canManageProducts,
               },
               {
                 id: 'descuentos',
-                label: 'Descuentos Configurables',
+                label: 'Descuentos',
                 icon: BadgePercent,
                 show: canManageDiscounts,
-              },
-              {
-                id: 'importar',
-                label: 'Importar FeelSports CSV',
-                icon: FileSpreadsheet,
-                show: canImportCsv,
               },
             ] as const
           )
@@ -892,7 +990,7 @@ export default function ClubPagosPage() {
               );
             })}
         </div>
-      </div>
+      </header>
 
       {/* Mensajes de estado */}
       {errorMsg && (
@@ -921,7 +1019,7 @@ export default function ClubPagosPage() {
         </div>
       ) : null}
 
-      {/* TAB 1: RESUMEN E INFORMES */}
+      {/* TAB 1: RESUMEN */}
       {data && activeTab === 'resumen' && (
         <div className="space-y-6">
           {/* KPIs */}
@@ -958,45 +1056,12 @@ export default function ClubPagosPage() {
             </div>
           </div>
 
-          {/* Acciones de Tesorería */}
-          <div className="bg-surface-container border border-white/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h2 className="font-headline text-base font-bold uppercase text-white">
-                Acciones Rápidas de Informes y Recordatorios
-              </h2>
-              <p className="text-xs text-tertiary">
-                Envía avisos automáticos a cargos vencidos o con vencimiento en los próximos 5 días (sin repetir antes de 7 días).
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(canRecord || canReports) && (
-                <button
-                  type="button"
-                  onClick={handleSendReminders}
-                  disabled={busy}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <Mail className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>Enviar avisos automáticos por email</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleExportCsv}
-                className="inline-flex items-center gap-2 px-3.5 py-2 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-on-surface text-xs font-label-md uppercase font-bold transition-colors cursor-pointer"
-              >
-                <Download className="w-4 h-4 shrink-0 text-primary" aria-hidden="true" />
-                <span>Exportar CSV</span>
-              </button>
-            </div>
-          </div>
-
           {/* Antigüedad de Morosidad + Métodos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-surface-container border border-white/10 p-4 sm:p-5">
-              <h3 className="font-headline text-base font-bold uppercase text-white mb-3">
+              <h2 className="font-headline text-base font-bold uppercase text-white mb-3">
                 Antigüedad de Morosidad (sobre fecha Madrid)
-              </h3>
+              </h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm">
                   <thead>
@@ -1020,9 +1085,9 @@ export default function ClubPagosPage() {
             </div>
 
             <div className="bg-surface-container border border-white/10 p-4 sm:p-5">
-              <h3 className="font-headline text-base font-bold uppercase text-white mb-3">
+              <h2 className="font-headline text-base font-bold uppercase text-white mb-3">
                 Desglose por Método de Cobro
-              </h3>
+              </h2>
               {data.reports.byMethod.length === 0 ? (
                 <p className="text-xs text-tertiary">Aún no hay cobros completados registrados.</p>
               ) : (
@@ -1050,73 +1115,83 @@ export default function ClubPagosPage() {
             </div>
           </div>
 
-          {/* Desglose por Equipo y Mes */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-surface-container border border-white/10 p-4 sm:p-5">
-              <h3 className="font-headline text-base font-bold uppercase text-white mb-3">
-                Desglose por Equipo
-              </h3>
-              {data.reports.byTeam.length === 0 ? (
-                <p className="text-xs text-tertiary">Sin datos económicos por equipo todavía.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-white/10 text-tertiary text-[11px] uppercase">
-                        <th className="py-2 pr-2">Equipo</th>
-                        <th className="py-2 pr-2 text-right">Previsto</th>
-                        <th className="py-2 pr-2 text-right">Cobrado</th>
-                        <th className="py-2 text-right">Vencido</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {data.reports.byTeam.map((t) => (
-                        <tr key={t.teamId}>
-                          <td className="py-2 pr-2 font-semibold text-white">
-                            {t.teamName} <span className="text-tertiary font-normal">({t.athletesCount})</span>
-                          </td>
-                          <td className="py-2 pr-2 text-right text-on-surface">{eur(t.expected)}</td>
-                          <td className="py-2 pr-2 text-right text-emerald-300">{eur(t.collected)}</td>
-                          <td className="py-2 text-right text-rose-300">{eur(t.overdue)}</td>
+          {/* Desglose por Equipo y Mes (plegables por defecto para evitar scroll largo) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <details className="group bg-surface-container border border-white/10 overflow-hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 hover:bg-white/[0.02] [&::-webkit-details-marker]:hidden">
+                <h2 className="font-headline text-sm sm:text-base font-bold uppercase text-white">
+                  Desglose por Equipo ({data.reports.byTeam.length})
+                </h2>
+                <ChevronDown className="w-4 h-4 text-tertiary shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="px-4 pb-4 pt-2 border-t border-white/10">
+                {data.reports.byTeam.length === 0 ? (
+                  <p className="text-xs text-tertiary">Sin datos económicos por equipo todavía.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-white/10 text-tertiary text-[11px] uppercase">
+                          <th className="py-2 pr-2">Equipo</th>
+                          <th className="py-2 pr-2 text-right">Previsto</th>
+                          <th className="py-2 pr-2 text-right">Cobrado</th>
+                          <th className="py-2 text-right">Vencido</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {data.reports.byTeam.map((t) => (
+                          <tr key={t.teamId}>
+                            <td className="py-2 pr-2 font-semibold text-white">
+                              {t.teamName} <span className="text-tertiary font-normal">({t.athletesCount})</span>
+                            </td>
+                            <td className="py-2 pr-2 text-right text-on-surface">{eur(t.expected)}</td>
+                            <td className="py-2 pr-2 text-right text-emerald-300">{eur(t.collected)}</td>
+                            <td className="py-2 text-right text-rose-300">{eur(t.overdue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </details>
 
-            <div className="bg-surface-container border border-white/10 p-4 sm:p-5">
-              <h3 className="font-headline text-base font-bold uppercase text-white mb-3">
-                Evolución Mensual
-              </h3>
-              {data.reports.byMonth.length === 0 ? (
-                <p className="text-xs text-tertiary">Sin movimientos mensuales todavía.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-white/10 text-tertiary text-[11px] uppercase">
-                        <th className="py-2 pr-2">Mes</th>
-                        <th className="py-2 pr-2 text-right">Previsto</th>
-                        <th className="py-2 pr-2 text-right">Cobrado</th>
-                        <th className="py-2 text-right">Vencido</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {data.reports.byMonth.map((m) => (
-                        <tr key={m.month}>
-                          <td className="py-2 pr-2 font-mono font-semibold text-white">{m.month}</td>
-                          <td className="py-2 pr-2 text-right text-on-surface">{eur(m.expected)}</td>
-                          <td className="py-2 pr-2 text-right text-emerald-300">{eur(m.collected)}</td>
-                          <td className="py-2 text-right text-rose-300">{eur(m.overdue)}</td>
+            <details className="group bg-surface-container border border-white/10 overflow-hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 hover:bg-white/[0.02] [&::-webkit-details-marker]:hidden">
+                <h2 className="font-headline text-sm sm:text-base font-bold uppercase text-white">
+                  Evolución Mensual ({data.reports.byMonth.length})
+                </h2>
+                <ChevronDown className="w-4 h-4 text-tertiary shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="px-4 pb-4 pt-2 border-t border-white/10">
+                {data.reports.byMonth.length === 0 ? (
+                  <p className="text-xs text-tertiary">Sin movimientos mensuales todavía.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-white/10 text-tertiary text-[11px] uppercase">
+                          <th className="py-2 pr-2">Mes</th>
+                          <th className="py-2 pr-2 text-right">Previsto</th>
+                          <th className="py-2 pr-2 text-right">Cobrado</th>
+                          <th className="py-2 text-right">Vencido</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {data.reports.byMonth.map((m) => (
+                          <tr key={m.month}>
+                            <td className="py-2 pr-2 font-mono font-semibold text-white">{m.month}</td>
+                            <td className="py-2 pr-2 text-right text-on-surface">{eur(m.expected)}</td>
+                            <td className="py-2 pr-2 text-right text-emerald-300">{eur(m.collected)}</td>
+                            <td className="py-2 text-right text-rose-300">{eur(m.overdue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </details>
           </div>
         </div>
       )}
@@ -1171,6 +1246,7 @@ export default function ClubPagosPage() {
                   type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Buscar deportista, concepto o código"
                   placeholder="Buscar deportista, concepto o código..."
                   className="w-full pl-9 pr-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white placeholder:text-tertiary"
                 />
@@ -1185,11 +1261,17 @@ export default function ClubPagosPage() {
                   className="w-full pl-9 pr-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
                 >
                   <option value="ALL">Todos los equipos</option>
-                  {data.teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
+                  {groupByCategoryFamily(data.teams, (t) => `${t.id} ${t.name}`).map(
+                    ({ family, items: familyTeams }) => (
+                      <optgroup key={family.code} label={family.label}>
+                        {familyTeams.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {getShortTeamLabelInFamily(t.name, family.code)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )
+                  )}
                 </select>
               </div>
 
@@ -1234,7 +1316,7 @@ export default function ClubPagosPage() {
                         </div>
                         <p className="text-xs text-on-surface">{c.concept}</p>
                         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-tertiary">
-                          <span>Vence: <strong className="text-white">{c.dueMadridDate}</strong></span>
+                          <span>Vence: <strong className="text-white">{formatDisplayDate(c.dueMadridDate)}</strong></span>
                           <span>Final: <strong className="text-white">{eur(c.finalAmount)}</strong> · Pend.: <strong className="text-amber-300">{eur(c.pendingAmount)}</strong></span>
                         </div>
                         <div className="flex flex-wrap gap-2 pt-1">
@@ -1247,10 +1329,28 @@ export default function ClubPagosPage() {
                               Cobrar
                             </button>
                           )}
+                          {(canRecord || canReports) &&
+                            ['PENDIENTE', 'PARCIAL', 'VENCIDO'].includes(c.status) &&
+                            c.pendingAmount > 0 && (
+                              <button
+                                type="button"
+                                disabled={sendingChargeReminderId === c.id}
+                                onClick={() => handleSendSingleChargeReminder(c)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-container-high border border-amber-400/35 text-amber-200 hover:text-white text-[11px] font-bold uppercase cursor-pointer disabled:opacity-50"
+                              >
+                                {sendingChargeReminderId === c.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin shrink-0" aria-hidden="true" />
+                                ) : (
+                                  <Mail className="w-3 h-3 shrink-0" aria-hidden="true" />
+                                )}
+                                <span>{sendingChargeReminderId === c.id ? 'Enviando...' : 'Enviar aviso'}</span>
+                              </button>
+                            )}
                           {canVoid && !['ANULADO', 'CONDONADO'].includes(c.status) && (
                             <button
                               type="button"
                               onClick={() => {
+                                setErrorMsg(null);
                                 setReasonText('');
                                 setReasonModal({
                                   kind: 'waive_charge',
@@ -1293,11 +1393,10 @@ export default function ClubPagosPage() {
                             </td>
                             <td className="py-2.5 pr-3 text-on-surface">
                               {c.concept}
-                              {c.origin === 'FEELSPORTS' && (
-                                <span className="ml-1.5 px-1.5 py-0.5 text-[9px] uppercase bg-white/10 text-tertiary">FeelSports</span>
-                              )}
                             </td>
-                            <td className="py-2.5 pr-3 font-mono text-white">{c.dueMadridDate}</td>
+                            <td className="py-2.5 pr-3 font-mono text-white">
+                              {formatDisplayDate(c.dueMadridDate)}
+                            </td>
                             <td className="py-2.5 pr-3 text-right font-semibold text-white">{eur(c.finalAmount)}</td>
                             <td className="py-2.5 pr-3 text-right text-emerald-300">{eur(c.paidAmount)}</td>
                             <td className="py-2.5 pr-3 text-right font-bold text-amber-300">{eur(c.pendingAmount)}</td>
@@ -1316,10 +1415,29 @@ export default function ClubPagosPage() {
                                   Cobrar
                                 </button>
                               )}
+                              {(canRecord || canReports) &&
+                                ['PENDIENTE', 'PARCIAL', 'VENCIDO'].includes(c.status) &&
+                                c.pendingAmount > 0 && (
+                                  <button
+                                    type="button"
+                                    disabled={sendingChargeReminderId === c.id}
+                                    onClick={() => handleSendSingleChargeReminder(c)}
+                                    title="Enviar aviso individual de pago pendiente por correo"
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-surface-container-high border border-amber-400/35 text-amber-200 hover:text-white text-[10px] font-bold uppercase cursor-pointer disabled:opacity-50"
+                                  >
+                                    {sendingChargeReminderId === c.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin shrink-0" aria-hidden="true" />
+                                    ) : (
+                                      <Mail className="w-3 h-3 shrink-0" aria-hidden="true" />
+                                    )}
+                                    <span>{sendingChargeReminderId === c.id ? 'Enviando' : 'Enviar aviso'}</span>
+                                  </button>
+                                )}
                               {canVoid && !['ANULADO', 'CONDONADO'].includes(c.status) && (
                                 <button
                                   type="button"
                                   onClick={() => {
+                                    setErrorMsg(null);
                                     setReasonText('');
                                     setReasonModal({
                                       kind: 'waive_charge',
@@ -1364,7 +1482,9 @@ export default function ClubPagosPage() {
                       {filteredPayments.map((p) => (
                         <tr key={p.id}>
                           <td className="py-2.5 pr-3 font-mono text-white font-semibold">{p.receiptNumber}</td>
-                          <td className="py-2.5 pr-3 font-mono text-tertiary">{p.paidMadridDate}</td>
+                          <td className="py-2.5 pr-3 font-mono text-tertiary">
+                            {formatDisplayDate(p.paidMadridDate)}
+                          </td>
                           <td className="py-2.5 pr-3">
                             <div className="font-bold text-white">{p.athleteName}</div>
                             <div className="text-[11px] text-tertiary">{p.teamName}</div>
@@ -1404,6 +1524,7 @@ export default function ClubPagosPage() {
                               <button
                                 type="button"
                                 onClick={() => {
+                                  setErrorMsg(null);
                                   setReasonText('');
                                   setReasonModal({
                                     kind: 'void_payment',
@@ -1432,18 +1553,260 @@ export default function ClubPagosPage() {
 
       {/* TAB 3: INSCRIPCIONES */}
       {data && activeTab === 'inscripciones' && (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          <form
-            onSubmit={handleEnrollmentSubmit}
-            className="xl:col-span-5 bg-surface-container border border-white/10 p-4 sm:p-5 space-y-3.5"
-          >
-            <h2 className="font-headline text-lg font-bold uppercase text-white">
-              Nueva Inscripción de Cuota / Producto
+        <div className="bg-surface-container border border-white/10 p-4 sm:p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <h2 className="font-headline text-base font-bold uppercase text-white">
+              Inscripciones Activas ({data.enrollments.length})
             </h2>
+            <button
+              type="button"
+              onClick={openEnrollmentModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold shadow-[2px_2px_0px_0px_#0e0e0e] cursor-pointer transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>Nueva inscripción</span>
+            </button>
+          </div>
+
+          {data.enrollments.length === 0 ? (
+            <p className="text-xs text-tertiary py-6 text-center">
+              No hay inscripciones registradas todavía.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {data.enrollments.map((enr) => (
+                <div key={enr.id} className="bg-surface-container-low border border-white/10 p-3.5 text-xs space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-bold text-white text-sm">{enr.athleteName}</span>
+                    <code className="px-2 py-0.5 bg-primary-container/20 text-primary border border-primary-container/40 text-[11px] font-bold">
+                      {enr.paymentReferenceCode}
+                    </code>
+                  </div>
+                  <p className="text-on-surface">
+                    {enr.productName} ·{' '}
+                    <span className="text-tertiary">
+                      {enr.planName} ({PERIODICITY_LABELS[enr.periodicity] || enr.periodicity})
+                    </span>
+                  </p>
+                  <p className="text-tertiary">
+                    Pagador: {enr.payerName} {enr.payerEmail ? `(${enr.payerEmail})` : ''} · Equipo: {enr.teamName}
+                  </p>
+                  {enr.appliedDiscounts.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {enr.appliedDiscounts.map((ad, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[10px]">
+                          {ad.label}: -{eur(ad.computedAmount)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: PRODUCTOS Y MODALIDADES */}
+      {data && activeTab === 'productos' && (
+        <div className="space-y-4">
+          <div className="bg-surface-container border border-white/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h2 className="font-headline text-base font-bold uppercase text-white">
+              Productos y Modalidades ({data.products.length})
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => openProductModal()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold shadow-[2px_2px_0px_0px_#0e0e0e] cursor-pointer transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>Nuevo producto</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openPricePlanModal()}
+                disabled={data.products.length === 0}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-white text-xs font-label-md uppercase font-bold cursor-pointer transition-colors disabled:opacity-50"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0 text-primary" aria-hidden="true" />
+                <span>Nueva modalidad</span>
+              </button>
+            </div>
+          </div>
+
+          {data.products.length === 0 ? (
+            <div className="bg-surface-container border border-white/10 p-6 text-sm text-tertiary text-center">
+              No hay productos configurados aún. Crea el primero con el botón «Nuevo producto».
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {data.products.map((p) => (
+                <div key={p.id} className="bg-surface-container border border-white/10 p-4 sm:p-5 space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-primary">
+                        {PRODUCT_TYPE_LABELS[p.productType] || p.productType} · {p.seasonId}
+                      </span>
+                      <h3 className="font-headline text-lg font-bold text-white">{p.name}</h3>
+                      {p.description && <p className="text-xs text-tertiary mt-0.5">{p.description}</p>}
+                    </div>
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openProductModal(p)}
+                        className="px-2.5 py-1.5 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-[11px] font-bold uppercase text-white cursor-pointer"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openPricePlanModal(p.id)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary-container hover:bg-cta-hover text-[11px] font-bold uppercase text-white cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 shrink-0" aria-hidden="true" />
+                        <span>Modalidad</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {p.pricePlans.length === 0 ? (
+                    <p className="text-xs text-tertiary">Sin modalidades de pago configuradas.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {p.pricePlans.map((pl) => (
+                        <div key={pl.id} className="bg-surface-container-low border border-white/10 p-3 text-xs space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-white">{pl.name}</span>
+                            <span className="font-bold text-emerald-300 shrink-0">{eur(pl.totalAmount)}</span>
+                          </div>
+                          <p className="text-tertiary">
+                            {PERIODICITY_LABELS[pl.periodicity]} · Día {pl.dueDay} · {PRORATION_LABELS[pl.prorationMode]}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => openPricePlanModal(p.id, pl)}
+                            className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
+                          >
+                            Editar modalidad
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 5: DESCUENTOS CONFIGURABLES */}
+      {data && activeTab === 'descuentos' && (
+        <div className="bg-surface-container border border-white/10 p-4 sm:p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <h2 className="font-headline text-base font-bold uppercase text-white">
+              Reglas de Descuento Configuradas ({data.discountRules.length})
+            </h2>
+            <button
+              type="button"
+              onClick={() => openDiscountModal()}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold shadow-[2px_2px_0px_0px_#0e0e0e] cursor-pointer transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>Nueva regla</span>
+            </button>
+          </div>
+
+          {data.discountRules.length === 0 ? (
+            <p className="text-xs text-tertiary py-6 text-center">
+              No hay descuentos configurados todavía.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {data.discountRules.map((r) => (
+                <div
+                  key={r.id}
+                  className={`border p-3.5 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+                    r.isActive
+                      ? 'bg-surface-container-low border-white/10'
+                      : 'bg-surface-container-lowest border-white/5 opacity-60'
+                  }`}
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold text-sm text-white">{r.name}</span>
+                      <span className="px-2 py-0.5 bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[10px] font-bold">
+                        {r.valueType === 'PERCENTAGE' ? `-${r.value}%` : `-${eur(r.value)}`}
+                      </span>
+                      {r.stackable && (
+                        <span className="px-1.5 py-0.5 bg-white/10 text-on-surface text-[10px]">Acumulable</span>
+                      )}
+                      {r.requiresReason && (
+                        <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-300 text-[10px]">Motivo obligatorio</span>
+                      )}
+                    </div>
+                    <p className="text-tertiary">
+                      {DISCOUNT_KIND_LABELS[r.kind] || r.kind}
+                      {r.maxDiscountAmount ? ` · Tope ${eur(r.maxDiscountAmount)}` : ''}
+                      {r.applicableProductIds.length > 0
+                        ? ` · ${r.applicableProductIds.length} producto(s)`
+                        : ' · Todos los productos'}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openDiscountModal(r)}
+                      className="px-2.5 py-1.5 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-white text-[11px] font-bold uppercase cursor-pointer"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        postPaymentAction(
+                          { action: 'toggle_discount_rule', id: r.id, isActive: !r.isActive },
+                          r.isActive ? 'Descuento desactivado.' : 'Descuento activado.'
+                        )
+                      }
+                      className="px-2.5 py-1.5 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-[11px] font-bold uppercase text-primary cursor-pointer"
+                    >
+                      {r.isActive ? 'Desactivar' : 'Activar'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL: NUEVA INSCRIPCIÓN */}
+      <IntranetModal
+        isOpen={enrollmentModalOpen && Boolean(data)}
+        onClose={() => setEnrollmentModalOpen(false)}
+        title="Nueva Inscripción de Cuota / Producto"
+        subtitle="Asocia un producto y modalidad a un deportista para generar sus cargos"
+        size="lg"
+      >
+        {data && (
+          <form onSubmit={handleEnrollmentSubmit} className="space-y-3.5">
+            {errorMsg && (
+              <div
+                role="alert"
+                className="bg-error-container/40 border border-error/40 text-error px-3 py-2.5 text-xs flex items-start gap-2"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Deportista</label>
+              <label htmlFor="pagos-enr-athlete" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Deportista</label>
               <select
+                id="pagos-enr-athlete"
                 required
                 value={enrAthleteId}
                 onChange={(e) => {
@@ -1455,7 +1818,7 @@ export default function ClubPagosPage() {
                     setEnrPayerEmail(ath.guardianEmail || '');
                   }
                 }}
-                className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
               >
                 <option value="">Selecciona deportista...</option>
                 {data.athletes.map((a) => (
@@ -1468,8 +1831,9 @@ export default function ClubPagosPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Producto</label>
+                <label htmlFor="pagos-enr-product" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Producto</label>
                 <select
+                  id="pagos-enr-product"
                   required
                   value={enrProductId}
                   onChange={(e) => {
@@ -1477,7 +1841,7 @@ export default function ClubPagosPage() {
                     setEnrPlanId('');
                     setEnrDiscountIds([]);
                   }}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 >
                   <option value="">Selecciona producto...</option>
                   {data.products
@@ -1491,12 +1855,13 @@ export default function ClubPagosPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Modalidad</label>
+                <label htmlFor="pagos-enr-plan" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Modalidad</label>
                 <select
+                  id="pagos-enr-plan"
                   required
                   value={enrPlanId}
                   onChange={(e) => setEnrPlanId(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 >
                   <option value="">Selecciona modalidad...</option>
                   {(selectedEnrProduct?.pricePlans || [])
@@ -1512,13 +1877,14 @@ export default function ClubPagosPage() {
 
             {selectedEnrPlan?.periodicity === 'MONTHLY' && (
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                <label htmlFor="pagos-enr-start-month" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                   Mes de inicio (Prorrateo: {PRORATION_LABELS[selectedEnrPlan.prorationMode]})
                 </label>
                 <select
+                  id="pagos-enr-start-month"
                   value={enrStartMonth}
                   onChange={(e) => setEnrStartMonth(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 >
                   {MONTH_OPTIONS.filter((m) =>
                     selectedEnrPlan.activeMonths.includes(m.num)
@@ -1532,7 +1898,7 @@ export default function ClubPagosPage() {
             )}
 
             {canApplyDiscounts && applicableRulesForEnr.length > 0 && (
-              <div className="space-y-1.5 border border-white/10 p-3 bg-surface-container-low">
+              <div className="space-y-1.5 border border-white/10 p-3 bg-surface-container">
                 <p className="text-[11px] font-bold uppercase text-tertiary">Descuentos Configurados Aplicables</p>
                 {applicableRulesForEnr.map((r) => {
                   const checked = enrDiscountIds.includes(r.id);
@@ -1558,7 +1924,7 @@ export default function ClubPagosPage() {
             )}
 
             {canApplyDiscounts && (
-              <div className="border border-white/10 p-3 bg-surface-container-low space-y-2">
+              <div className="border border-white/10 p-3 bg-surface-container space-y-2">
                 <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer">
                   <input
                     type="checkbox"
@@ -1571,16 +1937,18 @@ export default function ClubPagosPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                     <input
                       type="text"
+                      aria-label="Etiqueta del ajuste manual"
                       placeholder="Etiqueta (ej. Beca Junta)"
                       value={enrManualLabel}
                       onChange={(e) => setEnrManualLabel(e.target.value)}
-                      className="px-2.5 py-1.5 bg-surface-container border border-white/15 text-xs text-white"
+                      className="px-2.5 py-1.5 bg-surface-container-highest border border-white/15 text-xs text-white"
                     />
                     <div className="flex gap-1.5">
                       <select
+                        aria-label="Tipo de ajuste manual"
                         value={enrManualType}
                         onChange={(e) => setEnrManualType(e.target.value as 'PERCENTAGE' | 'FIXED')}
-                        className="px-2 py-1.5 bg-surface-container border border-white/15 text-xs text-white"
+                        className="px-2 py-1.5 bg-surface-container-highest border border-white/15 text-xs text-white"
                       >
                         <option value="PERCENTAGE">%</option>
                         <option value="FIXED">€</option>
@@ -1589,19 +1957,21 @@ export default function ClubPagosPage() {
                         type="number"
                         step="0.01"
                         min="0"
+                        aria-label="Valor del ajuste manual"
                         placeholder="Valor"
                         value={enrManualValue}
                         onChange={(e) => setEnrManualValue(e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-surface-container border border-white/15 text-xs text-white"
+                        className="w-full px-2.5 py-1.5 bg-surface-container-highest border border-white/15 text-xs text-white"
                       />
                     </div>
                     <input
                       type="text"
                       required={enrManualActive}
+                      aria-label="Motivo del ajuste manual"
                       placeholder="Motivo obligatorio"
                       value={enrManualReason}
                       onChange={(e) => setEnrManualReason(e.target.value)}
-                      className="sm:col-span-2 px-2.5 py-1.5 bg-surface-container border border-white/15 text-xs text-white"
+                      className="sm:col-span-2 px-2.5 py-1.5 bg-surface-container-highest border border-white/15 text-xs text-white"
                     />
                   </div>
                 )}
@@ -1610,460 +1980,378 @@ export default function ClubPagosPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Nombre Pagador / Tutor</label>
+                <label htmlFor="pagos-enr-payer-name" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Nombre Pagador / Tutor</label>
                 <input
+                  id="pagos-enr-payer-name"
                   type="text"
                   required
                   value={enrPayerName}
                   onChange={(e) => setEnrPayerName(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Email avisos</label>
+                <label htmlFor="pagos-enr-payer-email" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Email avisos</label>
                 <input
+                  id="pagos-enr-payer-email"
                   type="email"
                   value={enrPayerEmail}
                   onChange={(e) => setEnrPayerEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">DNI Pagador (opcional)</label>
+                <label htmlFor="pagos-enr-payer-dni" className="block text-[11px] font-bold uppercase text-tertiary mb-1">DNI Pagador (opcional)</label>
                 <input
+                  id="pagos-enr-payer-dni"
                   type="text"
                   value={enrPayerDni}
                   onChange={(e) => setEnrPayerDni(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Observaciones</label>
+                <label htmlFor="pagos-enr-notes" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Observaciones</label>
                 <input
+                  id="pagos-enr-notes"
                   type="text"
                   value={enrNotes}
                   onChange={(e) => setEnrNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 />
               </div>
             </div>
 
             {enrollmentPreview && (
-              <div className="p-3 bg-surface-container-low border border-primary-container/40 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="p-3 bg-surface-container border border-primary-container/40 text-xs flex flex-wrap items-center justify-between gap-2">
                 <span>Base: <strong>{eur(enrollmentPreview.base)}</strong></span>
                 <span>Desc.: <strong className="text-sky-300">-{eur(enrollmentPreview.discount)}</strong></span>
                 <span>Total Neto: <strong className="text-emerald-300 text-sm">{eur(enrollmentPreview.net)}</strong></span>
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full py-2.5 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50"
-            >
-              {busy ? 'Generando inscripción...' : 'Crear Inscripción y Generar Cargos'}
-            </button>
-          </form>
-
-          {/* Listado inscripciones */}
-          <div className="xl:col-span-7 bg-surface-container border border-white/10 p-4 sm:p-5">
-            <h3 className="font-headline text-base font-bold uppercase text-white mb-3">
-              Inscripciones Activas ({data.enrollments.length})
-            </h3>
-            {data.enrollments.length === 0 ? (
-              <p className="text-xs text-tertiary">No hay inscripciones registradas todavía.</p>
-            ) : (
-              <div className="space-y-2.5 max-h-[640px] overflow-y-auto pr-1">
-                {data.enrollments.map((enr) => (
-                  <div key={enr.id} className="bg-surface-container-low border border-white/10 p-3 text-xs space-y-1">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-bold text-white text-sm">{enr.athleteName}</span>
-                      <code className="px-2 py-0.5 bg-primary-container/20 text-primary border border-primary-container/40 text-[11px] font-bold">
-                        {enr.paymentReferenceCode}
-                      </code>
-                    </div>
-                    <p className="text-on-surface">
-                      {enr.productName} · <span className="text-tertiary">{enr.planName} ({PERIODICITY_LABELS[enr.periodicity] || enr.periodicity})</span>
-                    </p>
-                    <p className="text-tertiary">
-                      Pagador: {enr.payerName} {enr.payerEmail ? `(${enr.payerEmail})` : ''} · Equipo: {enr.teamName}
-                    </p>
-                    {enr.appliedDiscounts.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {enr.appliedDiscounts.map((ad, idx) => (
-                          <span key={idx} className="px-2 py-0.5 bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[10px]">
-                            {ad.label}: -{eur(ad.computedAmount)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: PRODUCTOS Y MODALIDADES */}
-      {data && activeTab === 'productos' && (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          <div className="xl:col-span-5 space-y-5">
-            <form
-              onSubmit={handleProductSubmit}
-              className="bg-surface-container border border-white/10 p-4 sm:p-5 space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="font-headline text-base font-bold uppercase text-white">
-                  {prodId ? 'Editar Producto' : 'Nuevo Producto / Cuota'}
-                </h2>
-                {prodId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProdId(null);
-                      setProdName('');
-                      setProdDescription('');
-                    }}
-                    className="text-xs text-tertiary hover:text-white cursor-pointer"
-                  >
-                    Cancelar edición
-                  </button>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Nombre del producto</label>
-                <input
-                  type="text"
-                  required
-                  value={prodName}
-                  onChange={(e) => setProdName(e.target.value)}
-                  placeholder="Ej. Cuota Cantera Temporada 26/27"
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Tipo</label>
-                  <select
-                    value={prodType}
-                    onChange={(e) => setProdType(e.target.value as ProductItem['productType'])}
-                    className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                  >
-                    {Object.entries(PRODUCT_TYPE_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-end pb-2">
-                  <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={prodRecurring}
-                      onChange={(e) => setProdRecurring(e.target.checked)}
-                    />
-                    <span>Cuota periódica / recurrente</span>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Descripción</label>
-                <textarea
-                  rows={2}
-                  value={prodDescription}
-                  onChange={(e) => setProdDescription(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                />
-              </div>
-
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setEnrollmentModalOpen(false)}
+                className="px-4 py-2 bg-surface-container-high border border-white/15 text-xs font-bold uppercase text-on-surface cursor-pointer"
+              >
+                Cancelar
+              </button>
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50"
               >
-                {prodId ? 'Guardar Cambios' : 'Crear Producto'}
+                {busy ? 'Generando...' : 'Crear Inscripción y Cargos'}
               </button>
-            </form>
+            </div>
+          </form>
+        )}
+      </IntranetModal>
 
-            {/* Form Modalidad */}
-            <form
-              onSubmit={handlePricePlanSubmit}
-              className="bg-surface-container border border-white/10 p-4 sm:p-5 space-y-3"
+      {/* MODAL: NUEVO / EDITAR PRODUCTO */}
+      <IntranetModal
+        isOpen={productModalOpen && Boolean(data)}
+        onClose={() => setProductModalOpen(false)}
+        title={prodId ? 'Editar Producto' : 'Nuevo Producto / Cuota'}
+        size="md"
+      >
+        <form onSubmit={handleProductSubmit} className="space-y-3.5">
+          {errorMsg && (
+            <div
+              role="alert"
+              className="bg-error-container/40 border border-error/40 text-error px-3 py-2.5 text-xs flex items-start gap-2"
             >
-              <h2 className="font-headline text-base font-bold uppercase text-white">
-                {planId ? 'Editar Modalidad de Pago' : 'Añadir Modalidad de Pago'}
-              </h2>
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="pagos-prod-name" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Nombre del producto</label>
+            <input
+              id="pagos-prod-name"
+              type="text"
+              required
+              value={prodName}
+              onChange={(e) => setProdName(e.target.value)}
+              placeholder="Ej. Cuota Cantera Temporada 26/27"
+              className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="pagos-prod-type" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Tipo</label>
+              <select
+                id="pagos-prod-type"
+                value={prodType}
+                onChange={(e) => setProdType(e.target.value as ProductItem['productType'])}
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+              >
+                {Object.entries(PRODUCT_TYPE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={prodRecurring}
+                  onChange={(e) => setProdRecurring(e.target.checked)}
+                />
+                <span>Cuota periódica / recurrente</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="pagos-prod-desc" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Descripción</label>
+            <textarea
+              id="pagos-prod-desc"
+              rows={2}
+              value={prodDescription}
+              onChange={(e) => setProdDescription(e.target.value)}
+              className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+            <button
+              type="button"
+              onClick={() => setProductModalOpen(false)}
+              className="px-4 py-2 bg-surface-container-high border border-white/15 text-xs font-bold uppercase text-on-surface cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+            >
+              {busy ? 'Guardando...' : prodId ? 'Guardar Cambios' : 'Crear Producto'}
+            </button>
+          </div>
+        </form>
+      </IntranetModal>
+
+      {/* MODAL: NUEVA / EDITAR MODALIDAD DE PAGO */}
+      <IntranetModal
+        isOpen={pricePlanModalOpen && Boolean(data)}
+        onClose={() => setPricePlanModalOpen(false)}
+        title={planId ? 'Editar Modalidad de Pago' : 'Nueva Modalidad de Pago'}
+        size="md"
+      >
+        {data && (
+          <form onSubmit={handlePricePlanSubmit} className="space-y-3.5">
+            {errorMsg && (
+              <div
+                role="alert"
+                className="bg-error-container/40 border border-error/40 text-error px-3 py-2.5 text-xs flex items-start gap-2"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="pagos-plan-product" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Producto asociado</label>
+              <select
+                id="pagos-plan-product"
+                required
+                value={planTargetProductId}
+                onChange={(e) => setPlanTargetProductId(e.target.value)}
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+              >
+                <option value="">Selecciona producto...</option>
+                {data.products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Producto asociado</label>
-                <select
+                <label htmlFor="pagos-plan-name" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Nombre modalidad</label>
+                <input
+                  id="pagos-plan-name"
+                  type="text"
                   required
-                  value={planTargetProductId}
-                  onChange={(e) => setPlanTargetProductId(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                >
-                  <option value="">Selecciona producto...</option>
-                  {data.products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Nombre modalidad</label>
-                  <input
-                    type="text"
-                    required
-                    value={planName}
-                    onChange={(e) => setPlanName(e.target.value)}
-                    placeholder="Ej. 9 Mensualidades"
-                    className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Periodicidad</label>
-                  <select
-                    value={planPeriodicity}
-                    onChange={(e) => setPlanPeriodicity(e.target.value as PricePlanItem['periodicity'])}
-                    className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                  >
-                    {Object.entries(PERIODICITY_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Total (€)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    value={planTotalAmount}
-                    onChange={(e) => setPlanTotalAmount(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Plazos</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="24"
-                    value={planInstallments}
-                    onChange={(e) => setPlanInstallments(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Día venc.</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="28"
-                    value={planDueDay}
-                    onChange={(e) => setPlanDueDay(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                  />
-                </div>
+                  value={planName}
+                  onChange={(e) => setPlanName(e.target.value)}
+                  placeholder="Ej. 9 Mensualidades"
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+                />
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Prorrateo</label>
+                <label htmlFor="pagos-plan-periodicity" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Periodicidad</label>
                 <select
-                  value={planProration}
-                  onChange={(e) => setPlanProration(e.target.value as PricePlanItem['prorationMode'])}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  id="pagos-plan-periodicity"
+                  value={planPeriodicity}
+                  onChange={(e) => setPlanPeriodicity(e.target.value as PricePlanItem['periodicity'])}
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 >
-                  {Object.entries(PRORATION_LABELS).map(([k, v]) => (
+                  {Object.entries(PERIODICITY_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>
                       {v}
                     </option>
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1.5">Meses activos</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {MONTH_OPTIONS.map((m) => {
-                    const active = planActiveMonths.includes(m.num);
-                    return (
-                      <button
-                        key={m.num}
-                        type="button"
-                        onClick={() =>
-                          setPlanActiveMonths((prev) =>
-                            active ? prev.filter((x) => x !== m.num) : [...prev, m.num]
-                          )
-                        }
-                        className={`px-2 py-1 text-[10px] font-bold uppercase border cursor-pointer ${
-                          active
-                            ? 'bg-primary-container text-white border-primary-container'
-                            : 'bg-surface-container-low text-tertiary border-white/10'
-                        }`}
-                      >
-                        {m.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <label htmlFor="pagos-plan-total" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Total (€)</label>
+                <input
+                  id="pagos-plan-total"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={planTotalAmount}
+                  onChange={(e) => setPlanTotalAmount(e.target.value)}
+                  className="w-full px-2.5 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+                />
               </div>
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full py-2 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
-              >
-                {planId ? 'Actualizar Modalidad' : 'Guardar Modalidad'}
-              </button>
-            </form>
-          </div>
-
-          {/* Listado Productos y Modalidades */}
-          <div className="xl:col-span-7 space-y-4">
-            {data.products.length === 0 ? (
-              <div className="bg-surface-container border border-white/10 p-6 text-sm text-tertiary">
-                No hay productos configurados aún. Crea el primero desde el formulario.
+              <div>
+                <label htmlFor="pagos-plan-installments" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Plazos</label>
+                <input
+                  id="pagos-plan-installments"
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={planInstallments}
+                  onChange={(e) => setPlanInstallments(e.target.value)}
+                  className="w-full px-2.5 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+                />
               </div>
-            ) : (
-              data.products.map((p) => (
-                <div key={p.id} className="bg-surface-container border border-white/10 p-4 space-y-3">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-primary">
-                        {PRODUCT_TYPE_LABELS[p.productType] || p.productType} · {p.seasonId}
-                      </span>
-                      <h3 className="font-headline text-lg font-bold text-white">{p.name}</h3>
-                      {p.description && <p className="text-xs text-tertiary mt-0.5">{p.description}</p>}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProdId(p.id);
-                          setProdName(p.name);
-                          setProdType(p.productType);
-                          setProdRecurring(p.isRecurring);
-                          setProdDescription(p.description || '');
-                        }}
-                        className="px-2.5 py-1 bg-surface-container-high border border-white/15 text-[11px] font-bold uppercase text-white cursor-pointer"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPlanId(null);
-                          setPlanTargetProductId(p.id);
-                          setPlanName('');
-                          setPlanTotalAmount('');
-                        }}
-                        className="px-2.5 py-1 bg-primary-container text-[11px] font-bold uppercase text-white cursor-pointer"
-                      >
-                        + Modalidad
-                      </button>
-                    </div>
-                  </div>
-
-                  {p.pricePlans.length === 0 ? (
-                    <p className="text-xs text-tertiary">Sin modalidades de pago configuradas.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {p.pricePlans.map((pl) => (
-                        <div key={pl.id} className="bg-surface-container-low border border-white/10 p-3 text-xs space-y-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-bold text-white">{pl.name}</span>
-                            <span className="font-bold text-emerald-300">{eur(pl.totalAmount)}</span>
-                          </div>
-                          <p className="text-tertiary">
-                            {PERIODICITY_LABELS[pl.periodicity]} · Día {pl.dueDay} · {PRORATION_LABELS[pl.prorationMode]}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPlanId(pl.id);
-                              setPlanTargetProductId(p.id);
-                              setPlanName(pl.name);
-                              setPlanPeriodicity(pl.periodicity);
-                              setPlanTotalAmount(String(pl.totalAmount));
-                              setPlanInstallments(String(pl.installmentsCount));
-                              setPlanDueDay(String(pl.dueDay));
-                              setPlanActiveMonths(pl.activeMonths);
-                              setPlanProration(pl.prorationMode);
-                            }}
-                            className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
-                          >
-                            Editar modalidad
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: DESCUENTOS CONFIGURABLES */}
-      {data && activeTab === 'descuentos' && (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          <form
-            onSubmit={handleDiscountSubmit}
-            className="xl:col-span-5 bg-surface-container border border-white/10 p-4 sm:p-5 space-y-3"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="font-headline text-base font-bold uppercase text-white">
-                {discId ? 'Editar Regla de Descuento' : 'Nueva Regla de Descuento'}
-              </h2>
-              {discId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDiscId(null);
-                    setDiscName('');
-                    setDiscValue('');
-                    setDiscMaxCap('');
-                    setDiscProductIds([]);
-                  }}
-                  className="text-xs text-tertiary hover:text-white cursor-pointer"
-                >
-                  Cancelar
-                </button>
-              )}
+              <div>
+                <label htmlFor="pagos-plan-dueday" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Día venc.</label>
+                <input
+                  id="pagos-plan-dueday"
+                  type="number"
+                  min="1"
+                  max="28"
+                  value={planDueDay}
+                  onChange={(e) => setPlanDueDay(e.target.value)}
+                  className="w-full px-2.5 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Nombre de la regla</label>
+              <label htmlFor="pagos-plan-proration" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Prorrateo</label>
+              <select
+                id="pagos-plan-proration"
+                value={planProration}
+                onChange={(e) => setPlanProration(e.target.value as PricePlanItem['prorationMode'])}
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+              >
+                {Object.entries(PRORATION_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <p className="block text-[11px] font-bold uppercase text-tertiary mb-1.5">Meses activos</p>
+              <div className="flex flex-wrap gap-1.5">
+                {MONTH_OPTIONS.map((m) => {
+                  const active = planActiveMonths.includes(m.num);
+                  return (
+                    <button
+                      key={m.num}
+                      type="button"
+                      onClick={() =>
+                        setPlanActiveMonths((prev) =>
+                          active ? prev.filter((x) => x !== m.num) : [...prev, m.num]
+                        )
+                      }
+                      className={`px-2 py-1 text-[10px] font-bold uppercase border cursor-pointer ${
+                        active
+                          ? 'bg-primary-container text-white border-primary-container'
+                          : 'bg-surface-container text-tertiary border-white/10'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setPricePlanModalOpen(false)}
+                className="px-4 py-2 bg-surface-container-high border border-white/15 text-xs font-bold uppercase text-on-surface cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+              >
+                {busy ? 'Guardando...' : planId ? 'Actualizar Modalidad' : 'Guardar Modalidad'}
+              </button>
+            </div>
+          </form>
+        )}
+      </IntranetModal>
+
+      {/* MODAL: NUEVA / EDITAR REGLA DE DESCUENTO */}
+      <IntranetModal
+        isOpen={discountModalOpen && Boolean(data)}
+        onClose={() => setDiscountModalOpen(false)}
+        title={discId ? 'Editar Regla de Descuento' : 'Nueva Regla de Descuento'}
+        size="md"
+      >
+        {data && (
+          <form onSubmit={handleDiscountSubmit} className="space-y-3.5">
+            {errorMsg && (
+              <div
+                role="alert"
+                className="bg-error-container/40 border border-error/40 text-error px-3 py-2.5 text-xs flex items-start gap-2"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="pagos-disc-name" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Nombre de la regla</label>
               <input
+                id="pagos-disc-name"
                 type="text"
                 required
                 value={discName}
                 onChange={(e) => setDiscName(e.target.value)}
                 placeholder="Ej. Descuento 2º Hermano/a"
-                className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Tipo</label>
+                <label htmlFor="pagos-disc-kind" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Tipo</label>
                 <select
+                  id="pagos-disc-kind"
                   value={discKind}
                   onChange={(e) => setDiscKind(e.target.value as DiscountRuleItem['kind'])}
-                  className="w-full px-2.5 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-2.5 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 >
                   {Object.entries(DISCOUNT_KIND_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>
@@ -2073,45 +2361,48 @@ export default function ClubPagosPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Formato</label>
+                <label htmlFor="pagos-disc-valtype" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Formato</label>
                 <select
+                  id="pagos-disc-valtype"
                   value={discValueType}
                   onChange={(e) => setDiscValueType(e.target.value as 'PERCENTAGE' | 'FIXED')}
-                  className="w-full px-2.5 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-2.5 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 >
                   <option value="PERCENTAGE">Porcentaje (%)</option>
                   <option value="FIXED">Importe fijo (€)</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Valor</label>
+                <label htmlFor="pagos-disc-val" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Valor</label>
                 <input
+                  id="pagos-disc-val"
                   type="number"
                   step="0.01"
                   min="0.01"
                   required
                   value={discValue}
                   onChange={(e) => setDiscValue(e.target.value)}
-                  className="w-full px-2.5 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                  className="w-full px-2.5 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Tope máximo (€, opcional)</label>
+              <label htmlFor="pagos-disc-cap" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Tope máximo (€, opcional)</label>
               <input
+                id="pagos-disc-cap"
                 type="number"
                 step="0.01"
                 min="0"
                 value={discMaxCap}
                 onChange={(e) => setDiscMaxCap(e.target.value)}
                 placeholder="Sin tope"
-                className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
               />
             </div>
 
             {data.products.length > 0 && (
-              <div className="border border-white/10 p-3 bg-surface-container-low space-y-1.5">
+              <div className="border border-white/10 p-3 bg-surface-container space-y-1.5">
                 <p className="text-[11px] font-bold uppercase text-tertiary">
                   Productos aplicables (si no marcas ninguno, aplica a todos)
                 </p>
@@ -2151,349 +2442,220 @@ export default function ClubPagosPage() {
               </label>
             </div>
 
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full py-2.5 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
-            >
-              {discId ? 'Actualizar Regla' : 'Crear Regla de Descuento'}
-            </button>
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setDiscountModalOpen(false)}
+                className="px-4 py-2 bg-surface-container-high border border-white/15 text-xs font-bold uppercase text-on-surface cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+              >
+                {busy ? 'Guardando...' : discId ? 'Actualizar Regla' : 'Crear Regla'}
+              </button>
+            </div>
           </form>
+        )}
+      </IntranetModal>
 
-          <div className="xl:col-span-7 bg-surface-container border border-white/10 p-4 sm:p-5 space-y-3">
-            <h3 className="font-headline text-base font-bold uppercase text-white">
-              Reglas de Descuento Configuradas ({data.discountRules.length})
-            </h3>
-            {data.discountRules.length === 0 ? (
-              <p className="text-xs text-tertiary">No hay descuentos configurados todavía.</p>
-            ) : (
-              <div className="space-y-2.5">
-                {data.discountRules.map((r) => (
-                  <div
-                    key={r.id}
-                    className={`border p-3.5 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
-                      r.isActive
-                        ? 'bg-surface-container-low border-white/10'
-                        : 'bg-surface-container-lowest border-white/5 opacity-60'
-                    }`}
-                  >
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-sm text-white">{r.name}</span>
-                        <span className="px-2 py-0.5 bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[10px] font-bold">
-                          {r.valueType === 'PERCENTAGE' ? `-${r.value}%` : `-${eur(r.value)}`}
-                        </span>
-                        {r.stackable && (
-                          <span className="px-1.5 py-0.5 bg-white/10 text-on-surface text-[10px]">Acumulable</span>
-                        )}
-                        {r.requiresReason && (
-                          <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-300 text-[10px]">Motivo obligatorio</span>
-                        )}
-                      </div>
-                      <p className="text-tertiary">
-                        {DISCOUNT_KIND_LABELS[r.kind] || r.kind}
-                        {r.maxDiscountAmount ? ` · Tope ${eur(r.maxDiscountAmount)}` : ''}
-                        {r.applicableProductIds.length > 0
-                          ? ` · ${r.applicableProductIds.length} producto(s)`
-                          : ' · Todos los productos'}
-                      </p>
-                    </div>
+      {/* MODAL: REGISTRAR COBRO MANUAL */}
+      <IntranetModal
+        isOpen={paymentModalOpen && Boolean(data)}
+        onClose={() => setPaymentModalOpen(false)}
+        title="Registrar Cobro Manual"
+        size="md"
+      >
+        {data && (
+          <form onSubmit={handleRecordPaymentSubmit} className="space-y-3.5">
+            {errorMsg && (
+              <div
+                role="alert"
+                className="bg-error-container/40 border border-error/40 text-error px-3 py-2.5 text-xs flex items-start gap-2"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
-                    <div className="flex flex-wrap gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDiscId(r.id);
-                          setDiscName(r.name);
-                          setDiscKind(r.kind);
-                          setDiscValueType(r.valueType);
-                          setDiscValue(String(r.value));
-                          setDiscProductIds(r.applicableProductIds);
-                          setDiscStackable(r.stackable);
-                          setDiscMaxCap(r.maxDiscountAmount ? String(r.maxDiscountAmount) : '');
-                          setDiscRequiresReason(r.requiresReason);
-                        }}
-                        className="px-2.5 py-1.5 bg-surface-container-high border border-white/15 text-white text-[11px] font-bold uppercase cursor-pointer"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          postPaymentAction(
-                            { action: 'toggle_discount_rule', id: r.id, isActive: !r.isActive },
-                            r.isActive ? 'Descuento desactivado.' : 'Descuento activado.'
-                          )
-                        }
-                        className="px-2.5 py-1.5 bg-surface-container-high border border-white/15 text-[11px] font-bold uppercase text-primary cursor-pointer"
-                      >
-                        {r.isActive ? 'Desactivar' : 'Activar'}
-                      </button>
-                    </div>
+            <div>
+              <label htmlFor="pagos-pay-athlete" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Deportista</label>
+              <select
+                id="pagos-pay-athlete"
+                required
+                value={payAthleteId}
+                onChange={(e) => setPayAthleteId(e.target.value)}
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+              >
+                <option value="">Selecciona deportista...</option>
+                {data.athletes.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.teamName})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {payAthleteOpenCharges.length > 0 && (
+              <div className="bg-surface-container border border-white/10 p-2.5 text-[11px] space-y-1">
+                <p className="font-bold uppercase text-tertiary">Cargos abiertos (se imputarán por orden de vencimiento):</p>
+                {payAthleteOpenCharges.slice(0, 4).map((ch) => (
+                  <div key={ch.id} className="flex justify-between gap-2 text-on-surface">
+                    <span className="truncate">
+                      {ch.concept} ({formatDisplayDate(ch.dueMadridDate)})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPayAmount(ch.pendingAmount.toFixed(2))}
+                      className="text-amber-300 font-bold hover:underline shrink-0 cursor-pointer"
+                    >
+                      {eur(ch.pendingAmount)}
+                    </button>
                   </div>
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      )}
 
-      {/* TAB 6: IMPORTAR FEELSPORTS CSV */}
-      {data && activeTab === 'importar' && (
-        <div className="bg-surface-container border border-white/10 p-4 sm:p-6 space-y-4">
-          <div>
-            <h2 className="font-headline text-lg font-bold uppercase text-white">
-              Importar Histórico de Cuotas y Pagos (FeelSports CSV)
-            </h2>
-            <p className="text-xs text-tertiary mt-1">
-              Sube o pega un CSV separado por <code>;</code> o <code>,</code> con columnas como:{' '}
-              <code>Nombre;Apellidos;DNI/NIE;Concepto;Importe;Fecha Vencimiento;Pagado;Fecha Pago;Método;Referencia</code>.
-              Todos los registros importados quedarán marcados con origen <code>FEELSPORTS</code>.
-            </p>
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="pagos-pay-amount" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Importe (€)</label>
+                <input
+                  id="pagos-pay-amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+                />
+              </div>
+              <div>
+                <label htmlFor="pagos-pay-date" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Fecha cobro (Madrid)</label>
+                <input
+                  id="pagos-pay-date"
+                  type="date"
+                  required
+                  value={payDate}
+                  onChange={(e) => setPayDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+                />
+              </div>
+            </div>
 
-          <form onSubmit={handleCsvImportSubmit} className="space-y-3">
             <div>
-              <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
-                Cargar archivo .csv desde tu equipo
-              </label>
+              <label htmlFor="pagos-pay-method" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Método de cobro</label>
+              <select
+                id="pagos-pay-method"
+                value={payMethod}
+                onChange={(e) => setPayMethod(e.target.value as 'CASH' | 'BANK_TRANSFER' | 'POS_TERMINAL')}
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+              >
+                <option value="CASH">Efectivo (Caja del Club)</option>
+                <option value="BANK_TRANSFER">Transferencia Bancaria</option>
+                <option value="POS_TERMINAL">TPV Físico / Datafono</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="pagos-pay-ref" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Referencia / Concepto bancario</label>
               <input
-                type="file"
-                accept=".csv,text/csv"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const txt = await file.text();
-                  setCsvText(txt);
-                }}
-                className="text-xs text-on-surface"
+                id="pagos-pay-ref"
+                type="text"
+                value={payReference}
+                onChange={(e) => setPayReference(e.target.value)}
+                placeholder="Ej. CDVSP-2627-... o Nº recibo caja"
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
               />
             </div>
 
-            <textarea
-              rows={8}
-              required
-              value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
-              placeholder="Nombre;Apellidos;DNI/NIE;Concepto;Importe;Fecha Vencimiento;Pagado;Fecha Pago;Método;Referencia"
-              className="w-full p-3 bg-surface-container-low border border-white/15 text-xs font-mono text-white"
-            />
-
-            <button
-              type="submit"
-              disabled={busy || !csvText.trim()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
-            >
-              <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />
-              <span>{busy ? 'Importando...' : 'Procesar e Importar Histórico'}</span>
-            </button>
-          </form>
-
-          {csvResult && (
-            <div className="p-4 bg-surface-container-low border border-white/15 text-xs space-y-1.5">
-              <p className="font-bold text-white">Resultado de la importación:</p>
-              <p className="text-emerald-300">Cargos importados: {csvResult.importedCharges}</p>
-              <p className="text-sky-300">Pagos importados: {csvResult.importedPayments}</p>
-              <p className="text-amber-300">Filas omitidas: {csvResult.skippedRows}</p>
-              {csvResult.errors.length > 0 && (
-                <ul className="list-disc pl-4 text-rose-300 pt-1">
-                  {csvResult.errors.map((err, i) => (
-                    <li key={i}>{err}</li>
-                  ))}
-                </ul>
-              )}
+            <div>
+              <label htmlFor="pagos-pay-notes" className="block text-[11px] font-bold uppercase text-tertiary mb-1">Observaciones</label>
+              <input
+                id="pagos-pay-notes"
+                type="text"
+                value={payNotes}
+                onChange={(e) => setPayNotes(e.target.value)}
+                className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+              />
             </div>
-          )}
-        </div>
-      )}
 
-      {/* MODAL: REGISTRAR COBRO MANUAL */}
-      {paymentModalOpen && data && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-record-payment-title"
-          className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4"
-        >
-          <div className="bg-surface-container border border-white/15 max-w-lg w-full p-5 shadow-[6px_6px_0px_0px_#d90429] max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
-              <h2 id="modal-record-payment-title" className="font-headline text-lg font-bold uppercase text-white">
-                Registrar Cobro Manual
-              </h2>
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
               <button
                 type="button"
                 onClick={() => setPaymentModalOpen(false)}
-                aria-label="Cerrar ventana"
-                className="p-1 text-tertiary hover:text-white cursor-pointer"
+                className="px-4 py-2 bg-surface-container-high border border-white/15 text-xs font-bold uppercase text-on-surface cursor-pointer"
               >
-                <X className="w-5 h-5" aria-hidden="true" />
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+              >
+                {busy ? 'Guardando...' : 'Confirmar Cobro'}
               </button>
             </div>
-
-            <form onSubmit={handleRecordPaymentSubmit} className="space-y-3.5">
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Deportista</label>
-                <select
-                  required
-                  value={payAthleteId}
-                  onChange={(e) => setPayAthleteId(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                >
-                  <option value="">Selecciona deportista...</option>
-                  {data.athletes.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({a.teamName})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {payAthleteOpenCharges.length > 0 && (
-                <div className="bg-surface-container-low border border-white/10 p-2.5 text-[11px] space-y-1">
-                  <p className="font-bold uppercase text-tertiary">Cargos abiertos (se imputarán por orden de vencimiento):</p>
-                  {payAthleteOpenCharges.slice(0, 4).map((ch) => (
-                    <div key={ch.id} className="flex justify-between gap-2 text-on-surface">
-                      <span className="truncate">{ch.concept} ({ch.dueMadridDate})</span>
-                      <button
-                        type="button"
-                        onClick={() => setPayAmount(ch.pendingAmount.toFixed(2))}
-                        className="text-amber-300 font-bold hover:underline shrink-0 cursor-pointer"
-                      >
-                        {eur(ch.pendingAmount)}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Importe (€)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    required
-                    value={payAmount}
-                    onChange={(e) => setPayAmount(e.target.value)}
-                    className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Fecha cobro (Madrid)</label>
-                  <input
-                    type="date"
-                    required
-                    value={payDate}
-                    onChange={(e) => setPayDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Método de cobro</label>
-                <select
-                  value={payMethod}
-                  onChange={(e) => setPayMethod(e.target.value as 'CASH' | 'BANK_TRANSFER' | 'POS_TERMINAL')}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                >
-                  <option value="CASH">Efectivo (Caja del Club)</option>
-                  <option value="BANK_TRANSFER">Transferencia Bancaria</option>
-                  <option value="POS_TERMINAL">TPV Físico / Datafono</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Referencia / Concepto bancario</label>
-                <input
-                  type="text"
-                  value={payReference}
-                  onChange={(e) => setPayReference(e.target.value)}
-                  placeholder="Ej. CDVSP-2627-... o Nº recibo caja"
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">Observaciones</label>
-                <input
-                  type="text"
-                  value={payNotes}
-                  onChange={(e) => setPayNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setPaymentModalOpen(false)}
-                  className="px-4 py-2 bg-surface-container-high border border-white/15 text-xs font-bold uppercase text-on-surface cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
-                >
-                  {busy ? 'Guardando...' : 'Confirmar Cobro'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </form>
+        )}
+      </IntranetModal>
 
       {/* MODAL: MOTIVO OBLIGATORIO ANULAR / CONDONAR */}
-      {reasonModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-reason-title"
-          className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4"
-        >
-          <div className="bg-surface-container border border-white/15 max-w-md w-full p-5 shadow-[6px_6px_0px_0px_#0e0e0e]">
-            <h2 id="modal-reason-title" className="font-headline text-lg font-bold uppercase text-white">
-              {reasonModal.title}
-            </h2>
-            <p className="text-xs text-tertiary mt-1">{reasonModal.subtitle}</p>
+      <IntranetModal
+        isOpen={Boolean(reasonModal)}
+        onClose={() => setReasonModal(null)}
+        title={reasonModal?.title || 'Motivo obligatorio'}
+        subtitle={reasonModal?.subtitle}
+        size="sm"
+        accent="rose"
+      >
+        <form onSubmit={handleReasonModalSubmit} className="space-y-3.5">
+          {errorMsg && (
+            <div
+              role="alert"
+              className="bg-error-container/40 border border-error/40 text-error px-3 py-2.5 text-xs flex items-start gap-2"
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
 
-            <form onSubmit={handleReasonModalSubmit} className="space-y-3 mt-4">
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
-                  Motivo obligatorio (quedará auditado)
-                </label>
-                <textarea
-                  rows={3}
-                  required
-                  value={reasonText}
-                  onChange={(e) => setReasonText(e.target.value)}
-                  placeholder="Indica el motivo exacto..."
-                  className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setReasonModal(null)}
-                  className="px-4 py-2 bg-surface-container-high border border-white/15 text-xs font-bold uppercase text-on-surface cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={busy || !reasonText.trim()}
-                  className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
-                >
-                  {busy ? 'Procesando...' : 'Confirmar'}
-                </button>
-              </div>
-            </form>
+          <div>
+            <label htmlFor="pagos-reason-text" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+              Motivo obligatorio (quedará auditado)
+            </label>
+            <textarea
+              id="pagos-reason-text"
+              rows={3}
+              required
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              placeholder="Indica el motivo exacto..."
+              className="w-full px-3 py-2 bg-surface-container-highest border border-white/15 text-xs text-white"
+            />
           </div>
-        </div>
-      )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+            <button
+              type="button"
+              onClick={() => setReasonModal(null)}
+              className="px-4 py-2 bg-surface-container-high border border-white/15 text-xs font-bold uppercase text-on-surface cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={busy || !reasonText.trim()}
+              className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+            >
+              {busy ? 'Procesando...' : 'Confirmar'}
+            </button>
+          </div>
+        </form>
+      </IntranetModal>
     </div>
   );
 }

@@ -16,10 +16,10 @@ export async function GET(
 ) {
   const providerRaw = context.params.provider?.toLowerCase();
   const baseUrl = getPublicBaseUrl();
-  if (providerRaw !== 'google' && providerRaw !== 'microsoft') {
+  if (providerRaw !== 'google') {
     return NextResponse.redirect(`${baseUrl}/acceso?error=proveedor_no_soportado`);
   }
-  const provider: OAuthProviderKey = providerRaw;
+  const provider: OAuthProviderKey = 'google';
   const cfg = getOAuthProviderConfig(provider);
 
   if (!cfg.configured) {
@@ -50,9 +50,7 @@ export async function GET(
   authUrl.searchParams.set('state', state);
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
-  if (provider === 'google') {
-    authUrl.searchParams.set('prompt', 'select_account');
-  }
+  authUrl.searchParams.set('prompt', 'select_account');
 
   return NextResponse.redirect(authUrl.toString());
 }

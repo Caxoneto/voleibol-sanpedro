@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, ChevronLeft, ChevronRight, Home, Plane, RefreshCw } from 'lucide-react';
 import { formatMadridDate } from '@/lib/date-utils';
+import { getTeamColorTheme } from '@/lib/club-info';
 import { getTeamLogo, getTeamInitials } from '@/lib/team-logos';
 import { isRestMatch } from '@/lib/match-utils';
 import { useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
@@ -261,7 +262,7 @@ export default function HeroMatchesCarousel({
     };
 
     try {
-      const cached = window.localStorage.getItem('cdv_synced_matches_v7');
+      const cached = window.localStorage.getItem('cdv_synced_matches_v8');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed.matches) && parsed.matches.length > 0) {
@@ -282,7 +283,7 @@ export default function HeroMatchesCarousel({
               ({ homeRoster: _h, awayRoster: _a, ...rest }) => rest
             );
             window.localStorage.setItem(
-              'cdv_synced_matches_v7',
+              'cdv_synced_matches_v8',
               JSON.stringify({
                 matches: safeMatches,
                 lastSync: data.lastSync || new Date().toISOString(),
@@ -509,7 +510,7 @@ export default function HeroMatchesCarousel({
               userChangedTabRef.current = true;
               setActiveTab('finished');
             }}
-            className={`px-3 py-1.5 text-[11px] sm:text-xs font-label-md uppercase tracking-wider font-bold transition-all border ${
+            className={`px-3 py-1.5 text-[11px] sm:text-xs font-label-md uppercase tracking-wider font-bold transition-all border active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
               activeTab === 'finished'
                 ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
                 : 'bg-surface-container-high/80 text-tertiary hover:text-white border-white/10'
@@ -525,7 +526,7 @@ export default function HeroMatchesCarousel({
               userChangedTabRef.current = true;
               setActiveTab('today');
             }}
-            className={`px-3 py-1.5 text-[11px] sm:text-xs font-label-md uppercase tracking-wider font-bold transition-all border flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 text-[11px] sm:text-xs font-label-md uppercase tracking-wider font-bold transition-all border flex items-center gap-1.5 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
               activeTab === 'today'
                 ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
                 : 'bg-surface-container-high/80 text-tertiary hover:text-white border-white/10'
@@ -540,7 +541,7 @@ export default function HeroMatchesCarousel({
             <span>Hoy</span>
             {todayMatches.length > 0 && (
               <span
-                className={`px-1 py-0.5 text-[9px] font-mono ${
+                className={`px-1 py-0.5 text-[10px] font-mono ${
                   activeTab === 'today' ? 'bg-black/30 text-white' : 'bg-white/10 text-tertiary'
                 }`}
               >
@@ -556,7 +557,7 @@ export default function HeroMatchesCarousel({
               userChangedTabRef.current = true;
               setActiveTab('upcoming');
             }}
-            className={`px-3 py-1.5 text-[11px] sm:text-xs font-label-md uppercase tracking-wider font-bold transition-all border ${
+            className={`px-3 py-1.5 text-[11px] sm:text-xs font-label-md uppercase tracking-wider font-bold transition-all border active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
               activeTab === 'upcoming'
                 ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
                 : 'bg-surface-container-high/80 text-tertiary hover:text-white border-white/10'
@@ -569,25 +570,25 @@ export default function HeroMatchesCarousel({
         <div className="flex items-center gap-2.5 sm:gap-3.5">
           {/* Controles de flechas izquierda/derecha para Desktop */}
           {currentList.length > 1 && (
-            <div className="hidden sm:flex items-center gap-1 bg-surface-container-high/90 border border-white/10 rounded-xs p-0.5 shadow-sm">
+            <div className="hidden sm:flex items-center gap-1 bg-surface-container-high/90 border border-white/10 rounded-none p-0.5 shadow-sm">
               <button
                 type="button"
                 onClick={() => scrollCarousel('left')}
                 disabled={!canScrollLeft}
                 aria-label="Desplazar partidos hacia la izquierda"
                 title="Partidos anteriores"
-                className="w-7 h-7 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-tertiary transition-all rounded-xs cursor-pointer disabled:cursor-not-allowed"
+                className="w-9 h-9 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-tertiary transition-all rounded-none cursor-pointer disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </button>
-              <span className="w-px h-3.5 bg-white/10" aria-hidden="true" />
+              <span className="w-px h-4 bg-white/10" aria-hidden="true" />
               <button
                 type="button"
                 onClick={() => scrollCarousel('right')}
                 disabled={!canScrollRight}
                 aria-label="Desplazar partidos hacia la derecha"
                 title="Siguientes partidos"
-                className="w-7 h-7 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-tertiary transition-all rounded-xs cursor-pointer disabled:cursor-not-allowed"
+                className="w-9 h-9 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-tertiary transition-all rounded-none cursor-pointer disabled:cursor-not-allowed"
               >
                 <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </button>
@@ -616,7 +617,7 @@ export default function HeroMatchesCarousel({
               userChangedTabRef.current = true;
               setActiveTab('upcoming');
             }}
-            className="px-3 py-1 bg-primary-container hover:bg-cta-hover text-white text-[11px] uppercase font-bold tracking-wider cursor-pointer"
+            className="px-3.5 py-2 bg-primary-container hover:bg-cta-hover text-white text-[11px] uppercase font-bold tracking-wider shadow-[2px_2px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
           >
             Ver Próximos Partidos
           </button>
@@ -710,10 +711,16 @@ export default function HeroMatchesCarousel({
                 {/* 1. Cabecera: Jornada, Categoría y a la derecha [Botón Actualizar Icono] + [Icono Casa/Fuera] */}
                 <div className="relative z-30 flex items-center justify-between gap-1.5 pb-1.5 border-b border-white/10">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[9px] sm:text-[10px] font-bold shrink-0">
+                    <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold shrink-0">
                       J{match.round}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-white truncate">
+                    <span
+                      className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-wide truncate ${
+                        getTeamColorTheme(match.categoryName).colorKey
+                          ? getTeamColorTheme(match.categoryName).textClass
+                          : 'text-white'
+                      }`}
+                    >
                       {match.categoryName}
                     </span>
                   </div>
@@ -728,7 +735,7 @@ export default function HeroMatchesCarousel({
                           refreshSingleMatch(match.id, false);
                         }}
                         disabled={isRefreshing}
-                        className={`w-6 h-6 flex items-center justify-center shrink-0 overflow-hidden border transition-colors cursor-pointer ${
+                        className={`w-9 h-9 flex items-center justify-center shrink-0 overflow-hidden border transition-colors cursor-pointer ${
                           isLive
                             ? 'bg-red-950/90 hover:bg-red-800 text-red-200 border-red-500/50'
                             : 'bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border-white/15'
@@ -737,7 +744,7 @@ export default function HeroMatchesCarousel({
                         aria-label="Actualizar marcador"
                       >
                         <RefreshCw
-                          className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-white' : ''}`}
+                          className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-white' : ''}`}
                           aria-hidden="true"
                         />
                       </button>
@@ -745,7 +752,7 @@ export default function HeroMatchesCarousel({
 
                     {/* Icono de En Casa o Fuera */}
                     <span
-                      className={`w-6 h-6 flex items-center justify-center shrink-0 border ${
+                      className={`w-9 h-9 flex items-center justify-center shrink-0 border ${
                         match.isClubHome
                           ? 'text-primary bg-primary-container/15 border-primary-container/30'
                           : 'text-tertiary bg-white/5 border-white/10'
@@ -753,9 +760,9 @@ export default function HeroMatchesCarousel({
                       title={match.isClubHome ? 'En casa (Pabellón Sergio Scariolo)' : 'Fuera / A domicilio'}
                     >
                       {match.isClubHome ? (
-                        <Home className="w-3.5 h-3.5" aria-hidden="true" />
+                        <Home className="w-4 h-4" aria-hidden="true" />
                       ) : (
-                        <Plane className="w-3.5 h-3.5" aria-hidden="true" />
+                        <Plane className="w-4 h-4" aria-hidden="true" />
                       )}
                     </span>
                   </div>
@@ -763,9 +770,9 @@ export default function HeroMatchesCarousel({
 
                 {/* 2. Subcabecera: Estado/Fecha a la izquierda + Encabezados de Sets (S1, S2... | SETS) encima de los puntos */}
                 <div className="relative z-10 pointer-events-none flex items-center justify-between gap-1 pt-1.5 pb-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0 truncate">
                     {isLive ? (
-                      <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-red-400">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-400">
                         <span className="relative flex h-2 w-2 shrink-0">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -773,15 +780,15 @@ export default function HeroMatchesCarousel({
                         <span>En Juego</span>
                       </span>
                     ) : match.status === 'POSTPONED' ? (
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
                         Aplazado
                       </span>
                     ) : match.status === 'CANCELLED' ? (
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-red-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">
                         Cancelado
                       </span>
                     ) : isFinished ? (
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
                         Final ·{' '}
                         {match.dateStr === todayStr
                           ? 'Hoy'
@@ -800,7 +807,7 @@ export default function HeroMatchesCarousel({
                     )}
                   </div>
 
-                  {/* Zona central marcada en azul: Botón Icono YouTube + 'Ver partido' */}
+                  {/* Zona central: Botón Icono YouTube + 'Vídeo' o 'Ver partido' */}
                   {videoTargetUrl && isValidYouTubeUrl(videoTargetUrl) && (
                     <a
                       href={videoTargetUrl}
@@ -809,7 +816,9 @@ export default function HeroMatchesCarousel({
                       onClick={(e) => {
                         e.stopPropagation();
                       }}
-                      className={`pointer-events-auto relative z-30 inline-flex items-center gap-1 px-2 py-0.5 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider rounded-[2px] transition-all shadow-sm ${
+                      className={`pointer-events-auto relative z-30 inline-flex items-center gap-1 font-bold uppercase tracking-wider rounded-none transition-all shadow-sm shrink-0 ${
+                        hasScoreboard ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-[10px]'
+                      } ${
                         isLiveVideo
                           ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]'
                           : 'bg-red-600/90 hover:bg-red-600 text-white hover:scale-105'
@@ -820,7 +829,7 @@ export default function HeroMatchesCarousel({
                       <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                       </svg>
-                      <span>Ver partido</span>
+                      <span>{hasScoreboard ? 'Vídeo' : 'Ver partido'}</span>
                     </a>
                   )}
 
@@ -842,8 +851,8 @@ export default function HeroMatchesCarousel({
                         SETS
                       </span>
                     </div>
-                  ) : (
-                    <span className="font-mono text-xs font-extrabold text-primary">
+                  ) : match.status === 'POSTPONED' || match.status === 'CANCELLED' ? null : (
+                    <span className="font-mono text-xs font-extrabold text-primary shrink-0">
                       {new Date(match.matchDate).toLocaleTimeString('en-GB', {
                         timeZone: 'Europe/Madrid',
                         hour: '2-digit',
@@ -854,133 +863,133 @@ export default function HeroMatchesCarousel({
                   )}
                 </div>
 
-                {/* 3. Filas de Equipos (Logo Grande + 3 Iniciales + Nombre completo en carrusel) + Columnas de Sets + Total de Sets */}
-                <div className="relative z-10 pointer-events-none space-y-2 pt-0.5">
-                  {/* Fila Equipo Local */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div
-                      className={`flex items-center gap-2 min-w-0 flex-1 ${
-                        match.status === 'POSTPONED' || match.status === 'CANCELLED' ? 'pr-24 sm:pr-28' : ''
-                      }`}
-                      title={match.homeTeamName}
-                    >
-                      <Image
-                        src={getTeamLogo(match.homeTeamName)}
-                        alt={match.homeTeamName}
-                        width={32}
-                        height={32}
-                        className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-                      />
-                      <span
-                        className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none shrink-0 w-9 sm:w-10 ${
-                          match.isClubHome ? 'text-primary' : 'text-white'
-                        }`}
-                      >
-                        {getTeamInitials(match.homeTeamName)}
-                      </span>
-                      <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
-                        <div className="animate-team-marquee items-center whitespace-nowrap text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-tertiary/90">
-                          <span className="pr-6">{match.homeTeamName}</span>
-                          <span className="pr-6" aria-hidden="true">
-                            {match.homeTeamName}
-                          </span>
+                {/* 3. Filas de Equipos + Sets o Sello APLAZADO/CANCELADO en flujo flex sin solapes */}
+                <div className="relative z-10 pointer-events-none flex items-center justify-between gap-2 pt-0.5">
+                  <div className="flex-1 min-w-0 space-y-2">
+                    {/* Fila Equipo Local */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1" title={match.homeTeamName}>
+                        <Image
+                          src={getTeamLogo(match.homeTeamName)}
+                          alt={match.homeTeamName}
+                          width={32}
+                          height={32}
+                          className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                        />
+                        <span
+                          className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none shrink-0 w-9 sm:w-10 ${
+                            match.isClubHome
+                              ? getTeamColorTheme(match.categoryName).colorKey
+                                ? getTeamColorTheme(match.categoryName).textClass
+                                : 'text-primary'
+                              : 'text-white'
+                          }`}
+                        >
+                          {getTeamInitials(match.homeTeamName)}
+                        </span>
+                        <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
+                          <div className="animate-team-marquee items-center whitespace-nowrap text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-tertiary/90">
+                            <span className="pr-6">{match.homeTeamName}</span>
+                            <span className="pr-6" aria-hidden="true">
+                              {match.homeTeamName}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {hasScoreboard && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        {setColumns.map((col, idx) => (
+                      {hasScoreboard && !(match.status === 'POSTPONED' || match.status === 'CANCELLED') && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          {setColumns.map((col, idx) => (
+                            <span
+                              key={`home-set-${idx}`}
+                              className={`${
+                                compactCols ? 'w-6 sm:w-[26px] text-xs sm:text-sm' : 'w-7 sm:w-[30px] text-sm sm:text-base'
+                              } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
+                                col.isCurrent
+                                  ? 'bg-red-950/60 border border-red-500/40'
+                                  : 'bg-white/[0.04]'
+                              } ${getPointColorClass(col.home, col.away)}`}
+                            >
+                              {col.home}
+                            </span>
+                          ))}
                           <span
-                            key={`home-set-${idx}`}
-                            className={`${
-                              compactCols ? 'w-6 sm:w-[26px] text-xs sm:text-sm' : 'w-7 sm:w-[30px] text-sm sm:text-base'
-                            } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
-                              col.isCurrent
-                                ? 'bg-red-950/60 border border-red-500/40'
-                                : 'bg-white/[0.04]'
-                            } ${getPointColorClass(col.home, col.away)}`}
+                            className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
+                              totalSets.home,
+                              totalSets.away
+                            )}`}
                           >
-                            {col.home}
-                          </span>
-                        ))}
-                        <span
-                          className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
-                            totalSets.home,
-                            totalSets.away
-                          )}`}
-                        >
-                          {totalSets.home}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Fila Equipo Visitante */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div
-                      className={`flex items-center gap-2 min-w-0 flex-1 ${
-                        match.status === 'POSTPONED' || match.status === 'CANCELLED' ? 'pr-24 sm:pr-28' : ''
-                      }`}
-                      title={match.awayTeamName}
-                    >
-                      <Image
-                        src={getTeamLogo(match.awayTeamName)}
-                        alt={match.awayTeamName}
-                        width={32}
-                        height={32}
-                        className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-                      />
-                      <span
-                        className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none shrink-0 w-9 sm:w-10 ${
-                          !match.isClubHome ? 'text-primary' : 'text-white'
-                        }`}
-                      >
-                        {getTeamInitials(match.awayTeamName)}
-                      </span>
-                      <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
-                        <div className="animate-team-marquee items-center whitespace-nowrap text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-tertiary/90">
-                          <span className="pr-6">{match.awayTeamName}</span>
-                          <span className="pr-6" aria-hidden="true">
-                            {match.awayTeamName}
+                            {totalSets.home}
                           </span>
                         </div>
-                      </div>
+                      )}
                     </div>
 
-                    {hasScoreboard && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        {setColumns.map((col, idx) => (
-                          <span
-                            key={`away-set-${idx}`}
-                            className={`${
-                              compactCols ? 'w-6 sm:w-[26px] text-xs sm:text-sm' : 'w-7 sm:w-[30px] text-sm sm:text-base'
-                            } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
-                              col.isCurrent
-                                ? 'bg-red-950/60 border border-red-500/40'
-                                : 'bg-white/[0.04]'
-                            } ${getPointColorClass(col.away, col.home)}`}
-                          >
-                            {col.away}
-                          </span>
-                        ))}
+                    {/* Fila Equipo Visitante */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1" title={match.awayTeamName}>
+                        <Image
+                          src={getTeamLogo(match.awayTeamName)}
+                          alt={match.awayTeamName}
+                          width={32}
+                          height={32}
+                          className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                        />
                         <span
-                          className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
-                            totalSets.away,
-                            totalSets.home
-                          )}`}
+                          className={`font-display-xl text-base sm:text-lg tracking-wider uppercase leading-none shrink-0 w-9 sm:w-10 ${
+                            !match.isClubHome
+                              ? getTeamColorTheme(match.categoryName).colorKey
+                                ? getTeamColorTheme(match.categoryName).textClass
+                                : 'text-primary'
+                              : 'text-white'
+                          }`}
                         >
-                          {totalSets.away}
+                          {getTeamInitials(match.awayTeamName)}
                         </span>
+                        <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
+                          <div className="animate-team-marquee items-center whitespace-nowrap text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-tertiary/90">
+                            <span className="pr-6">{match.awayTeamName}</span>
+                            <span className="pr-6" aria-hidden="true">
+                              {match.awayTeamName}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    )}
+
+                      {hasScoreboard && !(match.status === 'POSTPONED' || match.status === 'CANCELLED') && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          {setColumns.map((col, idx) => (
+                            <span
+                              key={`away-set-${idx}`}
+                              className={`${
+                                compactCols ? 'w-6 sm:w-[26px] text-xs sm:text-sm' : 'w-7 sm:w-[30px] text-sm sm:text-base'
+                              } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
+                                col.isCurrent
+                                  ? 'bg-red-950/60 border border-red-500/40'
+                                  : 'bg-white/[0.04]'
+                              } ${getPointColorClass(col.away, col.home)}`}
+                            >
+                              {col.away}
+                            </span>
+                          ))}
+                          <span
+                            className={`w-7 sm:w-8 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
+                              totalSets.away,
+                              totalSets.home
+                            )}`}
+                          >
+                            {totalSets.away}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Cartel diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores */}
+                  {/* Sello de APLAZADO / CANCELADO a la derecha sin posicionamiento absoluto */}
                   {(match.status === 'POSTPONED' || match.status === 'CANCELLED') && (
-                    <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
+                    <div className="pointer-events-none shrink-0 flex items-center justify-end">
                       <div
-                        className={`-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] ${
+                        className={`-rotate-3 sm:-rotate-6 transform px-2 sm:px-2.5 py-1 border-2 font-display-xl text-[11px] sm:text-xs tracking-[0.14em] uppercase font-black shadow-[0_4px_16px_rgba(0,0,0,0.75)] select-none rounded-[2px] ${
                           match.status === 'CANCELLED'
                             ? 'bg-red-950/95 text-red-200 border-red-500'
                             : 'bg-amber-500/95 text-black border-amber-200'

@@ -137,6 +137,10 @@ export default function Footer() {
               Accesibilidad
             </Link>
             <span className="text-white/20 select-none" aria-hidden="true">•</span>
+            <Link href="/proteccion-menor" className="text-emerald-300 hover:text-emerald-200 font-semibold transition-colors">
+              Protección al Menor (LOPIVI)
+            </Link>
+            <span className="text-white/20 select-none" aria-hidden="true">•</span>
             <CookieSettingsButton />
           </nav>
           <p className="text-[11px] text-tertiary/80 text-center sm:text-right">
@@ -365,8 +369,8 @@ export default function Footer() {
                     </Link>
                   </li>
                   <li>
-                    <Link href="/autorizaciones" className="hover:text-primary transition-colors">
-                      Portal de Autorizaciones
+                    <Link href="/proteccion-menor" className="text-emerald-300 hover:text-emerald-200 font-bold transition-colors">
+                      Protección al Menor y Canal LOPIVI
                     </Link>
                   </li>
                   <li>
@@ -493,6 +497,10 @@ export default function Footer() {
               <span className="text-white/20 select-none" aria-hidden="true">•</span>
               <Link href="/accesibilidad" className="text-on-surface-variant hover:text-white text-xs transition-colors">
                 Accesibilidad
+              </Link>
+              <span className="text-white/20 select-none" aria-hidden="true">•</span>
+              <Link href="/proteccion-menor" className="text-emerald-300 hover:text-emerald-200 font-semibold text-xs transition-colors">
+                Canal LOPIVI · Protección al Menor
               </Link>
               <span className="text-white/20 select-none" aria-hidden="true">•</span>
               <CookieSettingsButton />

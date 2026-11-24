@@ -8,6 +8,9 @@ export const TEAM_LOGOS_MAP: Record<string, string> = {
   'VOLEIBOL SAN PEDRO': '/images/logo.jpg',
   'VOLEIBOL SAN PEDRO ROJO': '/images/logo.jpg',
   'VOLEIBOL SAN PEDRO NEGRO': '/images/logo.jpg',
+  'VOLEIBOL SAN PEDRO AZUL': '/images/logo.jpg',
+  'VOLEIBOL SAN PEDRO ROSA': '/images/logo.jpg',
+  'VOLEIBOL SAN PEDRO VERDE': '/images/logo.jpg',
   'VOLEIBOL SAN PEDRO BLANCO': '/images/logo.jpg',
   'VOLEIBOL SAN PEDRO GRIS': '/images/logo.jpg',
 
@@ -64,13 +67,21 @@ export const TEAM_LOGOS_MAP: Record<string, string> = {
   'INFANTIL BLANCO': '/images/teams/infantil-blanco.jpg',
   'SOHO MALAGA': '/images/teams/soho-malaga.jpg',
   'FORVOLEY TORREMOLINOS': '/images/teams/forvoley-torremolinos.jpg',
+  'EMV ALHAURIN EL GRANDE': '/images/teams/emv-alh-grande.jpg',
+  'EMV ALH. GRANDE ROJO': '/images/teams/emv-alh-grande.jpg',
   'EMV ALH.GRANDE': '/images/teams/emv-alh-grande.jpg',
   'COSTA DEL VOLEY': '/images/teams/costa-del-voley.png',
+  'COSTA DEL VOLEY BLANCO': '/images/teams/costa-del-voley.png',
+  'COSTA DEL VOLEY VERDE': '/images/teams/costa-del-voley.png',
   'COSTA DEL VOLEY ROSA': '/images/teams/costa-del-voley.png',
   'COSTA DEL VOLEY ROSA (ORO)': '/images/teams/costa-del-voley.png',
+  'CEV ALEVIN': '/images/teams/cev-juvenil.jpg',
+  'CV PIZARRA LA FUENSANTA MORADO': '/images/teams/cv-pizarra-la-fuensanta.jpg',
+  'MIJAS VOLEY': '/images/teams/mijas-voley.png',
   'MIJAS VOLEY AZUL': '/images/teams/mijas-voley.png',
   'AD ASUNCIÓN': '/images/teams/ad-asuncion.png',
   'CLUB NERJA ATLETISMO': '/images/teams/club-nerja.png',
+  'NERJA ATLETISMO CLUB': '/images/teams/club-nerja.png',
 
   // AFADE
   'CD VOLEIBOL SAN PEDRO': '/images/logo.jpg',
@@ -99,6 +110,9 @@ export const TEAM_INITIALS_MAP: Record<string, string> = {
   'VOLEIBOL SAN PEDRO': 'VSP',
   'VOLEIBOL SAN PEDRO ROJO': 'VSP',
   'VOLEIBOL SAN PEDRO NEGRO': 'VSP',
+  'VOLEIBOL SAN PEDRO AZUL': 'VSP',
+  'VOLEIBOL SAN PEDRO ROSA': 'VSP',
+  'VOLEIBOL SAN PEDRO VERDE': 'VSP',
   'VOLEIBOL SAN PEDRO BLANCO': 'VSP',
   'VOLEIBOL SAN PEDRO GRIS': 'VSP',
 
@@ -147,21 +161,29 @@ export const TEAM_INITIALS_MAP: Record<string, string> = {
   'ALHAURÍN DE LA TORRE A': 'ADT',
   'LA CORACHA': 'COR',
   'CEV JUVENIL': 'CEV',
+  'CEV ALEVIN': 'CEV',
   'CV PIZARRA LA FUENSANTA': 'PIZ',
   'CV PIZARRA LA FUENSANTA AZUL': 'PIA',
   'CV PIZARRA LA FUENSANTA BLANCO': 'PIB',
+  'CV PIZARRA LA FUENSANTA MORADO': 'PIM',
   'UNION MALAGUEÑA': 'UMA',
   'CADETE BLANCO': 'CBL',
   'INFANTIL BLANCO': 'IBL',
   'SOHO MALAGA': 'SOH',
   'FORVOLEY TORREMOLINOS': 'FVT',
   'EMV ALH.GRANDE': 'EAG',
+  'EMV ALH. GRANDE ROJO': 'EAG',
+  'EMV ALHAURIN EL GRANDE': 'EAG',
   'COSTA DEL VOLEY': 'CDV',
+  'COSTA DEL VOLEY BLANCO': 'CDV',
+  'COSTA DEL VOLEY VERDE': 'CDV',
   'COSTA DEL VOLEY ROSA': 'CDV',
   'COSTA DEL VOLEY ROSA (ORO)': 'CDV',
+  'MIJAS VOLEY': 'MIV',
   'MIJAS VOLEY AZUL': 'MIV',
   'AD ASUNCIÓN': 'ADA',
   'CLUB NERJA ATLETISMO': 'CNA',
+  'NERJA ATLETISMO CLUB': 'CNA',
 
   // AFADE
   'CD VOLEIBOL SAN PEDRO': 'VSP',
@@ -222,9 +244,13 @@ export function getTeamInitials(teamName?: string | null): string {
   if (norm.includes('FLORES SEVILLA')) return 'LFS';
   if (norm.includes('NUEVA OLA')) return 'OLA';
   if (norm.includes('LA VEGA')) return 'LVV';
+  if (norm.includes('ALHAURIN EL GRANDE') || norm.includes('ALH. GRANDE') || norm.includes('ALH.GRANDE')) return 'EAG';
   if (norm.includes('ALHAURIN')) return 'ADT';
   if (norm.includes('INTER PLAYAS')) return 'IPA';
   if (norm.includes('MIJAS')) return 'MIV';
+  if (norm.includes('NERJA')) return 'CNA';
+  if (norm.includes('ASUNCION')) return 'ADA';
+  if (norm.includes('CEV')) return 'CEV';
   if (norm.includes('VAM')) return 'VAM';
   if (norm.includes('JUST VOLEY')) return norm.includes('B') ? 'JVB' : 'JVC';
   if (norm.includes('FUNDACION VICTORIA')) return 'FVI';
@@ -298,6 +324,9 @@ export function getTeamLogo(teamName?: string | null): string {
   if (norm.includes('GRANAVOLEY')) return '/images/teams/granavoley-espagruas.jpg';
   if (norm.includes('ISONDA')) return '/images/teams/academia-vc-isonda.jpg';
   if (norm.includes('SIERRA ELVIRA')) return '/images/teams/sierra-elvira.jpg';
+  if (norm.includes('ALHAURIN EL GRANDE') || norm.includes('ALH. GRANDE') || norm.includes('ALH.GRANDE')) {
+    return '/images/teams/emv-alh-grande.jpg';
+  }
   if (norm.includes('ALHAURIN')) return '/images/teams/alhaurin-de-la-torre.jpg';
   if (norm.includes('LA CORACHA')) return '/images/teams/la-coracha.jpg';
   if (norm.includes('LA VEGA')) return '/images/teams/la-vega.jpg';
@@ -306,7 +335,6 @@ export function getTeamLogo(teamName?: string | null): string {
   if (norm.includes('UNION MALAGUENA')) return '/images/teams/union-malaguena.jpg';
   if (norm.includes('SOHO')) return '/images/teams/soho-malaga.jpg';
   if (norm.includes('TORREMOLINOS') || norm.includes('FORVOLEY')) return '/images/teams/forvoley-torremolinos.jpg';
-  if (norm.includes('ALH.GRANDE')) return '/images/teams/emv-alh-grande.jpg';
   if (norm.includes('MIJAS')) return '/images/teams/mijas-voley.png';
   if (norm.includes('ASUNCION')) return '/images/teams/ad-asuncion.png';
   if (norm.includes('NERJA')) return '/images/teams/club-nerja.png';

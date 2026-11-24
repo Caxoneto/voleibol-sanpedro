@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: 'Política de Privacidad | C.D. Voleibol San Pedro',
   description:
     'Información detallada sobre protección de datos personales, tratamiento de menores, bases jurídicas, plazos de conservación y ejercicio de derechos según RGPD y LOPDGDD en el C.D. Voleibol San Pedro.',
+  alternates: {
+    canonical: '/privacidad',
+  },
 };
 
 export default function PrivacidadPage() {

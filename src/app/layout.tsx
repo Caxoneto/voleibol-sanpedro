@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Anton, Space_Grotesk, Caveat_Brush } from 'next/font/google';
+import { Anton, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -18,13 +18,6 @@ const spaceGrotesk = Space_Grotesk({
   weight: ['400', '500', '600', '700'],
   subsets: ['latin'],
   variable: '--font-space-grotesk',
-  display: 'swap',
-});
-
-const caveatBrush = Caveat_Brush({
-  weight: '400',
-  subsets: ['latin'],
-  variable: '--font-brush',
   display: 'swap',
 });
 
@@ -57,19 +50,21 @@ export const metadata: Metadata = {
     'Federación Andaluza de Voleibol',
   ],
   icons: {
-    icon: '/images/logo.jpg',
+    icon: '/favicon-32.png',
+    apple: '/apple-touch-icon.png',
   },
   openGraph: {
     title: `${CLUB_INFO.name} | Web Oficial`,
     description: `Portal oficial del ${CLUB_INFO.name} (${CLUB_INFO.city}, ${CLUB_INFO.province}). Deporte base, plantillas, calendarios y resultados oficiales FAVB.`,
-    url: '/',
     siteName: CLUB_INFO.name,
     locale: 'es_ES',
     type: 'website',
     images: [
       {
-        url: '/images/logo.jpg',
-        alt: `${CLUB_INFO.name} - Escudo Oficial`,
+        url: '/og-cover.jpg',
+        width: 1200,
+        height: 630,
+        alt: `${CLUB_INFO.name} - Web Oficial`,
       },
     ],
   },
@@ -77,8 +72,35 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: `${CLUB_INFO.name} | Web Oficial`,
     description: `Portal oficial del ${CLUB_INFO.name}. Deporte base, plantillas, calendarios y resultados oficiales FAVB.`,
-    images: ['/images/logo.jpg'],
+    images: ['/og-cover.jpg'],
   },
+};
+
+const sportsOrganizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SportsOrganization',
+  name: CLUB_INFO.name,
+  alternateName: CLUB_INFO.federationRegisteredName,
+  url: 'https://voleibolsanpedro.es',
+  logo: 'https://voleibolsanpedro.es/images/logo.jpg',
+  image: 'https://voleibolsanpedro.es/og-cover.jpg',
+  sport: 'Volleyball',
+  email: CLUB_INFO.contactEmail,
+  telephone: CLUB_INFO.contactPhone,
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: CLUB_INFO.officialAddress,
+    addressLocality: CLUB_INFO.city,
+    addressRegion: 'Andalucía',
+    postalCode: CLUB_INFO.postalCode,
+    addressCountry: 'ES',
+  },
+  location: {
+    '@type': 'Place',
+    name: CLUB_INFO.venueName,
+    address: CLUB_INFO.venueAddress,
+  },
+  sameAs: [CLUB_INFO.instagramUrl, CLUB_INFO.facebookUrl],
 };
 
 export default function RootLayout({
@@ -89,9 +111,15 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`dark scroll-smooth ${anton.variable} ${spaceGrotesk.variable} ${caveatBrush.variable}`}
+      className={`dark scroll-smooth ${anton.variable} ${spaceGrotesk.variable}`}
     >
       <body className="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col selection:bg-primary-container selection:text-white">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(sportsOrganizationJsonLd).replace(/</g, '\\u003c'),
+          }}
+        />
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2.5 focus:bg-primary-container focus:text-white focus:font-headline focus:font-bold focus:text-xs focus:uppercase focus:tracking-widest focus:rounded-sm focus:shadow-lg"
@@ -106,7 +134,7 @@ export default function RootLayout({
         </header>
 
         {/* Contenido principal comenzando justo debajo de la cabecera fija */}
-        <main id="main-content" tabIndex={-1} className="flex-1 w-full pt-28 focus:outline-none">
+        <main id="main-content" tabIndex={-1} className="flex-1 w-full pt-[116px] focus:outline-none">
           {children}
         </main>
 

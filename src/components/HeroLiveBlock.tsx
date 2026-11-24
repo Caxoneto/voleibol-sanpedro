@@ -14,88 +14,79 @@ export default function HeroLiveBlock() {
         isLive ? 'gap-1.5 sm:gap-4 lg:gap-6' : 'gap-2.5 sm:gap-5 lg:gap-6'
       } self-start md:self-center shrink-0 w-full md:w-auto transition-all`}
     >
-      {/* Emblema / Lema Oficial de la Temporada: "Yo Voley... ¿y tú?" (Recreación fiel de RRSS) */}
+      {/* Emblema / Lema Oficial de la Temporada: "Yo Voley... ¿y tú?" (SVG inline sin fuente web externa) */}
       <div
         className={`shrink-0 select-none -rotate-6 transform transition-all duration-300 hover:-rotate-3 ${
           isLive
-            ? 'px-1 sm:px-3 py-0.5 max-w-[68px] sm:max-w-none'
+            ? 'px-1 sm:px-3 py-0.5 max-w-[84px] sm:max-w-none'
             : 'px-2 sm:px-3 py-1'
         }`}
-        aria-label="Lema oficial: Yo Voley... ¿y tú?"
       >
-        <div
-          className="flex flex-col items-center leading-none"
-          style={{ fontFamily: 'var(--font-brush), cursive' }}
+        <svg
+          viewBox="0 0 260 156"
+          role="img"
+          aria-label="Lema oficial: Yo Voley... ¿y tú?"
+          className={`overflow-visible drop-shadow-[0_4px_12px_rgba(0,0,0,0.85)] transition-all ${
+            isLive
+              ? 'w-20 sm:w-40 md:w-48 lg:w-56 h-auto'
+              : 'w-40 sm:w-52 lg:w-64 h-auto'
+          }`}
         >
-          {/* Línea superior blanca: Yo Voley... */}
-          <span
-            className={`text-white tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] transition-all ${
-              isLive
-                ? 'text-xs sm:text-2xl md:text-3xl lg:text-4xl'
-                : 'text-3xl sm:text-4xl lg:text-5xl'
-            }`}
+          <text
+            x="130"
+            y="42"
+            textAnchor="middle"
+            fill="#ffffff"
+            fontFamily="Georgia, 'Times New Roman', serif"
+            fontStyle="italic"
+            fontWeight="700"
+            fontSize="40"
+            letterSpacing="0.5"
           >
             Yo Voley...
-          </span>
+          </text>
 
           {/* Trazo de pincel rojo intenso debajo de Yo Voley... */}
-          <svg
-            viewBox="0 0 240 22"
-            className={`-my-0.5 overflow-visible transition-all ${
-              isLive
-                ? 'w-14 sm:w-36 md:w-48 h-2 sm:h-3.5'
-                : 'w-40 sm:w-52 lg:w-60 h-4 sm:h-5'
-            }`}
-            aria-hidden="true"
-          >
-            <path
-              d="M4 15 C 65 8, 155 5, 236 3"
-              stroke="#e10600"
-              strokeWidth="4.5"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M14 19 C 80 13, 165 9, 226 7"
-              stroke="#b80000"
-              strokeWidth="2"
-              strokeLinecap="round"
-              fill="none"
-              opacity="0.85"
-            />
-          </svg>
+          <path
+            d="M14 58 C 78 50, 165 46, 246 44"
+            stroke="#e10600"
+            strokeWidth="5"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M24 63 C 88 56, 175 52, 236 49"
+            stroke="#b80000"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.88"
+          />
 
-          {/* Línea inferior roja: ¿y tú? */}
-          <span
-            className={`text-[#ff1111] tracking-wide drop-shadow-[0_2px_10px_rgba(225,6,0,0.45)] transition-all ${
-              isLive
-                ? 'text-base sm:text-3xl md:text-4xl lg:text-5xl -mt-0.5'
-                : 'text-4xl sm:text-5xl lg:text-6xl -mt-1'
-            }`}
+          <text
+            x="130"
+            y="108"
+            textAnchor="middle"
+            fill="#ff1111"
+            fontFamily="Georgia, 'Times New Roman', serif"
+            fontStyle="italic"
+            fontWeight="700"
+            fontSize="50"
+            letterSpacing="0.5"
           >
             ¿y tú?
-          </span>
+          </text>
 
           {/* Corazón dibujado a mano en trazo blanco debajo */}
-          <svg
-            viewBox="0 0 44 42"
-            className={`text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)] transition-all ${
-              isLive
-                ? 'w-3 h-3 sm:w-5 sm:h-5 mt-0.5 -ml-2'
-                : 'w-6 h-6 sm:w-7 sm:h-7 mt-1 -ml-4'
-            }`}
+          <path
+            d="M126 150 C 123 145, 111 136, 112 126 C 112.8 120, 118.5 118.5, 122.5 123.5 C 124.2 125.6, 125.4 128.2, 126 130 C 126.8 126.5, 129.5 119.5, 135 119.5 C 140 119.5, 142.5 124.5, 141 130.5 C 139 138.5, 129.5 146, 126 150 Z"
+            stroke="#ffffff"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M21 37 C 18 32, 6 23, 7 13 C 7.8 7, 13.5 5.5, 17.5 10.5 C 19.2 12.6, 20.4 15.2, 21 17 C 21.8 13.5, 24.5 6.5, 30 6.5 C 35 6.5, 37.5 11.5, 36 17.5 C 34 25.5, 24.5 33, 21 37 Z"
-              stroke="currentColor"
-              strokeWidth="2.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
+          />
+        </svg>
       </div>
 
       {/* Botón oficial de YouTube En Directo! (Aparece cuando el streaming está activo) */}
@@ -107,7 +98,7 @@ export default function HeroLiveBlock() {
             rel="noopener noreferrer"
             title="Ver partido en directo en YouTube (Abre en ventana nueva)"
             aria-label="Ver streaming oficial en YouTube (En directo, abre en una nueva pestaña)"
-            className="group relative flex items-center gap-2 sm:gap-3 px-2.5 py-1.5 sm:px-4 sm:py-2.5 bg-gradient-to-r from-[#b80022] via-primary-container to-[#9e021d] hover:from-primary-container hover:to-[#b80022] text-white font-headline font-black uppercase tracking-wider rounded-md border-2 border-red-300 shadow-[0_0_20px_rgba(239,68,68,0.6)] hover:shadow-[0_0_32px_rgba(239,68,68,0.85)] hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            className="group relative flex items-center gap-2 sm:gap-3 px-2.5 py-1.5 sm:px-4 sm:py-2.5 bg-gradient-to-r from-[#b80022] via-primary-container to-[#9e021d] hover:from-primary-container hover:to-[#b80022] text-white font-headline font-black uppercase tracking-wider rounded-none border-2 border-red-300 shadow-[0_0_20px_rgba(239,68,68,0.6)] hover:shadow-[0_0_32px_rgba(239,68,68,0.85)] hover:scale-105 active:translate-x-[1px] active:translate-y-[1px] transition-all duration-200 cursor-pointer"
           >
             {/* Icono oficial de YouTube */}
             <div className="w-5 h-5 sm:w-7 sm:h-7 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
@@ -126,7 +117,7 @@ export default function HeroLiveBlock() {
                   En directo!
                 </span>
               </div>
-              <span className="text-[8px] sm:text-[10px] text-white/90 font-mono font-medium tracking-normal mt-0.5 whitespace-nowrap">
+              <span className="text-[10px] text-white/95 font-mono font-medium tracking-normal mt-0.5 whitespace-nowrap">
                 YouTube Live ↗
               </span>
             </div>
@@ -134,16 +125,16 @@ export default function HeroLiveBlock() {
         </div>
       )}
 
-      {/* Promoción Lotería de Navidad 2026 - Animación de escala progresiva y color alternado */}
+      {/* Promoción Lotería de Navidad 2026 - Animación de escala GPU */}
       <div className="shrink-0 flex flex-col items-center pt-3 sm:pt-5 pb-1 sm:pb-2">
         <Link
           href="/noticias/loteria-navidad-2026-voleibol-san-pedro-15586"
-          aria-label="Lotería de Navidad 2026 del C.D. Voleibol San Pedro: Número 15.586. Haz clic para leer los detalles"
+          aria-label="Lotería · 15.586 — Décimo de Lotería de Navidad 2026 del C.D. Voleibol San Pedro"
           title="Lotería de Navidad 2026: Número 15.586 - C.D. Voleibol San Pedro (Haz clic para ver cómo adquirir décimos)"
           className="group relative flex flex-col items-center cursor-pointer select-none"
         >
           {/* Etiqueta / Pill promocional festiva */}
-          <span className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 px-2 py-0.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black font-headline font-black text-[8px] sm:text-[10px] uppercase tracking-wider rounded-full shadow-[0_2px_10px_rgba(245,158,11,0.55)] whitespace-nowrap transition-transform duration-200 group-hover:scale-105 pointer-events-none border border-amber-100/70">
+          <span className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 px-2 py-0.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black font-headline font-black text-[10px] uppercase tracking-wider rounded-full shadow-[0_2px_10px_rgba(245,158,11,0.55)] whitespace-nowrap transition-transform duration-200 group-hover:scale-105 pointer-events-none border border-amber-100/70">
             Lotería · 15.586
           </span>
 

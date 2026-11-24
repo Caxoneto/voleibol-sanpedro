@@ -7,6 +7,7 @@ import {
   AlertCircle,
   Camera,
   CheckCircle2,
+  ChevronDown,
   Download,
   Heart,
   Loader2,
@@ -14,7 +15,7 @@ import {
   Trophy,
   Vote,
 } from 'lucide-react';
-import { CLUB_INFO } from '@/lib/club-info';
+import { CLUB_INFO, INITIAL_CHANTS, INITIAL_WALLPAPERS } from '@/lib/public-content';
 import { formatMadridDate } from '@/lib/date-utils';
 import { sanitizeHttpsUrl } from '@/lib/validators';
 import SponsorBanner from '@/components/SponsorBanner';
@@ -43,42 +44,6 @@ interface MvpCandidate {
   photoUrl: string;
 }
 
-const CLUB_CHANTS = [
-  {
-    id: 'chant-1',
-    title: '¡Vamos mi San Pedro, a ganar!',
-    rhythm: 'Palmas al compás acelerado',
-    lyrics: `(Coro de grada)
-¡Vamos mi San Pedro, hoy hay que ganar!
-Desde Fuente Nueva hasta el bulevar,
-¡Rojinegro el pecho, orgullo de verdad!
-¡Punto a punto el Sergio Scariolo rugirá!
-(Paaaaalmas: ¡San Pedro! ¡San Pedro! ¡Hey!)`,
-  },
-  {
-    id: 'chant-2',
-    title: 'San Pedro de mi vida',
-    rhythm: 'Canto melódico con bufandas en alto',
-    lyrics: `San Pedro de mi vida,
-tú eres mi pasión,
-defiéndeme esa bola,
-con todo el corazón.
-No importa la distancia,
-ni quién esté enfrente,
-¡el pueblo sampedreño
-siempre está presente!`,
-  },
-  {
-    id: 'chant-3',
-    title: 'Bloqueo en la red',
-    rhythm: 'Grito de guerra tras punto de bloqueo',
-    lyrics: `¡Aquí no pasa nada!
-¡Aquí mandamos hoy!
-¡La red es una muralla,
-de San Pedro yo soy!`,
-  },
-];
-
 const CLUB_GALLERY_ITEMS = [
   {
     id: 'sp-1',
@@ -100,33 +65,6 @@ const CLUB_GALLERY_ITEMS = [
     caption: 'Deporte base, valores y afición en San Pedro Alcántara con #VoleibolSanPedro.',
     imageUrl: '/images/logo.jpg',
     tag: 'C.D. Voleibol San Pedro',
-  },
-];
-
-const CLUB_WALLPAPERS = [
-  {
-    id: 'wp-1',
-    title: 'Poder en la Red - Remate Espectacular',
-    type: 'MOBILE',
-    dimensions: '1080 x 1920 (9:16)',
-    imageUrl: '/images/hero-spike.png',
-    downloadUrl: '/images/hero-spike.png',
-  },
-  {
-    id: 'wp-2',
-    title: 'Escudo Rojinegro - Identidad Oficial',
-    type: 'DESKTOP',
-    dimensions: '1920 x 1080 (16:9)',
-    imageUrl: '/images/logo.jpg',
-    downloadUrl: '/images/logo.jpg',
-  },
-  {
-    id: 'wp-3',
-    title: 'Pabellón Sergio Scariolo - Casa Rojinegra',
-    type: 'POSTER',
-    dimensions: 'Alta Resolución Oficial',
-    imageUrl: '/images/pabellon-sergio-scariolo.jpg',
-    downloadUrl: '/images/pabellon-sergio-scariolo.jpg',
   },
 ];
 
@@ -322,13 +260,13 @@ export default function FanZonePage() {
             </div>
           </div>
 
-          <div className="mt-4 mb-6 space-y-3">
-            <p className="text-xs sm:text-sm text-tertiary">
-              Valora el esfuerzo de nuestras jugadoras y jugadores mayores de edad (+18) con consentimiento de imagen activo. Selecciona a tu candidato/a preferido/a y envía tu voto.
+          <div className="mt-3 mb-5 space-y-2.5">
+            <p className="text-xs text-tertiary">
+              Votación abierta únicamente para categoría <strong className="text-white">Senior (+18)</strong> con consentimiento de imagen activo · 1 voto por dispositivo.
             </p>
 
             {mvpMatch && (
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-container-high border border-white/10 px-4 py-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-container-high border border-white/10 px-4 py-2.5 text-xs">
                 <div className="flex items-center gap-2 font-bold text-white uppercase">
                   <Trophy className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
                   <span>
@@ -344,10 +282,6 @@ export default function FanZonePage() {
                 </span>
               </div>
             )}
-
-            <p className="text-[11px] text-tertiary/90 bg-surface-container-lowest border-l-2 border-primary-container px-3 py-2">
-              <strong className="text-white">Deporte formativo sin presión para menores:</strong> La votación de MVP se habilita exclusivamente para categoría Senior (+18) con autorización vigente, fomentando el compañerismo libre de clasificaciones individuales en cantera.
-            </p>
           </div>
 
           {/* Honeypot anti-bots invisible */}
@@ -476,7 +410,7 @@ export default function FanZonePage() {
                     type="button"
                     onClick={handleVoteSubmit}
                     disabled={!selectedPlayerId || voting}
-                    className="w-full sm:w-auto px-8 py-3 bg-primary-container hover:bg-cta-hover disabled:opacity-40 text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-[4px_4px_0px_0px_#0e0e0e] flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-8 py-3 bg-primary-container hover:bg-cta-hover disabled:opacity-40 text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-[4px_4px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {voting ? (
                       <>
@@ -507,29 +441,33 @@ export default function FanZonePage() {
             <span className="text-xs text-primary font-bold uppercase tracking-wider block">
               Letras de la Grada
             </span>
-            <h3 className="font-display-xl text-2xl uppercase text-white mt-1">
+            <h2 className="font-display-xl text-2xl sm:text-3xl uppercase text-white mt-1">
               Cánticos del Pabellón Sergio Scariolo
-            </h3>
+            </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {CLUB_CHANTS.map((chant) => (
-              <div
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+            {INITIAL_CHANTS.map((chant, idx) => (
+              <details
                 key={chant.id}
-                className="bg-surface-container-lowest border border-white/5 p-5 space-y-3 flex flex-col justify-between"
+                open={idx === 0}
+                className="group bg-surface-container-lowest border border-white/5 overflow-hidden"
               >
-                <div className="flex items-start justify-between gap-2 border-b border-white/5 pb-2.5">
-                  <h4 className="font-headline-sm text-sm uppercase text-primary font-bold">
-                    {chant.title}
-                  </h4>
-                  <span className="text-[10px] text-tertiary uppercase font-mono text-right shrink-0">
-                    {chant.rhythm}
-                  </span>
-                </div>
-                <pre className="font-body-sm text-xs text-on-surface whitespace-pre-wrap leading-relaxed font-sans flex-1">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 hover:bg-white/[0.02] [&::-webkit-details-marker]:hidden">
+                  <div className="min-w-0">
+                    <h3 className="font-headline-sm text-sm uppercase text-primary font-bold truncate">
+                      {chant.title}
+                    </h3>
+                    <span className="text-[10px] text-tertiary uppercase font-mono block">
+                      {chant.rhythm}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-tertiary shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <pre className="font-body-sm text-xs text-on-surface whitespace-pre-wrap leading-relaxed font-sans px-4 pb-4 pt-2 border-t border-white/5">
                   {chant.lyrics}
                 </pre>
-              </div>
+              </details>
             ))}
           </div>
         </section>
@@ -624,7 +562,7 @@ export default function FanZonePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {CLUB_WALLPAPERS.map((wp) => (
+            {INITIAL_WALLPAPERS.map((wp) => (
               <div
                 key={wp.id}
                 className="bg-surface-container-lowest border border-white/5 p-4 flex flex-col justify-between space-y-4"
@@ -635,15 +573,16 @@ export default function FanZonePage() {
                       src={wp.imageUrl}
                       alt={wp.title}
                       fill
+                      sizes="(max-width: 640px) 100vw, 33vw"
                       className={wp.imageUrl.includes('logo') ? 'object-contain p-3' : 'object-cover'}
                     />
                     <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/80 text-white text-[10px] uppercase font-bold">
                       {wp.type}
                     </span>
                   </div>
-                  <h4 className="font-headline-sm text-sm uppercase text-white font-bold leading-tight">
+                  <h3 className="font-headline-sm text-sm uppercase text-white font-bold leading-tight">
                     {wp.title}
-                  </h4>
+                  </h3>
                   <span className="text-[11px] text-tertiary block mt-1">
                     {wp.dimensions}
                   </span>
@@ -652,7 +591,7 @@ export default function FanZonePage() {
                 <a
                   href={wp.downloadUrl}
                   download
-                  className="w-full py-2.5 bg-surface-container-high hover:bg-primary-container text-white text-xs font-bold uppercase text-center flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full py-2.5 bg-surface-container-high hover:bg-primary-container text-white text-xs font-bold uppercase text-center flex items-center justify-center gap-1.5 transition-colors active:translate-x-[1px] active:translate-y-[1px]"
                 >
                   <Download className="w-4 h-4" aria-hidden="true" />
                   <span>Descargar Gratis</span>

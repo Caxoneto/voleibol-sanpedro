@@ -110,6 +110,8 @@ function isSensitiveNoStorePath(pathname: string): boolean {
     pathname.startsWith('/admin/') ||
     pathname === '/autorizaciones' ||
     pathname.startsWith('/autorizaciones/') ||
+    pathname === '/inscripcion' ||
+    pathname.startsWith('/inscripcion/') ||
     pathname === '/acceso' ||
     pathname.startsWith('/acceso/') ||
     pathname === '/club' ||
@@ -118,7 +120,19 @@ function isSensitiveNoStorePath(pathname: string): boolean {
     pathname.startsWith('/mi-club/') ||
     pathname.startsWith('/api/admin/') ||
     pathname.startsWith('/api/consent/') ||
-    pathname.startsWith('/api/intranet/')
+    pathname.startsWith('/api/intranet/') ||
+    pathname.startsWith('/api/public/lopivi-report')
+  );
+}
+
+function isNoReferrerPath(pathname: string): boolean {
+  return (
+    pathname === '/autorizaciones' ||
+    pathname.startsWith('/autorizaciones/') ||
+    pathname === '/inscripcion' ||
+    pathname.startsWith('/inscripcion/') ||
+    pathname === '/acceso' ||
+    pathname.startsWith('/acceso/')
   );
 }
 
@@ -129,11 +143,18 @@ function applySensitiveHeaders(res: NextResponse): void {
   res.headers.set('X-Robots-Tag', 'noindex, nofollow');
 }
 
+const CRON_MACHINE_ENDPOINTS = new Set([
+  '/api/intranet/attendance/check-reminders',
+  '/api/intranet/payments/send-reminders',
+]);
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith('/api/') && MUTATING_METHODS.has(req.method.toUpperCase())) {
-    if (!isOriginAllowed(req)) {
+    const isAuthenticatedCronCall =
+      CRON_MACHINE_ENDPOINTS.has(pathname) && Boolean(req.headers.get('x-cron-secret')?.trim());
+    if (!isAuthenticatedCronCall && !isOriginAllowed(req)) {
       const blockedRes = NextResponse.json(
         {
           success: false,
@@ -152,6 +173,10 @@ export function middleware(req: NextRequest) {
     applySensitiveHeaders(res);
   }
 
+  if (isNoReferrerPath(pathname)) {
+    res.headers.set('Referrer-Policy', 'no-referrer');
+  }
+
   return res;
 }
 
@@ -161,6 +186,8 @@ export const config = {
     '/admin/:path*',
     '/autorizaciones',
     '/autorizaciones/:path*',
+    '/inscripcion',
+    '/inscripcion/:path*',
     '/acceso',
     '/acceso/:path*',
     '/club',

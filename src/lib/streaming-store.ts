@@ -260,3 +260,28 @@ export async function saveMatchRecording(matchId: string, url: string): Promise<
 
   return getMatchRecordings();
 }
+
+/**
+ * Elimina de Neon el enlace de grabación en diferido asociado a un partido.
+ */
+export async function removeMatchRecording(matchId: string): Promise<MatchRecordingsMap> {
+  if (!isValidMatchId(matchId)) {
+    throw new Error('Identificador de partido inválido.');
+  }
+
+  const rows = await queryNeon<{ value: unknown }>(
+    `UPDATE club_settings
+     SET value = (COALESCE(value::jsonb, '{}'::jsonb) - $2::text)::text,
+         updated_at = NOW()
+     WHERE key = $1
+     RETURNING value;`,
+    ['match_recordings', matchId]
+  );
+
+  if (rows.length > 0 && rows[0].value) {
+    const parsed = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
+    return sanitizeRecordingsObject(parsed);
+  }
+
+  return getMatchRecordings();
+}

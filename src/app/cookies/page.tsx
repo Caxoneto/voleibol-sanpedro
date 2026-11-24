@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   title: 'Política de Cookies | C.D. Voleibol San Pedro',
   description:
     'Inventario real y transparente de cookies técnicas y almacenamiento local del navegador en el portal del C.D. Voleibol San Pedro conforme a la LSSI-CE y guía de la AEPD.',
+  alternates: {
+    canonical: '/cookies',
+  },
 };
 
 export default function CookiesPage() {
@@ -105,7 +108,7 @@ export default function CookiesPage() {
                   </span>
                 </div>
                 <p className="text-xs text-tertiary leading-relaxed">
-                  Imprescindibles para la seguridad y funcionamiento básico del sitio: conservar tu propia decisión de privacidad durante 12 meses y gestionar la sesión autenticada de administración del club (<code className="text-primary font-mono">cdv_admin_session</code>, exclusivamente cuando un responsable accede al panel privado).
+                  Imprescindibles para la seguridad y funcionamiento básico del sitio: conservar tu propia decisión de privacidad durante 12 meses y gestionar la sesión autenticada de administración e intranet del club (<code className="text-primary font-mono">cdv_admin_session</code>, <code className="text-primary font-mono">cdv_intranet_session</code> y <code className="text-primary font-mono">cdv_oauth_tx</code>, exclusivamente cuando un responsable, técnico o socio accede al área privada).
                 </p>
               </div>
 
@@ -169,6 +172,20 @@ export default function CookiesPage() {
                     <td className="p-3">Máx. 24 horas o cierre de sesión</td>
                   </tr>
                   <tr className="hover:bg-white/[0.02]">
+                    <td className="p-3 font-mono text-white">cdv_intranet_session</td>
+                    <td className="p-3">Cookie HTTP (Propia · HttpOnly, Secure, SameSite=Lax)</td>
+                    <td className="p-3">Mantiene la sesión autenticada y revocable de cuerpo técnico, directiva, deportistas y familias en <code className="font-mono">/club</code> y <code className="font-mono">/mi-club</code>. No se instala a visitantes públicos.</td>
+                    <td className="p-3"><span className="text-white font-semibold">Técnica (Necesaria)</span></td>
+                    <td className="p-3">Sesión / Máx. 7 días o cierre de sesión</td>
+                  </tr>
+                  <tr className="hover:bg-white/[0.02]">
+                    <td className="p-3 font-mono text-white">cdv_oauth_tx</td>
+                    <td className="p-3">Cookie HTTP temporal cifrada AES-256-GCM (Propia · HttpOnly, Secure, SameSite=Lax)</td>
+                    <td className="p-3">Protege la transacción OAuth2 (<code className="font-mono">state</code>, PKCE y <code className="font-mono">nonce</code>) durante el acceso voluntario con Google o Microsoft en <code className="font-mono">/acceso</code>.</td>
+                    <td className="p-3"><span className="text-white font-semibold">Técnica (Necesaria)</span></td>
+                    <td className="p-3">Máx. 10 minutos (se elimina al completar el acceso)</td>
+                  </tr>
+                  <tr className="hover:bg-white/[0.02]">
                     <td className="p-3 font-mono text-white">cdv_cookie_consent_v2</td>
                     <td className="p-3">LocalStorage (Propia)</td>
                     <td className="p-3">Guarda la versión y acuse informativo de este aviso técnico durante 12 meses en tu navegador (reemplaza claves previas <code className="font-mono">cdv_cookie_consent_v1</code> / <code className="font-mono">cdvsp_cookie_consent_v1</code>).</td>
@@ -176,14 +193,14 @@ export default function CookiesPage() {
                     <td className="p-3">12 meses</td>
                   </tr>
                   <tr className="hover:bg-white/[0.02]">
-                    <td className="p-3 font-mono text-white">cdv_synced_matches_v7</td>
+                    <td className="p-3 font-mono text-white">cdv_synced_matches_v8</td>
                     <td className="p-3">LocalStorage (Propia)</td>
                     <td className="p-3">Caché local de calendarios y partidos sincronizados (sin datos personales de convocatorias) para acelerar la carga en <code className="font-mono">/partidos</code> y <code className="font-mono">/calendario</code>.</td>
                     <td className="p-3"><span className="text-white font-semibold">Técnica / Caché</span></td>
                     <td className="p-3">Persistente local hasta refresco</td>
                   </tr>
                   <tr className="hover:bg-white/[0.02]">
-                    <td className="p-3 font-mono text-white">cdv_synced_standings_v5</td>
+                    <td className="p-3 font-mono text-white">cdv_synced_standings_v6</td>
                     <td className="p-3">LocalStorage (Propia)</td>
                     <td className="p-3">Caché local de tablas de clasificación oficial en <code className="font-mono">/clasificacion</code>.</td>
                     <td className="p-3"><span className="text-white font-semibold">Técnica / Caché</span></td>

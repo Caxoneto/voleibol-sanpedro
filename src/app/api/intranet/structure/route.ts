@@ -3,10 +3,18 @@ import crypto from 'crypto';
 import { queryNeon } from '@/lib/streaming-store';
 import { getClientIp } from '@/lib/rate-limiter';
 import { FAVB_MATCHES } from '@/lib/favb-data';
+import { AFADE_MATCHES } from '@/lib/afade-data';
+import { getFastFavbMatchesSnapshot } from '@/lib/favb-scraper';
+import { getFastAfadeSnapshot } from '@/lib/afade-scraper';
+import { isRestMatch } from '@/lib/match-utils';
+import { resolveMatchVenue } from '@/lib/club-venues-map';
+import { getClubTeamNameById } from '@/lib/club-info';
 import {
   formatMadridDate,
   formatMadridDateString,
   formatMadridTime,
+  madridLocalToUtcIso,
+  parseMadridDateTimeSafe,
 } from '@/lib/date-utils';
 import { requireIntranetSession } from '@/lib/intranet/auth';
 import { assertCan, can, IntranetForbiddenError } from '@/lib/intranet/rbac';
@@ -18,6 +26,11 @@ export const dynamic = 'force-dynamic';
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const VALID_COURT_CODES = new Set(['P1', 'P2', 'P3']);
+const VALID_HOME_SCHEDULE_STATUSES = new Set(['PENDIENTE', 'CONFIRMADO']);
+const MATCH_DURATION_MIN = 120;
+
+type ScarioloCourtCode = 'P1' | 'P2' | 'P3';
 
 function isUuid(val: unknown): val is string {
   return (
@@ -32,6 +45,42 @@ function toMinutes(hhmm: string): number {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
+function minutesToHHMM(totalMin: number): string {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, totalMin));
+  const hh = Math.floor(clamped / 60);
+  const mm = clamped % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+function getIsoWeekdayFromMadridYmd(ymd: string): number {
+  const [y, m, d] = ymd.split('-').map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return 6;
+  const dow = new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).getUTCDay();
+  return dow === 0 ? 7 : dow;
+}
+
+function normalizeScarioloCourtCode(rawCourt?: string | null): ScarioloCourtCode | null {
+  if (!rawCourt) return null;
+  const norm = rawCourt.trim().toUpperCase().replace(/\s+/g, ' ');
+  if (norm === 'P1' || norm === 'PISTA 1' || norm === 'PISTA P1' || norm === '1' || norm.includes('P1')) {
+    return 'P1';
+  }
+  if (norm === 'P2' || norm === 'PISTA 2' || norm === 'PISTA P2' || norm === '2' || norm.includes('P2')) {
+    return 'P2';
+  }
+  if (
+    norm === 'P3' ||
+    norm === 'PISTA 3' ||
+    norm === 'PISTA P3' ||
+    norm === '3' ||
+    norm.includes('P3') ||
+    norm.includes('CENTRAL')
+  ) {
+    return 'P3';
+  }
+  return null;
+}
+
 function slugifyId(prefix: string, name: string): string {
   const base = name
     .normalize('NFD')
@@ -44,6 +93,34 @@ function slugifyId(prefix: string, name: string): string {
   return `${prefix}-${base || 'item'}-${suffix}`;
 }
 
+interface CanonicalClubMatch {
+  id: string;
+  teamId: string;
+  association: 'FAVB' | 'AFADE';
+  round: number;
+  homeTeamName: string;
+  awayTeamName: string;
+  isClubHome: boolean;
+  venueName: string;
+  court: string | null;
+  locality: string;
+  matchDate: string;
+  status: string;
+}
+
+interface MatchScheduleRow {
+  match_id: string;
+  team_season_id: string;
+  proposed_date: string;
+  proposed_time: string;
+  court_code: string | null;
+  venue_override: string | null;
+  locality_override: string | null;
+  departure_time_madrid: string | null;
+  schedule_status: string;
+  notes: string | null;
+}
+
 export interface SlotRowWithMeta {
   id: string;
   teamSeasonId: string;
@@ -52,6 +129,7 @@ export interface SlotRowWithMeta {
   gender: string;
   courtId: string;
   courtName: string;
+  courtCode: string;
   venueId: string;
   venueName: string;
   weekday: number;
@@ -66,12 +144,42 @@ export interface SlotRowWithMeta {
   }>;
 }
 
+export interface HomeMatchItem {
+  id: string;
+  teamId: string;
+  teamSeasonId: string;
+  teamName: string;
+  association: 'FAVB' | 'AFADE';
+  round: number;
+  homeTeamName: string;
+  awayTeamName: string;
+  opponentName: string;
+  venueName: string;
+  locality: string;
+  court: string | null;
+  courtCode: ScarioloCourtCode | null;
+  matchDateUtc: string;
+  dateStr: string;
+  timeStr: string;
+  madridDate: string;
+  madridTime: string;
+  madridLabel: string;
+  weekday: number;
+  scheduleStatus: 'PENDIENTE' | 'CONFIRMADO';
+  notes: string | null;
+  isScheduledManually: boolean;
+  status: string;
+}
+
 export interface ScheduleConflict {
   id: string;
-  type: 'COURT_OVERLAP' | 'COACH_OVERLAP';
+  type: 'COURT_OVERLAP' | 'COACH_OVERLAP' | 'MATCH_TRAINING_OVERLAP' | 'MATCH_OVERLAP';
   weekday: number;
-  slotAId: string;
-  slotBId: string;
+  dateStr?: string;
+  slotAId?: string;
+  slotBId?: string;
+  matchAId?: string;
+  matchBId?: string;
   teamAId: string;
   teamAName: string;
   teamBId: string;
@@ -85,13 +193,183 @@ export interface ScheduleConflict {
   summary: string;
 }
 
-function detectSlotConflicts(
+async function loadAllClubMatches(): Promise<CanonicalClubMatch[]> {
+  const byId = new Map<string, CanonicalClubMatch>();
+
+  for (const m of FAVB_MATCHES) {
+    byId.set(m.id, {
+      id: m.id,
+      teamId: m.teamId,
+      association: 'FAVB',
+      round: m.round,
+      homeTeamName: m.homeTeamName,
+      awayTeamName: m.awayTeamName,
+      isClubHome: m.isClubHome,
+      venueName: m.venueName,
+      court: m.court || null,
+      locality: m.locality || '',
+      matchDate: m.matchDate,
+      status: m.status,
+    });
+  }
+
+  for (const m of AFADE_MATCHES) {
+    byId.set(m.id, {
+      id: m.id,
+      teamId: m.teamId,
+      association: 'AFADE',
+      round: m.round,
+      homeTeamName: m.homeTeamName,
+      awayTeamName: m.awayTeamName,
+      isClubHome: m.isClubHome,
+      venueName: m.venueName,
+      court: m.court || null,
+      locality: m.locality || '',
+      matchDate: m.matchDate,
+      status: m.status,
+    });
+  }
+
+  const [favbRes, afadeRes] = await Promise.allSettled([
+    getFastFavbMatchesSnapshot(),
+    getFastAfadeSnapshot(),
+  ]);
+
+  if (favbRes.status === 'fulfilled' && Array.isArray(favbRes.value.matches)) {
+    for (const m of favbRes.value.matches) {
+      const existing = byId.get(m.id);
+      const teamId = m.teamId || existing?.teamId || '';
+      if (!teamId) continue;
+      byId.set(m.id, {
+        id: m.id,
+        teamId,
+        association: m.association || existing?.association || 'FAVB',
+        round: Number.isFinite(m.round) ? m.round : existing?.round || 1,
+        homeTeamName: m.homeTeam || existing?.homeTeamName || '',
+        awayTeamName: m.awayTeam || existing?.awayTeamName || '',
+        isClubHome: typeof m.isClubHome === 'boolean' ? m.isClubHome : Boolean(existing?.isClubHome),
+        venueName: m.venue || existing?.venueName || '',
+        court: m.court || existing?.court || null,
+        locality: m.locality || existing?.locality || '',
+        matchDate: m.matchDate || existing?.matchDate || '',
+        status: m.status || existing?.status || 'SCHEDULED',
+      });
+    }
+  }
+
+  if (afadeRes.status === 'fulfilled' && Array.isArray(afadeRes.value.matches)) {
+    for (const m of afadeRes.value.matches) {
+      const existing = byId.get(m.id);
+      const teamId = m.teamId || existing?.teamId || '';
+      if (!teamId) continue;
+      byId.set(m.id, {
+        id: m.id,
+        teamId,
+        association: 'AFADE',
+        round: Number.isFinite(m.round) ? m.round : existing?.round || 1,
+        homeTeamName: m.homeTeam || existing?.homeTeamName || '',
+        awayTeamName: m.awayTeam || existing?.awayTeamName || '',
+        isClubHome: typeof m.isClubHome === 'boolean' ? m.isClubHome : Boolean(existing?.isClubHome),
+        venueName: m.venue || existing?.venueName || '',
+        court: m.court || existing?.court || null,
+        locality: m.locality || existing?.locality || '',
+        matchDate: m.matchDate || existing?.matchDate || '',
+        status: m.status || existing?.status || 'SCHEDULED',
+      });
+    }
+  }
+
+  return Array.from(byId.values()).filter(
+    (m) =>
+      Boolean(m.teamId) &&
+      m.status !== 'CANCELLED' &&
+      !isRestMatch({ homeTeamName: m.homeTeamName, awayTeamName: m.awayTeamName })
+  );
+}
+
+function buildHomeMatches(
+  allMatches: CanonicalClubMatch[],
+  scheduleMap: Map<string, MatchScheduleRow>,
+  teamNameMap: Map<string, string>
+): HomeMatchItem[] {
+  return allMatches
+    .filter((m) => m.isClubHome === true)
+    .map((m) => {
+      const sched = scheduleMap.get(m.id);
+      const origDate = parseMadridDateTimeSafe(m.matchDate);
+      const origDateStr = formatMadridDateString(origDate);
+      const origTimeStr = formatMadridTime(origDate);
+
+      const dateStr =
+        sched && DATE_RE.test(sched.proposed_date) ? sched.proposed_date : origDateStr;
+      const timeStr =
+        sched && TIME_RE.test(sched.proposed_time) ? sched.proposed_time : origTimeStr;
+      const matchDateUtc = madridLocalToUtcIso(dateStr, timeStr);
+      const weekday = getIsoWeekdayFromMadridYmd(dateStr);
+
+      const resolvedVenue = resolveMatchVenue(m, allMatches, {
+        venueOverride: sched?.venue_override || null,
+        localityOverride: sched?.locality_override || null,
+      });
+
+      const courtCode =
+        normalizeScarioloCourtCode(sched?.court_code) ||
+        normalizeScarioloCourtCode(m.court) ||
+        null;
+
+      const scheduleStatus: 'PENDIENTE' | 'CONFIRMADO' = sched
+        ? sched.schedule_status === 'CONFIRMADO'
+          ? 'CONFIRMADO'
+          : 'PENDIENTE'
+        : m.status === 'FINISHED'
+        ? 'CONFIRMADO'
+        : 'PENDIENTE';
+
+      const teamName =
+        teamNameMap.get(m.teamId) || getClubTeamNameById(m.teamId) || m.homeTeamName;
+
+      return {
+        id: m.id,
+        teamId: m.teamId,
+        teamSeasonId: m.teamId,
+        teamName,
+        association: m.association,
+        round: m.round,
+        homeTeamName: m.homeTeamName,
+        awayTeamName: m.awayTeamName,
+        opponentName: m.awayTeamName,
+        venueName: resolvedVenue.venueName,
+        locality: resolvedVenue.locality,
+        court: courtCode,
+        courtCode,
+        matchDateUtc,
+        dateStr,
+        timeStr,
+        madridDate: dateStr,
+        madridTime: timeStr,
+        madridLabel: formatMadridDate(matchDateUtc),
+        weekday,
+        scheduleStatus,
+        notes: sched?.notes || null,
+        isScheduledManually: Boolean(sched),
+        status: m.status,
+      };
+    })
+    .sort((a, b) => {
+      if (a.dateStr !== b.dateStr) return a.dateStr.localeCompare(b.dateStr);
+      return a.timeStr.localeCompare(b.timeStr);
+    });
+}
+
+function detectScheduleConflicts(
   slots: Array<{
     id: string;
     teamSeasonId: string;
     teamName: string;
     courtId: string;
     courtName: string;
+    courtCode?: string;
+    venueId?: string;
     venueName: string;
     weekday: number;
     startTime: string;
@@ -100,15 +378,20 @@ function detectSlotConflicts(
   staffByTeam: Map<
     string,
     Array<{ userId: string; name: string; email: string; staffFunction: string }>
-  >
+  >,
+  homeMatches: HomeMatchItem[] = [],
+  todayMadrid?: string
 ): ScheduleConflict[] {
   const conflicts: ScheduleConflict[] = [];
 
+  // 1. Solapes entre entrenamientos (misma pista o mismo entrenador)
   for (let i = 0; i < slots.length; i++) {
     const a = slots[i];
     const aStart = toMinutes(a.startTime);
     const aEnd = toMinutes(a.endTime);
     if (aStart < 0 || aEnd <= aStart) continue;
+
+    const aCourtLabel = a.courtCode || normalizeScarioloCourtCode(a.courtName) || a.courtName;
 
     for (let j = i + 1; j < slots.length; j++) {
       const b = slots[j];
@@ -121,7 +404,15 @@ function detectSlotConflicts(
       const overlaps = aStart < bEnd && bStart < aEnd;
       if (!overlaps) continue;
 
-      if (a.courtId === b.courtId) {
+      const bCourtLabel = b.courtCode || normalizeScarioloCourtCode(b.courtName) || b.courtName;
+      const sameScarioloCourt =
+        a.courtId === b.courtId ||
+        ((a.venueId === 'venue-scariolo' || !a.venueId) &&
+          (b.venueId === 'venue-scariolo' || !b.venueId) &&
+          Boolean(normalizeScarioloCourtCode(aCourtLabel)) &&
+          normalizeScarioloCourtCode(aCourtLabel) === normalizeScarioloCourtCode(bCourtLabel));
+
+      if (sameScarioloCourt) {
         conflicts.push({
           id: `court:${a.id}:${b.id}`,
           type: 'COURT_OVERLAP',
@@ -134,9 +425,9 @@ function detectSlotConflicts(
           teamBName: b.teamName,
           timeRangeA: `${a.startTime}-${a.endTime}`,
           timeRangeB: `${b.startTime}-${b.endTime}`,
-          courtName: a.courtName,
+          courtName: aCourtLabel,
           venueName: a.venueName,
-          summary: `Pista "${a.courtName}" (${a.venueName}) solapada entre ${a.teamName} (${a.startTime}-${a.endTime}) y ${b.teamName} (${b.startTime}-${b.endTime}).`,
+          summary: `Pista ${aCourtLabel} solapada entre ${a.teamName} (${a.startTime}-${a.endTime}) y ${b.teamName} (${b.startTime}-${b.endTime}).`,
         });
       }
 
@@ -164,6 +455,83 @@ function detectSlotConflicts(
             });
           }
         }
+      }
+    }
+  }
+
+  // 2. Solapes entre partidos en casa (Sergio Scariolo P1/P2/P3) y entrenamientos o entre partidos
+  const relevantMatches = homeMatches.filter(
+    (m) =>
+      m.courtCode !== null &&
+      m.status !== 'FINISHED' &&
+      (!todayMadrid || m.dateStr >= todayMadrid)
+  );
+
+  for (let i = 0; i < relevantMatches.length; i++) {
+    const m = relevantMatches[i];
+    const mStart = toMinutes(m.timeStr);
+    if (mStart < 0 || !m.courtCode) continue;
+    const mEnd = Math.min(24 * 60, mStart + MATCH_DURATION_MIN);
+    const mRange = `${m.timeStr}-${minutesToHHMM(mEnd)}`;
+
+    // Partido en casa vs Entrenamientos en la misma pista del Sergio Scariolo
+    for (const slot of slots) {
+      if (slot.weekday !== m.weekday) continue;
+      if (slot.venueId && slot.venueId !== 'venue-scariolo') continue;
+      const slotCourtCode = slot.courtCode || normalizeScarioloCourtCode(slot.courtName);
+      if (slotCourtCode !== m.courtCode) continue;
+
+      const sStart = toMinutes(slot.startTime);
+      const sEnd = toMinutes(slot.endTime);
+      if (sStart < 0 || sEnd <= sStart) continue;
+
+      if (mStart < sEnd && sStart < mEnd) {
+        conflicts.push({
+          id: `match-slot:${m.id}:${slot.id}`,
+          type: 'MATCH_TRAINING_OVERLAP',
+          weekday: m.weekday,
+          dateStr: m.dateStr,
+          matchAId: m.id,
+          slotBId: slot.id,
+          teamAId: m.teamSeasonId,
+          teamAName: `${m.teamName} vs ${m.opponentName}`,
+          teamBId: slot.teamSeasonId,
+          teamBName: slot.teamName,
+          timeRangeA: mRange,
+          timeRangeB: `${slot.startTime}-${slot.endTime}`,
+          courtName: m.courtCode,
+          venueName: 'Sergio Scariolo',
+          summary: `Pista ${m.courtCode} (${m.dateStr} · J${m.round}): partido ${m.teamName} vs ${m.opponentName} (${mRange}) coincide con entreno de ${slot.teamName} (${slot.startTime}-${slot.endTime}).`,
+        });
+      }
+    }
+
+    // Partido en casa vs Partido en casa (misma fecha exacta y misma pista)
+    for (let j = i + 1; j < relevantMatches.length; j++) {
+      const other = relevantMatches[j];
+      if (m.dateStr !== other.dateStr || m.courtCode !== other.courtCode) continue;
+      const oStart = toMinutes(other.timeStr);
+      if (oStart < 0) continue;
+      const oEnd = Math.min(24 * 60, oStart + MATCH_DURATION_MIN);
+      if (mStart < oEnd && oStart < mEnd) {
+        const oRange = `${other.timeStr}-${minutesToHHMM(oEnd)}`;
+        conflicts.push({
+          id: `match-match:${m.id}:${other.id}`,
+          type: 'MATCH_OVERLAP',
+          weekday: m.weekday,
+          dateStr: m.dateStr,
+          matchAId: m.id,
+          matchBId: other.id,
+          teamAId: m.teamSeasonId,
+          teamAName: `${m.teamName} vs ${m.opponentName}`,
+          teamBId: other.teamSeasonId,
+          teamBName: `${other.teamName} vs ${other.opponentName}`,
+          timeRangeA: mRange,
+          timeRangeB: oRange,
+          courtName: m.courtCode,
+          venueName: 'Sergio Scariolo',
+          summary: `Pista ${m.courtCode} (${m.dateStr}): solape entre ${m.teamName} vs ${m.opponentName} (${mRange}) y ${other.teamName} vs ${other.opponentName} (${oRange}).`,
+        });
       }
     }
   }
@@ -241,6 +609,7 @@ async function loadActiveSlotsAndStaff() {
     gender: s.gender,
     courtId: s.court_id,
     courtName: s.court_name,
+    courtCode: normalizeScarioloCourtCode(s.court_name) || s.court_name,
     venueId: s.venue_id,
     venueName: s.venue_name,
     weekday: s.weekday,
@@ -251,6 +620,15 @@ async function loadActiveSlotsAndStaff() {
   }));
 
   return { slots, staffByTeam };
+}
+
+async function loadMatchSchedulesMap(): Promise<Map<string, MatchScheduleRow>> {
+  const rows = await queryNeon<MatchScheduleRow>(
+    `SELECT match_id, team_season_id, proposed_date, proposed_time, court_code,
+            venue_override, locality_override, departure_time_madrid, schedule_status, notes
+     FROM intranet_match_schedules;`
+  );
+  return new Map(rows.map((r) => [r.match_id, r]));
 }
 
 export async function GET() {
@@ -270,6 +648,8 @@ export async function GET() {
       closureRows,
       proposalRows,
       slotsData,
+      allMatches,
+      scheduleMap,
     ] = await Promise.all([
       queryNeon<{
         id: string;
@@ -379,14 +759,35 @@ export async function GET() {
          LIMIT 100;`
       ),
       loadActiveSlotsAndStaff(),
+      loadAllClubMatches(),
+      loadMatchSchedulesMap(),
     ]);
 
     const currentSeason = seasonRows.find((s) => s.is_current) || seasonRows[0] || null;
-    const conflicts = detectSlotConflicts(slotsData.slots, slotsData.staffByTeam);
+    const teamNameMap = new Map(teamRows.map((t) => [t.id, t.name]));
+    const todayMadrid = formatMadridDateString(new Date());
+
+    const homeMatches = buildHomeMatches(allMatches, scheduleMap, teamNameMap);
+    const rounds = Array.from(new Set(homeMatches.map((m) => m.round))).sort((a, b) => a - b);
+    const upcomingHomeMatches = homeMatches.filter((m) => m.dateStr >= todayMadrid);
+
+    const conflicts = detectScheduleConflicts(
+      slotsData.slots,
+      slotsData.staffByTeam,
+      homeMatches,
+      todayMadrid
+    );
 
     const courtsByVenue = new Map<
       string,
-      Array<{ id: string; venueId: string; name: string; surfaceType: string | null; isActive: boolean }>
+      Array<{
+        id: string;
+        venueId: string;
+        name: string;
+        courtCode: string;
+        surfaceType: string | null;
+        isActive: boolean;
+      }>
     >();
     for (const c of courtRows) {
       const list = courtsByVenue.get(c.venue_id) || [];
@@ -394,6 +795,7 @@ export async function GET() {
         id: c.id,
         venueId: c.venue_id,
         name: c.name,
+        courtCode: normalizeScarioloCourtCode(c.name) || c.name,
         surfaceType: c.surface_type,
         isActive: c.is_active,
       });
@@ -410,37 +812,6 @@ export async function GET() {
       isActive: v.is_active,
       courts: courtsByVenue.get(v.id) || [],
     }));
-
-    const teamNameMap = new Map(teamRows.map((t) => [t.id, t.name]));
-    const todayMadrid = formatMadridDateString(new Date());
-
-    const homeMatchesAll = FAVB_MATCHES.filter(
-      (m) => m.isClubHome === true && m.status !== 'CANCELLED'
-    ).map((m) => {
-      const madridDate = formatMadridDateString(m.matchDate);
-      const madridTime = formatMadridTime(m.matchDate);
-      const madridLabel = formatMadridDate(m.matchDate);
-      return {
-        id: m.id,
-        teamId: m.teamId,
-        teamName: teamNameMap.get(m.teamId) || m.homeTeamName,
-        round: m.round,
-        homeTeamName: m.homeTeamName,
-        awayTeamName: m.awayTeamName,
-        venueName: m.venueName,
-        court: m.court || null,
-        matchDateUtc: m.matchDate,
-        madridDate,
-        madridTime,
-        madridLabel,
-        status: m.status,
-      };
-    });
-
-    const upcomingHomeMatches = homeMatchesAll
-      .filter((m) => m.madridDate >= todayMadrid)
-      .sort((a, b) => a.matchDateUtc.localeCompare(b.matchDateUtc))
-      .slice(0, 40);
 
     return NextResponse.json({
       success: true,
@@ -494,7 +865,7 @@ export async function GET() {
         teamName: p.team_name,
         slotId: p.slot_id,
         proposedCourtId: p.proposed_court_id,
-        proposedCourtName: p.proposed_court_name,
+        proposedCourtName: normalizeScarioloCourtCode(p.proposed_court_name) || p.proposed_court_name,
         proposedVenueName: p.proposed_venue_name,
         proposedWeekday: p.proposed_weekday,
         proposedStartTime: p.proposed_start_time,
@@ -508,6 +879,8 @@ export async function GET() {
         createdAt: p.created_at,
         reviewedAt: p.reviewed_at,
       })),
+      rounds,
+      homeMatches,
       upcomingHomeMatches,
     });
   } catch (err) {
@@ -630,20 +1003,24 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const [teamRows, courtRows, existingData] = await Promise.all([
-        queryNeon<{ id: string; name: string }>(
-          `SELECT id, name FROM intranet_team_seasons WHERE id = $1 LIMIT 1;`,
-          [teamSeasonId]
-        ),
-        queryNeon<{ id: string; name: string; venue_name: string }>(
-          `SELECT c.id, c.name, v.name AS venue_name
-           FROM intranet_courts c
-           INNER JOIN intranet_venues v ON v.id = c.venue_id
-           WHERE c.id = $1 LIMIT 1;`,
-          [courtId]
-        ),
-        loadActiveSlotsAndStaff(),
-      ]);
+      const [teamRows, courtRows, existingData, allTeams, allMatches, scheduleMap] =
+        await Promise.all([
+          queryNeon<{ id: string; name: string }>(
+            `SELECT id, name FROM intranet_team_seasons WHERE id = $1 LIMIT 1;`,
+            [teamSeasonId]
+          ),
+          queryNeon<{ id: string; name: string; venue_id: string; venue_name: string }>(
+            `SELECT c.id, c.name, c.venue_id, v.name AS venue_name
+             FROM intranet_courts c
+             INNER JOIN intranet_venues v ON v.id = c.venue_id
+             WHERE c.id = $1 LIMIT 1;`,
+            [courtId]
+          ),
+          loadActiveSlotsAndStaff(),
+          queryNeon<{ id: string; name: string }>(`SELECT id, name FROM intranet_team_seasons;`),
+          loadAllClubMatches(),
+          loadMatchSchedulesMap(),
+        ]);
 
       if (teamRows.length === 0 || courtRows.length === 0) {
         return NextResponse.json(
@@ -659,15 +1036,23 @@ export async function POST(req: NextRequest) {
         teamName: teamRows[0].name,
         courtId,
         courtName: courtRows[0].name,
+        courtCode: normalizeScarioloCourtCode(courtRows[0].name) || courtRows[0].name,
+        venueId: courtRows[0].venue_id,
         venueName: courtRows[0].venue_name,
         weekday,
         startTime,
         endTime,
       };
 
-      const candidateConflicts = detectSlotConflicts(
+      const todayMadrid = formatMadridDateString(new Date());
+      const teamNameMap = new Map(allTeams.map((t) => [t.id, t.name]));
+      const homeMatches = buildHomeMatches(allMatches, scheduleMap, teamNameMap);
+
+      const candidateConflicts = detectScheduleConflicts(
         [...existingData.slots, candidateSlot],
-        existingData.staffByTeam
+        existingData.staffByTeam,
+        homeMatches,
+        todayMadrid
       ).filter((c) => c.slotAId === candidateId || c.slotBId === candidateId);
 
       if (strict && candidateConflicts.length > 0) {
@@ -715,6 +1100,293 @@ export async function POST(req: NextRequest) {
         warning:
           candidateConflicts.length > 0
             ? `Franja guardada con ${candidateConflicts.length} conflicto(s) detectado(s).`
+            : null,
+      });
+    }
+
+    // 3b. Actualizar franja semanal de entrenamiento existente
+    if (action === 'update_slot') {
+      assertCan(ctx, 'schedule.manage');
+
+      const slotId = String(body?.slotId || '').trim();
+      const teamSeasonId = String(body?.teamSeasonId || '').trim();
+      const courtId = String(body?.courtId || '').trim();
+      const weekday = Number(body?.weekday);
+      const startTime = String(body?.startTime || '').trim();
+      const endTime = String(body?.endTime || '').trim();
+      const notes = body?.notes ? String(body.notes).trim().slice(0, 400) : null;
+      const strict = Boolean(body?.strict);
+
+      if (!isUuid(slotId)) {
+        return NextResponse.json({ success: false, error: 'ID de franja no válido.' }, { status: 400 });
+      }
+
+      if (
+        !teamSeasonId ||
+        !courtId ||
+        !Number.isInteger(weekday) ||
+        weekday < 1 ||
+        weekday > 7 ||
+        !TIME_RE.test(startTime) ||
+        !TIME_RE.test(endTime) ||
+        toMinutes(startTime) >= toMinutes(endTime)
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Datos de franja no válidos. Comprueba equipo, pista, día (1-7) y hora inicio < fin.',
+          },
+          { status: 400 }
+        );
+      }
+
+      const [existingSlotRows, teamRows, courtRows, existingData, allTeams, allMatches, scheduleMap] =
+        await Promise.all([
+          queryNeon<{ id: string }>(
+            `SELECT id::text FROM intranet_training_slots WHERE id = $1::uuid AND is_active = true LIMIT 1;`,
+            [slotId]
+          ),
+          queryNeon<{ id: string; name: string }>(
+            `SELECT id, name FROM intranet_team_seasons WHERE id = $1 LIMIT 1;`,
+            [teamSeasonId]
+          ),
+          queryNeon<{ id: string; name: string; venue_id: string; venue_name: string }>(
+            `SELECT c.id, c.name, c.venue_id, v.name AS venue_name
+             FROM intranet_courts c
+             INNER JOIN intranet_venues v ON v.id = c.venue_id
+             WHERE c.id = $1 LIMIT 1;`,
+            [courtId]
+          ),
+          loadActiveSlotsAndStaff(),
+          queryNeon<{ id: string; name: string }>(`SELECT id, name FROM intranet_team_seasons;`),
+          loadAllClubMatches(),
+          loadMatchSchedulesMap(),
+        ]);
+
+      if (existingSlotRows.length === 0) {
+        return NextResponse.json({ success: false, error: 'Franja de entrenamiento no encontrada.' }, { status: 404 });
+      }
+      if (teamRows.length === 0 || courtRows.length === 0) {
+        return NextResponse.json({ success: false, error: 'Equipo o pista no encontrado.' }, { status: 404 });
+      }
+
+      const filteredExisting = existingData.slots.filter((s) => s.id !== slotId);
+      const candidateSlot = {
+        id: slotId,
+        teamSeasonId,
+        teamName: teamRows[0].name,
+        courtId,
+        courtName: courtRows[0].name,
+        courtCode: normalizeScarioloCourtCode(courtRows[0].name) || courtRows[0].name,
+        venueId: courtRows[0].venue_id,
+        venueName: courtRows[0].venue_name,
+        weekday,
+        startTime,
+        endTime,
+      };
+
+      const todayMadrid = formatMadridDateString(new Date());
+      const teamNameMap = new Map(allTeams.map((t) => [t.id, t.name]));
+      const homeMatches = buildHomeMatches(allMatches, scheduleMap, teamNameMap);
+
+      const candidateConflicts = detectScheduleConflicts(
+        [...filteredExisting, candidateSlot],
+        existingData.staffByTeam,
+        homeMatches,
+        todayMadrid
+      ).filter((c) => c.slotAId === slotId || c.slotBId === slotId);
+
+      if (strict && candidateConflicts.length > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            conflictBlocked: true,
+            conflicts: candidateConflicts,
+            error: 'Actualización bloqueada en modo estricto por conflictos de pista o entrenador.',
+          },
+          { status: 409 }
+        );
+      }
+
+      await queryNeon(
+        `UPDATE intranet_training_slots
+         SET team_season_id = $2,
+             court_id = $3,
+             weekday = $4,
+             start_time = $5,
+             end_time = $6,
+             notes = $7
+         WHERE id = $1::uuid AND is_active = true;`,
+        [slotId, teamSeasonId, courtId, weekday, startTime, endTime, notes]
+      );
+
+      await recordAuditLog({
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email,
+        action: 'UPDATE_TRAINING_SLOT',
+        module: 'Estructura',
+        targetType: 'TRAINING_SLOT',
+        targetId: slotId,
+        details: {
+          teamSeasonId,
+          courtId,
+          weekday,
+          startTime,
+          endTime,
+          notes,
+          conflictsCount: candidateConflicts.length,
+        },
+        ipAddress: clientIp,
+      });
+
+      return NextResponse.json({
+        success: true,
+        slotId,
+        conflicts: candidateConflicts,
+        warning:
+          candidateConflicts.length > 0
+            ? `Franja actualizada con ${candidateConflicts.length} conflicto(s) detectado(s).`
+            : null,
+      });
+    }
+
+    // 3c. Programar / actualizar fecha, hora y pista (P1/P2/P3) de un partido en casa
+    if (action === 'upsert_home_match_schedule') {
+      assertCan(ctx, 'schedule.manage');
+
+      const matchId = String(body?.matchId || '').trim();
+      const proposedDate = String(body?.proposedDate || '').trim();
+      const proposedTime = String(body?.proposedTime || '').trim();
+      const courtCode = String(body?.courtCode || '').trim().toUpperCase();
+      const scheduleStatusRaw = String(body?.scheduleStatus || 'PENDIENTE').trim().toUpperCase();
+      const notes = body?.notes ? String(body.notes).trim().slice(0, 500) : null;
+
+      if (!matchId) {
+        return NextResponse.json({ success: false, error: 'Selecciona el partido en casa.' }, { status: 400 });
+      }
+      if (!DATE_RE.test(proposedDate)) {
+        return NextResponse.json({ success: false, error: 'Fecha no válida (YYYY-MM-DD).' }, { status: 400 });
+      }
+      if (!TIME_RE.test(proposedTime)) {
+        return NextResponse.json({ success: false, error: 'Hora no válida (HH:MM).' }, { status: 400 });
+      }
+      if (!VALID_COURT_CODES.has(courtCode)) {
+        return NextResponse.json({ success: false, error: 'Pista no válida (usa P1, P2 o P3).' }, { status: 400 });
+      }
+      if (!VALID_HOME_SCHEDULE_STATUSES.has(scheduleStatusRaw)) {
+        return NextResponse.json(
+          { success: false, error: 'Estado no válido (usa PENDIENTE o CONFIRMADO).' },
+          { status: 400 }
+        );
+      }
+
+      const [allMatches, slotsData, allTeams, scheduleMap] = await Promise.all([
+        loadAllClubMatches(),
+        loadActiveSlotsAndStaff(),
+        queryNeon<{ id: string; name: string }>(`SELECT id, name FROM intranet_team_seasons;`),
+        loadMatchSchedulesMap(),
+      ]);
+
+      const match = allMatches.find((m) => m.id === matchId && m.isClubHome === true);
+      if (!match) {
+        return NextResponse.json(
+          { success: false, error: 'Partido en casa no encontrado en el calendario del club.' },
+          { status: 404 }
+        );
+      }
+
+      const effectiveUtcIso = madridLocalToUtcIso(proposedDate, proposedTime);
+
+      await queryNeon(
+        `INSERT INTO intranet_match_schedules (
+           match_id, team_season_id, proposed_date, proposed_time, court_code,
+           schedule_status, notes, updated_by, updated_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::uuid, NOW())
+         ON CONFLICT (match_id) DO UPDATE SET
+           team_season_id = EXCLUDED.team_season_id,
+           proposed_date = EXCLUDED.proposed_date,
+           proposed_time = EXCLUDED.proposed_time,
+           court_code = EXCLUDED.court_code,
+           schedule_status = EXCLUDED.schedule_status,
+           notes = EXCLUDED.notes,
+           updated_by = EXCLUDED.updated_by,
+           updated_at = NOW();`,
+        [
+          matchId,
+          match.teamId,
+          proposedDate,
+          proposedTime,
+          courtCode,
+          scheduleStatusRaw,
+          notes || null,
+          ctx.user.id,
+        ]
+      );
+
+      // Sincronizar asignaciones de técnicos existentes en ese partido
+      await queryNeon(
+        `UPDATE intranet_match_assignments
+         SET madrid_date = $2,
+             starts_at_utc = $3::timestamptz
+         WHERE match_id = $1;`,
+        [matchId, proposedDate, effectiveUtcIso]
+      );
+
+      // Evaluar conflictos resultantes para ese partido en su nueva fecha/hora/pista
+      scheduleMap.set(matchId, {
+        match_id: matchId,
+        team_season_id: match.teamId,
+        proposed_date: proposedDate,
+        proposed_time: proposedTime,
+        court_code: courtCode,
+        venue_override: scheduleMap.get(matchId)?.venue_override || null,
+        locality_override: scheduleMap.get(matchId)?.locality_override || null,
+        departure_time_madrid: scheduleMap.get(matchId)?.departure_time_madrid || null,
+        schedule_status: scheduleStatusRaw,
+        notes: notes || null,
+      });
+
+      const todayMadrid = formatMadridDateString(new Date());
+      const teamNameMap = new Map(allTeams.map((t) => [t.id, t.name]));
+      const updatedHomeMatches = buildHomeMatches(allMatches, scheduleMap, teamNameMap);
+      const relatedConflicts = detectScheduleConflicts(
+        slotsData.slots,
+        slotsData.staffByTeam,
+        updatedHomeMatches,
+        todayMadrid
+      ).filter((c) => c.matchAId === matchId || c.matchBId === matchId);
+
+      await recordAuditLog({
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email,
+        action: 'UPSERT_HOME_MATCH_SCHEDULE',
+        module: 'Estructura',
+        targetType: 'MATCH_SCHEDULE',
+        targetId: matchId,
+        details: {
+          matchId,
+          teamSeasonId: match.teamId,
+          proposedDate,
+          proposedTime,
+          courtCode,
+          scheduleStatus: scheduleStatusRaw,
+          notes,
+          conflictsCount: relatedConflicts.length,
+        },
+        ipAddress: clientIp,
+      });
+
+      return NextResponse.json({
+        success: true,
+        matchId,
+        proposedDate,
+        proposedTime,
+        courtCode,
+        scheduleStatus: scheduleStatusRaw,
+        conflicts: relatedConflicts,
+        warning:
+          relatedConflicts.length > 0
+            ? `Horario guardado con ${relatedConflicts.length} solape(s) en ${courtCode}.`
             : null,
       });
     }
@@ -956,19 +1628,23 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        const [teamRows, courtRows, existingData] = await Promise.all([
-          queryNeon<{ name: string }>(`SELECT name FROM intranet_team_seasons WHERE id = $1 LIMIT 1;`, [
-            prop.team_season_id,
-          ]),
-          queryNeon<{ name: string; venue_name: string }>(
-            `SELECT c.name, v.name AS venue_name
-             FROM intranet_courts c
-             INNER JOIN intranet_venues v ON v.id = c.venue_id
-             WHERE c.id = $1 LIMIT 1;`,
-            [targetCourtId]
-          ),
-          loadActiveSlotsAndStaff(),
-        ]);
+        const [teamRows, courtRows, existingData, allTeams, allMatches, scheduleMap] =
+          await Promise.all([
+            queryNeon<{ name: string }>(`SELECT name FROM intranet_team_seasons WHERE id = $1 LIMIT 1;`, [
+              prop.team_season_id,
+            ]),
+            queryNeon<{ name: string; venue_id: string; venue_name: string }>(
+              `SELECT c.name, c.venue_id, v.name AS venue_name
+               FROM intranet_courts c
+               INNER JOIN intranet_venues v ON v.id = c.venue_id
+               WHERE c.id = $1 LIMIT 1;`,
+              [targetCourtId]
+            ),
+            loadActiveSlotsAndStaff(),
+            queryNeon<{ id: string; name: string }>(`SELECT id, name FROM intranet_team_seasons;`),
+            loadAllClubMatches(),
+            loadMatchSchedulesMap(),
+          ]);
 
         const candidateId = prop.slot_id || 'candidate-proposal-slot';
         const filteredExisting = existingData.slots.filter((s) => s.id !== prop.slot_id);
@@ -978,15 +1654,23 @@ export async function POST(req: NextRequest) {
           teamName: teamRows[0]?.name || prop.team_season_id,
           courtId: targetCourtId,
           courtName: courtRows[0]?.name || targetCourtId,
+          courtCode: normalizeScarioloCourtCode(courtRows[0]?.name) || courtRows[0]?.name || targetCourtId,
+          venueId: courtRows[0]?.venue_id || 'venue-scariolo',
           venueName: courtRows[0]?.venue_name || '',
           weekday: prop.proposed_weekday,
           startTime: prop.proposed_start_time,
           endTime: prop.proposed_end_time,
         };
 
-        conflicts = detectSlotConflicts(
+        const todayMadrid = formatMadridDateString(new Date());
+        const teamNameMap = new Map(allTeams.map((t) => [t.id, t.name]));
+        const homeMatches = buildHomeMatches(allMatches, scheduleMap, teamNameMap);
+
+        conflicts = detectScheduleConflicts(
           [...filteredExisting, candidateSlot],
-          existingData.staffByTeam
+          existingData.staffByTeam,
+          homeMatches,
+          todayMadrid
         ).filter((c) => c.slotAId === candidateId || c.slotBId === candidateId);
 
         if (strict && conflicts.length > 0) {

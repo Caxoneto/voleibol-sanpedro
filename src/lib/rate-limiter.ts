@@ -1,96 +1,13 @@
 import crypto from 'crypto';
 import { queryNeon } from './streaming-store';
 
-export interface RateLimiterOptions {
-  windowMs: number;
-  maxAttempts: number;
-}
-
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   retryAfterSec: number;
 }
 
-interface AttemptRecord {
-  count: number;
-  firstAttemptAt: number;
-}
-
 const VALID_IP_REGEX = /^[a-fA-F0-9:.]{3,64}$/;
-const MAX_MEMORY_ENTRIES = 2000;
-
-/**
- * Implementación en memoria heredada con cota máxima (solo transición temporal antes de migrar todos los callers a Neon).
- */
-export class MemoryRateLimiter {
-  private attempts = new Map<string, AttemptRecord>();
-  private windowMs: number;
-  private maxAttempts: number;
-
-  constructor(options: RateLimiterOptions) {
-    this.windowMs = options.windowMs;
-    this.maxAttempts = options.maxAttempts;
-  }
-
-  public isRateLimited(key: string): boolean {
-    const record = this.attempts.get(key);
-    if (!record) return false;
-
-    const now = Date.now();
-    if (now - record.firstAttemptAt > this.windowMs) {
-      this.attempts.delete(key);
-      return false;
-    }
-
-    return record.count >= this.maxAttempts;
-  }
-
-  public recordFailedAttempt(key: string): void {
-    const now = Date.now();
-    if (this.attempts.size >= MAX_MEMORY_ENTRIES) {
-      this.attempts.forEach((rec, k) => {
-        if (now - rec.firstAttemptAt > this.windowMs) {
-          this.attempts.delete(k);
-        }
-      });
-      if (this.attempts.size >= MAX_MEMORY_ENTRIES) {
-        const oldestKey = this.attempts.keys().next().value;
-        if (oldestKey) this.attempts.delete(oldestKey);
-      }
-    }
-
-    const record = this.attempts.get(key);
-    if (!record || now - record.firstAttemptAt > this.windowMs) {
-      this.attempts.set(key, { count: 1, firstAttemptAt: now });
-    } else {
-      record.count += 1;
-    }
-  }
-
-  public clearAttempts(key: string): void {
-    this.attempts.delete(key);
-  }
-
-  public getRemainingSeconds(key: string): number {
-    const record = this.attempts.get(key);
-    if (!record) return 0;
-
-    const elapsed = Date.now() - record.firstAttemptAt;
-    const remaining = Math.max(0, this.windowMs - elapsed);
-    return Math.ceil(remaining / 1000);
-  }
-}
-
-export const adminLoginRateLimiter = new MemoryRateLimiter({
-  windowMs: 10 * 60 * 1000,
-  maxAttempts: 5,
-});
-
-export const consentVerifyRateLimiter = new MemoryRateLimiter({
-  windowMs: 10 * 60 * 1000,
-  maxAttempts: 10,
-});
 
 /**
  * Extrae la IP real del cliente priorizando la cabecera no falsificable de Netlify Edge.
@@ -154,17 +71,54 @@ async function cleanupExpiredConsumedTokensProbabilistic(): Promise<void> {
 /**
  * Rate limiter distribuido y atómico sobre Neon (tabla `rate_limits`) para endpoints públicos y serverless Lambdas.
  * Incrementa el contador por ventana y bloquea durante `blockSec` al superar `maxAttempts`.
+ * Si `options.increment === false`, consulta el estado actual del bucket sin incrementar ni crear fila.
  */
 export async function checkNeonRateLimit(
   bucketKey: string,
   maxAttempts: number,
   windowSec: number,
-  blockSec: number
+  blockSec: number,
+  options?: { increment?: boolean }
 ): Promise<RateLimitResult> {
   const safeKey = bucketKey.slice(0, 180);
   const safeMax = Math.max(1, Math.floor(maxAttempts));
   const safeWin = Math.max(1, Math.floor(windowSec));
   const safeBlock = Math.max(1, Math.floor(blockSec));
+
+  if (options?.increment === false) {
+    const rows = await queryNeon<{
+      attempts: number;
+      is_blocked: boolean;
+      retry_after_sec: number | null;
+    }>(
+      `SELECT
+         CASE
+           WHEN (blocked_until IS NOT NULL AND blocked_until <= NOW())
+             OR (window_started_at + make_interval(secs => $2) <= NOW())
+             THEN 0
+           ELSE attempts
+         END::int AS attempts,
+         (blocked_until IS NOT NULL AND blocked_until > NOW()) AS is_blocked,
+         GREATEST(0, COALESCE(CEIL(EXTRACT(EPOCH FROM (blocked_until - NOW()))), 0))::int AS retry_after_sec
+       FROM rate_limits
+       WHERE bucket_key = $1
+       LIMIT 1;`,
+      [safeKey, safeWin]
+    );
+
+    const row = rows[0];
+    if (!row) {
+      return { allowed: true, remaining: safeMax, retryAfterSec: 0 };
+    }
+    const attempts = Number(row.attempts ?? 0);
+    const blocked = Boolean(row.is_blocked) || attempts >= safeMax;
+    const retryAfterSec = blocked ? Math.max(1, Number(row.retry_after_sec ?? safeBlock)) : 0;
+    return {
+      allowed: !blocked,
+      remaining: Math.max(0, safeMax - attempts),
+      retryAfterSec,
+    };
+  }
 
   const rows = await queryNeon<{
     attempts: number;

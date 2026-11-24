@@ -40,6 +40,8 @@ next-env.d.ts
 
 # scratch & local documents
 /scratch/
+/docs/referencias-club/
+*.eml
 *.pdf
 
 # working artifacts

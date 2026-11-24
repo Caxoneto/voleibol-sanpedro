@@ -4,9 +4,16 @@ import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from 'rea
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Award, CheckCircle2, CircleDot, RefreshCw, Users } from 'lucide-react';
-import { CLUB_CATEGORIES_META, CLUB_TEAMS_META, CLUB_INFO } from '@/lib/club-info';
+import {
+  CLUB_CATEGORIES_META,
+  CLUB_TEAMS_META,
+  CLUB_INFO,
+  formatPlayerNameWithInitials,
+  getTeamColorTheme,
+} from '@/lib/club-info';
 import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS, Player, Staff } from '@/lib/types';
 import SponsorBanner from '@/components/SponsorBanner';
+import CategoryTeamSelectorBar from '@/components/CategoryTeamSelectorBar';
 
 function formatSyncHourMadrid(iso?: string): string {
   try {
@@ -34,7 +41,6 @@ function PlantillasContent() {
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const catScrollRef = useRef<HTMLDivElement | null>(null);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -169,17 +175,6 @@ function PlantillasContent() {
     };
   }, [applyServerRosters, fetchLiveRosters]);
 
-  // Centrar píldora de categoría seleccionada en el scroll horizontal
-  useEffect(() => {
-    const container = catScrollRef.current;
-    const pill = document.getElementById(`plantillas-cat-pill-${selectedCategorySlug}`);
-    if (container && pill) {
-      const targetLeft = pill.offsetLeft - (container.clientWidth - pill.clientWidth) / 2;
-      const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
-      container.scrollTo({ left: Math.max(0, Math.min(maxScroll, targetLeft)), behavior: 'smooth' });
-    }
-  }, [selectedCategorySlug]);
-
   const activeCategory = useMemo(() => {
     return (
       CLUB_CATEGORIES_META.find((c) => c.slug === selectedCategorySlug) ||
@@ -215,7 +210,7 @@ function PlantillasContent() {
   const isAfade = activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE');
 
   return (
-    <div className="w-full min-h-screen bg-background relative overflow-hidden">
+    <div className="w-full min-h-screen bg-background relative overflow-x-clip">
       <div
         className="pointer-events-none fixed inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-[0.14] blur-[3px] z-0"
         style={{ backgroundImage: "url('/images/pabellon-sergio-scariolo.jpg')" }}
@@ -251,51 +246,33 @@ function PlantillasContent() {
         </div>
       </section>
 
-      {/* Selector Dinámico de Categorías */}
-      <section aria-label="Categorías de plantillas" className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between gap-2.5 sm:gap-3">
-          <div
-            ref={catScrollRef}
-            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory flex-1"
-          >
-            {CLUB_CATEGORIES_META.map((cat) => {
-              const isSelected = cat.slug === selectedCategorySlug;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  id={`plantillas-cat-pill-${cat.slug}`}
-                  onClick={() => {
-                    setSelectedCategorySlug(cat.slug);
-                    setSelectedPosition('ALL');
-                  }}
-                  aria-pressed={isSelected}
-                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 cursor-pointer ${
-                    isSelected
-                      ? 'bg-primary-container text-white shadow-[3px_3px_0px_0px_#0e0e0e] -translate-y-0.5'
-                      : 'bg-surface-container-high text-tertiary hover:text-white hover:bg-surface-container-highest'
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              );
-            })}
-          </div>
-
-          {!isAfade && (
+      {/* Selector Dinámico de Categorías agrupado con desplegable de equipos */}
+      <CategoryTeamSelectorBar
+        items={CLUB_CATEGORIES_META}
+        selectedValue={selectedCategorySlug}
+        valueKey="slug"
+        idPrefix="plantillas-cat-pill-"
+        defaultOpenSelected
+        ariaLabel="Categorías y equipos de plantillas"
+        onSelect={(slug) => {
+          setSelectedCategorySlug(slug);
+          setSelectedPosition('ALL');
+        }}
+        rightSlot={
+          !isAfade ? (
             <button
               type="button"
               onClick={() => void fetchLiveRosters(true, activeTeam.id)}
               disabled={syncing}
-              className="w-9 h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0 cursor-pointer"
+              className="w-10 h-10 sm:w-9 sm:h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] transition-all shrink-0 cursor-pointer"
               title={`Actualizar plantillas desde favoley.net (Última: ${lastSyncTime})`}
               aria-label="Actualizar plantillas"
             >
               <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} aria-hidden="true" />
             </button>
-          )}
-        </div>
-      </section>
+          ) : undefined
+        }
+      />
 
       {syncFeedback && (
         <div
@@ -321,7 +298,7 @@ function PlantillasContent() {
                 Sincronizado con {isAfade ? 'ligaafade.es' : 'favoley.net'} ({lastSyncTime})
               </span>
             </div>
-            <h2 className="font-display-xl text-3xl uppercase text-white mt-1">
+            <h2 className={`font-display-xl text-3xl uppercase mt-1 ${getTeamColorTheme(activeCategory.name).colorKey ? getTeamColorTheme(activeCategory.name).textClass : 'text-white'}`}>
               {activeCategory.name}
             </h2>
             {activeCategory.description && (
@@ -387,13 +364,13 @@ function PlantillasContent() {
               </button>
             </div>
           ) : filteredPlayers.length === 0 ? (
-            isAfade && selectedPosition === 'ALL' ? (
+            selectedPosition === 'ALL' ? (
               <div className="bg-surface-container-low border border-white/5 p-8 sm:p-14 text-center flex flex-col items-center justify-center max-w-2xl mx-auto shadow-2xl">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-container/20 flex items-center justify-center mb-4 text-primary">
                   <Users className="w-8 h-8" aria-hidden="true" />
                 </div>
                 <span className="px-2.5 py-1 bg-surface-container-highest text-tertiary font-bold text-[10px] uppercase tracking-widest border border-white/10 mb-3">
-                  Competición Liga AFADE 26/27
+                  {isAfade ? 'Competición Liga AFADE 26/27' : 'Competición Oficial FAVB 26/27'}
                 </span>
                 <h3 className="font-display-xl text-xl sm:text-2xl uppercase text-white font-bold mb-2">
                   Plantilla en fase de configuración
@@ -423,10 +400,18 @@ function PlantillasContent() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {filteredPlayers.map((player) => {
-                const isPlaceholderSlot =
-                  player.firstName === 'Jugador' ||
-                  player.firstName === 'Jugadora' ||
-                  player.firstName === 'Deportista';
+                const isGenericSlot =
+                  player.firstName === 'Jugador' || player.firstName === 'Jugadora';
+                const formattedName = formatPlayerNameWithInitials(
+                  player.firstName,
+                  player.lastName
+                );
+                const displayFirst = isGenericSlot
+                  ? player.firstName
+                  : formattedName.firstName || player.firstName;
+                const displayLast = isGenericSlot
+                  ? player.lastName
+                  : formattedName.lastInitials;
                 const callUps = player.matchesCalledUp ?? 0;
                 const totalClubCallUps = player.totalClubCallUps ?? callUps;
                 const hasOtherCallUps =
@@ -440,38 +425,32 @@ function PlantillasContent() {
                     <div className="relative h-48 sm:h-72 w-full bg-[#18181b] overflow-hidden">
                       <Image
                         src={player.photoUrl || '/images/player-placeholder.svg'}
-                        alt={`${player.firstName} ${player.lastName}`.trim()}
+                        alt={`${displayFirst} ${displayLast}`.trim()}
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-transparent to-black/20" />
 
-                      <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3">
-                        <span className="font-display-xl text-4xl sm:text-6xl text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
+                      <div className="pointer-events-none absolute top-2.5 left-2.5 sm:top-3 sm:left-3">
+                        <span className="font-display-xl text-3xl sm:text-6xl text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
                           {player.number}
                         </span>
                       </div>
 
-                      <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex flex-col items-end gap-1">
-                        {player.isCaptain && !isPlaceholderSlot && (
-                          <span className="px-1.5 sm:px-2 py-0.5 bg-amber-500 text-black font-bold text-[9px] sm:text-[10px] uppercase tracking-wider shadow">
+                      <div className="pointer-events-none absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex flex-col items-end gap-1">
+                        {player.isCaptain && !isGenericSlot && (
+                          <span className="px-1.5 sm:px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] uppercase tracking-wider shadow">
                             Capitán
                           </span>
                         )}
-                        {isPlaceholderSlot ? (
-                          <span className="px-1.5 sm:px-2 py-0.5 bg-surface-container-highest text-tertiary font-bold text-[9px] sm:text-[10px] uppercase tracking-wider border border-white/10 shadow">
-                            Ficha Protegida
+                        {player.isHomegrown && !isGenericSlot && (
+                          <span className="px-1.5 sm:px-2 py-0.5 bg-primary-container text-white font-bold text-[10px] uppercase tracking-wider shadow">
+                            Federado FAVB
                           </span>
-                        ) : (
-                          player.isHomegrown && (
-                            <span className="px-1.5 sm:px-2 py-0.5 bg-primary-container text-white font-bold text-[9px] sm:text-[10px] uppercase tracking-wider shadow">
-                              Federado FAVB
-                            </span>
-                          )
                         )}
                       </div>
 
-                      <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-3 sm:right-3">
+                      <div className="pointer-events-none absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-3 sm:right-3">
                         <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-surface-container-highest/90 backdrop-blur-sm text-primary font-label-sm text-[10px] sm:text-[11px] uppercase tracking-widest font-bold inline-block truncate max-w-full">
                           {POSITION_SHORT_LABELS[player.position]}
                         </span>
@@ -481,44 +460,35 @@ function PlantillasContent() {
                     <div className="p-3 sm:p-4 flex flex-col justify-between flex-1">
                       <div>
                         <h3 className="font-display-xl text-base sm:text-xl uppercase text-white leading-tight group-hover:text-primary transition-colors">
-                          {isPlaceholderSlot ? (
-                            <span>
-                              {player.firstName} {player.lastName}
-                            </span>
-                          ) : (
+                          {displayFirst}{' '}
+                          {displayLast && (
                             <>
-                              {player.firstName} <br />
-                              <span className="text-on-surface">{player.lastName}</span>
+                              <br />
+                              <span className="text-on-surface">{displayLast}</span>
                             </>
                           )}
                         </h3>
-                        {isPlaceholderSlot ? (
-                          <span className="text-[10px] sm:text-[11px] text-tertiary block mt-1 leading-snug">
-                            Identidad reservada por protección de datos
-                          </span>
-                        ) : (
-                          player.licenseCategory && (
-                            <div className="mt-1.5">
-                              <span
-                                className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-amber-500/15 border border-amber-400/40 text-amber-300 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider leading-tight"
-                                title={`Promoción de cantera: compite con licencia oficial de categoría ${player.licenseCategory}`}
-                              >
-                                <Award className="w-3 h-3 text-amber-400 shrink-0" aria-hidden="true" />
-                                <span>Promoción · Lic. {player.licenseCategory}</span>
-                              </span>
-                            </div>
-                          )
+                        {player.licenseCategory && !isGenericSlot && (
+                          <div className="mt-1.5">
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-amber-500/15 border border-amber-400/40 text-amber-300 font-bold text-[10px] uppercase tracking-wider leading-tight"
+                              title={`Promoción de cantera: compite con licencia oficial de categoría ${player.licenseCategory}`}
+                            >
+                              <Award className="w-3 h-3 text-amber-400 shrink-0" aria-hidden="true" />
+                              <span>Promoción · Lic. {player.licenseCategory}</span>
+                            </span>
+                          </div>
                         )}
                       </div>
 
                       <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/5 flex flex-col gap-2">
-                        {!isPlaceholderSlot && (
+                        {!isGenericSlot && (
                           <div className="flex flex-col gap-1.5">
                             <div
                               className="px-2 sm:px-2.5 py-1.5 bg-surface-container-highest/70 border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-2"
                               title={`Convocado/a en ${callUps} ${callUps === 1 ? 'partido oficial' : 'partidos oficiales'} con ${activeCategory.name}`}
                             >
-                              <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-tertiary font-semibold">
+                              <span className="text-[10px] uppercase tracking-wider text-tertiary font-semibold">
                                 Actas Oficiales
                               </span>
                               <span className="text-[11px] sm:text-xs font-bold text-white flex items-center gap-1">
@@ -535,10 +505,10 @@ function PlantillasContent() {
                                 title={`Participación en doble dinámica: ${totalClubCallUps} partidos oficiales acumulados en el club`}
                               >
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5">
-                                  <span className="text-[9px] uppercase tracking-wider text-violet-300 font-bold">
+                                  <span className="text-[10px] uppercase tracking-wider text-violet-300 font-bold">
                                     Doble Dinámica
                                   </span>
-                                  <span className="text-[9px] sm:text-[10px] font-mono text-violet-200 font-bold">
+                                  <span className="text-[10px] font-mono text-violet-200 font-bold">
                                     Total Club: {totalClubCallUps}{' '}
                                     {totalClubCallUps === 1 ? 'partido' : 'partidos'}
                                   </span>
@@ -575,19 +545,15 @@ function PlantillasContent() {
 
                         <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-xs">
                           <div>
-                            <span className="text-tertiary block text-[9px] sm:text-[10px] uppercase">Dorsal</span>
+                            <span className="text-tertiary block text-[10px] uppercase">Dorsal</span>
                             <span className="font-headline-sm text-xs sm:text-sm text-white font-bold">
                               #{player.number}
                             </span>
                           </div>
                           <div>
-                            <span className="text-tertiary block text-[9px] sm:text-[10px] uppercase">Estado FAVB</span>
-                            <span
-                              className={`font-headline-sm text-xs sm:text-sm font-bold ${
-                                isPlaceholderSlot ? 'text-tertiary' : 'text-emerald-400'
-                              }`}
-                            >
-                              {isPlaceholderSlot ? 'Reservado' : 'Inscrito'}
+                            <span className="text-tertiary block text-[10px] uppercase">Estado FAVB</span>
+                            <span className="font-headline-sm text-xs sm:text-sm font-bold text-emerald-400">
+                              Inscrito
                             </span>
                           </div>
                         </div>
@@ -643,7 +609,7 @@ function PlantillasContent() {
                             : STAFF_ROLE_LABELS[staff.role]}
                         </span>
                         {isPresident && (
-                          <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[9px] font-bold uppercase tracking-wider border border-primary/30">
+                          <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/30">
                             Dirección
                           </span>
                         )}

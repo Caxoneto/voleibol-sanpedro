@@ -7,25 +7,28 @@ import { useSearchParams } from 'next/navigation';
 import {
   Calendar,
   CheckCircle2,
-  ChevronDown,
   ExternalLink,
   FileText,
   Home,
   MapPin,
-  Navigation,
   Plane,
   RefreshCw,
-  Scale,
   Smartphone,
   Trophy,
   Vote,
 } from 'lucide-react';
-import { CLUB_CATEGORIES_META, CLUB_TEAMS_META, CLUB_INFO } from '@/lib/club-info';
+import {
+  CLUB_CATEGORIES_META,
+  CLUB_TEAMS_META,
+  CLUB_INFO,
+  doesMatchBelongToCategory,
+  getTeamColorTheme,
+} from '@/lib/club-info';
+import CategoryTeamSelectorBar from '@/components/CategoryTeamSelectorBar';
 import type { FavbMatch } from '@/lib/favb-scraper';
 import {
-  formatMadridDate,
+  formatDisplayDate,
   formatMadridDateString,
-  formatMadridTime,
   generateGoogleCalendarUrl,
   generateIcsContent,
 } from '@/lib/date-utils';
@@ -46,7 +49,7 @@ interface DisplaySetColumn {
 
 type CategorySubTab = 'pending' | 'finished';
 
-const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v7';
+const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v8';
 
 function stripMatchRostersForCache(list: FavbMatch[]): FavbMatch[] {
   return list.map(({ homeRoster: _h, awayRoster: _a, ...rest }) => rest);
@@ -88,12 +91,11 @@ function PartidosContent() {
     matchId: string;
     message: string;
   } | null>(null);
-  const [expandedCatId, setExpandedCatId] = useState<string | null>(resolvedInitialCategory);
+  const [selectedCatId, setSelectedCatId] = useState<string>(resolvedInitialCategory);
   const [selectedActaMatch, setSelectedActaMatch] = useState<FavbMatch | null>(null);
   const [mounted, setMounted] = useState(false);
   const [nowMs, setNowMs] = useState<number | null>(null);
 
-  const catScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const matchesRef = useRef<FavbMatch[]>([]);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrolledMatchParamRef = useRef<string | null>(null);
@@ -206,7 +208,7 @@ function PartidosContent() {
             if (updatedTarget && updatedTarget.categoryId) {
               const desiredTab: CategorySubTab =
                 updatedTarget.status === 'FINISHED' ? 'finished' : 'pending';
-              setExpandedCatId(updatedTarget.categoryId);
+              setSelectedCatId(updatedTarget.categoryId);
               setSubTabByCategory((prev) => ({
                 ...prev,
                 [updatedTarget.categoryId!]: desiredTab,
@@ -273,23 +275,6 @@ function PartidosContent() {
     };
   }, [handleRefreshSingleMatch]);
 
-  const centerCategoryPill = (catId: string | null) => {
-    if (!catId) return;
-    const container = catScrollContainerRef.current;
-    const pill = document.getElementById(`cat-pill-${catId}`);
-    if (container && pill) {
-      const targetLeft = pill.offsetLeft - (container.clientWidth - pill.clientWidth) / 2;
-      const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
-      container.scrollTo({ left: Math.max(0, Math.min(maxScroll, targetLeft)), behavior: 'smooth' });
-    }
-  };
-
-  useEffect(() => {
-    if (expandedCatId) {
-      centerCategoryPill(expandedCatId);
-    }
-  }, [expandedCatId]);
-
   // Control de navegación desde el carrusel de Inicio (?cat=...&match=...)
   useEffect(() => {
     const routeKey = `${resolvedInitialCategory}::${initialMatchParam || ''}`;
@@ -297,7 +282,9 @@ function PartidosContent() {
     if (!initialMatchParam) {
       if (appliedRouteCatRef.current !== routeKey) {
         appliedRouteCatRef.current = routeKey;
-        if (resolvedInitialCategory) setExpandedCatId(resolvedInitialCategory);
+        if (resolvedInitialCategory) {
+          setSelectedCatId(resolvedInitialCategory);
+        }
       }
       return;
     }
@@ -309,7 +296,7 @@ function PartidosContent() {
     if (appliedRouteCatRef.current !== routeKey && (targetMatch || matches.length > 0 || rawCategoryParam)) {
       appliedRouteCatRef.current = routeKey;
       if (targetCatId) {
-        setExpandedCatId(targetCatId);
+        setSelectedCatId(targetCatId);
       }
     }
 
@@ -321,7 +308,6 @@ function PartidosContent() {
       );
       scrolledMatchParamRef.current = initialMatchParam;
       const scrollBoth = () => {
-        centerCategoryPill(targetCatId);
         const matchEl = document.getElementById(`match-${initialMatchParam}`);
         if (matchEl) {
           matchEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -336,21 +322,15 @@ function PartidosContent() {
     }
   }, [resolvedInitialCategory, rawCategoryParam, initialMatchParam, matches]);
 
-  // Alternar acordeón
-  const handleToggleCategory = (catId: string) => {
-    setExpandedCatId((current) => (current === catId ? null : catId));
-  };
-
-  // Seleccionar categoría desde la barra superior (expande y hace scroll suave a la categoría)
+  // Seleccionar equipo desde la barra superior de categorías y equipos
   const handleSelectCategoryFromBar = (catId: string) => {
-    setExpandedCatId(catId);
-    centerCategoryPill(catId);
+    setSelectedCatId(catId);
     setTimeout(() => {
-      const catEl = document.getElementById(catId);
-      if (catEl) {
-        catEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const el = document.getElementById(catId) || document.getElementById('active-team-panel');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    }, 80);
+    }, 60);
   };
 
   // Descarga de archivo .ics para el móvil
@@ -517,6 +497,7 @@ function PartidosContent() {
       const catTeams = CLUB_TEAMS_META.filter((t) => t.categoryId === cat.id);
 
       const catMatches = matches.filter((m) => {
+        if (doesMatchBelongToCategory(m, cat.id)) return true;
         if (m.categoryId && m.categoryId === cat.id) return true;
         return (
           m.categoryName.toLowerCase().includes(cat.name.toLowerCase()) ||
@@ -559,6 +540,12 @@ function PartidosContent() {
     });
   }, [matches, nowMs]);
 
+  // Datos del equipo activo seleccionado en la barra superior
+  const activeTeamData = useMemo(
+    () => categoriesData.find((item) => item.category.id === selectedCatId) || categoriesData[0],
+    [categoriesData, selectedCatId]
+  );
+
   // Todos los partidos actualmente en directo
   const allLiveMatches = useMemo(() => {
     return matches.filter((m) => m.status === 'LIVE');
@@ -580,6 +567,9 @@ function PartidosContent() {
     const rawRecordingUrl = (mounted ? recordings[m.id] : null) || m.videoUrl;
     const recordingUrl = isValidYouTubeUrl(rawRecordingUrl) ? rawRecordingUrl : null;
 
+    const teamTheme = getTeamColorTheme(m.categoryName);
+    const displayDate = formatDisplayDate(m.dateStr || m.matchDate);
+
     return (
       <div
         key={m.id}
@@ -595,19 +585,25 @@ function PartidosContent() {
         }`}
       >
         <div>
-          {/* 1. Cabecera: Jornada, Fecha/Estado y a la derecha [Botón Actualizar Icono] + [Icono Casa/Fuera] */}
+          {/* 1. Cabecera: Jornada, Fecha dd/MM/yyyy (+ Hora / Categoría) y a la derecha [Botón Actualizar] + [Icono Casa/Fuera] */}
           <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/10 text-xs">
             <div className="flex items-center gap-2 min-w-0 flex-wrap">
               <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold shrink-0">
                 J{m.round}
               </span>
-              {showCategoryName ? (
-                <span className="font-bold text-white uppercase text-[11px] truncate">
+              <span className="text-[11px] text-white/90 font-mono font-semibold shrink-0">
+                {displayDate}
+                {m.status !== 'POSTPONED' && m.status !== 'CANCELLED' && m.timeStr
+                  ? ` · ${m.timeStr}h`
+                  : ''}
+              </span>
+              {showCategoryName && (
+                <span
+                  className={`font-bold uppercase text-[11px] truncate ${
+                    teamTheme.colorKey ? teamTheme.textClass : 'text-white'
+                  }`}
+                >
                   {m.categoryName}
-                </span>
-              ) : (
-                <span className="text-[11px] text-tertiary font-semibold">
-                  {m.dateStr} · {m.timeStr}h
                 </span>
               )}
             </div>
@@ -622,9 +618,9 @@ function PartidosContent() {
                     void handleRefreshSingleMatch(m.id);
                   }}
                   disabled={isRefreshing}
-                  className={`w-6 h-6 flex items-center justify-center shrink-0 border transition-colors cursor-pointer ${
+                  className={`w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 border transition-colors cursor-pointer ${
                     isLive
-                      ? 'bg-red-950/90 hover:bg-red-800 text-red-300 border-red-500/50'
+                      ? 'bg-red-950/90 hover:bg-red-800 text-red-200 border-red-500/50'
                       : 'bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border-white/15'
                   }`}
                   title={`Actualizar marcador desde ${m.id.startsWith('afade-') ? 'ligaafade.es' : 'favoley.net'}`}
@@ -639,7 +635,7 @@ function PartidosContent() {
 
               {/* Icono de En Casa o Fuera */}
               <span
-                className={`w-6 h-6 flex items-center justify-center shrink-0 border ${
+                className={`w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 border ${
                   m.isClubHome
                     ? 'text-primary bg-primary-container/20 border-primary-container/40'
                     : 'text-tertiary bg-white/5 border-white/10'
@@ -651,9 +647,9 @@ function PartidosContent() {
                 }
               >
                 {m.isClubHome ? (
-                  <Home className="w-3.5 h-3.5" aria-hidden="true" />
+                  <Home className="w-4 h-4" aria-hidden="true" />
                 ) : (
-                  <Plane className="w-3.5 h-3.5" aria-hidden="true" />
+                  <Plane className="w-4 h-4" aria-hidden="true" />
                 )}
               </span>
             </div>
@@ -685,156 +681,162 @@ function PartidosContent() {
               )}
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
-              {setColumns.map((col, idx) => (
-                <span
-                  key={`hdr-${m.id}-${idx}`}
-                  className={`${
-                    compactCols ? 'w-6 sm:w-7' : 'w-7 sm:w-8'
-                  } text-center font-mono text-[10px] font-extrabold uppercase ${
-                    col.isCurrent ? 'text-red-400' : 'text-tertiary'
-                  }`}
-                >
-                  {col.label}
+            {!(m.status === 'POSTPONED' || m.status === 'CANCELLED') && (
+              <div className="flex items-center gap-1 shrink-0">
+                {setColumns.map((col, idx) => (
+                  <span
+                    key={`hdr-${m.id}-${idx}`}
+                    className={`${
+                      compactCols ? 'w-6 sm:w-7' : 'w-7 sm:w-8'
+                    } text-center font-mono text-[10px] font-extrabold uppercase ${
+                      col.isCurrent ? 'text-red-400' : 'text-tertiary'
+                    }`}
+                  >
+                    {col.label}
+                  </span>
+                ))}
+                <span className="w-8 sm:w-9 ml-0.5 pl-1 border-l border-white/15 text-center font-mono text-[10px] font-extrabold uppercase text-primary">
+                  SETS
                 </span>
-              ))}
-              <span className="w-8 sm:w-9 ml-0.5 pl-1 border-l border-white/15 text-center font-mono text-[10px] font-extrabold uppercase text-primary">
-                SETS
-              </span>
-            </div>
+              </div>
+            )}
           </div>
 
-          {/* 3. Filas de Equipos a la izquierda + Columnas de Sets y Total a la derecha (mismos colores que Inicio) */}
-          <div className="space-y-2 py-1 relative">
-            {/* Equipo Local */}
-            <div className="flex items-center justify-between gap-2">
-              <div
-                className={`flex items-center gap-2 min-w-0 flex-1 ${
-                  m.status === 'POSTPONED' || m.status === 'CANCELLED' ? 'pr-28 sm:pr-32' : ''
-                }`}
-                title={m.homeTeam}
-              >
-                <Image
-                  src={getTeamLogo(m.homeTeam)}
-                  alt={m.homeTeam}
-                  width={32}
-                  height={32}
-                  className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-                />
-                {m.isClubHome ? (
-                  <Link
-                    href={`/plantillas?categoria=${m.categoryId}`}
-                    className="text-xs sm:text-sm uppercase truncate text-primary font-bold hover:underline decoration-primary underline-offset-2"
-                    title={`Ver plantilla de ${m.categoryName}`}
-                  >
-                    <span className="sm:hidden font-display-xl text-base tracking-wider">
-                      {getTeamInitials(m.homeTeam)}
+          {/* 3. Filas de Equipos a la izquierda + Columnas de Sets (o sello APLAZADO/CANCELADO en flujo flex sin solapes) */}
+          <div className="flex items-center justify-between gap-3 py-1">
+            <div className="flex-1 min-w-0 space-y-2">
+              {/* Equipo Local */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1" title={m.homeTeam}>
+                  <Image
+                    src={getTeamLogo(m.homeTeam)}
+                    alt={m.homeTeam}
+                    width={32}
+                    height={32}
+                    className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                  />
+                  {m.isClubHome ? (
+                    <Link
+                      href={`/plantillas?categoria=${m.categoryId}`}
+                      className={`text-xs sm:text-sm uppercase truncate font-bold hover:underline underline-offset-2 ${
+                        teamTheme.colorKey
+                          ? `${teamTheme.textClass} decoration-current`
+                          : 'text-primary decoration-primary'
+                      }`}
+                      title={`Ver plantilla de ${m.categoryName}`}
+                    >
+                      <span className="sm:hidden font-display-xl text-base tracking-wider">
+                        {getTeamInitials(m.homeTeam)}
+                      </span>
+                      <span className="hidden sm:inline">{m.homeTeam}</span>
+                    </Link>
+                  ) : (
+                    <span className="text-xs sm:text-sm uppercase truncate text-white font-semibold">
+                      <span className="sm:hidden font-display-xl text-base tracking-wider">
+                        {getTeamInitials(m.homeTeam)}
+                      </span>
+                      <span className="hidden sm:inline">{m.homeTeam}</span>
                     </span>
-                    <span className="hidden sm:inline">{m.homeTeam}</span>
-                  </Link>
-                ) : (
-                  <span className="text-xs sm:text-sm uppercase truncate text-white font-semibold">
-                    <span className="sm:hidden font-display-xl text-base tracking-wider">
-                      {getTeamInitials(m.homeTeam)}
+                  )}
+                </div>
+
+                {!(m.status === 'POSTPONED' || m.status === 'CANCELLED') && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    {setColumns.map((col, idx) => (
+                      <span
+                        key={`home-set-${m.id}-${idx}`}
+                        className={`${
+                          compactCols ? 'w-6 sm:w-7 text-xs sm:text-sm' : 'w-7 sm:w-8 text-sm sm:text-base'
+                        } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
+                          col.isCurrent
+                            ? 'bg-red-950/60 border border-red-500/40'
+                            : 'bg-white/[0.04]'
+                        } ${getPointColorClass(col.home, col.away)}`}
+                      >
+                        {col.home}
+                      </span>
+                    ))}
+                    <span
+                      className={`w-8 sm:w-9 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
+                        totalSets.home,
+                        totalSets.away
+                      )}`}
+                    >
+                      {totalSets.home}
                     </span>
-                    <span className="hidden sm:inline">{m.homeTeam}</span>
-                  </span>
+                  </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-1 shrink-0">
-                {setColumns.map((col, idx) => (
-                  <span
-                    key={`home-set-${m.id}-${idx}`}
-                    className={`${
-                      compactCols ? 'w-6 sm:w-7 text-xs sm:text-sm' : 'w-7 sm:w-8 text-sm sm:text-base'
-                    } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
-                      col.isCurrent
-                        ? 'bg-red-950/60 border border-red-500/40'
-                        : 'bg-white/[0.04]'
-                    } ${getPointColorClass(col.home, col.away)}`}
-                  >
-                    {col.home}
-                  </span>
-                ))}
-                <span
-                  className={`w-8 sm:w-9 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
-                    totalSets.home,
-                    totalSets.away
-                  )}`}
-                >
-                  {totalSets.home}
-                </span>
-              </div>
-            </div>
+              {/* Equipo Visitante */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1" title={m.awayTeam}>
+                  <Image
+                    src={getTeamLogo(m.awayTeam)}
+                    alt={m.awayTeam}
+                    width={32}
+                    height={32}
+                    className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                  />
+                  {!m.isClubHome ? (
+                    <Link
+                      href={`/plantillas?categoria=${m.categoryId}`}
+                      className={`text-xs sm:text-sm uppercase truncate font-bold hover:underline underline-offset-2 ${
+                        teamTheme.colorKey
+                          ? `${teamTheme.textClass} decoration-current`
+                          : 'text-primary decoration-primary'
+                      }`}
+                      title={`Ver plantilla de ${m.categoryName}`}
+                    >
+                      <span className="sm:hidden font-display-xl text-base tracking-wider">
+                        {getTeamInitials(m.awayTeam)}
+                      </span>
+                      <span className="hidden sm:inline">{m.awayTeam}</span>
+                    </Link>
+                  ) : (
+                    <span className="text-xs sm:text-sm uppercase truncate text-white font-semibold">
+                      <span className="sm:hidden font-display-xl text-base tracking-wider">
+                        {getTeamInitials(m.awayTeam)}
+                      </span>
+                      <span className="hidden sm:inline">{m.awayTeam}</span>
+                    </span>
+                  )}
+                </div>
 
-            {/* Equipo Visitante */}
-            <div className="flex items-center justify-between gap-2">
-              <div
-                className={`flex items-center gap-2 min-w-0 flex-1 ${
-                  m.status === 'POSTPONED' || m.status === 'CANCELLED' ? 'pr-28 sm:pr-32' : ''
-                }`}
-                title={m.awayTeam}
-              >
-                <Image
-                  src={getTeamLogo(m.awayTeam)}
-                  alt={m.awayTeam}
-                  width={32}
-                  height={32}
-                  className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-                />
-                {!m.isClubHome ? (
-                  <Link
-                    href={`/plantillas?categoria=${m.categoryId}`}
-                    className="text-xs sm:text-sm uppercase truncate text-primary font-bold hover:underline decoration-primary underline-offset-2"
-                    title={`Ver plantilla de ${m.categoryName}`}
-                  >
-                    <span className="sm:hidden font-display-xl text-base tracking-wider">
-                      {getTeamInitials(m.awayTeam)}
+                {!(m.status === 'POSTPONED' || m.status === 'CANCELLED') && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    {setColumns.map((col, idx) => (
+                      <span
+                        key={`away-set-${m.id}-${idx}`}
+                        className={`${
+                          compactCols ? 'w-6 sm:w-7 text-xs sm:text-sm' : 'w-7 sm:w-8 text-sm sm:text-base'
+                        } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
+                          col.isCurrent
+                            ? 'bg-red-950/60 border border-red-500/40'
+                            : 'bg-white/[0.04]'
+                        } ${getPointColorClass(col.away, col.home)}`}
+                      >
+                        {col.away}
+                      </span>
+                    ))}
+                    <span
+                      className={`w-8 sm:w-9 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
+                        totalSets.away,
+                        totalSets.home
+                      )}`}
+                    >
+                      {totalSets.away}
                     </span>
-                    <span className="hidden sm:inline">{m.awayTeam}</span>
-                  </Link>
-                ) : (
-                  <span className="text-xs sm:text-sm uppercase truncate text-white font-semibold">
-                    <span className="sm:hidden font-display-xl text-base tracking-wider">
-                      {getTeamInitials(m.awayTeam)}
-                    </span>
-                    <span className="hidden sm:inline">{m.awayTeam}</span>
-                  </span>
+                  </div>
                 )}
               </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                {setColumns.map((col, idx) => (
-                  <span
-                    key={`away-set-${m.id}-${idx}`}
-                    className={`${
-                      compactCols ? 'w-6 sm:w-7 text-xs sm:text-sm' : 'w-7 sm:w-8 text-sm sm:text-base'
-                    } h-7 flex items-center justify-center font-mono font-extrabold leading-none rounded-[2px] ${
-                      col.isCurrent
-                        ? 'bg-red-950/60 border border-red-500/40'
-                        : 'bg-white/[0.04]'
-                    } ${getPointColorClass(col.away, col.home)}`}
-                  >
-                    {col.away}
-                  </span>
-                ))}
-                <span
-                  className={`w-8 sm:w-9 ml-0.5 pl-1 border-l border-white/15 h-7 flex items-center justify-center font-display-xl text-base sm:text-lg font-bold leading-none bg-white/[0.08] ${getPointColorClass(
-                    totalSets.away,
-                    totalSets.home
-                  )}`}
-                >
-                  {totalSets.away}
-                </span>
-              </div>
             </div>
 
-            {/* Cartel diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores */}
+            {/* Sello de APLAZADO / CANCELADO en flujo normal a la derecha */}
             {(m.status === 'POSTPONED' || m.status === 'CANCELLED') && (
-              <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
+              <div className="pointer-events-none shrink-0 flex items-center justify-end">
                 <div
-                  className={`-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] ${
+                  className={`-rotate-3 sm:-rotate-6 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.14em] uppercase font-black shadow-[0_4px_16px_rgba(0,0,0,0.75)] select-none rounded-[2px] ${
                     m.status === 'CANCELLED'
                       ? 'bg-red-950/95 text-red-200 border-red-500'
                       : 'bg-amber-500/95 text-black border-amber-200'
@@ -847,12 +849,19 @@ function PartidosContent() {
           </div>
         </div>
 
-        {/* Pie de tarjeta con sede, pista exacta, localidad, árbitros y botón de Acta / Convocatoria */}
+        {/* Pie de tarjeta con sede enlazada directamente a Google Maps y barra de acciones */}
         <div className="pt-2.5 mt-2 border-t border-white/5 space-y-2 text-[11px] text-tertiary">
-          {/* Funcionalidad 2: Pabellón + Badge Pista Exacta + Localidad + Cómo llegar */}
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
+          {/* Pabellón + Pista + Localidad enlazados directamente a Google Maps */}
+          <a
+            href={getVenueMapsLink(m)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-start gap-1.5 w-full max-w-full min-w-0 text-[11px] text-tertiary hover:text-white transition-colors group/venue"
+            title={`Abrir ubicación de ${m.venue} en Google Maps`}
+          >
+            <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+            <span className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
               {m.court && (
                 <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
                   {m.court}
@@ -863,64 +872,14 @@ function PartidosContent() {
                   {m.locality}
                 </span>
               )}
-              <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
-                <div className="animate-venue-marquee items-center whitespace-nowrap text-[11px] text-tertiary">
-                  <span className="pr-8">{m.venue}</span>
-                  <span className="pr-8" aria-hidden="true">{m.venue}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0 relative z-30">
-              <a
-                href={getVenueMapsLink(m)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/10 text-[10px] font-bold uppercase tracking-wider transition-colors"
-                title={`Cómo llegar a ${m.venue}`}
-              >
-                <Navigation className="w-3 h-3 text-primary group-hover:text-white shrink-0" aria-hidden="true" />
-                <span>Cómo llegar</span>
-              </a>
-
-              <a
-                href={sanitizeHttpsUrl(m.favbUrl, CLUB_INFO.federationUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="w-6 h-6 bg-surface-container-highest hover:bg-primary-container text-primary hover:text-white flex items-center justify-center border border-white/10 transition-colors"
-                title={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
-                aria-label={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
-              >
-                <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
-              </a>
-            </div>
-          </div>
-
-          {/* Funcionalidad 1: Equipo Arbitral Designado */}
-          {m.referees && m.referees.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-white/5 text-[10px]">
-              <span className="inline-flex items-center gap-1 text-primary font-bold uppercase tracking-wider shrink-0">
-                <Scale className="w-3 h-3" />
-                <span>Árbitros:</span>
+              <span className="text-[11px] text-tertiary group-hover/venue:text-primary group-hover/venue:underline break-words leading-snug min-w-0">
+                {m.venue}
               </span>
-              {m.referees.map((ref, rIdx) => (
-                <span
-                  key={`${m.id}-ref-${rIdx}`}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/[0.04] border border-white/10 text-white/90 font-medium"
-                >
-                  <strong className="text-tertiary font-mono">{ref.role}:</strong> {ref.name}
-                  {ref.isTrainee && (
-                    <span className="text-amber-300 font-bold">(Prácticas)</span>
-                  )}
-                </span>
-              ))}
-            </div>
-          )}
+            </span>
+          </a>
 
-          {/* Funcionalidad 3: Botón Ver Acta / Convocatoria + Vídeo Diferido */}
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
+          {/* Barra inferior de acciones */}
+          <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/5 flex-wrap">
             <button
               type="button"
               onClick={(e) => {
@@ -932,28 +891,42 @@ function PartidosContent() {
               <FileText className="w-3 h-3 shrink-0" aria-hidden="true" />
               <span>Ver Acta / Convocatoria</span>
               {getCalledUpCount(m) > 0 && (
-                <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[9px]">
+                <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[10px]">
                   {getCalledUpCount(m)} conv.
                 </span>
               )}
             </button>
 
-            {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
+            <div className="flex items-center gap-1.5 shrink-0 relative z-30">
+              {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
+                <a
+                  href={recordingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-none transition-colors shadow-sm"
+                  title="Ver partido en diferido en YouTube"
+                  aria-label="Ver partido en diferido"
+                >
+                  <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                  <span>Ver partido</span>
+                </a>
+              )}
+
               <a
-                href={recordingUrl}
+                href={sanitizeHttpsUrl(m.favbUrl, CLUB_INFO.federationUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-[2px] transition-colors shadow-sm"
-                title="Ver partido en diferido en YouTube"
-                aria-label="Ver partido en diferido"
+                className="w-10 h-10 sm:w-9 sm:h-9 bg-surface-container-highest hover:bg-primary-container text-primary hover:text-white flex items-center justify-center border border-white/10 transition-colors"
+                title={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
+                aria-label={m.id.startsWith('afade-') ? 'Ver información oficial en ligaafade.es' : 'Ver acta oficial en favoley.net'}
               >
-                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                </svg>
-                <span>Ver partido</span>
+                <ExternalLink className="w-4 h-4" aria-hidden="true" />
               </a>
-            )}
+            </div>
           </div>
         </div>
 
@@ -963,7 +936,7 @@ function PartidosContent() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background relative overflow-hidden">
+    <div className="w-full min-h-screen bg-background relative overflow-x-clip">
       {/* Subtle Page-Wide Ambient Background */}
       <div
         className="pointer-events-none fixed inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-[0.14] blur-[3px] z-0"
@@ -1012,60 +985,30 @@ function PartidosContent() {
         </div>
       )}
 
-      {/* Selector Rápido Horizontal de Categorías (Sticky) + Botón Icono Actualizar integrado */}
-      <section aria-label="Categorías de partidos" className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5 flex items-center justify-between gap-2.5 sm:gap-3">
-          <div
-            ref={catScrollContainerRef}
-            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory flex-1"
-          >
-            <span className="text-[11px] font-bold uppercase tracking-wider text-tertiary shrink-0 mr-1 hidden sm:inline">
-              Categoría:
-            </span>
-            {categoriesData.map(({ category }) => {
-              const isSelected = expandedCatId === category.id;
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  id={`cat-pill-${category.id}`}
-                  onClick={() => handleSelectCategoryFromBar(category.id)}
-                  aria-pressed={isSelected}
-                  className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 cursor-pointer ${
-                    isSelected
-                      ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e] -translate-y-0.5'
-                      : 'bg-surface-container-high text-tertiary hover:text-white'
-                  }`}
-                >
-                  {category.name}
-                </button>
-              );
-            })}
-          </div>
-
+      {/* Selector Rápido de Categorías -> Equipos (Sticky) + Botón Actualizar */}
+      <CategoryTeamSelectorBar
+        items={CLUB_CATEGORIES_META}
+        selectedValue={selectedCatId}
+        valueKey="id"
+        onSelect={handleSelectCategoryFromBar}
+        idPrefix="cat-pill-"
+        defaultOpenSelected
+        ariaLabel="Categorías de partidos"
+        rightSlot={
           <button
             type="button"
             onClick={() => void fetchFavbMatches(true)}
             disabled={syncing}
-            className="flex w-9 h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0 cursor-pointer"
+            className="flex w-10 h-10 sm:w-9 sm:h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] transition-all shrink-0 cursor-pointer"
             title={`Actualizar marcadores oficiales (FAVB y Liga AFADE) (Última: ${lastSyncTime})`}
             aria-label="Actualizar resultados"
           >
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
-        </div>
-      </section>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 sm:py-5 space-y-5 relative z-10">
-        {loadingInitial && matches.length === 0 && (
-          <div className="bg-surface-container-low border border-white/10 p-8 text-center flex flex-col items-center gap-2">
-            <RefreshCw className="w-6 h-6 text-primary animate-spin" aria-hidden="true" />
-            <p className="text-xs uppercase font-bold tracking-wider text-white">
-              Cargando partidos oficiales...
-            </p>
-          </div>
-        )}
-
         {/* MÓDULO DESTACADO: PARTIDOS EN DIRECTO AHORA */}
         {allLiveMatches.length > 0 && (
           <section className="bg-red-950/20 border-2 border-red-500 p-3.5 sm:p-5 shadow-2xl relative animate-fade-in">
@@ -1085,605 +1028,497 @@ function PartidosContent() {
           </section>
         )}
 
-        {/* NÚCLEO: LISTADO CLASIFICADO POR CATEGORÍAS (ACORDEÓN CON PESTAÑAS PENDIENTES / FINALIZADOS) */}
-        <section className="space-y-2.5">
-          {/* Acordeón de las categorías */}
-          <div className="space-y-2.5">
-            {categoriesData.map(
-              ({
-                category,
-                team,
-                totalCount,
-                live,
-                scheduled,
-                finished,
-                nextMatch,
-                redHighlightedMatchId,
-              }) => {
-                const isExpanded = expandedCatId === category.id;
-                const pendingCount = live.length + scheduled.length;
-                const activeSubTab: CategorySubTab =
-                  subTabByCategory[category.id] ||
-                  (pendingCount > 0 ? 'pending' : 'finished');
+        {/* NÚCLEO: VISTA DIRECTA DEL EQUIPO SELECCIONADO EN LA BARRA SUPERIOR */}
+        <section id="active-team-panel" className="min-h-[640px] space-y-3 scroll-mt-44">
+          {loadingInitial && matches.length === 0 ? (
+            <div className="min-h-[560px] bg-surface-container-low border border-primary-container/60 p-8 text-center flex flex-col items-center justify-center gap-3 shadow-xl">
+              <RefreshCw className="w-7 h-7 text-primary animate-spin" aria-hidden="true" />
+              <p className="text-xs uppercase font-bold tracking-wider text-white">
+                Cargando partidos oficiales...
+              </p>
+            </div>
+          ) : activeTeamData && (() => {
+            const { category, team, live, scheduled, finished, redHighlightedMatchId } = activeTeamData;
+            const pendingCount = live.length + scheduled.length;
+            const activeSubTab: CategorySubTab =
+              subTabByCategory[category.id] || (pendingCount > 0 ? 'pending' : 'finished');
+            const teamTheme = getTeamColorTheme(category.name);
 
-                return (
-                  <div
-                    key={category.id}
-                    id={category.id}
-                    className={`border transition-all duration-300 scroll-mt-44 ${
-                      isExpanded
-                        ? 'bg-surface-container-low border-primary-container/80 shadow-xl'
-                        : 'bg-surface-container-lowest/80 border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    {/* Encabezado del Acordeón */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleCategory(category.id)}
-                      aria-expanded={isExpanded}
-                      className="w-full p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-left transition-colors cursor-pointer group"
+            return (
+              <div
+                id={category.id}
+                className="bg-surface-container-low border border-primary-container/60 shadow-xl scroll-mt-44"
+              >
+                {/* Cabecera unificada: Nombre equipo con color + Competición + Pendientes/Finalizados */}
+                <div className="p-3.5 sm:p-4 border-b border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+                    {teamTheme.colorKey && (
+                      <span
+                        className={`w-3 h-3 rounded-full shrink-0 ${teamTheme.dotClass} ${
+                          teamTheme.colorKey === 'NEGRO' ? 'ring-1 ring-white/80' : ''
+                        }`}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <h2
+                      className={`font-display-xl text-lg sm:text-2xl uppercase tracking-wide leading-tight ${
+                        teamTheme.colorKey ? teamTheme.textClass : 'text-white'
+                      }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={`w-8 h-8 shrink-0 flex items-center justify-center font-display-xl text-sm transition-colors ${
-                            isExpanded
-                              ? 'bg-primary-container text-white shadow-md'
-                              : 'bg-surface-container-high text-tertiary group-hover:text-white'
-                          }`}
-                        >
-                          {category.order}
-                        </div>
-
-                        <div className="min-w-0 flex items-center gap-2 flex-wrap">
-                          <h3 className="font-display-xl text-base sm:text-lg uppercase text-white group-hover:text-primary transition-colors truncate">
-                            {category.name}
-                          </h3>
-                          <span className="px-2 py-0.5 bg-surface-container-high text-tertiary text-[10px] font-bold uppercase tracking-wider border border-white/5">
-                            {team?.division || 'FAVB'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between md:justify-end gap-2.5 shrink-0">
-                        {live.length > 0 ? (
-                          <div className="flex items-center gap-2 bg-red-950/80 border border-red-500/60 px-2.5 py-1 text-xs text-red-300 font-bold uppercase tracking-wider animate-pulse">
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                            </span>
-                            <span>
-                              EN JUEGO: J{live[0].round} ({live[0].homeScore ?? 0}-
-                              {live[0].awayScore ?? 0})
-                            </span>
-                          </div>
-                        ) : nextMatch ? (
-                          <div className="flex items-center gap-2 bg-surface-container-highest/60 px-2.5 py-1 text-xs border border-red-500/40">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                            <span className="font-bold text-white">
-                              Próx: J{nextMatch.round} · {nextMatch.dateStr}
-                            </span>
-                            <span
-                              className="p-0.5 text-primary flex items-center justify-center"
-                              title={
-                                nextMatch.isClubHome
-                                  ? 'En casa (Sergio Scariolo)'
-                                  : `Fuera (${nextMatch.venue})`
-                              }
-                            >
-                              {nextMatch.isClubHome ? (
-                                <Home className="w-3.5 h-3.5" aria-hidden="true" />
-                              ) : (
-                                <Plane className="w-3.5 h-3.5" aria-hidden="true" />
-                              )}
-                            </span>
-                          </div>
-                        ) : null}
-
-                        <span className="text-xs font-mono text-tertiary bg-white/5 px-2 py-0.5 hidden sm:inline">
-                          {totalCount} part.
+                      {category.name}
+                    </h2>
+                    <span className="px-2 py-0.5 bg-surface-container-high border border-white/10 text-[11px] font-semibold text-zinc-300">
+                      {team?.division || 'FAVB'}
+                    </span>
+                    {live.length > 0 && (
+                      <span className="inline-flex items-center gap-1.5 bg-red-950/90 border border-red-400/60 px-2 py-0.5 text-[10px] text-red-200 font-bold uppercase tracking-wider animate-pulse">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                         </span>
-
-                        <ChevronDown
-                          className={`w-5 h-5 transition-transform duration-300 ${
-                            isExpanded
-                              ? 'rotate-180 text-primary'
-                              : 'text-tertiary group-hover:text-white'
-                          }`}
-                          aria-hidden="true"
-                        />
-                      </div>
-                    </button>
-
-                    {/* Panel Desplegable Separado por Pestañas: PENDIENTES vs FINALIZADOS */}
-                    {isExpanded && (
-                      <div className="px-3.5 sm:px-5 pb-5 pt-3 border-t border-white/10 space-y-4 animate-fade-in">
-                        {/* Barra de Sub-Pestañas: Pendientes vs Finalizados */}
-                        <div className="flex items-center gap-2 pb-2.5 border-b border-white/10">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSubTabByCategory((prev) => ({
-                                ...prev,
-                                [category.id]: 'pending',
-                              }))
-                            }
-                            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border ${
-                              activeSubTab === 'pending'
-                                ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
-                                : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
-                            }`}
-                          >
-                            {live.length > 0 && (
-                              <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-300"></span>
-                              </span>
-                            )}
-                            <span>Pendientes</span>
-                            <span
-                              className={`px-1.5 py-0.5 text-[10px] font-mono ${
-                                activeSubTab === 'pending'
-                                  ? 'bg-black/30 text-white'
-                                  : 'bg-white/10 text-tertiary'
-                              }`}
-                            >
-                              {pendingCount}
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSubTabByCategory((prev) => ({
-                                ...prev,
-                                [category.id]: 'finished',
-                              }))
-                            }
-                            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border ${
-                              activeSubTab === 'finished'
-                                ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
-                                : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
-                            }`}
-                          >
-                            <span>Finalizados</span>
-                            <span
-                              className={`px-1.5 py-0.5 text-[10px] font-mono ${
-                                activeSubTab === 'finished'
-                                  ? 'bg-black/30 text-white'
-                                  : 'bg-white/10 text-tertiary'
-                              }`}
-                            >
-                              {finished.length}
-                            </span>
-                          </button>
-                        </div>
-
-                        {/* PESTAÑA 1: PARTIDOS PENDIENTES (EN JUEGO + PRÓXIMOS) */}
-                        {activeSubTab === 'pending' && (
-                          <div className="space-y-4">
-                            {live.length > 0 && (
-                              <div className="space-y-2.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="relative flex h-2.5 w-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-                                  </span>
-                                  <h4 className="font-headline-sm text-xs uppercase text-red-400 font-bold">
-                                    En Juego Ahora ({live.length})
-                                  </h4>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                                  {live.map((m) => renderScoreboardCard(m, false, true))}
-                                </div>
-                              </div>
-                            )}
-
-                            {scheduled.length === 0 && live.length === 0 ? (
-                              <div className="p-5 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
-                                No hay partidos pendientes en esta categoría.
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                                {scheduled.map((m) => {
-                                  if (isRestMatch(m)) {
-                                    const clubTeam = m.homeTeam?.toLowerCase().includes('san pedro') ? m.homeTeam : m.awayTeam;
-                                    return (
-                                      <div
-                                        key={m.id}
-                                        id={`match-${m.id}`}
-                                        className="bg-surface-container-high/70 border border-sky-500/40 hover:border-sky-500/70 p-3.5 sm:p-4 flex flex-col justify-between transition-all relative overflow-hidden shadow-md"
-                                      >
-                                        <div>
-                                          <div className="flex items-center justify-between pb-2 border-b border-white/10 text-xs">
-                                            <div className="flex items-center gap-2">
-                                              <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold">
-                                                J{m.round}
-                                              </span>
-                                              <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 border border-sky-500/40 text-[9px] font-bold uppercase tracking-wider">
-                                                Descanso
-                                              </span>
-                                            </div>
-                                          </div>
-
-                                          <div className="py-4 relative flex items-center gap-3">
-                                            <Image
-                                              src={getTeamLogo(clubTeam)}
-                                              alt={clubTeam}
-                                              width={30}
-                                              height={30}
-                                              className="w-7 h-7 object-contain shrink-0"
-                                            />
-                                            <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold text-white truncate pr-28 sm:pr-32">
-                                              {clubTeam}
-                                            </p>
-
-                                            {/* Cartel diagonal de DESCANSO estilo aplazado */}
-                                            <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
-                                              <div className="-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] bg-sky-500/95 text-black border-sky-200">
-                                                DESCANSO
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-tertiary">
-                                          <span className="text-tertiary font-semibold">
-                                            {formatMadridDate(m.matchDate, {
-                                              weekday: 'short',
-                                              day: 'numeric',
-                                              month: 'short',
-                                            })}
-                                          </span>
-                                          <span className="font-bold text-sky-400 font-mono text-[11px] uppercase">
-                                            Descanso
-                                          </span>
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-
-                                  const isRefreshing = refreshingMatchIds.has(m.id);
-                                  const isClosestRed =
-                                    m.id === redHighlightedMatchId || m.id === highlightedMatchId;
-                                  const rawRecordingUrl = (mounted ? recordings[m.id] : null) || m.videoUrl;
-                                  const recordingUrl = isValidYouTubeUrl(rawRecordingUrl) ? rawRecordingUrl : null;
-
-                                  return (
-                                    <div
-                                      key={m.id}
-                                      id={`match-${m.id}`}
-                                      className={`bg-surface-container-high/70 p-3.5 sm:p-4 flex flex-col justify-between transition-all relative overflow-hidden shadow-md ${
-                                        isClosestRed
-                                          ? 'border-2 border-red-500 shadow-[0_0_18px_rgba(239,68,68,0.25)]'
-                                          : m.status === 'POSTPONED'
-                                          ? 'border border-amber-500/40 hover:border-amber-500/70'
-                                          : m.status === 'CANCELLED'
-                                          ? 'border border-red-500/40 hover:border-red-500/70'
-                                          : 'border border-white/10 hover:border-primary-container/60'
-                                      }`}
-                                    >
-                                      <div>
-                                        <div className="flex items-center justify-between pb-2 border-b border-white/10 text-xs">
-                                          <div className="flex items-center gap-2">
-                                            <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold">
-                                              J{m.round}
-                                            </span>
-                                            {m.id === redHighlightedMatchId && m.status === 'SCHEDULED' && (
-                                              <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] font-bold uppercase tracking-wider">
-                                                Próximo Partido
-                                              </span>
-                                            )}
-                                            {m.status === 'POSTPONED' && (
-                                              <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[9px] font-bold uppercase tracking-wider">
-                                                Aplazado
-                                              </span>
-                                            )}
-                                            {m.status === 'CANCELLED' && (
-                                              <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] font-bold uppercase tracking-wider">
-                                                Cancelado
-                                              </span>
-                                            )}
-                                          </div>
-
-                                          <div className="flex items-center gap-1.5 relative z-30">
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                void handleRefreshSingleMatch(m.id);
-                                              }}
-                                              disabled={isRefreshing}
-                                              className="w-6 h-6 flex items-center justify-center bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/15 transition-colors cursor-pointer"
-                                              title="Comprobar marcador oficial"
-                                              aria-label="Actualizar marcador"
-                                            >
-                                              <RefreshCw
-                                                className={`w-3.5 h-3.5 ${
-                                                  isRefreshing ? 'animate-spin text-white' : ''
-                                                }`}
-                                                aria-hidden="true"
-                                              />
-                                            </button>
-
-                                            <span
-                                              className={`w-6 h-6 flex items-center justify-center border ${
-                                                m.isClubHome
-                                                  ? 'text-primary bg-primary-container/20 border-primary-container/40'
-                                                  : 'text-tertiary bg-white/5 border-white/10'
-                                              }`}
-                                              title={
-                                                m.isClubHome
-                                                  ? 'Partido en casa (Pabellón Sergio Scariolo)'
-                                                  : `Partido fuera (${m.venue})`
-                                              }
-                                            >
-                                              {m.isClubHome ? (
-                                                <Home className="w-3.5 h-3.5" aria-hidden="true" />
-                                              ) : (
-                                                <Plane className="w-3.5 h-3.5" aria-hidden="true" />
-                                              )}
-                                            </span>
-                                          </div>
-                                        </div>
-
-                                        <div className="py-3 relative">
-                                          <div
-                                            className={`space-y-2.5 ${
-                                              m.status === 'POSTPONED' || m.status === 'CANCELLED'
-                                                ? 'pr-28 sm:pr-32'
-                                                : ''
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-2.5 min-w-0" title={m.homeTeam}>
-                                              <Image
-                                                src={getTeamLogo(m.homeTeam)}
-                                                alt={m.homeTeam}
-                                                width={30}
-                                                height={30}
-                                                className="w-7 h-7 object-contain shrink-0"
-                                              />
-                                              {m.isClubHome ? (
-                                                <Link
-                                                  href={`/plantillas?categoria=${m.categoryId}`}
-                                                  className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
-                                                  title={`Ver plantilla de ${m.categoryName}`}
-                                                >
-                                                  {m.homeTeam}
-                                                </Link>
-                                              ) : (
-                                                <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
-                                                  {m.homeTeam}
-                                                </p>
-                                              )}
-                                            </div>
-                                            <div className="flex items-center gap-2.5 min-w-0" title={m.awayTeam}>
-                                              <Image
-                                                src={getTeamLogo(m.awayTeam)}
-                                                alt={m.awayTeam}
-                                                width={30}
-                                                height={30}
-                                                className="w-7 h-7 object-contain shrink-0"
-                                              />
-                                              {!m.isClubHome ? (
-                                                <Link
-                                                  href={`/plantillas?categoria=${m.categoryId}`}
-                                                  className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
-                                                  title={`Ver plantilla de ${m.categoryName}`}
-                                                >
-                                                  {m.awayTeam}
-                                                </Link>
-                                              ) : (
-                                                <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
-                                                  {m.awayTeam}
-                                                </p>
-                                              )}
-                                            </div>
-                                          </div>
-
-                                          {/* Cartel diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores */}
-                                          {(m.status === 'POSTPONED' || m.status === 'CANCELLED') && (
-                                            <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-end">
-                                              <div
-                                                className={`-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] ${
-                                                  m.status === 'CANCELLED'
-                                                    ? 'bg-red-950/95 text-red-200 border-red-500'
-                                                    : 'bg-amber-500/95 text-black border-amber-200'
-                                                }`}
-                                              >
-                                                {m.statusText?.toUpperCase() ||
-                                                  (m.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      <div className="pt-2.5 border-t border-white/10 space-y-2 text-xs">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-tertiary font-semibold">
-                                            {formatMadridDate(m.matchDate, {
-                                              weekday: 'short',
-                                              day: 'numeric',
-                                              month: 'short',
-                                            })}
-                                          </span>
-                                          {m.status === 'POSTPONED' ? (
-                                            <span className="font-bold text-amber-400 font-mono uppercase">
-                                              Aplazado
-                                            </span>
-                                          ) : m.status === 'CANCELLED' ? (
-                                            <span className="font-bold text-red-400 font-mono uppercase">
-                                              Cancelado
-                                            </span>
-                                          ) : (
-                                            <span className="font-bold text-primary font-mono">
-                                              {m.timeStr}h
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        {/* Funcionalidad 2: Pabellón + Pista Exacta + Localidad + Cómo llegar */}
-                                        <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-                                          <div className="flex items-center gap-1.5 text-[11px] text-tertiary min-w-[160px] flex-1 overflow-hidden">
-                                            <MapPin className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
-                                            {m.court && (
-                                              <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
-                                                {m.court}
-                                              </span>
-                                            )}
-                                            {m.locality && !m.venue.toLowerCase().includes(m.locality.toLowerCase()) && (
-                                              <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 text-white/80 text-[10px] font-semibold shrink-0">
-                                                {m.locality}
-                                              </span>
-                                            )}
-                                            <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges">
-                                              <div className="animate-venue-marquee items-center whitespace-nowrap text-[11px] text-tertiary">
-                                                <span className="pr-8">{m.venue}</span>
-                                                <span className="pr-8" aria-hidden="true">{m.venue}</span>
-                                              </div>
-                                            </div>
-                                          </div>
-
-                                          <div className="flex items-center gap-1.5 shrink-0 relative z-30">
-                                            {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
-                                              <a
-                                                href={recordingUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-[2px] transition-colors shadow-sm"
-                                                title="Ver partido en diferido en YouTube"
-                                                aria-label="Ver partido en diferido"
-                                              >
-                                                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                                                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                                                </svg>
-                                                <span className="hidden sm:inline">Ver partido</span>
-                                              </a>
-                                            )}
-
-                                            <a
-                                              href={getGoogleCalendarLink(m)}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
-                                              title="Añadir a Google Calendar"
-                                              aria-label="Añadir a Google Calendar"
-                                            >
-                                              <Calendar className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-                                            </a>
-
-                                            <button
-                                              type="button"
-                                              onClick={() => handleDownloadIcs(m)}
-                                              className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container cursor-pointer"
-                                              title="Añadir a la agenda del móvil (.ics)"
-                                              aria-label="Añadir al móvil"
-                                            >
-                                              <Smartphone className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-                                            </button>
-
-                                            <a
-                                              href={getVenueMapsLink(m)}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center gap-1 px-2 h-7 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all border border-white/10"
-                                              title={`Cómo llegar a ${m.venue}`}
-                                              aria-label="Cómo llegar al pabellón"
-                                            >
-                                              <Navigation className="w-3 h-3 text-primary shrink-0" aria-hidden="true" />
-                                              <span>Cómo llegar</span>
-                                            </a>
-                                          </div>
-                                        </div>
-
-                                        {/* Funcionalidad 1: Equipo Arbitral Designado */}
-                                        {m.referees && m.referees.length > 0 && (
-                                          <div className="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-white/5 text-[10px]">
-                                            <span className="inline-flex items-center gap-1 text-primary font-bold uppercase tracking-wider shrink-0">
-                                              <Scale className="w-3 h-3" />
-                                              <span>Árbitros:</span>
-                                            </span>
-                                            {m.referees.map((ref, rIdx) => (
-                                              <span
-                                                key={`${m.id}-sched-ref-${rIdx}`}
-                                                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/[0.04] border border-white/10 text-white/90 font-medium"
-                                              >
-                                                <strong className="text-tertiary font-mono">{ref.role}:</strong> {ref.name}
-                                                {ref.isTrainee && (
-                                                  <span className="text-amber-300 font-bold">(Prácticas)</span>
-                                                )}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        )}
-
-                                        {/* Funcionalidad 3: Botón Ver Acta / Convocatoria */}
-                                        <div className="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setSelectedActaMatch(m);
-                                            }}
-                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors"
-                                          >
-                                            <FileText className="w-3 h-3 shrink-0" />
-                                            <span>Ver Acta / Convocatoria</span>
-                                            {getCalledUpCount(m) > 0 && (
-                                              <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[9px]">
-                                                {getCalledUpCount(m)} conv.
-                                              </span>
-                                            )}
-                                          </button>
-                                        </div>
-                                      </div>
-
-
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* PESTAÑA 2: PARTIDOS FINALIZADOS */}
-                        {activeSubTab === 'finished' && (
-                          <div>
-                            {finished.length === 0 ? (
-                              <div className="p-5 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
-                                Aún no hay partidos finalizados en esta categoría.
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                                {finished.map((m, idx) =>
-                                  renderScoreboardCard(
-                                    m,
-                                    false,
-                                    m.id === highlightedMatchId || (pendingCount === 0 && idx === 0)
-                                  )
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                        <span>EN JUEGO ({live.length})</span>
+                      </span>
                     )}
                   </div>
-                );
-              }
-            )}
-          </div>
 
-          {/* Fuente Oficial y Leyenda de Iconos (Compacto al final tras el último div de categorías) */}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSubTabByCategory((prev) => ({
+                          ...prev,
+                          [category.id]: 'pending',
+                        }))
+                      }
+                      className={`px-3 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
+                        activeSubTab === 'pending'
+                          ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
+                          : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
+                      }`}
+                    >
+                      {live.length > 0 && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-300"></span>
+                        </span>
+                      )}
+                      <span>Pendientes</span>
+                      <span
+                        className={`px-1.5 py-0.5 text-[10px] font-mono ${
+                          activeSubTab === 'pending'
+                            ? 'bg-black/30 text-white'
+                            : 'bg-white/10 text-tertiary'
+                        }`}
+                      >
+                        {pendingCount}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSubTabByCategory((prev) => ({
+                          ...prev,
+                          [category.id]: 'finished',
+                        }))
+                      }
+                      className={`px-3 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all border active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
+                        activeSubTab === 'finished'
+                          ? 'bg-primary-container text-white border-primary-container shadow-[2px_2px_0px_0px_#0e0e0e]'
+                          : 'bg-surface-container-high text-tertiary hover:text-white border-white/10'
+                      }`}
+                    >
+                      <span>Finalizados</span>
+                      <span
+                        className={`px-1.5 py-0.5 text-[10px] font-mono ${
+                          activeSubTab === 'finished'
+                            ? 'bg-black/30 text-white'
+                            : 'bg-white/10 text-tertiary'
+                        }`}
+                      >
+                        {finished.length}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Contenido del Equipo: Pestaña Pendientes o Finalizados */}
+                <div className="p-3.5 sm:p-5 space-y-4">
+                  {/* PESTAÑA 1: PARTIDOS PENDIENTES (EN JUEGO + PRÓXIMOS) */}
+                  {activeSubTab === 'pending' && (
+                    <div className="space-y-4">
+                      {live.length > 0 && (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                            </span>
+                            <h3 className="font-headline-sm text-xs uppercase text-red-400 font-bold">
+                              En Juego Ahora ({live.length})
+                            </h3>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                            {live.map((m) => renderScoreboardCard(m, false, true))}
+                          </div>
+                        </div>
+                      )}
+
+                      {scheduled.length === 0 && live.length === 0 ? (
+                        <div className="p-5 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
+                          No hay partidos pendientes en esta categoría.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                          {scheduled.map((m) => {
+                            const formattedCardDate = formatDisplayDate(m.dateStr || m.matchDate);
+
+                            if (isRestMatch(m)) {
+                              const clubTeam = m.homeTeam?.toLowerCase().includes('san pedro') ? m.homeTeam : m.awayTeam;
+                              return (
+                                <div
+                                  key={m.id}
+                                  id={`match-${m.id}`}
+                                  className="bg-surface-container-high/70 border border-sky-500/40 hover:border-sky-500/70 p-3.5 sm:p-4 flex flex-col justify-between transition-all relative overflow-hidden shadow-md"
+                                >
+                                  <div>
+                                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/10 text-xs">
+                                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                                        <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold shrink-0">
+                                          J{m.round}
+                                        </span>
+                                        <span className="text-[11px] text-white/90 font-mono font-semibold shrink-0">
+                                          {formattedCardDate}
+                                        </span>
+                                        <span className="px-1.5 py-0.5 bg-sky-950/90 text-sky-200 border border-sky-400/50 text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                          Descanso
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="py-4 flex items-center justify-between gap-3">
+                                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                                        <Image
+                                          src={getTeamLogo(clubTeam)}
+                                          alt={clubTeam}
+                                          width={30}
+                                          height={30}
+                                          className="w-7 h-7 object-contain shrink-0"
+                                        />
+                                        <p
+                                          className={`font-headline-sm text-xs sm:text-sm uppercase font-bold truncate ${
+                                            teamTheme.colorKey ? teamTheme.textClass : 'text-white'
+                                          }`}
+                                        >
+                                          {clubTeam}
+                                        </p>
+                                      </div>
+
+                                      {/* Sello DESCANSO en flujo flex */}
+                                      <div className="pointer-events-none shrink-0 flex items-center justify-end">
+                                        <div className="-rotate-3 sm:-rotate-6 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.14em] uppercase font-black shadow-[0_4px_16px_rgba(0,0,0,0.75)] select-none rounded-[2px] bg-sky-500/95 text-black border-sky-200">
+                                          DESCANSO
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            const isRefreshing = refreshingMatchIds.has(m.id);
+                            const isClosestRed =
+                              m.id === redHighlightedMatchId || m.id === highlightedMatchId;
+                            const rawRecordingUrl = (mounted ? recordings[m.id] : null) || m.videoUrl;
+                            const recordingUrl = isValidYouTubeUrl(rawRecordingUrl) ? rawRecordingUrl : null;
+
+                            return (
+                              <div
+                                key={m.id}
+                                id={`match-${m.id}`}
+                                className={`bg-surface-container-high/70 p-3.5 sm:p-4 flex flex-col justify-between transition-all relative overflow-hidden shadow-md ${
+                                  isClosestRed
+                                    ? 'border-2 border-red-500 shadow-[0_0_18px_rgba(239,68,68,0.25)]'
+                                    : m.status === 'POSTPONED'
+                                    ? 'border border-amber-500/40 hover:border-amber-500/70'
+                                    : m.status === 'CANCELLED'
+                                    ? 'border border-red-500/40 hover:border-red-500/70'
+                                    : 'border border-white/10 hover:border-primary-container/60'
+                                }`}
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/10 text-xs">
+                                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                                      <span className="px-1.5 py-0.5 bg-primary-container text-white font-mono text-[10px] font-bold shrink-0">
+                                        J{m.round}
+                                      </span>
+                                      <span className="text-[11px] text-white/90 font-mono font-semibold shrink-0">
+                                        {formattedCardDate}
+                                        {m.status !== 'POSTPONED' && m.status !== 'CANCELLED' && m.timeStr
+                                          ? ` · ${m.timeStr}h`
+                                          : ''}
+                                      </span>
+                                      {m.id === redHighlightedMatchId && m.status === 'SCHEDULED' && (
+                                        <span className="px-1.5 py-0.5 bg-red-950/90 text-red-200 border border-red-400/50 text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                          Próximo Partido
+                                        </span>
+                                      )}
+                                      {m.status === 'POSTPONED' && (
+                                        <span className="px-1.5 py-0.5 bg-amber-950/90 text-amber-200 border border-amber-400/50 text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                          Aplazado
+                                        </span>
+                                      )}
+                                      {m.status === 'CANCELLED' && (
+                                        <span className="px-1.5 py-0.5 bg-red-950/90 text-red-200 border border-red-400/50 text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                          Cancelado
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0 relative z-30">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          void handleRefreshSingleMatch(m.id);
+                                        }}
+                                        disabled={isRefreshing}
+                                        className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/15 transition-colors cursor-pointer"
+                                        title="Comprobar marcador oficial"
+                                        aria-label="Actualizar marcador"
+                                      >
+                                        <RefreshCw
+                                          className={`w-3.5 h-3.5 ${
+                                            isRefreshing ? 'animate-spin text-white' : ''
+                                          }`}
+                                          aria-hidden="true"
+                                        />
+                                      </button>
+
+                                      <span
+                                        className={`w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center border ${
+                                          m.isClubHome
+                                            ? 'text-primary bg-primary-container/20 border-primary-container/40'
+                                            : 'text-tertiary bg-white/5 border-white/10'
+                                        }`}
+                                        title={
+                                          m.isClubHome
+                                            ? 'Partido en casa (Pabellón Sergio Scariolo)'
+                                            : `Partido fuera (${m.venue})`
+                                        }
+                                      >
+                                        {m.isClubHome ? (
+                                          <Home className="w-4 h-4" aria-hidden="true" />
+                                        ) : (
+                                          <Plane className="w-4 h-4" aria-hidden="true" />
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="py-3 flex items-center justify-between gap-3">
+                                    <div className="flex-1 min-w-0 space-y-2.5">
+                                      <div className="flex items-center gap-2.5 min-w-0" title={m.homeTeam}>
+                                        <Image
+                                          src={getTeamLogo(m.homeTeam)}
+                                          alt={m.homeTeam}
+                                          width={30}
+                                          height={30}
+                                          className="w-7 h-7 object-contain shrink-0"
+                                        />
+                                        {m.isClubHome ? (
+                                          <Link
+                                            href={`/plantillas?categoria=${m.categoryId}`}
+                                            className={`font-headline-sm text-xs sm:text-sm uppercase font-bold truncate hover:underline underline-offset-2 ${
+                                              teamTheme.colorKey
+                                                ? `${teamTheme.textClass} decoration-current`
+                                                : 'text-primary decoration-primary'
+                                            }`}
+                                            title={`Ver plantilla de ${m.categoryName}`}
+                                          >
+                                            {m.homeTeam}
+                                          </Link>
+                                        ) : (
+                                          <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
+                                            {m.homeTeam}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2.5 min-w-0" title={m.awayTeam}>
+                                        <Image
+                                          src={getTeamLogo(m.awayTeam)}
+                                          alt={m.awayTeam}
+                                          width={30}
+                                          height={30}
+                                          className="w-7 h-7 object-contain shrink-0"
+                                        />
+                                        {!m.isClubHome ? (
+                                          <Link
+                                            href={`/plantillas?categoria=${m.categoryId}`}
+                                            className={`font-headline-sm text-xs sm:text-sm uppercase font-bold truncate hover:underline underline-offset-2 ${
+                                              teamTheme.colorKey
+                                                ? `${teamTheme.textClass} decoration-current`
+                                                : 'text-primary decoration-primary'
+                                            }`}
+                                            title={`Ver plantilla de ${m.categoryName}`}
+                                          >
+                                            {m.awayTeam}
+                                          </Link>
+                                        ) : (
+                                          <p className="font-headline-sm text-xs sm:text-sm uppercase font-bold truncate text-white">
+                                            {m.awayTeam}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Sello de APLAZADO / CANCELADO en flujo normal sin solapar equipos */}
+                                    {(m.status === 'POSTPONED' || m.status === 'CANCELLED') && (
+                                      <div className="pointer-events-none shrink-0 flex items-center justify-end">
+                                        <div
+                                          className={`-rotate-3 sm:-rotate-6 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.14em] uppercase font-black shadow-[0_4px_16px_rgba(0,0,0,0.75)] select-none rounded-[2px] ${
+                                            m.status === 'CANCELLED'
+                                              ? 'bg-red-950/95 text-red-200 border-red-500'
+                                              : 'bg-amber-500/95 text-black border-amber-200'
+                                          }`}
+                                        >
+                                          {m.statusText?.toUpperCase() ||
+                                            (m.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="pt-2.5 border-t border-white/10 space-y-2 text-xs">
+                                  {/* Pabellón + Pista + Localidad enlazados directamente a Google Maps */}
+                                  <a
+                                    href={getVenueMapsLink(m)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex items-start gap-1.5 w-full max-w-full min-w-0 text-[11px] text-tertiary hover:text-white transition-colors group/venue"
+                                    title={`Abrir ubicación de ${m.venue} en Google Maps`}
+                                  >
+                                    <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                                    <span className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
+                                      {m.court && (
+                                        <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                          {m.court}
+                                        </span>
+                                      )}
+                                      {m.locality && !m.venue.toLowerCase().includes(m.locality.toLowerCase()) && (
+                                        <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 text-white/80 text-[10px] font-semibold shrink-0">
+                                          {m.locality}
+                                        </span>
+                                      )}
+                                      <span className="text-[11px] text-tertiary group-hover/venue:text-primary group-hover/venue:underline break-words leading-snug min-w-0">
+                                        {m.venue}
+                                      </span>
+                                    </span>
+                                  </a>
+
+                                  {/* Barra inferior unificada: Acta / Convocatoria + acciones de vídeo y calendario */}
+                                  <div className="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedActaMatch(m);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-container/20 hover:bg-primary-container text-primary hover:text-white border border-primary-container/40 text-[10px] font-bold uppercase tracking-wider transition-colors"
+                                    >
+                                      <FileText className="w-3 h-3 shrink-0" />
+                                      <span>Ver Acta / Convocatoria</span>
+                                      {getCalledUpCount(m) > 0 && (
+                                        <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[10px]">
+                                          {getCalledUpCount(m)} conv.
+                                        </span>
+                                      )}
+                                    </button>
+
+                                    <div className="flex items-center gap-1.5 shrink-0 relative z-30">
+                                      {recordingUrl && isValidYouTubeUrl(recordingUrl) && (
+                                        <a
+                                          href={recordingUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] uppercase tracking-wider rounded-none transition-colors shadow-sm"
+                                          title="Ver partido en diferido en YouTube"
+                                          aria-label="Ver partido en diferido"
+                                        >
+                                          <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                          </svg>
+                                          <span className="hidden sm:inline">Ver partido</span>
+                                        </a>
+                                      )}
+
+                                      <a
+                                        href={getGoogleCalendarLink(m)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-10 h-10 sm:w-9 sm:h-9 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
+                                        title="Añadir a Google Calendar"
+                                        aria-label="Añadir a Google Calendar"
+                                      >
+                                        <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
+                                      </a>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDownloadIcs(m)}
+                                        className="w-10 h-10 sm:w-9 sm:h-9 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container cursor-pointer"
+                                        title="Añadir a la agenda del móvil (.ics)"
+                                        aria-label="Añadir al móvil"
+                                      >
+                                        <Smartphone className="w-4 h-4 text-primary" aria-hidden="true" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* PESTAÑA 2: PARTIDOS FINALIZADOS */}
+                  {activeSubTab === 'finished' && (
+                    <div>
+                      {finished.length === 0 ? (
+                        <div className="p-5 bg-surface-container-high/40 text-center text-xs text-tertiary border border-white/5">
+                          Aún no hay partidos finalizados en esta categoría.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                          {finished.map((m, idx) =>
+                            renderScoreboardCard(
+                              m,
+                              false,
+                              m.id === highlightedMatchId || (pendingCount === 0 && idx === 0)
+                            )
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Fuente Oficial y Leyenda de Iconos */}
           <div className="mt-2 py-2 px-3 bg-surface-container-low/70 border border-white/5 flex flex-wrap items-center justify-between text-[11px] text-tertiary gap-2">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
               <span>
                 Fuente oficial: <strong className="text-white/80">FAVB (favoley.net)</strong>
               </span>
-              <span className="font-mono text-[10px] text-tertiary/60">
+              <span className="font-mono text-[10px] text-tertiary/85">
                 · {lastSyncTime}
               </span>
             </div>
@@ -1711,31 +1546,24 @@ function PartidosContent() {
           </div>
         </section>
 
-        {/* Invitación a votación MVP oficial en Fan-Zone (Senior +18 con consentimiento activo) */}
-        <section className="bg-surface-container-high border border-primary-container/30 p-6 sm:p-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-3 max-w-2xl">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-500 text-black text-[10px] uppercase font-bold tracking-wider">
-                <Trophy className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>MVP DE LA AFICIÓN • SENIOR (+18)</span>
-              </div>
-              <h3 className="font-display-xl text-2xl sm:text-3xl uppercase text-white">
-                Elige a la MVP del Último Encuentro
-              </h3>
-              <p className="font-body-md text-xs sm:text-sm text-tertiary leading-relaxed">
-                Apoya a nuestras jugadoras de categoría Senior (+18) votando de forma oficial y verificada tras cada jornada de 1ª División Andaluza en nuestra Fan-Zone.
-              </p>
-            </div>
-            <div className="shrink-0">
-              <Link
-                href="/fan-zone"
-                className="inline-flex items-center gap-2 px-5 py-3 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider transition-colors"
-              >
-                <Vote className="w-4 h-4" aria-hidden="true" />
-                <span>Votar MVP en la Fan-Zone</span>
-              </Link>
-            </div>
+        {/* Invitación compacta a votación MVP oficial en Fan-Zone */}
+        <section className="bg-surface-container-high border border-primary-container/30 px-4 py-3.5 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-500 text-black text-[10px] uppercase font-bold tracking-wider shrink-0">
+              <Trophy className="w-3 h-3" aria-hidden="true" />
+              <span>MVP Senior (+18)</span>
+            </span>
+            <p className="text-xs sm:text-sm font-bold uppercase text-white truncate">
+              Elige a la MVP del último encuentro en la Fan-Zone
+            </p>
           </div>
+          <Link
+            href="/fan-zone"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] transition-colors shrink-0"
+          >
+            <Vote className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Votar MVP</span>
+          </Link>
         </section>
       </div>
 

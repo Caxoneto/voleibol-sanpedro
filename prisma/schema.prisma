@@ -141,3 +141,117 @@ model IntranetAuditLog {
 
   @@map("intranet_audit_logs")
 }
+
+model IntranetCategoryRegistrationLink {
+  id                  String    @id @default(uuid()) @db.Uuid
+  token               String    @unique
+  categoryCode        String    @map("category_code")
+  categoryLabel       String    @map("category_label")
+  defaultTeamSeasonId String?   @map("default_team_season_id")
+  seasonId            String    @map("season_id")
+  isActive            Boolean   @default(true) @map("is_active")
+  submissionsCount    Int       @default(0) @map("submissions_count")
+  createdBy           String?   @map("created_by") @db.Uuid
+  expiresAt           DateTime? @map("expires_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  @@map("intranet_category_registration_links")
+}
+
+model IntranetRegistrationRequest {
+  id                  String    @id @default(uuid()) @db.Uuid
+  athleteId           String    @map("athlete_id")
+  userId              String    @map("user_id") @db.Uuid
+  linkId              String?   @map("link_id") @db.Uuid
+  categoryCode        String    @map("category_code")
+  categoryLabel       String    @map("category_label")
+  selectedProductId   String?   @map("selected_product_id") @db.Uuid
+  selectedPricePlanId String?   @map("selected_price_plan_id") @db.Uuid
+  isMinor             Boolean   @default(false) @map("is_minor")
+  guardianName        String?   @map("guardian_name")
+  contactEmail        String    @map("contact_email")
+  contactPhone        String?   @map("contact_phone")
+  consentImage        Boolean   @default(false) @map("consent_image")
+  consentTravel       Boolean   @default(false) @map("consent_travel")
+  consentDocumentHash String?   @map("consent_document_hash")
+  status              String    @default("PENDING")
+  assignedTeamIds     String[]  @map("assigned_team_ids")
+  enrollmentId        String?   @map("enrollment_id") @db.Uuid
+  adminNotes          String?   @map("admin_notes")
+  reviewedBy          String?   @map("reviewed_by") @db.Uuid
+  reviewedAt          DateTime? @map("reviewed_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  @@map("intranet_registration_requests")
+}
+
+model IntranetLopiviIncident {
+  id                        String   @id @default(uuid()) @db.Uuid
+  recordCode                String   @unique @map("record_code")
+  channel                   String   @default("CANAL_WEB")
+  reporterRelationship      String   @map("reporter_relationship")
+  isAnonymous               Boolean  @default(false) @map("is_anonymous")
+  keepIdentityReserved      Boolean  @default(true) @map("keep_identity_reserved")
+  reporterNameEnc           String?  @map("reporter_name_enc")
+  reporterContactEnc        String?  @map("reporter_contact_enc")
+  minorNameEnc              String?  @map("minor_name_enc")
+  minorAge                  String?  @map("minor_age")
+  minorCategory             String?  @map("minor_category")
+  minorTeam                 String?  @map("minor_team")
+  incidentDateText          String?  @map("incident_date_text")
+  incidentLocation          String   @map("incident_location")
+  incidentTypes             String[] @map("incident_types")
+  immediateRisk             String   @default("NO_DETERMINADO") @map("immediate_risk")
+  descriptionEnc            String   @map("description_enc")
+  measuresTaken             String[] @map("measures_taken")
+  measuresDescriptionEnc    String?  @map("measures_description_enc")
+  authoritiesNotified       String[] @map("authorities_notified")
+  authorityNotificationDate String?  @map("authority_notification_date")
+  authorityRecipientEnc     String?  @map("authority_recipient_enc")
+  authorityReferenceEnc     String?  @map("authority_reference_enc")
+  followUpDate              String?  @map("follow_up_date")
+  followUpMeasuresEnc       String?  @map("follow_up_measures_enc")
+  followUpEvolutionEnc      String?  @map("follow_up_evolution_enc")
+  followUpActionsEnc        String?  @map("follow_up_actions_enc")
+  closedDate                String?  @map("closed_date")
+  observationsEnc           String?  @map("observations_enc")
+  status                    String   @default("RECIBIDA")
+  createdByUserId           String?  @map("created_by_user_id") @db.Uuid
+  updatedByUserId           String?  @map("updated_by_user_id") @db.Uuid
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  @@map("intranet_lopivi_incidents")
+}
+
+model IntranetAttendanceReminder {
+  id                 String   @id @default(uuid()) @db.Uuid
+  slotId             String?  @map("slot_id") @db.Uuid
+  sessionId          String?  @map("session_id") @db.Uuid
+  teamSeasonId       String   @map("team_season_id")
+  madridDate         String   @map("madrid_date")
+  scheduledStartTime String   @map("scheduled_start_time")
+  coachUserId        String?  @map("coach_user_id") @db.Uuid
+  coachEmail         String   @map("coach_email")
+  sentAt             DateTime @default(now()) @map("sent_at")
+
+  @@unique([teamSeasonId, madridDate, scheduledStartTime, coachEmail])
+  @@map("intranet_attendance_reminders")
+}
+
+model IntranetMatchSchedule {
+  matchId             String   @id @map("match_id")
+  teamSeasonId        String   @map("team_season_id")
+  proposedDate        String   @map("proposed_date")
+  proposedTime        String   @map("proposed_time")
+  courtCode           String?  @map("court_code")
+  venueOverride       String?  @map("venue_override")
+  localityOverride    String?  @map("locality_override")
+  departureTimeMadrid String?  @map("departure_time_madrid")
+  scheduleStatus      String   @default("PENDIENTE") @map("schedule_status")
+  notes               String?
+  updatedBy           String?  @map("updated_by") @db.Uuid
+  updatedAt           DateTime @default(now()) @map("updated_at")
+
+  @@map("intranet_match_schedules")
+}

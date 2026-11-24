@@ -4,7 +4,7 @@
  * - Resultados en vivo y parciales set a set
  * - Cambios federativos de fecha, hora, pabellón y nombres de equipos
  * - Plantillas oficiales de jugadores/as y cuerpo técnico desde las actas de partido
- * - Tablas de clasificación de las 11 competiciones
+ * - Tablas de clasificación de las competiciones oficiales
  */
 
 import {
@@ -26,6 +26,7 @@ export interface FavbCompetitionMeta {
   code: string;
   categoryId: string;
   teamId: string;
+  clubTeamName: string;
   favbId: number;
   grupo: number;
   fase: number;
@@ -41,6 +42,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'AN1AF26-1',
     categoryId: 'cat-senior-fem',
     teamId: 'team-sf',
+    clubTeamName: 'VOLEIBOL SAN PEDRO',
     favbId: 1,
     grupo: 13,
     fase: 14,
@@ -54,6 +56,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'AN2AM26-1365',
     categoryId: 'cat-senior-masc',
     teamId: 'team-sm',
+    clubTeamName: 'VOLEIBOL SAN PEDRO',
     favbId: 1365,
     grupo: 127,
     fase: 179,
@@ -67,6 +70,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MAJM26-1321',
     categoryId: 'cat-juvenil-masc',
     teamId: 'team-jm',
+    clubTeamName: 'VOLEIBOL SAN PEDRO',
     favbId: 1321,
     grupo: 35,
     fase: 36,
@@ -80,6 +84,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MAJF26-1330-ORO',
     categoryId: 'cat-juvenil-fem-rojo',
     teamId: 'team-jf-rojo',
+    clubTeamName: 'VOLEIBOL SAN PEDRO ROJO',
     favbId: 1330,
     grupo: 43,
     fase: 44,
@@ -93,6 +98,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MAJF26-1330-PLATA',
     categoryId: 'cat-juvenil-fem-negro',
     teamId: 'team-jf-negro',
+    clubTeamName: 'VOLEIBOL SAN PEDRO NEGRO',
     favbId: 1330,
     grupo: 99,
     fase: 128,
@@ -106,6 +112,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MACM26-1313',
     categoryId: 'cat-cadete-masc',
     teamId: 'team-cm',
+    clubTeamName: 'VOLEIBOL SAN PEDRO',
     favbId: 1313,
     grupo: 72,
     fase: 94,
@@ -119,6 +126,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MACF26-1304-ORO',
     categoryId: 'cat-cadete-fem-rojo',
     teamId: 'team-cf-rojo',
+    clubTeamName: 'VOLEIBOL SAN PEDRO ROJO',
     favbId: 1304,
     grupo: 76,
     fase: 100,
@@ -132,6 +140,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MACF26-1304-PLATA',
     categoryId: 'cat-cadete-fem-negro',
     teamId: 'team-cf-negro',
+    clubTeamName: 'VOLEIBOL SAN PEDRO NEGRO',
     favbId: 1304,
     grupo: 100,
     fase: 132,
@@ -145,6 +154,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MAIM26-1288',
     categoryId: 'cat-infantil-masc',
     teamId: 'team-im',
+    clubTeamName: 'VOLEIBOL SAN PEDRO',
     favbId: 1288,
     grupo: 71,
     fase: 92,
@@ -158,6 +168,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MAIF26-1299-ORO',
     categoryId: 'cat-infantil-fem-rojo',
     teamId: 'team-if-rojo',
+    clubTeamName: 'VOLEIBOL SAN PEDRO ROJO',
     favbId: 1299,
     grupo: 75,
     fase: 97,
@@ -171,6 +182,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MAIF26-1299-ORO-2',
     categoryId: 'cat-infantil-fem-negro',
     teamId: 'team-if-negro',
+    clubTeamName: 'VOLEIBOL SAN PEDRO NEGRO',
     favbId: 1299,
     grupo: 75,
     fase: 98,
@@ -184,6 +196,7 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MAIF26-1299-PLATA-BLANCO',
     categoryId: 'cat-infantil-fem-blanco',
     teamId: 'team-if-blanco',
+    clubTeamName: 'VOLEIBOL SAN PEDRO BLANCO',
     favbId: 1299,
     grupo: 101,
     fase: 134,
@@ -197,11 +210,180 @@ export const FAVB_COMPETITIONS: FavbCompetitionMeta[] = [
     code: 'MAIF26-1299-PLATA-GRIS',
     categoryId: 'cat-infantil-fem-gris',
     teamId: 'team-if-gris',
+    clubTeamName: 'VOLEIBOL SAN PEDRO GRIS',
     favbId: 1299,
     grupo: 101,
     fase: 133,
     name: 'INFANTIL FEMENINO MÁLAGA - LIGA PLATA · G1',
     category: 'Infantil Femenino Gris (Plata · G1)',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Alevín Masculino Rojo
+  {
+    code: 'MAAM26-1249-ROJO',
+    categoryId: 'cat-alevin-masc-rojo',
+    teamId: 'team-am-rojo',
+    clubTeamName: 'VOLEIBOL SAN PEDRO ROJO',
+    favbId: 1249,
+    grupo: 167,
+    fase: 244,
+    name: 'ALEVÍN MASCULINO MÁLAGA - G1',
+    category: 'Alevín Masculino Rojo (G1)',
+    gender: 'MASCULINO',
+    season: '2026/2027',
+  },
+  // Alevín Masculino Negro
+  {
+    code: 'MAAM26-1249-NEGRO',
+    categoryId: 'cat-alevin-masc-negro',
+    teamId: 'team-am-negro',
+    clubTeamName: 'VOLEIBOL SAN PEDRO NEGRO',
+    favbId: 1249,
+    grupo: 167,
+    fase: 244,
+    name: 'ALEVÍN MASCULINO MÁLAGA - G1',
+    category: 'Alevín Masculino Negro (G1)',
+    gender: 'MASCULINO',
+    season: '2026/2027',
+  },
+  // Alevín Femenino Rojo (Oro)
+  {
+    code: 'MAAF26-1259-ORO-ROJO',
+    categoryId: 'cat-alevin-fem-rojo',
+    teamId: 'team-af-rojo',
+    clubTeamName: 'VOLEIBOL SAN PEDRO ROJO',
+    favbId: 1259,
+    grupo: 168,
+    fase: 245,
+    name: 'ALEVÍN FEMENINO MÁLAGA - LIGA ORO',
+    category: 'Alevín Femenino Rojo (Oro)',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Alevín Femenino Negro (Oro)
+  {
+    code: 'MAAF26-1259-ORO-NEGRO',
+    categoryId: 'cat-alevin-fem-negro',
+    teamId: 'team-af-negro',
+    clubTeamName: 'VOLEIBOL SAN PEDRO NEGRO',
+    favbId: 1259,
+    grupo: 168,
+    fase: 245,
+    name: 'ALEVÍN FEMENINO MÁLAGA - LIGA ORO',
+    category: 'Alevín Femenino Negro (Oro)',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Alevín Femenino Azul (Plata G1)
+  {
+    code: 'MAAF26-1259-PLATA1-AZUL',
+    categoryId: 'cat-alevin-fem-azul',
+    teamId: 'team-af-azul',
+    clubTeamName: 'VOLEIBOL SAN PEDRO AZUL',
+    favbId: 1259,
+    grupo: 169,
+    fase: 246,
+    name: 'ALEVÍN FEMENINO MÁLAGA - LIGA PLATA · G1',
+    category: 'Alevín Femenino Azul (Plata · G1)',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Alevín Femenino Rosa (Plata G1)
+  {
+    code: 'MAAF26-1259-PLATA1-ROSA',
+    categoryId: 'cat-alevin-fem-rosa',
+    teamId: 'team-af-rosa',
+    clubTeamName: 'VOLEIBOL SAN PEDRO ROSA',
+    favbId: 1259,
+    grupo: 169,
+    fase: 246,
+    name: 'ALEVÍN FEMENINO MÁLAGA - LIGA PLATA · G1',
+    category: 'Alevín Femenino Rosa (Plata · G1)',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Alevín Femenino Verde (Plata G1)
+  {
+    code: 'MAAF26-1259-PLATA1-VERDE',
+    categoryId: 'cat-alevin-fem-verde',
+    teamId: 'team-af-verde',
+    clubTeamName: 'VOLEIBOL SAN PEDRO VERDE',
+    favbId: 1259,
+    grupo: 169,
+    fase: 246,
+    name: 'ALEVÍN FEMENINO MÁLAGA - LIGA PLATA · G1',
+    category: 'Alevín Femenino Verde (Plata · G1)',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Alevín Femenino Blanco (Plata G2)
+  {
+    code: 'MAAF26-1259-PLATA2-BLANCO',
+    categoryId: 'cat-alevin-fem-blanco',
+    teamId: 'team-af-blanco',
+    clubTeamName: 'VOLEIBOL SAN PEDRO BLANCO',
+    favbId: 1259,
+    grupo: 169,
+    fase: 247,
+    name: 'ALEVÍN FEMENINO MÁLAGA - LIGA PLATA · G2',
+    category: 'Alevín Femenino Blanco (Plata · G2)',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Alevín Femenino Gris (Plata G2)
+  {
+    code: 'MAAF26-1259-PLATA2-GRIS',
+    categoryId: 'cat-alevin-fem-gris',
+    teamId: 'team-af-gris',
+    clubTeamName: 'VOLEIBOL SAN PEDRO GRIS',
+    favbId: 1259,
+    grupo: 169,
+    fase: 247,
+    name: 'ALEVÍN FEMENINO MÁLAGA - LIGA PLATA · G2',
+    category: 'Alevín Femenino Gris (Plata · G2)',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Benjamín Masculino
+  {
+    code: 'MABM26-1265',
+    categoryId: 'cat-benjamin-masc',
+    teamId: 'team-bm',
+    clubTeamName: 'VOLEIBOL SAN PEDRO',
+    favbId: 1265,
+    grupo: 165,
+    fase: 242,
+    name: 'BENJAMÍN MASCULINO MÁLAGA - G1',
+    category: 'Benjamín Masculino (G1)',
+    gender: 'MASCULINO',
+    season: '2026/2027',
+  },
+  // Benjamín Femenino Rojo
+  {
+    code: 'MABF26-1272-ROJO',
+    categoryId: 'cat-benjamin-fem-rojo',
+    teamId: 'team-bf-rojo',
+    clubTeamName: 'VOLEIBOL SAN PEDRO ROJO',
+    favbId: 1272,
+    grupo: 166,
+    fase: 243,
+    name: 'BENJAMÍN FEMENINO MÁLAGA - G1',
+    category: 'Benjamín Femenino Rojo (G1)',
+    gender: 'FEMENINO',
+    season: '2026/2027',
+  },
+  // Benjamín Femenino Negro
+  {
+    code: 'MABF26-1272-NEGRO',
+    categoryId: 'cat-benjamin-fem-negro',
+    teamId: 'team-bf-negro',
+    clubTeamName: 'VOLEIBOL SAN PEDRO NEGRO',
+    favbId: 1272,
+    grupo: 166,
+    fase: 243,
+    name: 'BENJAMÍN FEMENINO MÁLAGA - G1',
+    category: 'Benjamín Femenino Negro (G1)',
     gender: 'FEMENINO',
     season: '2026/2027',
   },
@@ -303,6 +485,7 @@ interface FavbJsonMatchDetails {
   homeRoster?: MatchRosterPerson[];
   awayRoster?: MatchRosterPerson[];
   clubPersonas: FavbRawPersona[];
+  clubPersonasByTeamName: Record<string, FavbRawPersona[]>;
 }
 
 interface CacheState {
@@ -622,24 +805,33 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
     const homeRoster = parseSideRoster(json.datos.plantilla_local);
     const awayRoster = parseSideRoster(json.datos.plantilla_visitante);
 
-    // Extraer convocatoria de nuestro club si está publicada
+    // Extraer convocatoria de nuestro club si está publicada (separando cada lado por equipo en derbis internos)
     const clubPersonas: FavbRawPersona[] = [];
+    const clubPersonasByTeamName: Record<string, FavbRawPersona[]> = {};
     const sides = [
       { name: homeTeam || '', list: Array.isArray(json.datos.plantilla_local) ? json.datos.plantilla_local : [] },
       { name: awayTeam || '', list: Array.isArray(json.datos.plantilla_visitante) ? json.datos.plantilla_visitante : [] },
     ];
     for (const side of sides) {
       if (!side.name.toUpperCase().includes('SAN PEDRO')) continue;
+      const sideKey = normalizeNameKey(side.name);
+      if (sideKey && !clubPersonasByTeamName[sideKey]) {
+        clubPersonasByTeamName[sideKey] = [];
+      }
       for (const rawP of side.list) {
         const nombre = String(rawP.nombre || '').trim();
         if (!nombre) continue;
-        clubPersonas.push({
+        const parsedPersona: FavbRawPersona = {
           nombre,
           tipo: String(rawP.tipo || '').trim(),
           dorsal: String(rawP.dorsal ?? '').trim(),
           capitan: Number(rawP.capitan) === 1 ? 1 : 0,
           libero: Number(rawP.libero) === 1 ? 1 : 0,
-        });
+        };
+        clubPersonas.push(parsedPersona);
+        if (sideKey) {
+          clubPersonasByTeamName[sideKey].push(parsedPersona);
+        }
       }
     }
 
@@ -662,6 +854,7 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
       homeRoster,
       awayRoster,
       clubPersonas,
+      clubPersonasByTeamName,
     };
   } catch {
     return null;
@@ -689,6 +882,42 @@ function recordTeamPersonas(teamId: string | undefined, personas: FavbRawPersona
       if (p.dorsal && !existing.dorsal) existing.dorsal = p.dorsal;
       if (p.tipo && !existing.tipo) existing.tipo = p.tipo;
     }
+  }
+}
+
+/**
+ * Asigna las plantillas del acta al equipo exacto de San Pedro correspondiente dentro de su fase,
+ * evitando cruzar convocatorias cuando varios equipos del club comparten competición o disputan derbis.
+ */
+function recordPersonasFromMatchDetails(
+  primaryTeamId: string | undefined,
+  details: FavbJsonMatchDetails
+) {
+  const entries = Object.entries(details.clubPersonasByTeamName || {});
+  if (entries.length === 0) {
+    if (details.clubPersonas.length > 0) {
+      recordTeamPersonas(primaryTeamId, details.clubPersonas);
+    }
+    return;
+  }
+
+  const primaryComp = primaryTeamId
+    ? FAVB_COMPETITIONS.find((c) => c.teamId === primaryTeamId)
+    : undefined;
+  const phaseComps = primaryComp
+    ? FAVB_COMPETITIONS.filter(
+        (c) =>
+          c.favbId === primaryComp.favbId &&
+          c.grupo === primaryComp.grupo &&
+          c.fase === primaryComp.fase
+      )
+    : [];
+
+  for (const [sideKey, personas] of entries) {
+    if (personas.length === 0) continue;
+    const matchedComp =
+      phaseComps.find((c) => normalizeNameKey(c.clubTeamName) === sideKey) || primaryComp;
+    recordTeamPersonas(matchedComp?.teamId || primaryTeamId, personas);
   }
 }
 
@@ -878,7 +1107,7 @@ export async function updateMatchLiveScore(
     if (jsonDetails.homeRoster) match.homeRoster = jsonDetails.homeRoster;
     if (jsonDetails.awayRoster) match.awayRoster = jsonDetails.awayRoster;
     if (jsonDetails.clubPersonas.length > 0) {
-      recordTeamPersonas(match.teamId, jsonDetails.clubPersonas);
+      recordPersonasFromMatchDetails(match.teamId, jsonDetails);
     }
   }
 
@@ -1124,7 +1353,7 @@ export async function syncFavbData(forceRefresh = false): Promise<{
             }
 
             if (details.clubPersonas.length > 0) {
-              recordTeamPersonas(m.teamId, details.clubPersonas);
+              recordPersonasFromMatchDetails(m.teamId, details);
               if (details.status === 'FINISHED') {
                 processedFinishedRosterMatchIds.add(m.id);
               }
@@ -1351,7 +1580,7 @@ function isRealCatalogPlayer(p: Player): boolean {
 }
 
 /**
- * Sincroniza en tiempo real las plantillas de jugadores/as y cuerpo técnico de los 13 equipos
+ * Sincroniza en tiempo real las plantillas de jugadores/as y cuerpo técnico de los equipos FAVB
  * consultando las actas publicadas en favoley.net (`competicion_partido_datos.php`) con
  * concurrencia acotada, IDs deterministas sin datos biométricos sintéticos y caché en Neon.
  */
@@ -1445,9 +1674,32 @@ export async function syncFavbRosters(
         const list = matchesByTeam.get(m.teamId) || [];
         list.push(m);
         matchesByTeam.set(m.teamId, list);
+
+        // Si es derbi interno de San Pedro, vincular también al equipo visitante de la misma fase
+        const homeU = normalizeNameKey(m.homeTeamName);
+        const awayU = normalizeNameKey(m.awayTeamName);
+        if (homeU.includes('SAN PEDRO') && awayU.includes('SAN PEDRO')) {
+          const primaryComp = FAVB_COMPETITIONS.find((c) => c.teamId === m.teamId);
+          if (primaryComp) {
+            for (const sib of FAVB_COMPETITIONS) {
+              if (
+                sib.teamId !== m.teamId &&
+                sib.favbId === primaryComp.favbId &&
+                sib.grupo === primaryComp.grupo &&
+                sib.fase === primaryComp.fase &&
+                (normalizeNameKey(sib.clubTeamName) === homeU ||
+                  normalizeNameKey(sib.clubTeamName) === awayU)
+              ) {
+                const sibList = matchesByTeam.get(sib.teamId) || [];
+                sibList.push(m);
+                matchesByTeam.set(sib.teamId, sibList);
+              }
+            }
+          }
+        }
       }
 
-      const matchesToInspect: typeof FAVB_MATCHES = [];
+      const matchesToInspectMap = new Map<string, (typeof FAVB_MATCHES)[number]>();
       for (const [tId, teamMatches] of Array.from(matchesByTeam.entries())) {
         const sorted = [...teamMatches].sort(
           (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
@@ -1472,18 +1724,19 @@ export async function syncFavbRosters(
             isRecentOrPending
           ) {
             if (!processedFinishedRosterMatchIds.has(m.id)) {
-              matchesToInspect.push(m);
+              matchesToInspectMap.set(m.id, m);
             }
           }
         });
       }
 
+      const matchesToInspect = Array.from(matchesToInspectMap.values());
       if (matchesToInspect.length > 0) {
         await mapWithConcurrency(matchesToInspect, FAVB_FETCH_CONCURRENCY, async (m) => {
           const numId = m.id.replace(/^favb-/, '');
           const details = await fetchMatchDetailsJson(numId);
           if (details && details.clubPersonas.length > 0) {
-            recordTeamPersonas(m.teamId, details.clubPersonas);
+            recordPersonasFromMatchDetails(m.teamId, details);
             if (details.status === 'FINISHED') {
               processedFinishedRosterMatchIds.add(m.id);
             }
@@ -1520,10 +1773,6 @@ export async function syncFavbRosters(
       const teamIds = FAVB_TEAMS.map((t) => t.id);
 
       for (const teamId of teamIds) {
-        const compMeta = FAVB_COMPETITIONS.find((c) => c.teamId === teamId);
-        const isFemale = compMeta?.gender === 'FEMENINO';
-        const placeholderPrefix = isFemale ? 'Jugadora' : 'Jugador';
-
         const fallbackPlayers = FAVB_PLAYERS.filter((p) => {
           const ext = p as Player & { secondaryTeamIds?: string[] };
           return (
@@ -1594,29 +1843,6 @@ export async function syncFavbRosters(
 
         const mergedReal = Array.from(realByKey.values()).sort((a, b) => a.number - b.number);
         updatedPlayers.push(...mergedReal);
-
-        // Si el equipo aún no ha debutado (< 6 jugadores reales), completar slots vacíos con ID separado sin datos sintéticos
-        if (mergedReal.length < 6) {
-          const usedNumbers = new Set(mergedReal.map((p) => p.number));
-          for (let slot = mergedReal.length + 1; slot <= 10; slot++) {
-            let num = slot;
-            while (usedNumbers.has(num)) num++;
-            usedNumbers.add(num);
-            updatedPlayers.push({
-              id: `p-${teamId}-slot-${slot}`,
-              teamId,
-              number: num,
-              firstName: placeholderPrefix,
-              lastName: String(slot),
-              position: POS_CYCLE[(slot - 1) % POS_CYCLE.length],
-              birthYear: 0,
-              heightCm: 0,
-              photoUrl: '/images/player-placeholder.svg',
-              isCaptain: slot === 1 && mergedReal.length === 0,
-              isHomegrown: true,
-            });
-          }
-        }
 
         // Fusionar Cuerpo Técnico (Staff) del equipo
         const fallbackStaff = FAVB_STAFF.filter((s) => s.teamId === teamId);
@@ -1880,9 +2106,18 @@ export async function syncFavbStandings(forceRefresh = false): Promise<{
         byCategory.set(cat.id, previous);
       }
 
+      const phaseGroups = new Map<string, FavbCompetitionMeta[]>();
+      for (const comp of FAVB_COMPETITIONS) {
+        const key = `${comp.favbId}-${comp.grupo}-${comp.fase}`;
+        const list = phaseGroups.get(key) || [];
+        list.push(comp);
+        phaseGroups.set(key, list);
+      }
+
       await Promise.all([
-        mapWithConcurrency(FAVB_COMPETITIONS, FAVB_FETCH_CONCURRENCY, async (comp) => {
-          const url = `https://favoley.net/publico/seccion.php?seccion=competicion&id=${comp.favbId}&vista=clasificacion&grupo=${comp.grupo}&fase=${comp.fase}`;
+        mapWithConcurrency(Array.from(phaseGroups.values()), FAVB_FETCH_CONCURRENCY, async (comps) => {
+          const primary = comps[0];
+          const url = `https://favoley.net/publico/seccion.php?seccion=competicion&id=${primary.favbId}&vista=clasificacion&grupo=${primary.grupo}&fase=${primary.fase}`;
           const res = await fetch(url, {
             headers: {
               'User-Agent':
@@ -1895,9 +2130,11 @@ export async function syncFavbStandings(forceRefresh = false): Promise<{
           });
           if (!res.ok) return;
           const html = await res.text();
-          const parsed = parseFavbStandingsHtml(html, comp.categoryId);
-          if (parsed.length > 0) {
-            byCategory.set(comp.categoryId, parsed);
+          for (const comp of comps) {
+            const parsed = parseFavbStandingsHtml(html, comp.categoryId);
+            if (parsed.length > 0) {
+              byCategory.set(comp.categoryId, parsed);
+            }
           }
         }),
         (async () => {

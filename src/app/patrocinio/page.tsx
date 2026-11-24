@@ -9,6 +9,7 @@ import {
   Award,
   Bus,
   CheckCircle2,
+  ChevronDown,
   Dumbbell,
   ExternalLink,
   GraduationCap,
@@ -24,8 +25,7 @@ import {
   Trophy,
   Users,
 } from 'lucide-react';
-import { INITIAL_SPONSOR_TIERS, CURRENT_SPONSORS } from '@/lib/data-store';
-import { CLUB_INFO } from '@/lib/club-info';
+import { INITIAL_SPONSOR_TIERS, CURRENT_SPONSORS, CLUB_INFO } from '@/lib/public-content';
 import { sanitizeHttpsUrl } from '@/lib/validators';
 
 const SPONSOR_LEGAL_VERSION = 'v3_2026_rgpd_patrocinio';
@@ -246,7 +246,7 @@ export default function PatrocinioPage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
             <a
               href="#modalidades"
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow-[4px_4px_0px_0px_#0e0e0e]"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold transition-all shadow-[4px_4px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px]"
             >
               <Award className="w-[18px] h-[18px]" aria-hidden="true" />
               <span>Modalidades de colaboración</span>
@@ -319,13 +319,7 @@ export default function PatrocinioPage() {
                 </span>
               </h2>
               <p className="text-xs sm:text-sm text-tertiary leading-relaxed">
-                El <strong className="text-white">C.D. Voleibol San Pedro</strong> trabaja para que el voleibol sea accesible a todas las edades y niveles.
-              </p>
-              <p className="text-xs sm:text-sm text-tertiary leading-relaxed">
-                El club entiende el deporte como una escuela de convivencia, responsabilidad y trabajo en equipo.
-              </p>
-              <p className="text-xs sm:text-sm text-tertiary leading-relaxed">
-                En las dos últimas temporadas hemos triplicado el número de jugadores y jugadoras. Este crecimiento abre una nueva etapa y también exige más medios, profesionales y material específico.
+                El <strong className="text-white">C.D. Voleibol San Pedro</strong> entiende el deporte como una escuela de convivencia y ha triplicado su base social en dos temporadas, abriendo una nueva etapa de crecimiento junto a entidades colaboradoras.
               </p>
             </div>
 
@@ -431,9 +425,6 @@ export default function PatrocinioPage() {
                     ))}
                   </ul>
                 </div>
-                <p className="text-[11px] text-tertiary border-t border-white/10 pt-3 leading-relaxed">
-                  Nuestro objetivo es que cada persona pueda encontrar su lugar dentro del club, con independencia de su edad, experiencia o nivel deportivo.
-                </p>
               </div>
 
               {/* Col 3: Equipo Técnico e Instalaciones (Pág. 6) */}
@@ -473,10 +464,6 @@ export default function PatrocinioPage() {
                     </div>
                   </div>
                 </div>
-
-                <p className="text-[11px] text-tertiary border-t border-white/10 pt-3 leading-relaxed">
-                  Esta estructura permite atender a deportistas de diferentes edades, organizar entrenamientos y participar cada temporada en más de 150 partidos.
-                </p>
               </div>
             </div>
           </div>
@@ -523,14 +510,31 @@ export default function PatrocinioPage() {
                 Colaborar con el C. D. Voleibol San Pedro permite vincular la marca de la empresa con un proyecto deportivo consolidado, de carácter local y con una amplia participación de jóvenes y familias.
               </p>
 
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 mt-6">
-                {COMPANY_BENEFITS.map((benefit, idx) => (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 mt-5">
+                {COMPANY_BENEFITS.slice(0, 4).map((benefit, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-xs text-on-surface">
                     <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
                     <span className="leading-snug">{benefit}</span>
                   </li>
                 ))}
               </ul>
+
+              {COMPANY_BENEFITS.length > 4 && (
+                <details className="group mt-4 border border-white/10 bg-surface-container-lowest">
+                  <summary className="flex cursor-pointer list-none items-center justify-between px-3.5 py-2.5 text-xs font-semibold text-primary hover:text-white transition-colors [&::-webkit-details-marker]:hidden">
+                    <span>Ver todos los beneficios comunicativos y fiscales ({COMPANY_BENEFITS.length - 4} más)</span>
+                    <ChevronDown className="w-4 h-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                  </summary>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 border-t border-white/10 p-3.5">
+                    {COMPANY_BENEFITS.slice(4).map((benefit, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-xs text-on-surface">
+                        <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                        <span className="leading-snug">{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </div>
 
             <p className="text-[11px] text-tertiary border-t border-white/10 pt-4">
@@ -781,7 +785,7 @@ export default function PatrocinioPage() {
                         value={form.companyName}
                         onChange={(e) => setForm({ ...form, companyName: e.target.value })}
                         placeholder="Nombre de la empresa"
-                        className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                        className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                       />
                     </div>
 
@@ -797,7 +801,7 @@ export default function PatrocinioPage() {
                         value={form.contactPerson}
                         onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
                         placeholder="Nombre y apellidos"
-                        className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                        className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                       />
                     </div>
                   </div>
@@ -815,7 +819,7 @@ export default function PatrocinioPage() {
                         value={form.phone}
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
                         placeholder="+34 600 000 000"
-                        className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                        className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                       />
                     </div>
 
@@ -830,7 +834,7 @@ export default function PatrocinioPage() {
                         value={form.email}
                         onChange={(e) => setForm({ ...form, email: e.target.value })}
                         placeholder="contacto@empresa.com"
-                        className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                        className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                       />
                     </div>
 
@@ -873,22 +877,28 @@ export default function PatrocinioPage() {
                       value={form.message}
                       onChange={(e) => setForm({ ...form, message: e.target.value })}
                       placeholder="Mensaje o consulta..."
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-white placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
 
-                  {/* Primera capa Art. 13 RGPD + Casilla obligatoria sin premarcar */}
-                  <div className="p-3.5 bg-surface-container-lowest border border-white/10 space-y-2.5 text-[11px] text-tertiary leading-relaxed">
-                    <div className="flex items-start gap-2">
-                      <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-                      <p>
+                  {/* Primera capa Art. 13 RGPD plegable + Casilla obligatoria sin premarcar */}
+                  <div className="p-3.5 bg-surface-container-lowest border border-white/10 space-y-2 text-[11px] text-tertiary leading-relaxed">
+                    <details className="group">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold text-white/90 hover:text-white [&::-webkit-details-marker]:hidden">
+                        <span className="inline-flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                          <span>Ver información básica sobre Protección de Datos (Art. 13 RGPD)</span>
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-tertiary shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                      </summary>
+                      <p className="mt-2 pt-2 border-t border-white/10">
                         Responsable: SAN PEDRO C.D VOLEIBOL (CIF G93147924) · Finalidad: gestionar tu solicitud · Base: consentimiento expreso (Art. 6.1.a RGPD) · Conservación: máx. 12 meses tras el cierre de la gestión · Encargados: Neon EU / Zoho Mail EU / Netlify (DPF-SCC) · Derechos y revocación:{' '}
                         <a href={`mailto:${CLUB_INFO.contactEmail}`} className="text-primary underline hover:text-white">
                           {CLUB_INFO.contactEmail}
                         </a>.
                       </p>
-                    </div>
-                    <label htmlFor="sponsor-privacy" className="flex items-start gap-2.5 cursor-pointer text-xs text-white pt-1">
+                    </details>
+                    <label htmlFor="sponsor-privacy" className="flex items-start gap-2.5 cursor-pointer text-xs text-white pt-1.5 border-t border-white/10">
                       <input
                         id="sponsor-privacy"
                         type="checkbox"
@@ -916,7 +926,7 @@ export default function PatrocinioPage() {
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="w-full sm:flex-1 py-3 bg-primary-container hover:bg-cta-hover disabled:opacity-60 text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-[4px_4px_0px_0px_#0e0e0e] flex items-center justify-center gap-2"
+                      className="w-full sm:flex-1 py-3 bg-primary-container hover:bg-cta-hover disabled:opacity-60 text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-[4px_4px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {submitting ? (
                         <>

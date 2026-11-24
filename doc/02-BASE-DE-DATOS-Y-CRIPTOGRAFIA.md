@@ -26,7 +26,7 @@
 
 ### Identidad, Autenticación y RBAC
 * `intranet_users`: Usuarios de la intranet (staff, entrenadores, directiva, jugadores mayores de edad o tutores legales).
-* `intranet_oauth_accounts`: Enlaces con proveedores OAuth2 (Google, Microsoft tenant `common`).
+* `intranet_oauth_accounts`: Enlaces con proveedor OAuth2 (Google exclusivo; Microsoft OAuth2 multi-tenant desactivado explícitamente).
 * `intranet_sessions`: Sesiones activas firmadas.
 * `intranet_auth_tokens`: Tokens para magic links, invitaciones y recuperación.
 * `intranet_roles` & `intranet_permissions` & `intranet_role_permissions` & `intranet_user_roles`: Sistema de roles y matriz de permisos con índice único parcial `idx_single_active_president`.
@@ -35,14 +35,15 @@
 * `intranet_audit_logs`: Registro forense de acciones en la intranet.
 
 ### Estructura, Censo, Asistencia y Pagos
-* `intranet_seasons`, `intranet_team_seasons`, `intranet_team_staff`: Temporadas, equipos y asignaciones de staff (múltiples equipos por entrenador).
-* `intranet_venues`, `intranet_courts`, `intranet_training_slots`, `intranet_schedule_proposals`, `intranet_venue_closures`: Pabellones, pistas, horarios semanales, festivos y propuestas.
+* `intranet_seasons`, `intranet_team_seasons`, `intranet_team_staff`: Temporadas, **28 equipos oficiales** (25 FAVB de Senior a Benjamín + 3 Liga AFADE) y asignaciones de staff (múltiples equipos por entrenador).
+* `intranet_venues`, `intranet_courts`, `intranet_training_slots`, `intranet_schedule_proposals`, `intranet_venue_closures`, `intranet_match_schedules`: Pabellón Sergio Scariolo (`P1`, `P2`, `P3`), horarios semanales, festivos y programación/estado (`PENDIENTE` / `CONFIRMADO`) + hora de desplazamiento de partidos en casa y fuera.
 * `intranet_athletes`, `intranet_athlete_teams`, `intranet_guardianships`: Deportistas, asignaciones a equipos y tutores legales.
-* `intranet_dedup_queue`: Cola de deduplicación de censo (FAVB + FeelSports).
-* `intranet_training_sessions`, `intranet_attendance_records`: Sesiones de entrenamiento y pase de lista móvil-first (5 estados, cola offline `cdv_attendance_offline_queue_v1`).
-* `intranet_substitutions`: Solicitudes y asignación de sustituciones con override temporal automático de `attendance.take`.
-* `intranet_staff_trips`, `intranet_match_assignments`: Cuadrantes técnicos de partidos (`FAVB_MATCHES`/`AFADE_MATCHES`) y expediciones de staff.
+* `intranet_category_registration_links`, `intranet_registration_requests`: Generador de enlaces públicos por categoría (`?cat=<token>` con tokens de `>= 128` bits generados vía `crypto.randomBytes(16).toString('base64url')`) y solicitudes de auto-inscripción pendientes (`PENDING` / `APPROVED` / `REJECTED`). Incorpora la columna `pending_payload_enc` (cifrada con AES-256-GCM y AAD `reg_pending:<athleteId>`) que aísla los datos propuestos de auto-registro hasta `approve_registration`, sin sobrescribir `intranet_athletes`, `player_census`, `intranet_guardianships` ni archivar/revocar consentimientos `ACTIVE` mientras la solicitud está `PENDING`.
+* `intranet_training_sessions`, `intranet_attendance_records`, `intranet_attendance_reminders`: Sesiones de entrenamiento (con `assigned_coach_id`, `taken_by`, `taken_at`), pase de lista en modal (5 estados, cola offline `cdv_attendance_offline_queue_v1`) y avisos automáticos a los 15 minutos sin pasar lista.
+* `intranet_substitutions`: Gestión directa y asignación de sustituciones con override temporal automático de `attendance.take`.
+* `intranet_staff_trips`, `intranet_match_assignments`: Cuadrantes técnicos de partidos (snapshot FAVB/AFADE + sedes reales) y expediciones de staff (`HEAD_COACH`, `ASSISTANT`).
 * `intranet_products`, `intranet_price_plans`, `intranet_discount_rules`, `intranet_enrollments`, `intranet_applied_discounts`, `intranet_charges`, `intranet_payments`, `intranet_payment_allocations`: Productos, cuotas, descuentos configurables, inscripciones prorrateadas, cobros, pagos y recibos PDF.
+* `intranet_lopivi_incidents`: Expedientes confidenciales del Canal de Protección al Menor LOPIVI (LO 8/2021 y Orden 18/11/2024), accesibles exclusivamente por Presidencia / Delegado de Protección.
 
 ---
 
@@ -52,7 +53,9 @@
 * **Formato vigente**: `v1:${ivHex}:${authTagHex}:${encryptedHex}` (AES-256-GCM con **AAD** ligado al `playerId` y nombre de campo, p. ej. `${playerId}:dni_encrypted`, `${playerId}:contact_email`, `${playerId}:parent_dni`).
 * **Lectura retrocompatible**: `decryptDataStrict` soporta lectura controlada de registros legacy `iv:tag:ct` sin prefijo `v1:`.
 * **Blind Index**: `generateBlindIndex` permite búsquedas deterministas de DNI sin exponer el valor en claro.
-* **Intranet**: Contraseñas con `scrypt`, tokens de sesión/invitación/enlace mágico por hash HMAC-SHA256 con consumo atómico de un solo uso vía `POST`, cookie `cdv_oauth_tx` sellada con `encryptData` (AAD `intranet:oauth_tx`), acceso sin 2FA por decisión del club (ruta `/api/intranet/auth/2fa` bloqueada con `403`), evaluación RBAC estricta (`PROPIO` exige sujeto explícito salvo `substitution.request`, traspaso de presidencia en CTE atómico con `idx_single_active_president`) y cifrado AES-256-GCM + AAD específico de DNI, fecha de nacimiento, alergias y datos de pagador con respeto estricto al estado `SHREDDED`.
+* **Intranet y LOPIVI**:
+  * Contraseñas con `scrypt` (política mínima de auto-inscripción: 10 caracteres, ≥1 mayúscula y ≥1 dígito), tokens de sesión/invitación/enlace mágico por hash HMAC-SHA256 con consumo atómico de un solo uso vía `POST`, cookie `cdv_oauth_tx` sellada con `encryptData` (AAD `intranet:oauth_tx`), acceso sin 2FA por decisión del club (ruta `/api/intranet/auth/2fa` bloqueada con `403`), evaluación RBAC estricta (`PROPIO` exige sujeto explícito salvo `substitution.request`, traspaso de presidencia en CTE atómico con `idx_single_active_president`) y cifrado AES-256-GCM + AAD específico de DNI, fecha de nacimiento, alergias y datos de pagador con respeto estricto al estado `SHREDDED`.
+  * En `intranet_lopivi_incidents`, identidad del comunicante (si no es anónima o si solicita reserva), datos de contacto, identificación del menor, relato de hechos (`description_enc`) y gestión interna/seguimiento/cierre (`management_notes_enc`) se cifran individualmente con AES-256-GCM y **AAD `lopivi:${id}:${field}`**. El correo de aviso al Delegado nunca incluye PII ni texto de hechos en claro (solo código de expediente, fecha, tipología e indicador de riesgo inmediato).
 
 ### Vinculación Criptográfica de OTP (`src/lib/email-otp.ts`)
 * `computeOtpCodeHash` enlaza el código con su propósito mediante el esquema `otp-v2:${purpose}:...` (`SIGN`, `REVOKE`, `RECEIPT`), preservando lectura legacy `otp-v1` solo cuando `purpose IS NULL`.
@@ -67,12 +70,13 @@
 
 ## 4. Supresión RGPD Art. 17 (*Crypto-Shredding*)
 
-La función `shredPlayerCryptoKey(playerId)` en `src/lib/consent-store.ts` ejecuta atómicamente:
+La función `shredPlayerCryptoKey(playerId)` ejecuta de forma atómica:
 1. En `player_crypto_keys`: fija `wrapped_dek = NULL` y `shredded_at = NOW()`.
-2. En `player_consents`: cambia `status = 'SHREDDED'`, sustituye `signer_name = '[SUPRIMIDO]'` y limpia `signer_dni`, `signer_email`, `signer_phone`, `signature_data`, `ip_address`, `user_agent`, `minor_*`, `is_minor_14_to_17`, `otp_challenge_id`, `otp_verified_at`.
+2. En `player_consents`: cambia `status = 'SHREDDED'`, sustituye `signer_name = '[SUPRIMIDO]'` y limpia PII de firmante y menor.
 3. En `otp_challenges`: elimina (`DELETE`) los desafíos del jugador.
-4. En `player_census`: anula (`NULL`) `dni_last5`, `dni_encrypted`, `dni_blind_index`, `birth_date`, `birth_date_encrypted`, `birth_date_verified = false`, `parent_name`, `parent_dni`, `parent_relationship`, `contact_phone` y `contact_email`.
-5. **No altera `player_consents_audit`** (respetando el trigger append-only WORM).
+4. En `player_census`: anula (`NULL`) identificadores, DNI, fechas y contactos.
+5. En tablas de la intranet: purga/anonimiza `intranet_athletes` (`status = 'SHREDDED'`), `intranet_sessions`, `intranet_guardianships`, `intranet_athlete_teams`, `intranet_registration_requests` y PII de pagador en `intranet_enrollments` conservando importes contables.
+6. **Respeta intactas las bitácoras WORM** (`consent_audit_log`, `player_consents_audit`) mediante triggers inmutables.
 
 **Efectos del estado `SHREDDED`**:
 * Bloquea con error `409` / `404` cualquier intento de firma web, firma presencial, inspección o desbloqueo de `?directToken=`.

@@ -1,13 +1,86 @@
-'use client';
-
-import { useState } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { INITIAL_ARTICLES, CLUB_INFO } from '@/lib/data-store';
+import {
+  ArrowLeft,
+  BadgeCheck,
+  Clock,
+  Download,
+  ExternalLink,
+  FileText,
+  MessageCircle,
+  Send,
+  Share2,
+} from 'lucide-react';
+import { INITIAL_ARTICLES, CLUB_INFO } from '@/lib/public-content';
 import { formatMadridDate } from '@/lib/date-utils';
 import SponsorBanner from '@/components/SponsorBanner';
+import CopyLinkButton from '@/components/CopyLinkButton';
 import { InstagramIcon, FacebookIcon, WhatsAppIcon } from '@/components/SocialIcons';
+
+function getSiteUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (raw) {
+    try {
+      const parsed = new URL(raw);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        return parsed.origin;
+      }
+    } catch {
+      // Fallback seguro al dominio oficial
+    }
+  }
+  return 'https://voleibolsanpedro.es';
+}
+
+export function generateStaticParams() {
+  return INITIAL_ARTICLES.map((article) => ({
+    slug: article.slug,
+  }));
+}
+
+interface ArticleDetailProps {
+  params: {
+    slug: string;
+  };
+}
+
+export function generateMetadata({ params }: ArticleDetailProps): Metadata {
+  const article = INITIAL_ARTICLES.find((a) => a.slug === params.slug);
+  if (!article) {
+    return {
+      title: `Noticia no encontrada | ${CLUB_INFO.name}`,
+    };
+  }
+
+  return {
+    title: `${article.title} | Noticias | ${CLUB_INFO.name}`,
+    description: article.excerpt,
+    alternates: {
+      canonical: `/noticias/${article.slug}`,
+    },
+    openGraph: {
+      type: 'article',
+      url: `/noticias/${article.slug}`,
+      title: article.title,
+      description: article.excerpt,
+      publishedTime: article.publishedAt,
+      images: [
+        {
+          url: article.coverImageUrl,
+          alt: article.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title,
+      description: article.excerpt,
+      images: [article.coverImageUrl],
+    },
+  };
+}
 
 function renderInline(text: string): React.ReactNode {
   // Regex para emparejar enlaces [label](url) y negritas **bold**
@@ -38,9 +111,7 @@ function renderInline(text: string): React.ReactNode {
           className="text-primary hover:text-white underline font-semibold transition-colors inline-flex items-center gap-1"
         >
           <span>{label}</span>
-          {isExternal && (
-            <span className="material-symbols-outlined text-[13px] inline-block" aria-hidden="true">open_in_new</span>
-          )}
+          {isExternal && <ExternalLink className="w-3.5 h-3.5 inline-block shrink-0" aria-hidden="true" />}
         </a>
       );
     }
@@ -80,12 +151,12 @@ function parseArticleContent(content: string) {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative z-10">
               <div className="space-y-1.5">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-primary-container text-white text-[10px] uppercase font-bold tracking-widest">
-                  <span className="material-symbols-outlined text-[12px]" aria-hidden="true">verified</span>
+                  <BadgeCheck className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>Documento Oficial FAVB / RFEVB</span>
                 </div>
-                <h4 className="text-white font-bold text-base sm:text-lg font-headline-sm normal-case">
+                <h3 className="text-white font-bold text-base sm:text-lg font-headline-sm normal-case">
                   Circular Técnica Oficial de Cambios de Reglas 2026
-                </h4>
+                </h3>
                 <p className="text-tertiary text-xs sm:text-sm max-w-xl font-body-sm leading-relaxed">
                   Consulta la presentación original completa de la Federación Andaluza de Voleibol en su servidor oficial de descargas.
                 </p>
@@ -94,10 +165,10 @@ function parseArticleContent(content: string) {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-5 py-3 bg-primary-container hover:bg-secondary-container text-white text-xs font-bold uppercase tracking-wider shrink-0 flex items-center gap-2 transition-all shadow-md group-hover:scale-105"
+                className="px-5 py-3 bg-primary-container hover:bg-secondary-container text-white text-xs font-bold uppercase tracking-wider shrink-0 flex items-center gap-2 transition-all shadow-md active:translate-x-[1px] active:translate-y-[1px] group-hover:scale-105"
               >
                 <span>{label}</span>
-                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">open_in_new</span>
+                <ExternalLink className="w-4 h-4 shrink-0" aria-hidden="true" />
               </a>
             </div>
           </div>
@@ -114,12 +185,12 @@ function parseArticleContent(content: string) {
           >
             <div className="flex items-center gap-3">
               <span className="w-10 h-10 bg-red-950/60 border border-primary-container/40 flex items-center justify-center text-primary shrink-0">
-                <span className="material-symbols-outlined text-[20px]" aria-hidden="true">picture_as_pdf</span>
+                <FileText className="w-5 h-5 shrink-0" aria-hidden="true" />
               </span>
               <div>
-                <h5 className="text-white font-bold text-sm font-headline-sm normal-case">
+                <h3 className="text-white font-bold text-sm font-headline-sm normal-case">
                   Copia Archivada en el Club
-                </h5>
+                </h3>
                 <span className="text-xs text-tertiary font-body-sm">
                   Archivo PDF Oficial • Descarga directa
                 </span>
@@ -128,9 +199,9 @@ function parseArticleContent(content: string) {
             <a
               href={url}
               download
-              className="px-4 py-2.5 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all shrink-0"
+              className="px-4 py-2.5 bg-surface-container-high hover:bg-surface-bright text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all shrink-0 active:translate-x-[1px] active:translate-y-[1px]"
             >
-              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">download</span>
+              <Download className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>{label}</span>
             </a>
           </div>
@@ -147,12 +218,12 @@ function parseArticleContent(content: string) {
           >
             <div className="space-y-1.5">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#25D366]/20 text-[#25D366] text-[10px] uppercase font-bold tracking-widest">
-                <span className="material-symbols-outlined text-[12px]" aria-hidden="true">chat</span>
+                <MessageCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 <span>Atención Oficial del Club</span>
               </div>
-              <h4 className="text-white font-bold text-base sm:text-lg font-headline-sm normal-case">
+              <h3 className="text-white font-bold text-base sm:text-lg font-headline-sm normal-case">
                 Reserva de Décimos de Lotería
-              </h4>
+              </h3>
               <p className="text-tertiary text-xs sm:text-sm font-body-sm leading-relaxed">
                 Contacta directamente con los entrenadores del club durante los entrenamientos para conseguir tus décimos del número 15.586.
               </p>
@@ -164,7 +235,7 @@ function parseArticleContent(content: string) {
               className="px-5 py-3 bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-bold uppercase tracking-wider shrink-0 flex items-center gap-2 transition-all shadow-md"
             >
               <span>{label}</span>
-              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">send</span>
+              <Send className="w-4 h-4 shrink-0" aria-hidden="true" />
             </a>
           </div>
         );
@@ -309,30 +380,45 @@ function parseArticleContent(content: string) {
   return blocks;
 }
 
-interface ArticleDetailProps {
-  params: {
-    slug: string;
-  };
-}
-
 export default function ArticleDetailPage({ params }: ArticleDetailProps) {
-  const [copied, setCopied] = useState(false);
   const article = INITIAL_ARTICLES.find((a) => a.slug === params.slug);
 
   if (!article) {
-    return notFound();
+    notFound();
   }
 
   const relatedArticles = INITIAL_ARTICLES.filter((a) => a.id !== article.id).slice(0, 2);
-  const shareUrl =
-    typeof window !== 'undefined'
-      ? window.location.href
-      : `https://voleibolsanpedro.es/noticias/${article.slug}`;
+  const siteUrl = getSiteUrl();
+  const shareUrl = `${siteUrl}/noticias/${article.slug}`;
+  const coverImageAbsolute = `${siteUrl}${
+    article.coverImageUrl.startsWith('/') ? article.coverImageUrl : `/${article.coverImageUrl}`
+  }`;
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const newsArticleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: article.title,
+    description: article.excerpt,
+    image: [coverImageAbsolute],
+    datePublished: article.publishedAt,
+    dateModified: article.publishedAt,
+    author: {
+      '@type': 'Organization',
+      name: CLUB_INFO.name,
+      url: siteUrl,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: CLUB_INFO.name,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/images/logo.jpg`,
+      },
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': shareUrl,
+    },
   };
 
   return (
@@ -350,20 +436,26 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
 
       {/* Article Header */}
       <article className="relative z-10 max-w-4xl mx-auto px-4 lg:px-8 py-10">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(newsArticleJsonLd).replace(/</g, '\\u003c'),
+          }}
+        />
         <div className="mb-8">
           <Link
             href="/noticias"
             className="inline-flex items-center gap-1.5 font-label-md text-label-md uppercase tracking-wider text-primary hover:text-white transition-colors mb-6"
           >
-            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
+            <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>Volver a Noticias y Sala de Prensa</span>
           </Link>
 
-          <div className="flex items-center gap-3 text-on-surface-variant mb-3 font-body-sm text-body-sm">
-            <span className="px-2.5 py-0.5 bg-primary-container text-on-primary font-label-sm text-label-sm uppercase tracking-wider">
+          <div className="flex flex-wrap items-center gap-3 text-on-surface-variant mb-3 font-body-sm text-body-sm">
+            <span className="px-2.5 py-0.5 bg-primary-container text-white font-label-sm text-label-sm uppercase tracking-wider">
               {article.categoryName}
             </span>
-            <span>•</span>
+            <span aria-hidden="true">•</span>
             <span>
               {formatMadridDate(article.publishedAt, {
                 day: 'numeric',
@@ -371,9 +463,9 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
                 year: 'numeric',
               })}
             </span>
-            <span>•</span>
+            <span aria-hidden="true">•</span>
             <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">timer</span>
+              <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               {article.readingTimeMinutes} min de lectura
             </span>
           </div>
@@ -394,6 +486,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
             alt={article.title}
             fill
             priority
+            sizes="(max-width: 1024px) 100vw, 896px"
             className={article.coverImageUrl.includes('loteria') ? 'object-contain' : 'object-cover object-center'}
           />
         </div>
@@ -406,9 +499,9 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
         {/* Galería de Fotos si existe */}
         {article.galleryUrls && article.galleryUrls.length > 0 && (
           <div className="mt-14 pt-8 border-t border-white/10">
-            <h3 className="font-headline-sm text-headline-sm uppercase text-on-surface mb-4">
+            <h2 className="font-headline-sm text-headline-sm uppercase text-on-surface mb-4">
               Galería Fotográfica del Partido
-            </h3>
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {article.galleryUrls.map((url, i) => (
                 <div key={i} className="relative h-48 border border-white/10 overflow-hidden">
@@ -416,6 +509,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
                     src={url}
                     alt={`Foto ${i + 1} de la crónica`}
                     fill
+                    sizes="(max-width: 640px) 100vw, 33vw"
                     className="object-cover hover:scale-105 transition-transform duration-300"
                   />
                 </div>
@@ -430,7 +524,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
         {/* Social Share Bar */}
         <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 bg-surface-container-low p-4 border border-white/5">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">share</span>
+            <Share2 className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
             <span className="font-label-sm text-label-sm uppercase font-bold text-on-surface tracking-wider">
               Difundir y seguir al club:
             </span>
@@ -441,7 +535,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
               href={`https://wa.me/?text=${encodeURIComponent(`${article.title} - ${shareUrl}`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 bg-[#25D366] text-black font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 transition-transform hover:scale-105 shadow-[2px_2px_0px_0px_#0e0e0e]"
+              className="px-3.5 py-2 bg-[#25D366] text-black font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 transition-transform hover:scale-105 shadow-[2px_2px_0px_0px_#0e0e0e]"
             >
               <WhatsAppIcon className="w-4 h-4" />
               <span>WhatsApp</span>
@@ -451,7 +545,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
               href={CLUB_INFO.instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] text-white font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-[2px_2px_0px_0px_#0e0e0e]"
+              className="px-3.5 py-2 bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] text-white font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-[2px_2px_0px_0px_#0e0e0e]"
             >
               <InstagramIcon className="w-4 h-4 text-white" />
               <span>Instagram</span>
@@ -461,28 +555,22 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
               href={CLUB_INFO.facebookUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 bg-[#1877F2] hover:bg-[#166fe5] text-white font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 transition-colors shadow-[2px_2px_0px_0px_#0e0e0e]"
+              className="px-3.5 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white font-label-md text-label-md uppercase font-bold flex items-center gap-1.5 transition-colors shadow-[2px_2px_0px_0px_#0e0e0e]"
             >
               <FacebookIcon className="w-4 h-4 text-white" />
               <span>Facebook</span>
             </a>
 
-            <button
-              onClick={handleCopyLink}
-              className="px-3.5 py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md uppercase flex items-center gap-1.5 transition-colors border border-white/10"
-            >
-              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">link</span>
-              <span>{copied ? '¡Copiado!' : 'Copiar Enlace'}</span>
-            </button>
+            <CopyLinkButton url={shareUrl} />
           </div>
         </div>
 
         {/* Related Articles */}
         <div className="mt-16 pt-10 border-t border-white/10">
-          <h3 className="font-headline-sm text-headline-sm uppercase text-on-surface mb-6 flex items-center gap-2">
+          <h2 className="font-headline-sm text-headline-sm uppercase text-on-surface mb-6 flex items-center gap-2">
             <span className="w-2.5 h-2.5 bg-primary-container inline-block" />
             <span>Otras Noticias y Crónicas</span>
-          </h3>
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {relatedArticles.map((rel) => (
               <Link
@@ -495,6 +583,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
                     src={rel.coverImageUrl}
                     alt={rel.title}
                     fill
+                    sizes="96px"
                     className="object-cover object-center group-hover:scale-105 transition-transform"
                   />
                 </div>
@@ -502,9 +591,9 @@ export default function ArticleDetailPage({ params }: ArticleDetailProps) {
                   <span className="font-label-sm text-label-sm text-primary uppercase font-bold">
                     {rel.categoryName}
                   </span>
-                  <h4 className="font-headline-sm text-sm uppercase text-on-surface font-bold line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                  <h3 className="font-headline-sm text-sm uppercase text-on-surface font-bold line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                     {rel.title}
-                  </h4>
+                  </h3>
                   <span className="font-body-sm text-xs text-on-surface-variant">
                     {formatMadridDate(rel.publishedAt, { day: 'numeric', month: 'short' })}
                   </span>

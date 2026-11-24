@@ -24,8 +24,8 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { INITIAL_ARTICLES } from '@/lib/data-store';
-import { CLUB_CATEGORIES_META, CLUB_TEAMS_META, CLUB_INFO } from '@/lib/club-info';
+import { INITIAL_ARTICLES, CLUB_INFO } from '@/lib/public-content';
+import { CLUB_CATEGORIES_META, CLUB_TEAMS_META } from '@/lib/club-info';
 import type { FavbMatch } from '@/lib/favb-scraper';
 import { formatMadridDate } from '@/lib/date-utils';
 import { getTeamLogo } from '@/lib/team-logos';
@@ -34,7 +34,7 @@ import { isRestMatch } from '@/lib/match-utils';
 import SponsorBanner from '@/components/SponsorBanner';
 import { InstagramIcon, FacebookIcon } from '@/components/SocialIcons';
 
-const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v7';
+const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v8';
 const PRESS_LEGAL_VERSION = 'v3_2026_rgpd_prensa';
 
 export default function NoticiasPage() {
@@ -436,9 +436,9 @@ export default function NoticiasPage() {
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 bg-primary-container inline-block" />
-                <h3 className="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">
+                <h2 className="font-headline-md text-headline-md uppercase text-on-surface tracking-wide">
                   HISTORIAS RECIENTES DEL CLUB
-                </h3>
+                </h2>
               </div>
               <span className="font-label-sm text-label-sm uppercase text-outline hidden sm:block">
                 {filteredArticles.length} ARTÍCULOS EN TOTAL
@@ -458,6 +458,7 @@ export default function NoticiasPage() {
                       src={art.coverImageUrl}
                       alt={art.title}
                       fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                       className={`${art.coverImageUrl.includes('loteria') ? 'object-contain p-2' : 'object-cover object-center'} transition-transform duration-500 group-hover:scale-105`}
                     />
                     <span className="absolute top-3 left-3 px-2.5 py-1 bg-surface-container-lowest/90 font-label-sm text-label-sm text-primary uppercase font-bold tracking-wider">
@@ -473,9 +474,9 @@ export default function NoticiasPage() {
                       <span className="font-label-sm text-label-sm text-primary uppercase tracking-wider block mb-1">
                         ACTUALIDAD
                       </span>
-                      <h4 className="font-headline-sm text-headline-sm text-on-surface uppercase group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                      <h3 className="font-headline-sm text-headline-sm text-on-surface uppercase group-hover:text-primary transition-colors leading-snug line-clamp-2">
                         {art.title}
-                      </h4>
+                      </h3>
                       <p className="font-body-sm text-body-sm text-on-surface-variant mt-2 line-clamp-3 leading-relaxed">
                         {art.excerpt}
                       </p>
@@ -511,9 +512,9 @@ export default function NoticiasPage() {
                 <div className="flex items-center gap-2.5">
                   <Newspaper className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
                   <div>
-                    <h4 className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wide group-hover:text-primary transition-colors">
+                    <h2 className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wide group-hover:text-primary transition-colors">
                       SALA DE PRENSA
-                    </h4>
+                    </h2>
                     <span className="text-[11px] text-on-surface-variant block">
                       Acreditaciones y recursos para medios
                     </span>
@@ -589,9 +590,9 @@ export default function NoticiasPage() {
               <div className="absolute -right-12 -bottom-12 w-32 h-32 bg-primary-container/10 rounded-full blur-2xl pointer-events-none" />
               <div className="flex items-center gap-2 pb-1">
                 <Megaphone className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
-                <h4 className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wide">
+                <h2 className="font-headline-sm text-headline-sm text-on-surface uppercase tracking-wide">
                   CANAL OFICIAL DEL CLUB
-                </h4>
+                </h2>
               </div>
               <span className="font-label-sm text-label-sm text-primary uppercase font-bold tracking-widest block mb-2">
                 ACTUALIDAD AL INSTANTE
@@ -677,7 +678,7 @@ export default function NoticiasPage() {
                         </span>
                       )}
                     </div>
-                    <span className="font-label-sm text-[9px] px-1.5 py-0.5 bg-primary-container/20 text-primary font-bold uppercase shrink-0">
+                    <span className="font-label-sm text-[10px] px-1.5 py-0.5 bg-primary-container/20 text-primary font-bold uppercase shrink-0">
                       LOCAL
                     </span>
                   </div>
@@ -715,7 +716,7 @@ export default function NoticiasPage() {
                         </span>
                       )}
                     </div>
-                    <span className="font-label-sm text-[9px] px-1.5 py-0.5 bg-white/5 text-outline font-bold uppercase shrink-0">
+                    <span className="font-label-sm text-[10px] px-1.5 py-0.5 bg-white/5 text-outline font-bold uppercase shrink-0">
                       VISITANTE
                     </span>
                   </div>
@@ -758,15 +759,15 @@ export default function NoticiasPage() {
             <button
               type="button"
               onClick={() => setShowPressModal(false)}
-              className="absolute top-4 right-4 p-1.5 text-tertiary hover:text-white transition-colors"
+              className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-surface-container-high border border-white/15 text-tertiary hover:text-white transition-colors cursor-pointer"
               aria-label="Cerrar solicitud de acreditación"
             >
               <X className="w-5 h-5" aria-hidden="true" />
             </button>
 
-            <h3 id="press-modal-title" className="font-headline-sm text-xl uppercase text-on-surface mb-1 font-bold pr-8">
+            <h2 id="press-modal-title" className="font-headline-sm text-xl uppercase text-on-surface mb-1 font-bold pr-10">
               Solicitud de Acreditación de Partido
-            </h3>
+            </h2>
             <p className="text-xs text-on-surface-variant mb-6 font-body-sm">
               Completa el formulario para reservar pase de pista y cabina de prensa en los próximos partidos de la FAVB.
             </p>
@@ -774,9 +775,9 @@ export default function NoticiasPage() {
             {accreditationSubmitted ? (
               <div className="p-6 bg-emerald-500/15 border border-emerald-500/30 text-center space-y-3" role="status">
                 <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" aria-hidden="true" />
-                <h4 className="font-headline-sm text-xl uppercase text-on-surface font-bold">
+                <h3 className="font-headline-sm text-xl uppercase text-on-surface font-bold">
                   ¡Solicitud Registrada con Éxito!
-                </h4>
+                </h3>
                 <p className="text-xs text-on-surface-variant font-body-sm">
                   El equipo de comunicación del club revisará tus datos y recibirás la confirmación oficial en tu correo electrónico.
                 </p>
@@ -834,7 +835,7 @@ export default function NoticiasPage() {
                         setAccreditationForm({ ...accreditationForm, fullName: e.target.value })
                       }
                       placeholder="Ej. Juan Gómez Ruiz"
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
 
@@ -852,7 +853,7 @@ export default function NoticiasPage() {
                         setAccreditationForm({ ...accreditationForm, mediaOutlet: e.target.value })
                       }
                       placeholder="Ej. Diario Sur / Radio Marbella"
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
                 </div>
@@ -890,7 +891,7 @@ export default function NoticiasPage() {
                         setAccreditationForm({ ...accreditationForm, email: e.target.value })
                       }
                       placeholder="prensa@medio.es"
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
 
@@ -908,7 +909,7 @@ export default function NoticiasPage() {
                         setAccreditationForm({ ...accreditationForm, phone: e.target.value })
                       }
                       placeholder="+34 600 000 000"
-                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                      className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                     />
                   </div>
                 </div>
@@ -926,7 +927,7 @@ export default function NoticiasPage() {
                       setAccreditationForm({ ...accreditationForm, notes: e.target.value })
                     }
                     placeholder="Ej. Necesidad de toma de corriente para retransmisión o acceso especial a pie de pista."
-                    className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface text-base sm:text-xs focus:border-primary-container focus:outline-none"
+                    className="w-full px-3 py-2.5 bg-surface-container-lowest border border-white/10 text-on-surface placeholder:text-tertiary/80 text-base sm:text-xs focus:border-primary-container focus:outline-none"
                   />
                 </div>
 
@@ -970,7 +971,7 @@ export default function NoticiasPage() {
                 <button
                   type="submit"
                   disabled={pressSubmitting}
-                  className="w-full py-3 bg-primary-container hover:bg-cta-hover disabled:opacity-60 text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-primary-container hover:bg-cta-hover disabled:opacity-60 text-white font-label-md text-xs uppercase font-bold tracking-wider transition-all shadow-[3px_3px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {pressSubmitting ? (
                     <>

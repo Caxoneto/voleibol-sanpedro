@@ -174,6 +174,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, Array<{ code: Permission
     { code: 'trip.view', scope: 'GLOBAL' },
     { code: 'athlete.view_basic', scope: 'GLOBAL' },
     { code: 'consent.view_status', scope: 'GLOBAL' },
+    { code: 'web.streaming', scope: 'GLOBAL' },
   ],
   COORDINADOR: [
     { code: 'venue.manage', scope: 'GLOBAL' },
@@ -192,6 +193,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, Array<{ code: Permission
     { code: 'consent.view_status', scope: 'GLOBAL' },
     { code: 'payments.team_status', scope: 'GLOBAL' },
     { code: 'comms.team', scope: 'GLOBAL' },
+    { code: 'web.streaming', scope: 'GLOBAL' },
   ],
   TESORERIA: [
     { code: 'athlete.view_basic', scope: 'GLOBAL' },
@@ -202,6 +204,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, Array<{ code: Permission
     { code: 'discounts.manage', scope: 'GLOBAL' },
     { code: 'discounts.apply', scope: 'GLOBAL' },
     { code: 'payments.reports', scope: 'GLOBAL' },
+    { code: 'web.streaming', scope: 'GLOBAL' },
   ],
   SECRETARIA: [
     { code: 'athlete.view_basic', scope: 'GLOBAL' },
@@ -215,6 +218,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, Array<{ code: Permission
     { code: 'consent.manage', scope: 'GLOBAL' },
     { code: 'comms.team', scope: 'GLOBAL' },
     { code: 'comms.all', scope: 'GLOBAL' },
+    { code: 'web.streaming', scope: 'GLOBAL' },
   ],
   ENTRENADOR: [
     { code: 'schedule.propose', scope: 'EQUIPO' },
@@ -229,6 +233,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, Array<{ code: Permission
     { code: 'consent.view_status', scope: 'EQUIPO' },
     { code: 'payments.team_status', scope: 'EQUIPO' },
     { code: 'comms.team', scope: 'EQUIPO' },
+    { code: 'web.streaming', scope: 'GLOBAL' },
   ],
   AYUDANTE: [
     { code: 'attendance.take', scope: 'EQUIPO' },
@@ -238,6 +243,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, Array<{ code: Permission
     { code: 'athlete.view_basic', scope: 'EQUIPO' },
     { code: 'athlete.view_emergency', scope: 'EQUIPO' },
     { code: 'consent.view_status', scope: 'EQUIPO' },
+    { code: 'web.streaming', scope: 'GLOBAL' },
   ],
   DELEGADO: [
     { code: 'attendance.reports', scope: 'EQUIPO' },
@@ -246,6 +252,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleCode, Array<{ code: Permission
     { code: 'athlete.view_emergency', scope: 'EQUIPO' },
     { code: 'consent.view_status', scope: 'EQUIPO' },
     { code: 'comms.team', scope: 'EQUIPO' },
+    { code: 'web.streaming', scope: 'GLOBAL' },
   ],
   TUTOR: [
     { code: 'payments.view', scope: 'PROPIO' },
@@ -274,9 +281,9 @@ export const INITIAL_VENUES_AND_COURTS: VenueCourt[] = [
     mapsUrl: CLUB_INFO.venueMapsUrl,
     locality: 'San Pedro Alcántara',
     courts: [
-      { id: 'court-scariolo-central', name: 'Pista Central', surfaceType: 'Pista completa' },
-      { id: 'court-scariolo-1', name: 'Pista 1 (Transversal)', surfaceType: 'Media pista / transversal' },
-      { id: 'court-scariolo-2', name: 'Pista 2 (Transversal)', surfaceType: 'Media pista / transversal' },
+      { id: 'court-scariolo-1', name: 'P1', surfaceType: 'Media pista / transversal' },
+      { id: 'court-scariolo-2', name: 'P2', surfaceType: 'Media pista / transversal' },
+      { id: 'court-scariolo-central', name: 'P3', surfaceType: 'Pista completa' },
     ],
   },
   {
@@ -332,3 +339,229 @@ export const ABSENCE_REASONS: AbsenceReasonMeta[] = [
   { code: 'FAMILIAR', label: 'Motivos Familiares' },
   { code: 'OTRO', label: 'Otro Motivo' },
 ];
+
+export interface CategoryRegistrationLinkSeed {
+  categoryCode: string;
+  categoryLabel: string;
+  defaultTeamSeasonId: string | null;
+}
+
+const teamByCategoryIdMap = new Map(CLUB_TEAMS_META.map((t) => [t.categoryId, t.id]));
+
+export const INITIAL_CATEGORY_REGISTRATION_LINKS: CategoryRegistrationLinkSeed[] =
+  CLUB_CATEGORIES_META.map((c) => ({
+    categoryCode: c.id,
+    categoryLabel: c.name,
+    defaultTeamSeasonId: teamByCategoryIdMap.get(c.id) || null,
+  }));
+
+export interface PasswordStrengthEvaluation {
+  valid: boolean;
+  minLengthOk: boolean;
+  hasUppercase: boolean;
+  hasNumber: boolean;
+  error?: string;
+}
+
+/**
+ * Valida la política de contraseña para auto-registro de deportistas/tutores:
+ * mínimo 10 caracteres, al menos 1 letra mayúscula y al menos 1 dígito numérico.
+ */
+export function evaluateMemberPassword(password: string): PasswordStrengthEvaluation {
+  const raw = typeof password === 'string' ? password : '';
+  const minLengthOk = raw.length >= 10 && raw.length <= 128;
+  const hasUppercase = /[A-ZÁÉÍÓÚÜÑ]/.test(raw);
+  const hasNumber = /\d/.test(raw);
+  const valid = minLengthOk && hasUppercase && hasNumber;
+
+  let error: string | undefined;
+  if (!minLengthOk) {
+    error = 'La contraseña debe tener al menos 10 caracteres.';
+  } else if (!hasUppercase) {
+    error = 'La contraseña debe incluir al menos una letra mayúscula.';
+  } else if (!hasNumber) {
+    error = 'La contraseña debe incluir al menos un número.';
+  }
+
+  return { valid, minLengthOk, hasUppercase, hasNumber, error };
+}
+
+export type SimplifiedPermissionScope = 'EQUIPO' | 'GLOBAL';
+
+export interface SimplifiedPermissionGroup {
+  id: string;
+  module: 'Asistencia y Pista' | 'Competición' | 'Jugadoras/es y RGPD' | 'Pagos' | 'Comunicación y Auditoría';
+  name: string;
+  description: string;
+  allowedScopes: SimplifiedPermissionScope[];
+  defaultScope: SimplifiedPermissionScope;
+  primaryCode: PermissionCode;
+  memberCodes: PermissionCode[];
+}
+
+export const SIMPLIFIED_PERMISSION_GROUPS: SimplifiedPermissionGroup[] = [
+  {
+    id: 'attendance_manage',
+    module: 'Asistencia y Pista',
+    name: 'Pasar asistencia y sesiones',
+    description: 'Registrar asistencia diaria, crear sesiones extra y editar sesiones pasadas.',
+    allowedScopes: ['EQUIPO', 'GLOBAL'],
+    defaultScope: 'EQUIPO',
+    primaryCode: 'attendance.take',
+    memberCodes: ['attendance.take', 'session.manage', 'attendance.edit_past'],
+  },
+  {
+    id: 'attendance_reports',
+    module: 'Asistencia y Pista',
+    name: 'Informes de asistencia y control técnico',
+    description: 'Consultar estadísticas por jugador/a, exportar PDFs y controlar entrenadores.',
+    allowedScopes: ['EQUIPO', 'GLOBAL'],
+    defaultScope: 'EQUIPO',
+    primaryCode: 'attendance.reports',
+    memberCodes: ['attendance.reports'],
+  },
+  {
+    id: 'schedule_manage',
+    module: 'Asistencia y Pista',
+    name: 'Horarios de entrenamientos y pistas',
+    description: 'Organizar el cuadrante de entrenamientos, partidos en casa y pistas P1/P2/P3.',
+    allowedScopes: ['GLOBAL'],
+    defaultScope: 'GLOBAL',
+    primaryCode: 'schedule.manage',
+    memberCodes: ['schedule.manage', 'venue.manage', 'season.manage', 'schedule.propose'],
+  },
+  {
+    id: 'substitutions_manage',
+    module: 'Competición',
+    name: 'Sustituciones de entrenadores',
+    description: 'Asignar o reasignar entrenadores suplentes con permiso temporal de asistencia.',
+    allowedScopes: ['GLOBAL'],
+    defaultScope: 'GLOBAL',
+    primaryCode: 'substitution.assign',
+    memberCodes: ['substitution.assign', 'substitution.request'],
+  },
+  {
+    id: 'trips_view',
+    module: 'Competición',
+    name: 'Consultar desplazamientos y partidos',
+    description: 'Ver calendario de partidos, ubicaciones y técnicos asignados.',
+    allowedScopes: ['EQUIPO', 'GLOBAL'],
+    defaultScope: 'EQUIPO',
+    primaryCode: 'trip.view',
+    memberCodes: ['trip.view'],
+  },
+  {
+    id: 'trips_manage',
+    module: 'Competición',
+    name: 'Gestionar desplazamientos y fechas de partido',
+    description: 'Asignar entrenadores en partidos, horas de salida y proponer/confirmar fechas.',
+    allowedScopes: ['GLOBAL'],
+    defaultScope: 'GLOBAL',
+    primaryCode: 'trip.manage',
+    memberCodes: ['trip.manage', 'trip.view'],
+  },
+  {
+    id: 'athletes_view',
+    module: 'Jugadoras/es y RGPD',
+    name: 'Ver jugadoras/es y contacto de emergencia',
+    description: 'Consultar listado de plantilla, equipos y teléfono de emergencia.',
+    allowedScopes: ['EQUIPO', 'GLOBAL'],
+    defaultScope: 'EQUIPO',
+    primaryCode: 'athlete.view_basic',
+    memberCodes: ['athlete.view_basic', 'athlete.view_emergency'],
+  },
+  {
+    id: 'athletes_manage',
+    module: 'Jugadoras/es y RGPD',
+    name: 'Gestionar altas, fichas y enlaces de registro',
+    description: 'Editar fichas deportivas, generar enlaces de categoría y aprobar solicitudes.',
+    allowedScopes: ['EQUIPO', 'GLOBAL'],
+    defaultScope: 'GLOBAL',
+    primaryCode: 'athlete.edit',
+    memberCodes: ['athlete.edit', 'athlete.deactivate', 'registration.approve', 'invitation.send'],
+  },
+  {
+    id: 'athletes_sensitive',
+    module: 'Jugadoras/es y RGPD',
+    name: 'Ver datos sensibles (DNI y salud)',
+    description: 'Acceder bajo auditoría al DNI completo, alergias y datos médicos.',
+    allowedScopes: ['EQUIPO', 'GLOBAL'],
+    defaultScope: 'GLOBAL',
+    primaryCode: 'athlete.view_sensitive',
+    memberCodes: ['athlete.view_sensitive'],
+  },
+  {
+    id: 'consents_manage',
+    module: 'Jugadoras/es y RGPD',
+    name: 'Gestionar autorizaciones RGPD',
+    description: 'Consultar firmas de imagen/viajes y gestionar el panel de consentimientos.',
+    allowedScopes: ['GLOBAL'],
+    defaultScope: 'GLOBAL',
+    primaryCode: 'consent.manage',
+    memberCodes: ['consent.manage', 'consent.view_status'],
+  },
+  {
+    id: 'payments_status',
+    module: 'Pagos',
+    name: 'Ver estado de cuotas del equipo',
+    description: 'Consultar semáforo de pagos de las jugadoras y jugadores asignados.',
+    allowedScopes: ['EQUIPO', 'GLOBAL'],
+    defaultScope: 'EQUIPO',
+    primaryCode: 'payments.team_status',
+    memberCodes: ['payments.team_status'],
+  },
+  {
+    id: 'payments_manage',
+    module: 'Pagos',
+    name: 'Tesorería, cobros, cuotas y avisos',
+    description: 'Gestionar productos, modalidades, descuentos, cobros manuales y avisos por email.',
+    allowedScopes: ['GLOBAL'],
+    defaultScope: 'GLOBAL',
+    primaryCode: 'payments.record',
+    memberCodes: [
+      'payments.view',
+      'payments.record',
+      'payments.void',
+      'products.manage',
+      'discounts.manage',
+      'discounts.apply',
+      'payments.reports',
+    ],
+  },
+  {
+    id: 'streaming_manage',
+    module: 'Comunicación y Auditoría',
+    name: 'Controlar Streaming y Vídeos',
+    description: 'Publicar o finalizar emisiones en directo y vincular grabaciones de partidos.',
+    allowedScopes: ['GLOBAL'],
+    defaultScope: 'GLOBAL',
+    primaryCode: 'web.streaming',
+    memberCodes: ['web.streaming'],
+  },
+  {
+    id: 'audit_view',
+    module: 'Comunicación y Auditoría',
+    name: 'Ver registro de auditoría',
+    description: 'Consultar el histórico de actividad y acciones realizadas en la intranet.',
+    allowedScopes: ['GLOBAL'],
+    defaultScope: 'GLOBAL',
+    primaryCode: 'audit.view',
+    memberCodes: ['audit.view'],
+  },
+];
+
+const SIMPLIFIED_GROUP_BY_CODE = new Map<PermissionCode, SimplifiedPermissionGroup>();
+for (const g of SIMPLIFIED_PERMISSION_GROUPS) {
+  for (const code of g.memberCodes) {
+    if (!SIMPLIFIED_GROUP_BY_CODE.has(code)) {
+      SIMPLIFIED_GROUP_BY_CODE.set(code, g);
+    }
+  }
+}
+
+export function getSimplifiedPermissionLabel(code: string): string {
+  const group = SIMPLIFIED_GROUP_BY_CODE.get(code as PermissionCode);
+  if (group) return group.name;
+  const meta = PERMISSIONS_CATALOG.find((p) => p.code === code);
+  return meta?.name || code;
+}

@@ -87,15 +87,6 @@ export function buildCsvString(headers: string[], rows: unknown[][], delimiter: 
   return '\uFEFF' + csvContent;
 }
 
-export const FEELSPORTS_CSV_TEMPLATE = buildCsvString(
-  ['Nombre', 'Apellidos', 'DNI/NIE', 'Fecha Nacimiento', 'Email', 'Teléfono', 'Categoría', 'Equipo', 'Tutor Legal'],
-  [
-    ['Sofía', 'García López', '12345678A', '2012-05-14', 'sofia@example.com', '600111222', 'Infantil Femenino Rojo', 'Infantil Femenino', 'María López Pérez'],
-    ['Alejandro', 'Martín Ruiz', '87654321B', '2010-09-22', 'alejandro@example.com', '600333444', 'Cadete Masculino', 'Cadete Masculino', 'Carlos Martín Gómez'],
-  ],
-  ';'
-);
-
 export const STAFF_CSV_TEMPLATE = buildCsvString(
   ['Nombre', 'Apellidos', 'Email', 'Teléfono', 'Cargo', 'Equipo Asignado', 'Rol Intranet'],
   [

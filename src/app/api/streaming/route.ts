@@ -1,48 +1,44 @@
-import crypto from 'crypto';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import {
   getStreamingStatus,
   getMatchRecordings,
   setStreamingStatus,
   saveMatchRecording,
+  removeMatchRecording,
   isValidYouTubeUrl,
   isValidMatchId,
   NeonUnavailableError,
   StreamingPayload,
 } from '@/lib/streaming-store';
-import {
-  getClientIp,
-  isNeonRateLimited,
-  recordNeonFailedAttempt,
-  clearNeonRateLimit,
-} from '@/lib/rate-limiter';
+import { getClientIp } from '@/lib/rate-limiter';
 import { stripCrlf } from '@/lib/validators';
 import { getConsolidatedOfficialMatches } from '@/lib/favb-scraper';
 import { isRestMatch } from '@/lib/match-utils';
 import { formatMadridDateString, formatMadridTime } from '@/lib/date-utils';
+import { getIntranetSession } from '@/lib/intranet/auth';
+import { can, type IntranetAccessContext } from '@/lib/intranet/rbac';
+import { recordAuditLog } from '@/lib/intranet/audit';
+import { authenticateAdminSession } from '@/lib/consent-store';
 
 export const dynamic = 'force-dynamic';
-
-const FIXED_PASSWORD = process.env.STREAMING_ADMIN_PASSWORD;
-const RATE_LIMIT_WINDOW_SEC = 10 * 60;
-const RATE_LIMIT_BLOCK_SEC = 10 * 60;
-const MAX_FAILED_ATTEMPTS = 5;
 
 const NO_STORE_HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, private',
   'X-Content-Type-Options': 'nosniff',
 };
 
-/**
- * Verificación de contraseña en tiempo constante para mitigar timing attacks.
- */
-function verifyAdminPassword(input: unknown, expected: string): boolean {
-  if (typeof input !== 'string' || !expected) {
-    return false;
-  }
-  const hashInput = crypto.createHash('sha256').update(input).digest();
-  const hashExpected = crypto.createHash('sha256').update(expected).digest();
-  return crypto.timingSafeEqual(hashInput, hashExpected);
+function mapMatchOption(m: ReturnType<typeof getConsolidatedOfficialMatches>[number]) {
+  return {
+    id: m.id,
+    round: m.round,
+    categoryName: m.categoryName,
+    homeTeam: m.homeTeam,
+    awayTeam: m.awayTeam,
+    timeStr: m.timeStr || formatMadridTime(m.matchDate),
+    dateStr: m.dateStr,
+    venue: m.venue,
+  };
 }
 
 // GET: Obtener estado actual del streaming, grabaciones diferidas y partidos elegibles
@@ -54,32 +50,18 @@ export async function GET() {
     const todayStr = formatMadridDateString(new Date());
     const allMatches = getConsolidatedOfficialMatches().filter((m) => !isRestMatch(m));
 
-    const todayMatches = allMatches
-      .filter((m) => m.dateStr === todayStr)
-      .map((m) => ({
-        id: m.id,
-        round: m.round,
-        categoryName: m.categoryName,
-        homeTeam: m.homeTeam,
-        awayTeam: m.awayTeam,
-        timeStr: m.timeStr || formatMadridTime(m.matchDate),
-        dateStr: m.dateStr,
-        venue: m.venue,
-      }));
+    const todayMatches = allMatches.filter((m) => m.dateStr === todayStr).map(mapMatchOption);
 
     const upcomingMatches = allMatches
       .filter((m) => m.dateStr >= todayStr && m.status === 'SCHEDULED' && m.dateStr !== todayStr)
       .slice(0, 15)
-      .map((m) => ({
-        id: m.id,
-        round: m.round,
-        categoryName: m.categoryName,
-        homeTeam: m.homeTeam,
-        awayTeam: m.awayTeam,
-        timeStr: m.timeStr || formatMadridTime(m.matchDate),
-        dateStr: m.dateStr,
-        venue: m.venue,
-      }));
+      .map(mapMatchOption);
+
+    const recentMatches = allMatches
+      .filter((m) => m.dateStr <= todayStr)
+      .sort((a, b) => b.dateStr.localeCompare(a.dateStr))
+      .slice(0, 25)
+      .map(mapMatchOption);
 
     return NextResponse.json(
       {
@@ -92,6 +74,7 @@ export async function GET() {
         recordings,
         todayMatches,
         upcomingMatches,
+        recentMatches,
       },
       { headers: NO_STORE_HEADERS }
     );
@@ -106,6 +89,7 @@ export async function GET() {
           recordings: {},
           todayMatches: [],
           upcomingMatches: [],
+          recentMatches: [],
         },
         { status: 503, headers: NO_STORE_HEADERS }
       );
@@ -119,42 +103,75 @@ export async function GET() {
         recordings: {},
         todayMatches: [],
         upcomingMatches: [],
+        recentMatches: [],
       },
       { status: 500, headers: NO_STORE_HEADERS }
     );
   }
 }
 
-// POST: Iniciar, finalizar retransmisión o gestionar grabaciones
+async function authorizeStreamingMutation(
+  ipAddress: string
+): Promise<
+  | { ok: true; intranetSession: IntranetAccessContext | null }
+  | { ok: false; status: 401 | 403 | 429; error: string; retryAfterSec?: number }
+> {
+  const intranetSession = await getIntranetSession();
+  if (intranetSession) {
+    const allowed =
+      intranetSession.isStaff &&
+      (intranetSession.isPresident || can(intranetSession, 'web.streaming'));
+    if (!allowed) {
+      return {
+        ok: false,
+        status: 403,
+        error: 'No tienes permiso de staff habilitado para gestionar el streaming del club.',
+      };
+    }
+    return { ok: true, intranetSession };
+  }
+
+  const adminToken = cookies().get('cdv_admin_session')?.value;
+  if (adminToken) {
+    const adminAuth = await authenticateAdminSession({
+      token: adminToken,
+      ipAddress,
+      scope: 'streaming-post',
+      maxAttempts: 60,
+    });
+    if (adminAuth.ok) {
+      return { ok: true, intranetSession: null };
+    }
+    if (adminAuth.status === 429) {
+      return {
+        ok: false,
+        status: 429,
+        error: adminAuth.error,
+        retryAfterSec: adminAuth.retryAfterSec,
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    status: 401,
+    error: 'Debes iniciar sesión como miembro de staff autorizado en la intranet.',
+  };
+}
+
+// POST: Iniciar, finalizar retransmisión o gestionar grabaciones (autenticado por sesión de staff/admin)
 export async function POST(request: Request) {
   try {
-    if (!FIXED_PASSWORD) {
-      console.error('STREAMING_ADMIN_PASSWORD no está configurada en las variables de entorno del servidor.');
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Servicio de streaming no configurado en las variables de entorno del servidor.',
-        },
-        { status: 500, headers: NO_STORE_HEADERS }
-      );
-    }
-
     const clientIp = getClientIp(request);
-    const bucketKey = `streaming-auth:${clientIp}`;
-
-    const rateStatus = await isNeonRateLimited(bucketKey);
-    if (rateStatus.limited) {
+    const authRes = await authorizeStreamingMutation(clientIp);
+    if (!authRes.ok) {
       return NextResponse.json(
+        { success: false, error: authRes.error },
         {
-          success: false,
-          error: `Demasiados intentos fallidos. Espera ${Math.ceil(rateStatus.retryAfterSec / 60)} minutos.`,
-        },
-        {
-          status: 429,
-          headers: {
-            ...NO_STORE_HEADERS,
-            'Retry-After': String(rateStatus.retryAfterSec),
-          },
+          status: authRes.status,
+          headers: authRes.retryAfterSec
+            ? { ...NO_STORE_HEADERS, 'Retry-After': String(authRes.retryAfterSec) }
+            : NO_STORE_HEADERS,
         }
       );
     }
@@ -162,7 +179,6 @@ export async function POST(request: Request) {
     let body: {
       action?: string;
       url?: string;
-      password?: unknown;
       matchId?: string;
       matchTitle?: string;
     };
@@ -176,43 +192,11 @@ export async function POST(request: Request) {
     }
 
     const action = body.action || (body.url ? 'start' : 'stop');
-
-    const authenticate = async (passwordInput: unknown): Promise<{ ok: boolean; blocked: boolean; retryAfterSec: number }> => {
-      const isValid = verifyAdminPassword(passwordInput, FIXED_PASSWORD);
-      if (!isValid) {
-        const res = await recordNeonFailedAttempt(
-          bucketKey,
-          MAX_FAILED_ATTEMPTS,
-          RATE_LIMIT_WINDOW_SEC,
-          RATE_LIMIT_BLOCK_SEC
-        );
-        return { ok: false, blocked: res.blocked, retryAfterSec: res.retryAfterSec };
-      }
-      await clearNeonRateLimit(bucketKey);
-      return { ok: true, blocked: false, retryAfterSec: 0 };
-    };
+    const actor = authRes.intranetSession?.user || null;
 
     // 1. INICIAR RETRANSMISIÓN
     if (action === 'start') {
-      const { url, password, matchId, matchTitle } = body;
-
-      const authRes = await authenticate(password);
-      if (!authRes.ok) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: authRes.blocked
-              ? `Demasiados intentos fallidos. Espera ${Math.ceil(authRes.retryAfterSec / 60)} minutos.`
-              : 'Contraseña de autorización incorrecta.',
-          },
-          {
-            status: authRes.blocked ? 429 : 401,
-            headers: authRes.blocked
-              ? { ...NO_STORE_HEADERS, 'Retry-After': String(authRes.retryAfterSec) }
-              : NO_STORE_HEADERS,
-          }
-        );
-      }
+      const { url, matchId, matchTitle } = body;
 
       if (!isValidYouTubeUrl(url)) {
         return NextResponse.json(
@@ -257,6 +241,19 @@ export async function POST(request: Request) {
 
       await setStreamingStatus(newState);
 
+      if (actor) {
+        await recordAuditLog({
+          actorUserId: actor.id,
+          actorEmail: actor.email,
+          action: 'STREAMING_START',
+          module: 'Comunicación',
+          targetType: 'STREAMING',
+          targetId: newState.matchId || 'general',
+          details: { url: trimmedUrl, matchTitle: newState.matchTitle },
+          ipAddress: clientIp,
+        });
+      }
+
       return NextResponse.json(
         {
           success: true,
@@ -273,26 +270,6 @@ export async function POST(request: Request) {
 
     // 2. FINALIZAR RETRANSMISIÓN (Y GUARDAR ENLACE EN EL PARTIDO SELECCIONADO)
     if (action === 'stop') {
-      const { password } = body;
-
-      const authRes = await authenticate(password);
-      if (!authRes.ok) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: authRes.blocked
-              ? `Demasiados intentos fallidos. Espera ${Math.ceil(authRes.retryAfterSec / 60)} minutos.`
-              : 'Contraseña de autorización incorrecta.',
-          },
-          {
-            status: authRes.blocked ? 429 : 401,
-            headers: authRes.blocked
-              ? { ...NO_STORE_HEADERS, 'Retry-After': String(authRes.retryAfterSec) }
-              : NO_STORE_HEADERS,
-          }
-        );
-      }
-
       const current = await getStreamingStatus();
       let updatedRecordings = await getMatchRecordings();
       let recordedMatchId: string | null = null;
@@ -317,6 +294,19 @@ export async function POST(request: Request) {
 
       await setStreamingStatus(finishedState);
 
+      if (actor) {
+        await recordAuditLog({
+          actorUserId: actor.id,
+          actorEmail: actor.email,
+          action: 'STREAMING_STOP',
+          module: 'Comunicación',
+          targetType: 'STREAMING',
+          targetId: recordedMatchId || current.matchId || 'general',
+          details: { recordedMatchId },
+          ipAddress: clientIp,
+        });
+      }
+
       return NextResponse.json(
         {
           success: true,
@@ -334,25 +324,7 @@ export async function POST(request: Request) {
 
     // 3. GUARDAR O ACTUALIZAR GRABACIÓN DIRECTAMENTE
     if (action === 'save_recording') {
-      const { password, matchId, url } = body;
-
-      const authRes = await authenticate(password);
-      if (!authRes.ok) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: authRes.blocked
-              ? `Demasiados intentos fallidos. Espera ${Math.ceil(authRes.retryAfterSec / 60)} minutos.`
-              : 'Contraseña de autorización incorrecta.',
-          },
-          {
-            status: authRes.blocked ? 429 : 401,
-            headers: authRes.blocked
-              ? { ...NO_STORE_HEADERS, 'Retry-After': String(authRes.retryAfterSec) }
-              : NO_STORE_HEADERS,
-          }
-        );
-      }
+      const { matchId, url } = body;
 
       if (!matchId || !isValidMatchId(matchId)) {
         return NextResponse.json(
@@ -369,10 +341,58 @@ export async function POST(request: Request) {
       }
 
       const updatedRecordings = await saveMatchRecording(matchId, (url as string).trim());
+
+      if (actor) {
+        await recordAuditLog({
+          actorUserId: actor.id,
+          actorEmail: actor.email,
+          action: 'STREAMING_SAVE_RECORDING',
+          module: 'Comunicación',
+          targetType: 'MATCH_RECORDING',
+          targetId: matchId,
+          details: { url: (url as string).trim() },
+          ipAddress: clientIp,
+        });
+      }
+
       return NextResponse.json(
         {
           success: true,
           message: 'Grabación de partido guardada correctamente.',
+          recordings: updatedRecordings,
+        },
+        { headers: NO_STORE_HEADERS }
+      );
+    }
+
+    // 4. ELIMINAR GRABACIÓN ASOCIADA A UN PARTIDO
+    if (action === 'remove_recording') {
+      const { matchId } = body;
+      if (!matchId || !isValidMatchId(matchId)) {
+        return NextResponse.json(
+          { success: false, error: 'Identificador de partido inválido.' },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      const updatedRecordings = await removeMatchRecording(matchId);
+
+      if (actor) {
+        await recordAuditLog({
+          actorUserId: actor.id,
+          actorEmail: actor.email,
+          action: 'STREAMING_REMOVE_RECORDING',
+          module: 'Comunicación',
+          targetType: 'MATCH_RECORDING',
+          targetId: matchId,
+          ipAddress: clientIp,
+        });
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Grabación eliminada correctamente.',
           recordings: updatedRecordings,
         },
         { headers: NO_STORE_HEADERS }

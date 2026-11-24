@@ -4,26 +4,23 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertOctagon,
   AlertTriangle,
-  Building2,
   Calendar,
-  CalendarOff,
   Check,
   CheckCircle2,
   Clock,
-  ExternalLink,
-  Layers,
   Loader2,
-  MapPin,
   Plus,
   RefreshCw,
   ShieldAlert,
   Sparkles,
   Trash2,
   Trophy,
-  Users,
   X,
 } from 'lucide-react';
 import { useClubSession } from '@/components/intranet/ClubShell';
+import IntranetModal from '@/components/intranet/IntranetModal';
+import { getShortTeamLabelInFamily, getTeamColorTheme, groupByCategoryFamily } from '@/lib/club-info';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 interface SeasonItem {
   id: string;
@@ -57,6 +54,7 @@ interface CourtItem {
   id: string;
   venueId: string;
   name: string;
+  courtCode: string;
   surfaceType: string | null;
   isActive: boolean;
 }
@@ -80,6 +78,7 @@ interface SlotItem {
   gender: string;
   courtId: string;
   courtName: string;
+  courtCode: string;
   venueId: string;
   venueName: string;
   weekday: number;
@@ -89,12 +88,42 @@ interface SlotItem {
   staff: TeamStaffMember[];
 }
 
+interface HomeMatchItem {
+  id: string;
+  teamId: string;
+  teamSeasonId: string;
+  teamName: string;
+  association: 'FAVB' | 'AFADE';
+  round: number;
+  homeTeamName: string;
+  awayTeamName: string;
+  opponentName: string;
+  venueName: string;
+  locality: string;
+  court: string | null;
+  courtCode: 'P1' | 'P2' | 'P3' | null;
+  matchDateUtc: string;
+  dateStr: string;
+  timeStr: string;
+  madridDate: string;
+  madridTime: string;
+  madridLabel: string;
+  weekday: number;
+  scheduleStatus: 'PENDIENTE' | 'CONFIRMADO';
+  notes: string | null;
+  isScheduledManually: boolean;
+  status: string;
+}
+
 interface ConflictItem {
   id: string;
-  type: 'COURT_OVERLAP' | 'COACH_OVERLAP';
+  type: 'COURT_OVERLAP' | 'COACH_OVERLAP' | 'MATCH_TRAINING_OVERLAP' | 'MATCH_OVERLAP';
   weekday: number;
-  slotAId: string;
-  slotBId: string;
+  dateStr?: string;
+  slotAId?: string;
+  slotBId?: string;
+  matchAId?: string;
+  matchBId?: string;
   teamAId: string;
   teamAName: string;
   teamBId: string;
@@ -105,19 +134,6 @@ interface ConflictItem {
   venueName?: string;
   coachName?: string;
   summary: string;
-}
-
-interface ClosureItem {
-  id: string;
-  venueId: string;
-  venueName: string;
-  courtId: string | null;
-  courtName: string | null;
-  madridDate: string;
-  startTime: string | null;
-  endTime: string | null;
-  reason: string;
-  createdAt: string;
 }
 
 interface ProposalItem {
@@ -140,22 +156,6 @@ interface ProposalItem {
   reviewedAt: string | null;
 }
 
-interface HomeMatchItem {
-  id: string;
-  teamId: string;
-  teamName: string;
-  round: number;
-  homeTeamName: string;
-  awayTeamName: string;
-  venueName: string;
-  court: string | null;
-  matchDateUtc: string;
-  madridDate: string;
-  madridTime: string;
-  madridLabel: string;
-  status: string;
-}
-
 interface StructureResponse {
   success: boolean;
   todayMadrid: string;
@@ -165,13 +165,15 @@ interface StructureResponse {
   venues: VenueItem[];
   slots: SlotItem[];
   conflicts: ConflictItem[];
-  closures: ClosureItem[];
   proposals: ProposalItem[];
+  rounds: number[];
+  homeMatches: HomeMatchItem[];
   upcomingHomeMatches: HomeMatchItem[];
   error?: string;
 }
 
-type StructureTab = 'schedule' | 'venues_favb' | 'catalog';
+type ViewMode = 'BOTH' | 'TRAININGS' | 'MATCHES';
+type ScarioloCourtCode = 'P1' | 'P2' | 'P3';
 
 const WEEKDAYS: Array<{ value: number; short: string; label: string }> = [
   { value: 1, short: 'Lun', label: 'Lunes' },
@@ -192,26 +194,55 @@ const STAFF_FN_SHORT: Record<string, string> = {
   TRAINER: 'Prep.',
 };
 
+const COURT_BADGE_STYLES: Record<string, string> = {
+  P1: 'bg-sky-500/20 text-sky-200 border-sky-400/50',
+  P2: 'bg-violet-500/20 text-violet-200 border-violet-400/50',
+  P3: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50',
+};
+
+const CONFLICT_TYPE_LABEL: Record<ConflictItem['type'], string> = {
+  COURT_OVERLAP: 'Pista solapada (entrenos)',
+  COACH_OVERLAP: 'Entrenador solapado',
+  MATCH_TRAINING_OVERLAP: 'Partido coincide con entreno',
+  MATCH_OVERLAP: 'Solape entre partidos',
+};
+
+function formatShortDayMonth(ymd: string): string {
+  return formatDisplayDate(ymd);
+}
+
+function getShortCourtLabel(raw?: string | null): string {
+  if (!raw) return 'Sin pista';
+  const norm = raw.trim().toUpperCase();
+  if (norm === 'P1' || norm.includes('P1') || norm === 'PISTA 1') return 'P1';
+  if (norm === 'P2' || norm.includes('P2') || norm === 'PISTA 2') return 'P2';
+  if (norm === 'P3' || norm.includes('P3') || norm === 'PISTA 3' || norm.includes('CENTRAL')) return 'P3';
+  return raw.trim();
+}
+
 export default function ClubEstructuraPage() {
   const { session, hasPermission } = useClubSession();
 
   const canManageSchedule = hasPermission('schedule.manage');
   const canProposeSchedule = hasPermission('schedule.propose');
-  const canManageVenues = hasPermission('venue.manage');
-  const canManageSeasons = hasPermission('season.manage');
 
-  const [activeTab, setActiveTab] = useState<StructureTab>('schedule');
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<StructureResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   // Filtros de cuadrante
   const [filterTeamId, setFilterTeamId] = useState('ALL');
-  const [filterVenueId, setFilterVenueId] = useState('ALL');
+  const [filterRound, setFilterRound] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<ViewMode>('BOTH');
 
-  // Modal Añadir Franja
+  // Modales de conflictos
+  const [conflictsModalOpen, setConflictsModalOpen] = useState(false);
+
+  // Modal Crear / Editar Entrenamiento
   const [slotModalOpen, setSlotModalOpen] = useState(false);
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [slotTeamId, setSlotTeamId] = useState('');
   const [slotCourtId, setSlotCourtId] = useState('');
   const [slotWeekday, setSlotWeekday] = useState(1);
@@ -220,9 +251,24 @@ export default function ClubEstructuraPage() {
   const [slotNotes, setSlotNotes] = useState('');
   const [slotStrict, setSlotStrict] = useState(false);
   const [slotSubmitting, setSlotSubmitting] = useState(false);
+  const [confirmDeleteSlot, setConfirmDeleteSlot] = useState(false);
 
-  // Modal Proponer Cambio de Horario
+  // Modal Programar / Modificar Partido en Casa
+  const [matchModalOpen, setMatchModalOpen] = useState(false);
+  const [matchModalAllowPick, setMatchModalAllowPick] = useState(false);
+  const [matchForm, setMatchForm] = useState({
+    matchId: '',
+    proposedDate: '',
+    proposedTime: '12:00',
+    courtCode: 'P3' as ScarioloCourtCode,
+    scheduleStatus: 'PENDIENTE' as 'PENDIENTE' | 'CONFIRMADO',
+    notes: '',
+  });
+  const [matchSubmitting, setMatchSubmitting] = useState(false);
+
+  // Modal Proponer Cambio de Horario (entrenadores sin permiso de edición directa)
   const [proposeModalOpen, setProposeModalOpen] = useState(false);
+  const [propSlotId, setPropSlotId] = useState<string | null>(null);
   const [propTeamId, setPropTeamId] = useState('');
   const [propCourtId, setPropCourtId] = useState('');
   const [propWeekday, setPropWeekday] = useState(1);
@@ -231,34 +277,8 @@ export default function ClubEstructuraPage() {
   const [propReason, setPropReason] = useState('');
   const [propSubmitting, setPropSubmitting] = useState(false);
 
-  // Formulario Cierre / Festivo
-  const [closureVenueId, setClosureVenueId] = useState('');
-  const [closureCourtId, setClosureCourtId] = useState('');
-  const [closureDate, setClosureDate] = useState('');
-  const [closureStart, setClosureStart] = useState('');
-  const [closureEnd, setClosureEnd] = useState('');
-  const [closureReason, setClosureReason] = useState('');
-  const [closureSubmitting, setClosureSubmitting] = useState(false);
-
-  // Formularios Catálogo Pabellones / Pistas / Temporadas
-  const [venueName, setVenueName] = useState('');
-  const [venueAddress, setVenueAddress] = useState('');
-  const [venueLocality, setVenueLocality] = useState('San Pedro Alcántara');
-  const [venueMapsUrl, setVenueMapsUrl] = useState('');
-  const [venueSubmitting, setVenueSubmitting] = useState(false);
-
-  const [courtVenueId, setCourtVenueId] = useState('');
-  const [courtName, setCourtName] = useState('');
-  const [courtSurface, setCourtSurface] = useState('Pista completa');
-  const [courtSubmitting, setCourtSubmitting] = useState(false);
-
-  const [seasonName, setSeasonName] = useState('');
-  const [seasonStart, setSeasonStart] = useState('');
-  const [seasonEnd, setSeasonEnd] = useState('');
-  const [seasonCurrent, setSeasonCurrent] = useState(false);
-  const [seasonSubmitting, setSeasonSubmitting] = useState(false);
-
   const loadedRef = useRef(false);
+  const roundInitializedRef = useRef(false);
 
   const fetchStructure = useCallback(async () => {
     setErrorMsg(null);
@@ -266,23 +286,37 @@ export default function ClubEstructuraPage() {
       const res = await fetch('/api/intranet/structure', { cache: 'no-store' });
       const json = (await res.json()) as StructureResponse;
       if (!res.ok || !json.success) {
-        throw new Error(json.error || 'No se pudo cargar la estructura deportiva.');
+        throw new Error(json.error || 'No se pudo cargar el cuadrante deportivo.');
       }
       setData(json);
-      if (json.venues.length > 0) {
-        setClosureVenueId((prev) => prev || json.venues[0].id);
-        setCourtVenueId((prev) => prev || json.venues[0].id);
-        const firstCourt = json.venues.flatMap((v) => v.courts)[0];
-        if (firstCourt) {
-          setSlotCourtId((prev) => prev || firstCourt.id);
-          setPropCourtId((prev) => prev || firstCourt.id);
-        }
+
+      const scariolo =
+        json.venues.find((v) => v.id === 'venue-scariolo') || json.venues[0] || null;
+      const firstCourt = scariolo?.courts[0] || json.venues.flatMap((v) => v.courts)[0];
+      if (firstCourt) {
+        setSlotCourtId((prev) => prev || firstCourt.id);
+        setPropCourtId((prev) => prev || firstCourt.id);
       }
       if (json.teams.length > 0) {
         setSlotTeamId((prev) => prev || json.teams[0].id);
       }
+
+      // Seleccionar automáticamente la próxima jornada vigente al iniciar para mantener el cuadrante limpio
+      if (!roundInitializedRef.current) {
+        roundInitializedRef.current = true;
+        const upcoming = (json.homeMatches || []).find(
+          (m) => m.dateStr >= json.todayMadrid && m.status !== 'FINISHED'
+        );
+        if (upcoming) {
+          setFilterRound(String(upcoming.round));
+        } else if (json.rounds && json.rounds.length > 0) {
+          setFilterRound(String(json.rounds[json.rounds.length - 1]));
+        } else {
+          setFilterRound('ALL');
+        }
+      }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error de red cargando estructura.');
+      setErrorMsg(err instanceof Error ? err.message : 'Error de red cargando el cuadrante.');
     } finally {
       setLoading(false);
     }
@@ -291,38 +325,55 @@ export default function ClubEstructuraPage() {
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
-    fetchStructure();
+    void fetchStructure();
   }, [fetchStructure]);
 
-  const allCourts = useMemo(() => {
-    return (data?.venues || []).flatMap((v) =>
-      v.courts.map((c) => ({ ...c, venueName: v.name }))
+  // Pistas del Polideportivo Sergio Scariolo (P1, P2, P3)
+  const scarioloCourts = useMemo(() => {
+    const venues = data?.venues || [];
+    const scariolo = venues.find((v) => v.id === 'venue-scariolo');
+    const source = scariolo ? scariolo.courts : venues.flatMap((v) => v.courts);
+    return [...source].sort((a, b) =>
+      getShortCourtLabel(a.courtCode || a.name).localeCompare(
+        getShortCourtLabel(b.courtCode || b.name)
+      )
     );
   }, [data]);
 
   const filteredSlots = useMemo(() => {
+    if (viewMode === 'MATCHES') return [];
     return (data?.slots || []).filter((s) => {
+      if (s.venueId && s.venueId !== 'venue-scariolo') return false;
       if (filterTeamId !== 'ALL' && s.teamSeasonId !== filterTeamId) return false;
-      if (filterVenueId !== 'ALL' && s.venueId !== filterVenueId) return false;
       return true;
     });
-  }, [data, filterTeamId, filterVenueId]);
+  }, [data, filterTeamId, viewMode]);
+
+  const filteredHomeMatches = useMemo(() => {
+    if (viewMode === 'TRAININGS') return [];
+    return (data?.homeMatches || []).filter((m) => {
+      if (filterTeamId !== 'ALL' && m.teamSeasonId !== filterTeamId) return false;
+      if (filterRound !== 'ALL' && String(m.round) !== filterRound) return false;
+      return true;
+    });
+  }, [data, filterTeamId, filterRound, viewMode]);
 
   const conflictSlotIds = useMemo(() => {
     const ids = new Set<string>();
     for (const c of data?.conflicts || []) {
-      ids.add(c.slotAId);
-      ids.add(c.slotBId);
+      if (c.slotAId) ids.add(c.slotAId);
+      if (c.slotBId) ids.add(c.slotBId);
     }
     return ids;
   }, [data]);
 
-  const closureDatesSet = useMemo(() => {
-    const set = new Set<string>();
-    for (const cl of data?.closures || []) {
-      set.add(cl.madridDate);
+  const conflictMatchIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const c of data?.conflicts || []) {
+      if (c.matchAId) ids.add(c.matchAId);
+      if (c.matchBId) ids.add(c.matchBId);
     }
-    return set;
+    return ids;
   }, [data]);
 
   const proposableTeams = useMemo(() => {
@@ -334,6 +385,24 @@ export default function ClubEstructuraPage() {
     }
     return all;
   }, [data, session, canManageSchedule]);
+
+  const roundOptions = useMemo(() => {
+    const matches = (data?.homeMatches || []).filter(
+      (m) => filterTeamId === 'ALL' || m.teamSeasonId === filterTeamId
+    );
+    const map = new Map<number, number>();
+    for (const m of matches) {
+      map.set(m.round, (map.get(m.round) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([round, count]) => ({ round, count }));
+  }, [data, filterTeamId]);
+
+  const selectedMatchObj = useMemo(() => {
+    if (!data || !matchForm.matchId) return null;
+    return data.homeMatches.find((m) => m.id === matchForm.matchId) || null;
+  }, [data, matchForm.matchId]);
 
   async function postAction(payload: Record<string, unknown>) {
     const res = await fetch('/api/intranet/structure', {
@@ -348,44 +417,188 @@ export default function ClubEstructuraPage() {
     return json;
   }
 
-  async function handleCreateSlot(e: React.FormEvent) {
+  function openNewSlotModal() {
+    setModalError(null);
+    setConfirmDeleteSlot(false);
+    setEditingSlotId(null);
+    setSlotTeamId(filterTeamId !== 'ALL' ? filterTeamId : data?.teams[0]?.id || '');
+    setSlotCourtId(scarioloCourts[0]?.id || '');
+    setSlotWeekday(1);
+    setSlotStart('17:30');
+    setSlotEnd('19:00');
+    setSlotNotes('');
+    setSlotStrict(false);
+    setSlotModalOpen(true);
+  }
+
+  function openEditSlotModal(slot: SlotItem) {
+    setModalError(null);
+    setConfirmDeleteSlot(false);
+    setEditingSlotId(slot.id);
+    setSlotTeamId(slot.teamSeasonId);
+    setSlotCourtId(slot.courtId);
+    setSlotWeekday(slot.weekday);
+    setSlotStart(slot.startTime);
+    setSlotEnd(slot.endTime);
+    setSlotNotes(slot.notes || '');
+    setSlotStrict(false);
+    setSlotModalOpen(true);
+  }
+
+  function openProposeFromSlot(slot: SlotItem) {
+    setModalError(null);
+    setPropSlotId(slot.id);
+    setPropTeamId(slot.teamSeasonId);
+    setPropCourtId(slot.courtId);
+    setPropWeekday(slot.weekday);
+    setPropStart(slot.startTime);
+    setPropEnd(slot.endTime);
+    setPropReason('');
+    setProposeModalOpen(true);
+  }
+
+  function openScheduleMatchModal(match?: HomeMatchItem) {
+    setModalError(null);
+    if (match) {
+      setMatchModalAllowPick(false);
+      setMatchForm({
+        matchId: match.id,
+        proposedDate: match.dateStr,
+        proposedTime: match.timeStr,
+        courtCode: match.courtCode || 'P3',
+        scheduleStatus: match.scheduleStatus,
+        notes: match.notes || '',
+      });
+    } else {
+      const candidates =
+        filteredHomeMatches.length > 0
+          ? filteredHomeMatches
+          : (data?.homeMatches || []).filter((m) => m.dateStr >= (data?.todayMadrid || ''));
+      const first = candidates[0] || data?.homeMatches[0];
+      setMatchModalAllowPick(true);
+      setMatchForm({
+        matchId: first?.id || '',
+        proposedDate: first?.dateStr || data?.todayMadrid || '',
+        proposedTime: first?.timeStr || '12:00',
+        courtCode: first?.courtCode || 'P3',
+        scheduleStatus: first?.scheduleStatus || 'PENDIENTE',
+        notes: first?.notes || '',
+      });
+    }
+    setMatchModalOpen(true);
+  }
+
+  function handleSelectMatchInModal(newMatchId: string) {
+    const found = data?.homeMatches.find((m) => m.id === newMatchId);
+    if (!found) {
+      setMatchForm((prev) => ({ ...prev, matchId: newMatchId }));
+      return;
+    }
+    setMatchForm({
+      matchId: found.id,
+      proposedDate: found.dateStr,
+      proposedTime: found.timeStr,
+      courtCode: found.courtCode || 'P3',
+      scheduleStatus: found.scheduleStatus,
+      notes: found.notes || '',
+    });
+  }
+
+  async function handleSaveSlot(e: React.FormEvent) {
     e.preventDefault();
     if (slotSubmitting) return;
     setSlotSubmitting(true);
+    setModalError(null);
     setErrorMsg(null);
     setFeedbackMsg(null);
     try {
-      const res = await postAction({
-        action: 'create_slot',
-        teamSeasonId: slotTeamId,
-        courtId: slotCourtId,
-        weekday: slotWeekday,
-        startTime: slotStart,
-        endTime: slotEnd,
-        notes: slotNotes || null,
-        strict: slotStrict,
-      });
+      const payload = editingSlotId
+        ? {
+            action: 'update_slot',
+            slotId: editingSlotId,
+            teamSeasonId: slotTeamId,
+            courtId: slotCourtId,
+            weekday: slotWeekday,
+            startTime: slotStart,
+            endTime: slotEnd,
+            notes: slotNotes.trim() || null,
+            strict: slotStrict,
+          }
+        : {
+            action: 'create_slot',
+            teamSeasonId: slotTeamId,
+            courtId: slotCourtId,
+            weekday: slotWeekday,
+            startTime: slotStart,
+            endTime: slotEnd,
+            notes: slotNotes.trim() || null,
+            strict: slotStrict,
+          };
+
+      const res = await postAction(payload);
       setSlotModalOpen(false);
       setSlotNotes('');
       setFeedbackMsg(
-        res.warning ? `Franja creada con advertencia: ${res.warning}` : 'Franja semanal añadida.'
+        res.warning
+          ? String(res.warning)
+          : editingSlotId
+          ? 'Entrenamiento actualizado correctamente.'
+          : 'Nuevo entreno añadido al cuadrante.'
       );
       await fetchStructure();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error creando franja.');
+      setModalError(err instanceof Error ? err.message : 'Error guardando entrenamiento.');
     } finally {
       setSlotSubmitting(false);
     }
   }
 
-  async function handleDeleteSlot(slotId: string) {
+  async function handleDeleteEditingSlot() {
+    if (!editingSlotId || slotSubmitting) return;
+    setSlotSubmitting(true);
+    setModalError(null);
     setErrorMsg(null);
     try {
-      await postAction({ action: 'delete_slot', slotId });
-      setFeedbackMsg('Franja eliminada del cuadrante.');
+      await postAction({ action: 'delete_slot', slotId: editingSlotId });
+      setSlotModalOpen(false);
+      setConfirmDeleteSlot(false);
+      setFeedbackMsg('Franja de entrenamiento eliminada del cuadrante.');
       await fetchStructure();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error eliminando franja.');
+      setModalError(err instanceof Error ? err.message : 'Error eliminando franja.');
+    } finally {
+      setSlotSubmitting(false);
+    }
+  }
+
+  async function handleSaveHomeMatch(e: React.FormEvent) {
+    e.preventDefault();
+    if (matchSubmitting) return;
+    setMatchSubmitting(true);
+    setModalError(null);
+    setErrorMsg(null);
+    setFeedbackMsg(null);
+    try {
+      const res = await postAction({
+        action: 'upsert_home_match_schedule',
+        matchId: matchForm.matchId,
+        proposedDate: matchForm.proposedDate,
+        proposedTime: matchForm.proposedTime,
+        courtCode: matchForm.courtCode,
+        scheduleStatus: matchForm.scheduleStatus,
+        notes: matchForm.notes.trim() || null,
+      });
+      setMatchModalOpen(false);
+      setFeedbackMsg(
+        res.warning
+          ? `Partido programado en ${matchForm.courtCode} con advertencia: ${res.warning}`
+          : `Partido actualizado: ${matchForm.proposedDate} · ${matchForm.proposedTime} · ${matchForm.courtCode} (${matchForm.scheduleStatus === 'CONFIRMADO' ? 'Confirmado' : 'Pendiente'}).`
+      );
+      await fetchStructure();
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : 'Error guardando horario de partido.');
+    } finally {
+      setMatchSubmitting(false);
     }
   }
 
@@ -393,12 +606,14 @@ export default function ClubEstructuraPage() {
     e.preventDefault();
     if (propSubmitting) return;
     setPropSubmitting(true);
+    setModalError(null);
     setErrorMsg(null);
     setFeedbackMsg(null);
     try {
       await postAction({
         action: 'propose_schedule',
         teamSeasonId: propTeamId || proposableTeams[0]?.id,
+        slotId: propSlotId,
         proposedCourtId: propCourtId || null,
         proposedWeekday: propWeekday,
         proposedStartTime: propStart,
@@ -406,11 +621,12 @@ export default function ClubEstructuraPage() {
         reason: propReason,
       });
       setProposeModalOpen(false);
+      setPropSlotId(null);
       setPropReason('');
       setFeedbackMsg('Propuesta de cambio de horario enviada a coordinación.');
       await fetchStructure();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error enviando propuesta.');
+      setModalError(err instanceof Error ? err.message : 'Error enviando propuesta.');
     } finally {
       setPropSubmitting(false);
     }
@@ -434,142 +650,12 @@ export default function ClubEstructuraPage() {
     }
   }
 
-  async function handleCreateClosure(e: React.FormEvent) {
-    e.preventDefault();
-    if (closureSubmitting) return;
-    setClosureSubmitting(true);
-    setErrorMsg(null);
-    try {
-      await postAction({
-        action: 'create_closure',
-        venueId: closureVenueId,
-        courtId: closureCourtId || null,
-        madridDate: closureDate,
-        startTime: closureStart || null,
-        endTime: closureEnd || null,
-        reason: closureReason,
-      });
-      setClosureDate('');
-      setClosureStart('');
-      setClosureEnd('');
-      setClosureReason('');
-      setFeedbackMsg('Cierre / festivo registrado correctamente.');
-      await fetchStructure();
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error creando cierre.');
-    } finally {
-      setClosureSubmitting(false);
-    }
-  }
-
-  async function handleDeleteClosure(closureId: string) {
-    setErrorMsg(null);
-    try {
-      await postAction({ action: 'delete_closure', closureId });
-      setFeedbackMsg('Cierre eliminado.');
-      await fetchStructure();
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error eliminando cierre.');
-    }
-  }
-
-  async function handleCreateVenue(e: React.FormEvent) {
-    e.preventDefault();
-    if (venueSubmitting) return;
-    setVenueSubmitting(true);
-    setErrorMsg(null);
-    try {
-      await postAction({
-        action: 'create_venue',
-        name: venueName,
-        address: venueAddress || null,
-        locality: venueLocality,
-        mapsUrl: venueMapsUrl || null,
-        isHomeVenue: true,
-      });
-      setVenueName('');
-      setVenueAddress('');
-      setVenueMapsUrl('');
-      setFeedbackMsg('Pabellón creado.');
-      await fetchStructure();
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error creando pabellón.');
-    } finally {
-      setVenueSubmitting(false);
-    }
-  }
-
-  async function handleCreateCourt(e: React.FormEvent) {
-    e.preventDefault();
-    if (courtSubmitting) return;
-    setCourtSubmitting(true);
-    setErrorMsg(null);
-    try {
-      await postAction({
-        action: 'create_court',
-        venueId: courtVenueId,
-        name: courtName,
-        surfaceType: courtSurface,
-      });
-      setCourtName('');
-      setFeedbackMsg('Pista añadida al pabellón.');
-      await fetchStructure();
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error creando pista.');
-    } finally {
-      setCourtSubmitting(false);
-    }
-  }
-
-  async function handleCreateSeason(e: React.FormEvent) {
-    e.preventDefault();
-    if (seasonSubmitting) return;
-    setSeasonSubmitting(true);
-    setErrorMsg(null);
-    try {
-      await postAction({
-        action: 'create_season',
-        name: seasonName,
-        startDate: seasonStart,
-        endDate: seasonEnd,
-        isCurrent: seasonCurrent,
-      });
-      setSeasonName('');
-      setSeasonStart('');
-      setSeasonEnd('');
-      setSeasonCurrent(false);
-      setFeedbackMsg('Temporada guardada correctamente.');
-      await fetchStructure();
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error creando temporada.');
-    } finally {
-      setSeasonSubmitting(false);
-    }
-  }
-
-  async function handleToggleTeam(team: TeamItem) {
-    setErrorMsg(null);
-    try {
-      await postAction({
-        action: 'toggle_team',
-        teamSeasonId: team.id,
-        isActive: !team.isActive,
-      });
-      setFeedbackMsg(
-        `Equipo ${team.name} ${!team.isActive ? 'activado' : 'desactivado'}.`
-      );
-      await fetchStructure();
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error actualizando equipo.');
-    }
-  }
-
   if (loading && !data) {
     return (
       <div className="bg-surface-container border border-white/10 p-10 flex flex-col items-center justify-center gap-3">
         <Loader2 className="w-7 h-7 text-primary-container animate-spin" aria-hidden="true" />
         <p className="text-xs font-label-md uppercase tracking-wider text-tertiary">
-          Cargando estructura deportiva y horarios...
+          Cargando cuadrante del Sergio Scariolo...
         </p>
       </div>
     );
@@ -578,39 +664,69 @@ export default function ClubEstructuraPage() {
   const pendingProposals = (data?.proposals || []).filter((p) => p.status === 'PENDING');
 
   return (
-    <div className="space-y-5 overflow-x-hidden">
+    <div className="space-y-5 pb-12 overflow-x-hidden">
       {/* Cabecera */}
-      <header className="bg-surface-container border border-white/10 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e]">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Building2 className="w-4 h-4 text-primary-container shrink-0" aria-hidden="true" />
-              <span className="font-label-sm text-[10px] uppercase tracking-widest text-primary font-bold">
-                Estructura Deportiva · Temporada {data?.currentSeason?.name || '2026/2027'}
-              </span>
+      <header className="bg-surface-container border border-white/10 p-4 sm:p-5 shadow-[4px_4px_0px_0px_#0e0e0e]">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Calendar className="w-5 h-5 text-primary-container shrink-0" aria-hidden="true" />
+              <h1 className="font-headline text-xl sm:text-2xl lg:text-3xl font-bold text-on-surface tracking-tight break-words">
+                Cuadrante (Sergio Scariolo · P1, P2, P3)
+              </h1>
+              {data?.currentSeason?.name && (
+                <span className="px-2 py-0.5 text-[10px] font-label-sm uppercase tracking-wider font-bold bg-surface-container-low border border-white/10 text-tertiary">
+                  {data.currentSeason.name}
+                </span>
+              )}
             </div>
-            <h1 className="font-headline text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
-              Pabellones, Pistas y Horarios
-            </h1>
-            <p className="text-xs sm:text-sm text-tertiary mt-1">
-              Cuadrante semanal, detección automática de conflictos, ocupación FAVB y gestión de
-              instalaciones (hora oficial Europe/Madrid).
+            <p className="text-xs text-tertiary">
+              Entrenamientos semanales y partidos oficiales en casa distribuidos en pistas P1, P2 y P3.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {data && (
+              <button
+                type="button"
+                onClick={() => setConflictsModalOpen(true)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase border cursor-pointer transition-colors ${
+                  data.conflicts.length > 0
+                    ? 'bg-error-container/75 hover:bg-error-container border-error/50 text-error shadow-[2px_2px_0px_0px_#0e0e0e]'
+                    : 'bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-500/35 text-emerald-300'
+                }`}
+              >
+                {data.conflicts.length > 0 ? (
+                  <AlertOctagon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                )}
+                <span>
+                  {data.conflicts.length === 0
+                    ? '0 conflictos'
+                    : data.conflicts.length === 1
+                    ? '1 conflicto'
+                    : `${data.conflicts.length} conflictos`}
+                </span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={fetchStructure}
+              aria-label="Actualizar cuadrante"
               className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-label-md uppercase font-bold text-on-surface cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Actualizar</span>
+              <span className="hidden sm:inline">Actualizar</span>
             </button>
-            {canProposeSchedule && (
+
+            {canProposeSchedule && !canManageSchedule && (
               <button
                 type="button"
                 onClick={() => {
+                  setModalError(null);
+                  setPropSlotId(null);
                   setPropTeamId(proposableTeams[0]?.id || '');
                   setProposeModalOpen(true);
                 }}
@@ -620,60 +736,29 @@ export default function ClubEstructuraPage() {
                 <span>Proponer cambio</span>
               </button>
             )}
+
             {canManageSchedule && (
-              <button
-                type="button"
-                onClick={() => setSlotModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold shadow-[3px_3px_0px_0px_#0e0e0e] cursor-pointer"
-              >
-                <Plus className="w-4 h-4" aria-hidden="true" />
-                <span>Añadir franja</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={openNewSlotModal}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold shadow-[3px_3px_0px_0px_#0e0e0e] cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>+ Nuevo entreno</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openScheduleMatchModal()}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/60 text-amber-200 text-xs font-label-md uppercase font-bold shadow-[3px_3px_0px_0px_#0e0e0e] cursor-pointer"
+                >
+                  <Trophy className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  <span>+ Programar partido</span>
+                </button>
+              </>
             )}
           </div>
         </div>
-
-        {/* KPIs rápidos */}
-        {data && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5 pt-4 border-t border-white/10">
-            <div className="bg-surface-container-low border border-white/5 p-3">
-              <p className="text-[10px] font-label-sm uppercase tracking-wider text-tertiary">
-                Franjas Activas
-              </p>
-              <p className="font-headline text-2xl font-bold text-on-surface mt-0.5">
-                {data.slots.length}
-              </p>
-            </div>
-            <div className="bg-surface-container-low border border-white/5 p-3">
-              <p className="text-[10px] font-label-sm uppercase tracking-wider text-tertiary">
-                Conflictos Detectados
-              </p>
-              <p
-                className={`font-headline text-2xl font-bold mt-0.5 ${
-                  data.conflicts.length > 0 ? 'text-error' : 'text-emerald-400'
-                }`}
-              >
-                {data.conflicts.length}
-              </p>
-            </div>
-            <div className="bg-surface-container-low border border-white/5 p-3">
-              <p className="text-[10px] font-label-sm uppercase tracking-wider text-tertiary">
-                Propuestas Pendientes
-              </p>
-              <p className="font-headline text-2xl font-bold text-amber-400 mt-0.5">
-                {pendingProposals.length}
-              </p>
-            </div>
-            <div className="bg-surface-container-low border border-white/5 p-3">
-              <p className="text-[10px] font-label-sm uppercase tracking-wider text-tertiary">
-                Partidos Casa FAVB
-              </p>
-              <p className="font-headline text-2xl font-bold text-primary mt-0.5">
-                {data.upcomingHomeMatches.length}
-              </p>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* Alertas */}
@@ -682,14 +767,14 @@ export default function ClubEstructuraPage() {
           role="alert"
           className="bg-error-container/40 border border-error/40 text-error px-4 py-3 text-xs sm:text-sm flex items-start justify-between gap-3"
         >
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2 min-w-0">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>{errorMsg}</span>
+            <span className="break-words">{errorMsg}</span>
           </div>
           <button
             type="button"
             onClick={() => setErrorMsg(null)}
-            className="text-error hover:text-white cursor-pointer"
+            className="text-error hover:text-white cursor-pointer shrink-0"
             aria-label="Cerrar error"
           >
             <X className="w-4 h-4" />
@@ -699,14 +784,14 @@ export default function ClubEstructuraPage() {
 
       {feedbackMsg && (
         <div className="bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 px-4 py-3 text-xs sm:text-sm flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>{feedbackMsg}</span>
+            <span className="break-words">{feedbackMsg}</span>
           </div>
           <button
             type="button"
             onClick={() => setFeedbackMsg(null)}
-            className="text-emerald-300 hover:text-white cursor-pointer"
+            className="text-emerald-300 hover:text-white cursor-pointer shrink-0"
             aria-label="Cerrar mensaje"
           >
             <X className="w-4 h-4" />
@@ -714,1030 +799,589 @@ export default function ClubEstructuraPage() {
         </div>
       )}
 
-      {/* Pestañas */}
-      <nav
-        aria-label="Secciones de estructura deportiva"
-        className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 border-b border-white/10"
-      >
-        {[
-          { id: 'schedule' as const, label: 'Horarios y Conflictos' },
-          { id: 'venues_favb' as const, label: 'Ocupación y Partidos FAVB' },
-          { id: 'catalog' as const, label: 'Pabellones, Pistas y Equipos' },
-        ].map((tab) => {
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-2.5 text-xs font-label-md uppercase tracking-wider font-bold whitespace-nowrap border transition-colors cursor-pointer shrink-0 ${
-                active
-                  ? 'bg-primary-container text-white border-primary-container shadow-[3px_3px_0px_0px_#0e0e0e]'
-                  : 'bg-surface-container text-tertiary border-white/10 hover:text-white hover:border-white/25'
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* PESTAÑA 1: HORARIOS SEMANALES Y CONFLICTOS */}
-      {activeTab === 'schedule' && data && (
-        <section className="space-y-5">
-          {/* Panel superior: Conflictos detectados + Propuestas */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-            {/* Conflictos detectados */}
-            <div
-              className={`xl:col-span-7 border p-4 space-y-3 ${
-                data.conflicts.length > 0
-                  ? 'bg-error-container/20 border-error/40'
-                  : 'bg-surface-container border-white/10'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  {data.conflicts.length > 0 ? (
-                    <AlertOctagon className="w-4 h-4 text-error shrink-0" aria-hidden="true" />
-                  ) : (
-                    <CheckCircle2
-                      className="w-4 h-4 text-emerald-400 shrink-0"
-                      aria-hidden="true"
-                    />
-                  )}
-                  <h2 className="font-headline-sm text-sm uppercase tracking-wider text-on-surface">
-                    Conflictos Detectados ({data.conflicts.length})
-                  </h2>
-                </div>
-                <span className="text-[10px] uppercase font-bold text-tertiary">
-                  Pista y Entrenador
-                </span>
-              </div>
-
-              {data.conflicts.length === 0 ? (
-                <p className="text-xs text-emerald-300/90">
-                  No existen solapamientos de pista ni de entrenadores entre las franjas activas.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {data.conflicts.map((c) => (
-                    <div
-                      key={c.id}
-                      className="bg-surface-container-lowest/80 border border-error/35 p-2.5 text-xs space-y-1"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="px-1.5 py-0.5 text-[10px] uppercase font-bold bg-error-container text-error">
-                          {c.type === 'COURT_OVERLAP'
-                            ? 'Pista solapada'
-                            : 'Entrenador solapado'}
-                        </span>
-                        <span className="font-bold text-primary">
-                          {WEEKDAY_LABEL_MAP.get(c.weekday)}
-                        </span>
-                      </div>
-                      <p className="text-on-surface/90">{c.summary}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Propuestas de cambio de horario */}
-            <div className="xl:col-span-5 bg-surface-container border border-white/10 p-4 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="font-headline-sm text-sm uppercase tracking-wider text-on-surface">
-                  Propuestas de Horario ({pendingProposals.length} pendientes)
-                </h2>
-              </div>
-
-              {data.proposals.length === 0 ? (
-                <p className="text-xs text-tertiary">
-                  No hay propuestas de cambio de horario registradas.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {data.proposals.slice(0, 12).map((p) => (
-                    <div
-                      key={p.id}
-                      className="bg-surface-container-low border border-white/10 p-2.5 text-xs space-y-1.5"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-1.5">
-                        <span className="font-bold text-on-surface">{p.teamName}</span>
-                        <span
-                          className={`px-1.5 py-0.5 text-[10px] uppercase font-bold border ${
-                            p.status === 'PENDING'
-                              ? 'bg-amber-950/60 text-amber-300 border-amber-500/40'
-                              : p.status === 'APPROVED'
-                              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
-                              : 'bg-error-container/50 text-error border-error/40'
-                          }`}
-                        >
-                          {p.status === 'PENDING'
-                            ? 'Pendiente'
-                            : p.status === 'APPROVED'
-                            ? 'Aprobada'
-                            : 'Rechazada'}
-                        </span>
-                      </div>
-                      <p className="text-primary font-semibold">
-                        {WEEKDAY_LABEL_MAP.get(p.proposedWeekday)} · {p.proposedStartTime}-
-                        {p.proposedEndTime}
-                        {p.proposedCourtName ? ` · ${p.proposedCourtName}` : ''}
-                      </p>
-                      <p className="text-tertiary">
-                        {p.reason} <span className="opacity-70">({p.proposedByName})</span>
-                      </p>
-
-                      {p.status === 'PENDING' && canManageSchedule && (
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => handleResolveProposal(p.id, 'APPROVED')}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-950/70 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-300 text-[10px] uppercase font-bold cursor-pointer"
-                          >
-                            <Check className="w-3 h-3" />
-                            <span>Aprobar</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleResolveProposal(p.id, 'REJECTED')}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-error-container/40 hover:bg-error-container/70 border border-error/40 text-error text-[10px] uppercase font-bold cursor-pointer"
-                          >
-                            <X className="w-3 h-3" />
-                            <span>Rechazar</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Filtros de Cuadrante */}
-          <div className="bg-surface-container border border-white/10 p-4 flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 min-w-0">
-              <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                Filtrar por equipo
+      {/* Filtros limpios por Equipo, Jornada y Vista */}
+      {data && (
+        <section className="bg-surface-container border border-white/10 p-3.5 sm:p-4 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="min-w-0">
+              <label htmlFor="est-filter-team" className="block text-[10px] uppercase font-bold tracking-wider text-tertiary mb-1">
+                Equipo
               </label>
               <select
+                id="est-filter-team"
                 value={filterTeamId}
-                onChange={(e) => setFilterTeamId(e.target.value)}
-                className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
+                onChange={(e) => {
+                  const nextTeam = e.target.value;
+                  setFilterTeamId(nextTeam);
+                  if (filterRound !== 'ALL' && nextTeam !== 'ALL') {
+                    const hasRound = (data?.homeMatches || []).some(
+                      (m) => m.teamSeasonId === nextTeam && String(m.round) === filterRound
+                    );
+                    if (!hasRound) setFilterRound('ALL');
+                  }
+                }}
+                aria-label="Filtrar por equipo"
+                className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs sm:text-sm text-on-surface outline-none focus:border-primary-container"
               >
                 <option value="ALL">Todos los equipos ({data.teams.length})</option>
-                {data.teams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.association})
+                {groupByCategoryFamily(data.teams, (t) => `${t.categoryId} ${t.name}`).map(
+                  ({ family, items: familyTeams }) => (
+                    <optgroup key={family.code} label={family.label}>
+                      {familyTeams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {getShortTeamLabelInFamily(t.name, family.code)} ({t.association})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )
+                )}
+              </select>
+            </div>
+
+            <div className="min-w-0">
+              <label htmlFor="est-filter-round" className="block text-[10px] uppercase font-bold tracking-wider text-tertiary mb-1">
+                Jornada (partidos en casa)
+              </label>
+              <select
+                id="est-filter-round"
+                value={filterRound}
+                onChange={(e) => setFilterRound(e.target.value)}
+                aria-label="Filtrar por jornada"
+                className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs sm:text-sm text-on-surface outline-none focus:border-primary-container"
+              >
+                <option value="ALL">Todas las jornadas</option>
+                {roundOptions.map((opt) => (
+                  <option key={opt.round} value={String(opt.round)}>
+                    Jornada {opt.round} ({opt.count} en casa)
                   </option>
                 ))}
               </select>
             </div>
-            <div className="flex-1 min-w-0">
-              <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                Filtrar por pabellón
-              </label>
-              <select
-                value={filterVenueId}
-                onChange={(e) => setFilterVenueId(e.target.value)}
-                className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-              >
-                <option value="ALL">Todos los pabellones ({data.venues.length})</option>
-                {data.venues.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
+
+            <div className="min-w-0">
+              <span className="block text-[10px] uppercase font-bold tracking-wider text-tertiary mb-1">
+                Mostrar en cuadrante
+              </span>
+              <div className="grid grid-cols-3 gap-1">
+                {(
+                  [
+                    { id: 'BOTH', label: 'Ambos' },
+                    { id: 'TRAININGS', label: 'Entrenos' },
+                    { id: 'MATCHES', label: 'Partidos' },
+                  ] as const
+                ).map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setViewMode(mode.id)}
+                    className={`px-2 py-2 text-[11px] font-bold uppercase tracking-wider border cursor-pointer transition-colors ${
+                      viewMode === mode.id
+                        ? 'bg-primary-container text-white border-primary-container'
+                        : 'bg-surface-container-low text-tertiary border-white/15 hover:text-white'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           </div>
 
-          {/* Cuadrante Semanal Lunes-Domingo */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3">
-            {WEEKDAYS.map((day) => {
-              const daySlots = filteredSlots.filter((s) => s.weekday === day.value);
-              return (
-                <div
-                  key={day.value}
-                  className="bg-surface-container border border-white/10 flex flex-col min-w-0"
-                >
-                  <div className="px-3 py-2.5 bg-surface-container-low border-b border-white/10 flex items-center justify-between">
-                    <span className="font-headline-sm text-xs uppercase tracking-wider text-on-surface font-bold">
-                      {day.label}
-                    </span>
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-surface-container-high text-primary border border-white/10">
-                      {daySlots.length}
-                    </span>
-                  </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10 text-[11px] text-tertiary">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 bg-surface-container-low border border-white/25 inline-block" />
+                Entreno semanal ({filteredSlots.length})
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 bg-amber-500/30 border border-amber-400 inline-block" />
+                Partido en casa ({filteredHomeMatches.length})
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={`px-1.5 py-0.5 text-[10px] font-bold border ${COURT_BADGE_STYLES.P1}`}>P1</span>
+              <span className={`px-1.5 py-0.5 text-[10px] font-bold border ${COURT_BADGE_STYLES.P2}`}>P2</span>
+              <span className={`px-1.5 py-0.5 text-[10px] font-bold border ${COURT_BADGE_STYLES.P3}`}>P3</span>
+              <span className="hidden sm:inline text-tertiary/80 ml-1">
+                {canManageSchedule ? '· Haz clic en cualquier ticket para editar' : ''}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
 
-                  <div className="p-2.5 space-y-2.5 flex-1">
-                    {daySlots.length === 0 ? (
-                      <p className="text-[11px] text-tertiary/60 text-center py-4">
-                        Sin franjas
-                      </p>
-                    ) : (
-                      daySlots.map((slot) => {
+      {/* Propuestas Pendientes (si existen) */}
+      {data && pendingProposals.length > 0 && (
+        <section className="bg-surface-container border border-amber-500/35 p-4 space-y-3">
+          <h2 className="font-headline-sm text-sm uppercase tracking-wider text-amber-300">
+            Propuestas de cambio pendientes ({pendingProposals.length})
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
+            {pendingProposals.map((p) => (
+              <div
+                key={p.id}
+                className="bg-surface-container-low border border-white/10 p-3 text-xs space-y-1.5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="font-bold text-on-surface">{p.teamName}</span>
+                  <span className="px-1.5 py-0.5 text-[10px] uppercase font-bold border bg-amber-950/60 text-amber-300 border-amber-500/40">
+                    Pendiente
+                  </span>
+                </div>
+                <p className="text-primary font-semibold">
+                  {WEEKDAY_LABEL_MAP.get(p.proposedWeekday)} · {p.proposedStartTime}-{p.proposedEndTime}
+                  {p.proposedCourtName ? ` · ${getShortCourtLabel(p.proposedCourtName)}` : ''}
+                </p>
+                <p className="text-tertiary break-words">
+                  {p.reason} <span className="opacity-70">({p.proposedByName})</span>
+                </p>
+
+                {canManageSchedule && (
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleResolveProposal(p.id, 'APPROVED')}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-950/70 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-300 text-[10px] uppercase font-bold cursor-pointer"
+                    >
+                      <Check className="w-3 h-3" />
+                      <span>Aprobar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleResolveProposal(p.id, 'REJECTED')}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-error-container/40 hover:bg-error-container/70 border border-error/40 text-error text-[10px] uppercase font-bold cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                      <span>Rechazar</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Cuadrante Semanal Lunes-Domingo (Sergio Scariolo · P1, P2, P3) */}
+      {data && (
+        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3">
+          {WEEKDAYS.map((day) => {
+            const daySlots = filteredSlots.filter((s) => s.weekday === day.value);
+            const dayMatches = filteredHomeMatches.filter((m) => m.weekday === day.value);
+            const totalItems = daySlots.length + dayMatches.length;
+
+            return (
+              <div
+                key={day.value}
+                className="bg-surface-container border border-white/10 flex flex-col min-w-0"
+              >
+                <div className="px-3 py-2.5 bg-surface-container-low border-b border-white/10 flex items-center justify-between gap-2">
+                  <span className="font-headline-sm text-xs uppercase tracking-wider text-on-surface font-bold">
+                    {day.label}
+                  </span>
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-surface-container-high text-primary border border-white/10">
+                    {totalItems}
+                  </span>
+                </div>
+
+                <div className="p-2.5 space-y-2 flex-1">
+                  {totalItems === 0 ? (
+                    <p className="text-[11px] text-tertiary/60 text-center py-4">Sin actividad</p>
+                  ) : (
+                    <>
+                      {/* Tickets de Entrenamientos */}
+                      {daySlots.map((slot) => {
                         const hasConflict = conflictSlotIds.has(slot.id);
+                        const courtLabel = getShortCourtLabel(slot.courtCode || slot.courtName);
+                        const courtStyle =
+                          COURT_BADGE_STYLES[courtLabel] ||
+                          'bg-surface-container text-on-surface border-white/20';
+                        const isInteractive = canManageSchedule || canProposeSchedule;
+
                         return (
-                          <div
+                          <button
                             key={slot.id}
-                            className={`p-2.5 border space-y-1.5 text-xs ${
+                            type="button"
+                            disabled={!isInteractive}
+                            onClick={() => {
+                              if (canManageSchedule) {
+                                openEditSlotModal(slot);
+                              } else if (canProposeSchedule) {
+                                openProposeFromSlot(slot);
+                              }
+                            }}
+                            className={`w-full text-left p-2.5 border space-y-1.5 text-xs transition-colors ${
+                              isInteractive ? 'cursor-pointer hover:border-primary/60' : 'cursor-default'
+                            } ${
                               hasConflict
                                 ? 'bg-error-container/25 border-error/60'
                                 : 'bg-surface-container-low border-white/10'
                             }`}
                           >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="inline-flex items-center gap-1 font-mono font-bold text-primary">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <span className="inline-flex items-center gap-1 font-mono font-bold text-primary text-[11px]">
                                 <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
                                 {slot.startTime}-{slot.endTime}
                               </span>
-                              {canManageSchedule && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteSlot(slot.id)}
-                                  title="Eliminar franja"
-                                  aria-label={`Eliminar franja de ${slot.teamName}`}
-                                  className="text-tertiary hover:text-error cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
+                              <span
+                                className={`px-1.5 py-0.5 text-[10px] font-bold uppercase border shrink-0 ${courtStyle}`}
+                              >
+                                {courtLabel}
+                              </span>
                             </div>
 
-                            <p className="font-bold text-on-surface leading-tight">
+                            <p
+                              className={`font-bold leading-tight break-words ${
+                                getTeamColorTheme(slot.teamName).colorKey
+                                  ? getTeamColorTheme(slot.teamName).textClass
+                                  : 'text-on-surface'
+                              }`}
+                            >
                               {slot.teamName}
-                            </p>
-                            <p className="text-[11px] text-tertiary leading-tight">
-                              {slot.courtName} · {slot.venueName}
                             </p>
 
                             {slot.staff.length > 0 && (
                               <div className="flex flex-wrap gap-1 pt-0.5">
-                                {slot.staff.map((st) => (
+                                {slot.staff.slice(0, 2).map((st) => (
                                   <span
                                     key={`${slot.id}-${st.userId}-${st.staffFunction}`}
                                     className="px-1.5 py-0.5 text-[10px] bg-surface-container text-on-surface/85 border border-white/10"
                                   >
-                                    {st.name.split(' ')[0]} (
-                                    {STAFF_FN_SHORT[st.staffFunction] || st.staffFunction})
+                                    {st.name.split(' ')[0]} ({STAFF_FN_SHORT[st.staffFunction] || st.staffFunction})
                                   </span>
                                 ))}
                               </div>
+                            )}
+
+                            {slot.notes && (
+                              <p className="text-[10px] text-tertiary truncate">{slot.notes}</p>
                             )}
 
                             {hasConflict && (
                               <p className="text-[10px] font-bold uppercase text-error flex items-center gap-1">
                                 <ShieldAlert className="w-3 h-3 shrink-0" aria-hidden="true" />
-                                Conflicto activo
+                                Solape activo
                               </p>
                             )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* PESTAÑA 2: OCUPACIÓN DE PABELLONES, PARTIDOS FAVB Y CIERRES */}
-      {activeTab === 'venues_favb' && data && (
-        <section className="space-y-6">
-          {/* Ocupación por Pabellón y Pista */}
-          <div className="space-y-4">
-            <h2 className="font-headline-sm text-base uppercase text-on-surface flex items-center gap-2">
-              <Layers className="w-4 h-4 text-primary-container" aria-hidden="true" />
-              <span>Ocupación Semanal por Pabellón y Pista</span>
-            </h2>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {data.venues.map((v) => (
-                <div
-                  key={v.id}
-                  className="bg-surface-container border border-white/10 p-4 space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2.5">
-                    <div className="min-w-0">
-                      <h3 className="font-headline text-base font-bold text-on-surface">
-                        {v.name}
-                      </h3>
-                      <p className="text-xs text-tertiary truncate">
-                        {v.address || v.locality}
-                      </p>
-                    </div>
-                    {v.mapsUrl && (
-                      <a
-                        href={v.mapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline shrink-0"
-                      >
-                        <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>Mapa</span>
-                      </a>
-                    )}
-                  </div>
-
-                  {v.courts.length === 0 ? (
-                    <p className="text-xs text-tertiary">Sin pistas registradas.</p>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {v.courts.map((c) => {
-                        const courtSlots = data.slots.filter((s) => s.courtId === c.id);
-                        return (
-                          <div
-                            key={c.id}
-                            className="bg-surface-container-low border border-white/5 p-3 space-y-2"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-bold text-on-surface">{c.name}</span>
-                              <span className="text-[10px] uppercase text-tertiary">
-                                {c.surfaceType || 'Pista'} · {courtSlots.length} franja(s)
-                              </span>
-                            </div>
-                            {courtSlots.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5">
-                                {courtSlots.map((cs) => (
-                                  <span
-                                    key={cs.id}
-                                    className="px-2 py-1 text-[11px] bg-surface-container border border-white/10 text-on-surface"
-                                  >
-                                    <strong className="text-primary">
-                                      {WEEKDAYS.find((d) => d.value === cs.weekday)?.short}
-                                    </strong>{' '}
-                                    {cs.startTime}-{cs.endTime} · {cs.teamName}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                          </button>
                         );
                       })}
-                    </div>
+
+                      {/* Tickets de Partidos en Casa */}
+                      {dayMatches.map((m) => {
+                        const hasConflict = conflictMatchIds.has(m.id);
+                        const courtLabel = m.courtCode || 'S/P';
+                        const courtStyle =
+                          (m.courtCode && COURT_BADGE_STYLES[m.courtCode]) ||
+                          'bg-amber-950/60 text-amber-200 border-amber-400/50';
+                        const isConfirmed = m.scheduleStatus === 'CONFIRMADO';
+
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            disabled={!canManageSchedule}
+                            onClick={() => {
+                              if (canManageSchedule) openScheduleMatchModal(m);
+                            }}
+                            className={`w-full text-left p-2.5 border space-y-1.5 text-xs transition-colors ${
+                              canManageSchedule
+                                ? 'cursor-pointer hover:border-amber-300'
+                                : 'cursor-default'
+                            } ${
+                              hasConflict
+                                ? 'bg-error-container/30 border-error/70'
+                                : 'bg-amber-500/10 border-amber-400/40'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1.5">
+                              <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-200 text-[11px]">
+                                <Trophy className="w-3 h-3 shrink-0 text-amber-300" aria-hidden="true" />
+                                {m.timeStr} · {formatShortDayMonth(m.dateStr)}
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.5 text-[10px] font-bold uppercase border shrink-0 ${courtStyle}`}
+                              >
+                                {courtLabel}
+                              </span>
+                            </div>
+
+                            <p
+                              className={`font-bold leading-tight break-words ${
+                                getTeamColorTheme(m.teamName).colorKey
+                                  ? getTeamColorTheme(m.teamName).textClass
+                                  : 'text-white'
+                              }`}
+                            >
+                              {m.teamName}
+                            </p>
+                            <p className="text-[11px] text-on-surface/85 leading-tight break-words">
+                              vs {m.opponentName}
+                            </p>
+
+                            <div className="flex flex-wrap items-center justify-between gap-1 pt-0.5">
+                              <span className="text-[10px] font-bold uppercase text-tertiary">
+                                J{m.round}
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.5 text-[10px] font-bold uppercase border ${
+                                  isConfirmed
+                                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
+                                    : 'bg-amber-950/70 text-amber-200 border-amber-400/50'
+                                }`}
+                              >
+                                {isConfirmed ? 'Confirmado' : 'Pendiente'}
+                              </span>
+                            </div>
+
+                            {hasConflict && (
+                              <p className="text-[10px] font-bold uppercase text-error flex items-center gap-1">
+                                <ShieldAlert className="w-3 h-3 shrink-0" aria-hidden="true" />
+                                Solape en pista
+                              </p>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </>
                   )}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Partidos Oficiales en Casa FAVB + Cierres / Festivos */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* Próximos partidos FAVB en casa */}
-            <div className="lg:col-span-7 bg-surface-container border border-white/10 p-4 sm:p-5 space-y-3">
-              <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-primary-container" aria-hidden="true" />
-                  <h2 className="font-headline-sm text-sm uppercase tracking-wider text-on-surface">
-                    Próximos Partidos en Casa (FAVB · Europe/Madrid)
-                  </h2>
-                </div>
-                <span className="text-[11px] text-tertiary">
-                  Hoy: {data.todayMadrid}
-                </span>
               </div>
-
-              {data.upcomingHomeMatches.length === 0 ? (
-                <p className="text-sm text-tertiary py-6 text-center">
-                  No hay próximos partidos oficiales en casa registrados a partir de hoy (
-                  {data.todayMadrid}).
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                  {data.upcomingHomeMatches.map((m) => {
-                    const hasClosureCollision = closureDatesSet.has(m.madridDate);
-                    return (
-                      <div
-                        key={m.id}
-                        className={`p-3 border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs ${
-                          hasClosureCollision
-                            ? 'bg-error-container/25 border-error/50'
-                            : 'bg-surface-container-low border-white/10'
-                        }`}
-                      >
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-primary-container/20 text-primary border border-primary-container/40">
-                              J{m.round} · {m.teamName}
-                            </span>
-                            {hasClosureCollision && (
-                              <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-error-container text-error">
-                                Coincide con cierre
-                              </span>
-                            )}
-                          </div>
-                          <p className="font-bold text-on-surface">
-                            {m.homeTeamName} vs {m.awayTeamName}
-                          </p>
-                          <p className="text-tertiary truncate">
-                            {m.venueName}
-                            {m.court ? ` · ${m.court}` : ''}
-                          </p>
-                        </div>
-
-                        <div className="sm:text-right shrink-0">
-                          <p className="font-mono font-bold text-primary">
-                            {m.madridDate} · {m.madridTime}
-                          </p>
-                          <p className="text-[11px] text-tertiary capitalize">{m.madridLabel}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Gestión de Cierres y Festivos */}
-            <div className="lg:col-span-5 bg-surface-container border border-white/10 p-4 sm:p-5 space-y-4">
-              <div className="flex items-center gap-2 border-b border-white/10 pb-3">
-                <CalendarOff className="w-4 h-4 text-primary-container" aria-hidden="true" />
-                <h2 className="font-headline-sm text-sm uppercase tracking-wider text-on-surface">
-                  Cierres y Festivos de Pabellón
-                </h2>
-              </div>
-
-              {(canManageVenues || canManageSchedule) && (
-                <form onSubmit={handleCreateClosure} className="space-y-3 pb-3 border-b border-white/10">
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                      Pabellón *
-                    </label>
-                    <select
-                      required
-                      value={closureVenueId}
-                      onChange={(e) => {
-                        setClosureVenueId(e.target.value);
-                        setClosureCourtId('');
-                      }}
-                      className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                    >
-                      {data.venues.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                        Pista (opcional)
-                      </label>
-                      <select
-                        value={closureCourtId}
-                        onChange={(e) => setClosureCourtId(e.target.value)}
-                        className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                      >
-                        <option value="">Todo el pabellón</option>
-                        {(data.venues.find((v) => v.id === closureVenueId)?.courts || []).map(
-                          (c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                        Fecha (Madrid) *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={closureDate}
-                        onChange={(e) => setClosureDate(e.target.value)}
-                        className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                        Desde (opcional)
-                      </label>
-                      <input
-                        type="time"
-                        value={closureStart}
-                        onChange={(e) => setClosureStart(e.target.value)}
-                        className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                        Hasta (opcional)
-                      </label>
-                      <input
-                        type="time"
-                        value={closureEnd}
-                        onChange={(e) => setClosureEnd(e.target.value)}
-                        className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                      Motivo del cierre *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={closureReason}
-                      onChange={(e) => setClosureReason(e.target.value)}
-                      placeholder="Ej. Torneo municipal, Festivo local, Mantenimiento..."
-                      className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={closureSubmitting}
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold cursor-pointer disabled:opacity-50"
-                  >
-                    {closureSubmitting ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Plus className="w-3.5 h-3.5" />
-                    )}
-                    <span>Registrar cierre</span>
-                  </button>
-                </form>
-              )}
-
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {data.closures.length === 0 ? (
-                  <p className="text-xs text-tertiary text-center py-4">
-                    Sin cierres registrados.
-                  </p>
-                ) : (
-                  data.closures.map((cl) => (
-                    <div
-                      key={cl.id}
-                      className="bg-surface-container-low border border-white/10 p-2.5 flex items-start justify-between gap-2 text-xs"
-                    >
-                      <div className="min-w-0 space-y-0.5">
-                        <p className="font-mono font-bold text-primary">
-                          {cl.madridDate}
-                          {cl.startTime && cl.endTime
-                            ? ` (${cl.startTime}-${cl.endTime})`
-                            : ' (Todo el día)'}
-                        </p>
-                        <p className="font-bold text-on-surface">
-                          {cl.venueName}
-                          {cl.courtName ? ` · ${cl.courtName}` : ''}
-                        </p>
-                        <p className="text-tertiary">{cl.reason}</p>
-                      </div>
-                      {(canManageVenues || canManageSchedule) && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteClosure(cl.id)}
-                          className="text-tertiary hover:text-error cursor-pointer shrink-0"
-                          aria-label="Eliminar cierre"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </section>
       )}
 
-      {/* PESTAÑA 3: PABELLONES, PISTAS Y EQUIPOS */}
-      {activeTab === 'catalog' && data && (
-        <section className="space-y-6">
-          {/* Alta de Pabellones y Pistas */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            <div className="lg:col-span-7 bg-surface-container border border-white/10 p-4 sm:p-5 space-y-4">
-              <h2 className="font-headline-sm text-sm uppercase tracking-wider text-on-surface border-b border-white/10 pb-2.5">
-                Pabellones y Pistas Registradas ({data.venues.length})
-              </h2>
-              <div className="space-y-3">
-                {data.venues.map((v) => (
-                  <div
-                    key={v.id}
-                    className="bg-surface-container-low border border-white/10 p-3.5 space-y-2"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-bold text-sm text-on-surface">{v.name}</h3>
-                        <p className="text-xs text-tertiary">
-                          {v.address || v.locality} · {v.locality}
-                        </p>
-                      </div>
-                      {v.mapsUrl && (
-                        <a
-                          href={v.mapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                        >
-                          <span>Google Maps</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {v.courts.map((c) => (
-                        <span
-                          key={c.id}
-                          className="px-2.5 py-1 text-xs bg-surface-container border border-white/10 text-on-surface"
-                        >
-                          {c.name}{' '}
-                          <span className="text-[10px] text-tertiary">
-                            ({c.surfaceType || 'Pista'})
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {canManageVenues && (
-              <div className="lg:col-span-5 space-y-4">
-                <form
-                  onSubmit={handleCreateVenue}
-                  className="bg-surface-container border border-white/10 p-4 space-y-3"
-                >
-                  <h3 className="font-headline-sm text-xs uppercase tracking-wider text-primary font-bold">
-                    Nuevo Pabellón
-                  </h3>
-                  <input
-                    type="text"
-                    required
-                    value={venueName}
-                    onChange={(e) => setVenueName(e.target.value)}
-                    placeholder="Nombre del pabellón *"
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                  />
-                  <input
-                    type="text"
-                    value={venueAddress}
-                    onChange={(e) => setVenueAddress(e.target.value)}
-                    placeholder="Dirección completa"
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={venueLocality}
-                      onChange={(e) => setVenueLocality(e.target.value)}
-                      placeholder="Localidad"
-                      className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                    />
-                    <input
-                      type="url"
-                      value={venueMapsUrl}
-                      onChange={(e) => setVenueMapsUrl(e.target.value)}
-                      placeholder="URL Google Maps"
-                      className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={venueSubmitting}
-                    className="w-full px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold cursor-pointer disabled:opacity-50"
-                  >
-                    {venueSubmitting ? 'Guardando...' : 'Crear Pabellón'}
-                  </button>
-                </form>
-
-                <form
-                  onSubmit={handleCreateCourt}
-                  className="bg-surface-container border border-white/10 p-4 space-y-3"
-                >
-                  <h3 className="font-headline-sm text-xs uppercase tracking-wider text-primary font-bold">
-                    Añadir Pista a Pabellón
-                  </h3>
-                  <select
-                    required
-                    value={courtVenueId}
-                    onChange={(e) => setCourtVenueId(e.target.value)}
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                  >
-                    {data.venues.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    required
-                    value={courtName}
-                    onChange={(e) => setCourtName(e.target.value)}
-                    placeholder="Nombre de la pista (ej. Pista 3) *"
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                  />
-                  <input
-                    type="text"
-                    value={courtSurface}
-                    onChange={(e) => setCourtSurface(e.target.value)}
-                    placeholder="Tipo (ej. Pista completa / Transversal)"
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-xs text-on-surface"
-                  />
-                  <button
-                    type="submit"
-                    disabled={courtSubmitting}
-                    className="w-full px-4 py-2 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-on-surface text-xs font-label-md uppercase font-bold cursor-pointer disabled:opacity-50"
-                  >
-                    {courtSubmitting ? 'Añadiendo...' : 'Añadir Pista'}
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-
-          {/* Temporadas y Equipos */}
-          <div className="bg-surface-container border border-white/10 p-4 sm:p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary-container" aria-hidden="true" />
-                <h2 className="font-headline-sm text-sm uppercase tracking-wider text-on-surface">
-                  Temporadas y Equipos ({data.teams.length})
-                </h2>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {data.seasons.map((s) => (
-                  <span
-                    key={s.id}
-                    className={`px-2.5 py-1 text-xs font-bold border ${
-                      s.isCurrent
-                        ? 'bg-primary-container text-white border-primary-container'
-                        : 'bg-surface-container-low text-tertiary border-white/10'
-                    }`}
-                  >
-                    {s.name} ({s.startDate} → {s.endDate})
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {canManageSeasons && (
-              <form
-                onSubmit={handleCreateSeason}
-                className="bg-surface-container-low border border-white/10 p-3.5 grid grid-cols-1 sm:grid-cols-5 gap-2.5 items-end"
-              >
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                    Nueva temporada
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={seasonName}
-                    onChange={(e) => setSeasonName(e.target.value)}
-                    placeholder="Ej. 2027/2028"
-                    className="w-full bg-surface-container border border-white/15 px-2.5 py-1.5 text-xs text-on-surface"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                    Inicio
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={seasonStart}
-                    onChange={(e) => setSeasonStart(e.target.value)}
-                    className="w-full bg-surface-container border border-white/15 px-2.5 py-1.5 text-xs text-on-surface"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-tertiary mb-1">
-                    Fin
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={seasonEnd}
-                    onChange={(e) => setSeasonEnd(e.target.value)}
-                    className="w-full bg-surface-container border border-white/15 px-2.5 py-1.5 text-xs text-on-surface"
-                  />
-                </div>
-                <label className="flex items-center gap-2 text-xs text-on-surface py-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={seasonCurrent}
-                    onChange={(e) => setSeasonCurrent(e.target.checked)}
-                    className="accent-[#d90429]"
-                  />
-                  <span>Marcar actual</span>
-                </label>
-                <button
-                  type="submit"
-                  disabled={seasonSubmitting}
-                  className="px-3 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold cursor-pointer"
-                >
-                  {seasonSubmitting ? '...' : 'Guardar temporada'}
-                </button>
-              </form>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {data.teams.map((t) => (
+      {/* MODAL: DETALLE DE CONFLICTOS */}
+      <IntranetModal
+        isOpen={conflictsModalOpen && Boolean(data)}
+        onClose={() => setConflictsModalOpen(false)}
+        title={`Conflictos detectados (${data?.conflicts.length || 0})`}
+        subtitle="Solapes de pista P1/P2/P3 (entrenos y partidos en casa) o cuerpo técnico"
+        size="lg"
+        accent="rose"
+      >
+        {data && (
+          <div className="space-y-2.5">
+            {data.conflicts.length === 0 ? (
+              <p className="text-xs text-emerald-300 text-center py-4">
+                No existen conflictos activos en el Sergio Scariolo.
+              </p>
+            ) : (
+              data.conflicts.map((c) => (
                 <div
-                  key={t.id}
-                  className={`p-3.5 border space-y-2 ${
-                    t.isActive
-                      ? 'bg-surface-container-low border-white/10'
-                      : 'bg-surface-container-lowest/60 border-white/5 opacity-60'
-                  }`}
+                  key={c.id}
+                  className="bg-surface-container border border-error/35 p-3 text-xs space-y-1.5"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-bold text-sm text-on-surface truncate">{t.name}</p>
-                      <p className="text-[11px] text-tertiary truncate">{t.division}</p>
-                    </div>
-                    <span className="px-1.5 py-0.5 text-[10px] uppercase font-bold bg-surface-container border border-white/10 text-primary shrink-0">
-                      {t.association}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-1.5 py-0.5 text-[10px] uppercase font-bold bg-error-container text-error">
+                      {CONFLICT_TYPE_LABEL[c.type]}
+                    </span>
+                    <span className="font-bold text-primary">
+                      {WEEKDAY_LABEL_MAP.get(c.weekday)}
+                      {c.dateStr ? ` (${formatDisplayDate(c.dateStr)})` : ''}
+                    </span>
+                    {c.courtName && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold border border-white/15 bg-surface-container-low text-white">
+                        {getShortCourtLabel(c.courtName)}
+                      </span>
+                    )}
+                    <span className="text-tertiary font-mono">
+                      {c.timeRangeA} / {c.timeRangeB}
                     </span>
                   </div>
+                  <p className="text-on-surface/95 break-words">{c.summary}</p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </IntranetModal>
 
-                  <div className="flex flex-wrap gap-1">
-                    {t.staff.length === 0 ? (
-                      <span className="text-[11px] text-tertiary/70">Sin cuerpo técnico</span>
-                    ) : (
-                      t.staff.map((st) => (
-                        <span
-                          key={`${t.id}-${st.userId}-${st.staffFunction}`}
-                          className="px-2 py-0.5 text-[10px] bg-surface-container border border-white/10 text-on-surface"
-                        >
-                          {st.name} · {STAFF_FN_SHORT[st.staffFunction] || st.staffFunction}
-                        </span>
-                      ))
-                    )}
-                  </div>
+      {/* MODAL: CREAR / EDITAR ENTRENAMIENTO (P1, P2, P3) */}
+      <IntranetModal
+        isOpen={slotModalOpen && Boolean(data)}
+        onClose={() => {
+          setSlotModalOpen(false);
+          setConfirmDeleteSlot(false);
+        }}
+        title={editingSlotId ? 'Editar Entrenamiento' : 'Nuevo Entrenamiento'}
+        subtitle="Pabellón Polideportivo Sergio Scariolo (P1 · P2 · P3)"
+        size="md"
+        accent="primary"
+      >
+        {data && (
+          <form onSubmit={handleSaveSlot} className="space-y-3.5">
+            {modalError && (
+              <div
+                role="alert"
+                className="bg-error-container/40 border border-error/40 text-error px-3 py-2 text-xs flex items-start gap-2"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
-                  {canManageSeasons && (
-                    <div className="pt-1 flex justify-end">
+            <div>
+              <label htmlFor="est-slot-team" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                Equipo *
+              </label>
+              <select
+                id="est-slot-team"
+                required
+                value={slotTeamId}
+                onChange={(e) => setSlotTeamId(e.target.value)}
+                className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+              >
+                {groupByCategoryFamily(data.teams, (t) => `${t.categoryId} ${t.name}`).map(
+                  ({ family, items: familyTeams }) => (
+                    <optgroup key={family.code} label={family.label}>
+                      {familyTeams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {getShortTeamLabelInFamily(t.name, family.code)} ({t.association})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="est-slot-court" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                Pista del Sergio Scariolo *
+              </label>
+              <select
+                id="est-slot-court"
+                required
+                value={slotCourtId}
+                onChange={(e) => setSlotCourtId(e.target.value)}
+                className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+              >
+                {scarioloCourts.map((c) => {
+                  const code = getShortCourtLabel(c.courtCode || c.name);
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {code} {c.surfaceType ? `— ${c.surfaceType}` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label htmlFor="est-slot-weekday" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Día
+                </label>
+                <select
+                  id="est-slot-weekday"
+                  value={slotWeekday}
+                  onChange={(e) => setSlotWeekday(Number(e.target.value))}
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                >
+                  {WEEKDAYS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="est-slot-start" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Inicio
+                </label>
+                <input
+                  id="est-slot-start"
+                  type="time"
+                  required
+                  value={slotStart}
+                  onChange={(e) => setSlotStart(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                />
+              </div>
+              <div>
+                <label htmlFor="est-slot-end" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Fin
+                </label>
+                <input
+                  id="est-slot-end"
+                  type="time"
+                  required
+                  value={slotEnd}
+                  onChange={(e) => setSlotEnd(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="est-slot-notes" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                Notas (opcional)
+              </label>
+              <input
+                id="est-slot-notes"
+                type="text"
+                value={slotNotes}
+                onChange={(e) => setSlotNotes(e.target.value)}
+                placeholder="Ej. Pista compartida hasta las 18:30"
+                className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+              />
+            </div>
+
+            <label className="flex items-center gap-2 text-xs text-on-surface cursor-pointer">
+              <input
+                type="checkbox"
+                checked={slotStrict}
+                onChange={(e) => setSlotStrict(e.target.checked)}
+                className="accent-[#d90429]"
+              />
+              <span>Bloquear guardado si existe conflicto de pista o entrenador</span>
+            </label>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-white/10">
+              <div>
+                {editingSlotId && (
+                  confirmDeleteSlot ? (
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleToggleTeam(t)}
-                        className={`px-2.5 py-1 text-[10px] uppercase font-bold border cursor-pointer ${
-                          t.isActive
-                            ? 'bg-surface-container text-tertiary border-white/15 hover:text-error'
-                            : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
-                        }`}
+                        onClick={handleDeleteEditingSlot}
+                        disabled={slotSubmitting}
+                        className="inline-flex items-center gap-1 px-3 py-2 bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold uppercase cursor-pointer"
                       >
-                        {t.isActive ? 'Desactivar' : 'Reactivar'}
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Confirmar borrado</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteSlot(false)}
+                        className="px-2.5 py-2 text-xs text-tertiary hover:text-white cursor-pointer"
+                      >
+                        No
                       </button>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* MODAL: AÑADIR FRANJA SEMANAL */}
-      {slotModalOpen && data && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-slot-title"
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3 sm:p-4"
-        >
-          <div className="bg-surface-container border border-white/15 w-full max-w-lg p-5 space-y-4 shadow-[6px_6px_0px_0px_#0e0e0e]">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h2
-                id="modal-slot-title"
-                className="font-headline text-lg uppercase font-bold text-on-surface"
-              >
-                Añadir Franja Semanal
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSlotModalOpen(false)}
-                className="text-tertiary hover:text-white cursor-pointer"
-                aria-label="Cerrar modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSlot} className="space-y-3">
-              <div>
-                <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                  Equipo *
-                </label>
-                <select
-                  required
-                  value={slotTeamId}
-                  onChange={(e) => setSlotTeamId(e.target.value)}
-                  className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                >
-                  {data.teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.association})
-                    </option>
-                  ))}
-                </select>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteSlot(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 border border-rose-500/40 text-rose-300 hover:bg-rose-950/60 text-xs font-bold uppercase cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Eliminar</span>
+                    </button>
+                  )
+                )}
               </div>
 
-              <div>
-                <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                  Pabellón y Pista *
-                </label>
-                <select
-                  required
-                  value={slotCourtId}
-                  onChange={(e) => setSlotCourtId(e.target.value)}
-                  className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                >
-                  {allCourts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.venueName} — {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                    Día
-                  </label>
-                  <select
-                    value={slotWeekday}
-                    onChange={(e) => setSlotWeekday(Number(e.target.value))}
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                  >
-                    {WEEKDAYS.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                    Inicio
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={slotStart}
-                    onChange={(e) => setSlotStart(e.target.value)}
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                    Fin
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={slotEnd}
-                    onChange={(e) => setSlotEnd(e.target.value)}
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                  Notas (opcional)
-                </label>
-                <input
-                  type="text"
-                  value={slotNotes}
-                  onChange={(e) => setSlotNotes(e.target.value)}
-                  placeholder="Ej. Pista compartida hasta las 18:30"
-                  className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                />
-              </div>
-
-              <label className="flex items-center gap-2 text-xs text-on-surface cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={slotStrict}
-                  onChange={(e) => setSlotStrict(e.target.checked)}
-                  className="accent-[#d90429]"
-                />
-                <span>Bloquear guardado si existe conflicto de pista o entrenador (modo estricto)</span>
-              </label>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+              <div className="flex items-center gap-2 ml-auto">
                 <button
                   type="button"
-                  onClick={() => setSlotModalOpen(false)}
+                  onClick={() => {
+                    setSlotModalOpen(false);
+                    setConfirmDeleteSlot(false);
+                  }}
                   className="px-4 py-2 border border-white/15 text-xs uppercase font-bold text-tertiary hover:text-white cursor-pointer"
                 >
                   Cancelar
@@ -1748,154 +1392,320 @@ export default function ClubEstructuraPage() {
                   className="inline-flex items-center gap-1.5 px-5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold cursor-pointer disabled:opacity-50"
                 >
                   {slotSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Guardar franja</span>
+                  <span>{editingSlotId ? 'Guardar cambios' : 'Crear entreno'}</span>
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+          </form>
+        )}
+      </IntranetModal>
 
-      {/* MODAL: PROPONER CAMBIO DE HORARIO */}
-      {proposeModalOpen && data && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-propose-title"
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3 sm:p-4"
-        >
-          <div className="bg-surface-container border border-white/15 w-full max-w-lg p-5 space-y-4 shadow-[6px_6px_0px_0px_#0e0e0e]">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h2
-                id="modal-propose-title"
-                className="font-headline text-lg uppercase font-bold text-on-surface"
+      {/* MODAL: PROGRAMAR / EDITAR PARTIDO EN CASA (P1, P2, P3) */}
+      <IntranetModal
+        isOpen={matchModalOpen && Boolean(data)}
+        onClose={() => setMatchModalOpen(false)}
+        title="Programar Partido en Casa"
+        subtitle={
+          selectedMatchObj
+            ? `J${selectedMatchObj.round} · ${selectedMatchObj.teamName} vs ${selectedMatchObj.opponentName}`
+            : 'Sergio Scariolo (P1 · P2 · P3)'
+        }
+        size="md"
+        accent="amber"
+      >
+        {data && (
+          <form onSubmit={handleSaveHomeMatch} className="space-y-3.5">
+            {modalError && (
+              <div
+                role="alert"
+                className="bg-error-container/40 border border-error/40 text-error px-3 py-2 text-xs flex items-start gap-2"
               >
-                Proponer Cambio de Horario
-              </h2>
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            {matchModalAllowPick && (
+              <div>
+                <label htmlFor="est-match-pick" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Partido en casa *
+                </label>
+                <select
+                  id="est-match-pick"
+                  required
+                  value={matchForm.matchId}
+                  onChange={(e) => handleSelectMatchInModal(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                >
+                  {data.homeMatches.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      J{m.round} ({formatDisplayDate(m.dateStr)}) · {m.teamName} vs {m.opponentName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="est-match-date" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Fecha (Europe/Madrid) *
+                </label>
+                <input
+                  id="est-match-date"
+                  type="date"
+                  required
+                  value={matchForm.proposedDate}
+                  onChange={(e) =>
+                    setMatchForm((prev) => ({ ...prev, proposedDate: e.target.value }))
+                  }
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                />
+              </div>
+              <div>
+                <label htmlFor="est-match-time" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Hora (Europe/Madrid) *
+                </label>
+                <input
+                  id="est-match-time"
+                  type="time"
+                  required
+                  value={matchForm.proposedTime}
+                  onChange={(e) =>
+                    setMatchForm((prev) => ({ ...prev, proposedTime: e.target.value }))
+                  }
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <p className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Pista en Sergio Scariolo *
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(['P1', 'P2', 'P3'] as const).map((code) => {
+                    const selected = matchForm.courtCode === code;
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setMatchForm((prev) => ({ ...prev, courtCode: code }))}
+                        className={`py-2 text-xs font-bold uppercase border cursor-pointer transition-colors ${
+                          selected
+                            ? 'bg-primary-container text-white border-primary-container'
+                            : 'bg-surface-container-lowest text-tertiary border-white/15 hover:text-white'
+                        }`}
+                      >
+                        {code}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="est-match-status" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Estado *
+                </label>
+                <select
+                  id="est-match-status"
+                  value={matchForm.scheduleStatus}
+                  onChange={(e) =>
+                    setMatchForm((prev) => ({
+                      ...prev,
+                      scheduleStatus:
+                        e.target.value === 'CONFIRMADO' ? 'CONFIRMADO' : 'PENDIENTE',
+                    }))
+                  }
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                >
+                  <option value="PENDIENTE">Pendiente</option>
+                  <option value="CONFIRMADO">Confirmado</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="est-match-notes" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                Notas (opcional)
+              </label>
+              <textarea
+                id="est-match-notes"
+                rows={2}
+                value={matchForm.notes}
+                onChange={(e) => setMatchForm((prev) => ({ ...prev, notes: e.target.value }))}
+                placeholder="Ej. Pendiente de validación con rival o montaje de pista central"
+                className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setMatchModalOpen(false)}
+                className="px-4 py-2 border border-white/15 text-xs uppercase font-bold text-tertiary hover:text-white cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={matchSubmitting || !matchForm.matchId}
+                className="inline-flex items-center gap-1.5 px-5 py-2 bg-cta hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold cursor-pointer disabled:opacity-50"
+              >
+                {matchSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Guardar Partido</span>
+              </button>
+            </div>
+          </form>
+        )}
+      </IntranetModal>
+
+      {/* MODAL: PROPONER CAMBIO DE HORARIO (para entrenadores sin schedule.manage) */}
+      <IntranetModal
+        isOpen={proposeModalOpen && Boolean(data)}
+        onClose={() => setProposeModalOpen(false)}
+        title="Proponer Cambio de Horario"
+        size="md"
+        accent="amber"
+      >
+        {data && (
+          <form onSubmit={handleCreateProposal} className="space-y-3">
+            {modalError && (
+              <div
+                role="alert"
+                className="bg-error-container/40 border border-error/40 text-error px-3 py-2 text-xs flex items-start gap-2"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="est-prop-team" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                Equipo *
+              </label>
+              <select
+                id="est-prop-team"
+                required
+                value={propTeamId}
+                onChange={(e) => setPropTeamId(e.target.value)}
+                className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+              >
+                {groupByCategoryFamily(proposableTeams, (t) => `${t.categoryId} ${t.name}`).map(
+                  ({ family, items: familyTeams }) => (
+                    <optgroup key={family.code} label={family.label}>
+                      {familyTeams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {getShortTeamLabelInFamily(t.name, family.code)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="est-prop-court" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                Pista propuesta
+              </label>
+              <select
+                id="est-prop-court"
+                value={propCourtId}
+                onChange={(e) => setPropCourtId(e.target.value)}
+                className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+              >
+                {scarioloCourts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {getShortCourtLabel(c.courtCode || c.name)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label htmlFor="est-prop-weekday" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Día
+                </label>
+                <select
+                  id="est-prop-weekday"
+                  value={propWeekday}
+                  onChange={(e) => setPropWeekday(Number(e.target.value))}
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                >
+                  {WEEKDAYS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="est-prop-start" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Inicio
+                </label>
+                <input
+                  id="est-prop-start"
+                  type="time"
+                  required
+                  value={propStart}
+                  onChange={(e) => setPropStart(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                />
+              </div>
+              <div>
+                <label htmlFor="est-prop-end" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                  Fin
+                </label>
+                <input
+                  id="est-prop-end"
+                  type="time"
+                  required
+                  value={propEnd}
+                  onChange={(e) => setPropEnd(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="est-prop-reason" className="block text-[11px] uppercase font-bold text-tertiary mb-1">
+                Motivo de la solicitud *
+              </label>
+              <textarea
+                id="est-prop-reason"
+                required
+                rows={3}
+                value={propReason}
+                onChange={(e) => setPropReason(e.target.value)}
+                placeholder="Ej. Exámenes de bachillerato o ajuste con otro equipo..."
+                className="w-full bg-surface-container-lowest border border-white/15 px-3 py-2 text-sm text-on-surface"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
               <button
                 type="button"
                 onClick={() => setProposeModalOpen(false)}
-                className="text-tertiary hover:text-white cursor-pointer"
-                aria-label="Cerrar modal"
+                className="px-4 py-2 border border-white/15 text-xs uppercase font-bold text-tertiary hover:text-white cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={propSubmitting}
+                className="inline-flex items-center gap-1.5 px-5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold cursor-pointer disabled:opacity-50"
+              >
+                {propSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Enviar propuesta</span>
               </button>
             </div>
-
-            <form onSubmit={handleCreateProposal} className="space-y-3">
-              <div>
-                <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                  Equipo *
-                </label>
-                <select
-                  required
-                  value={propTeamId}
-                  onChange={(e) => setPropTeamId(e.target.value)}
-                  className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                >
-                  {proposableTeams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                  Pista propuesta
-                </label>
-                <select
-                  value={propCourtId}
-                  onChange={(e) => setPropCourtId(e.target.value)}
-                  className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                >
-                  {allCourts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.venueName} — {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                    Día
-                  </label>
-                  <select
-                    value={propWeekday}
-                    onChange={(e) => setPropWeekday(Number(e.target.value))}
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                  >
-                    {WEEKDAYS.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                    Inicio
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={propStart}
-                    onChange={(e) => setPropStart(e.target.value)}
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                    Fin
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={propEnd}
-                    onChange={(e) => setPropEnd(e.target.value)}
-                    className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] uppercase font-bold text-tertiary mb-1">
-                  Motivo de la solicitud *
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={propReason}
-                  onChange={(e) => setPropReason(e.target.value)}
-                  placeholder="Ej. Exámenes de bachillerato o ajuste con otro equipo..."
-                  className="w-full bg-surface-container-low border border-white/15 px-3 py-2 text-sm text-on-surface"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setProposeModalOpen(false)}
-                  className="px-4 py-2 border border-white/15 text-xs uppercase font-bold text-tertiary hover:text-white cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={propSubmitting}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-label-md uppercase font-bold cursor-pointer disabled:opacity-50"
-                >
-                  {propSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Enviar propuesta</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </form>
+        )}
+      </IntranetModal>
     </div>
   );
 }

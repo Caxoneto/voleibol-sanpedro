@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryNeon } from '@/lib/streaming-store';
-import { requireIntranetSession, createIntranetInvitation } from '@/lib/intranet/auth';
+import { requireIntranetSession } from '@/lib/intranet/auth';
 import {
   assertCan,
   can,
@@ -13,16 +13,12 @@ import {
   INITIAL_TEAM_SEASONS,
   CURRENT_SEASON_SEED,
   type PermissionCode,
-  type RoleCode,
 } from '@/lib/intranet/catalog';
 import {
   syncCensusFromClubSources,
-  importFeelSportsRows,
   normalizeNameKey,
-  type FeelSportsImportRow,
 } from '@/lib/intranet/census-sync';
 import { getTeamPaymentTrafficLight, type PaymentTrafficLight } from '@/lib/intranet/payments';
-import { parseCsv } from '@/lib/intranet/csv-utils';
 import { handleIntranetApiError } from '@/lib/intranet/api-helpers';
 import { recordAuditLog } from '@/lib/intranet/audit';
 import { ensureIntranetSeeded } from '@/lib/intranet/seed-bootstrap';
@@ -66,19 +62,6 @@ function safeDecrypt(cipherText: string | null | undefined, aads: string[]): str
   return legacy.ok && legacy.value ? legacy.value : null;
 }
 
-function resolveTeamIdByNameOrId(raw?: string | null): string | null {
-  if (!raw || !raw.trim()) return null;
-  const direct = INITIAL_TEAM_SEASONS.find((t) => t.id.toLowerCase() === raw.trim().toLowerCase());
-  if (direct) return direct.id;
-  const clean = normalizeNameKey(raw);
-  const byName = INITIAL_TEAM_SEASONS.find((t) => normalizeNameKey(t.name) === clean);
-  if (byName) return byName.id;
-  const partial = INITIAL_TEAM_SEASONS.find(
-    (t) => clean.includes(normalizeNameKey(t.name)) || normalizeNameKey(t.name).includes(clean)
-  );
-  return partial?.id || null;
-}
-
 function computeAgeBracket(birthYear: number | null): {
   ageBracket: AgeBracket;
   approxAge: number | null;
@@ -94,54 +77,6 @@ function computeAgeBracket(birthYear: number | null): {
   return { ageBracket, approxAge: evalAge.age };
 }
 
-function parseCsvRowsToFeelSports(csvText: string): FeelSportsImportRow[] {
-  const matrix = parseCsv(csvText);
-  if (matrix.length < 2) return [];
-  const headers = matrix[0].map((h) => normalizeNameKey(h));
-
-  const findIdx = (candidates: string[]): number =>
-    headers.findIndex((h) => candidates.some((c) => h === c || h.includes(c)));
-
-  const idxFirst = findIdx(['nombre', 'first name', 'firstname']);
-  const idxLast = findIdx(['apellidos', 'apellido', 'last name', 'lastname']);
-  const idxFull = findIdx(['nombre completo', 'deportista', 'jugador', 'jugadora']);
-  const idxDni = findIdx(['dni', 'nie', 'documento', 'nif']);
-  const idxBirth = findIdx(['fecha nacimiento', 'nacimiento', 'birth', 'fnac']);
-  const idxEmail = findIdx(['email', 'correo', 'e mail']);
-  const idxPhone = findIdx(['telefono', 'movil', 'phone', 'tlf']);
-  const idxTeam = findIdx(['equipo', 'categoria', 'team']);
-  const idxGuardian = findIdx(['tutor', 'padre', 'madre', 'guardian', 'responsable']);
-  const idxGuardianDni = findIdx(['dni tutor', 'nif tutor', 'guardian dni']);
-  const idxFsId = findIdx(['feelsports', 'id externo', 'external id']);
-
-  const rows: FeelSportsImportRow[] = [];
-  for (const cols of matrix.slice(1)) {
-    let firstName = idxFirst >= 0 ? (cols[idxFirst] || '').trim() : '';
-    let lastName = idxLast >= 0 ? (cols[idxLast] || '').trim() : '';
-    if (!firstName && !lastName && idxFull >= 0) {
-      const full = (cols[idxFull] || '').trim().replace(/\s+/g, ' ');
-      const parts = full.split(' ');
-      firstName = parts[0] || '';
-      lastName = parts.slice(1).join(' ');
-    }
-    if (!firstName && !lastName) continue;
-
-    rows.push({
-      firstName,
-      lastName,
-      dni: idxDni >= 0 ? (cols[idxDni] || '').trim() || undefined : undefined,
-      birthDate: idxBirth >= 0 ? (cols[idxBirth] || '').trim() || undefined : undefined,
-      email: idxEmail >= 0 ? (cols[idxEmail] || '').trim() || undefined : undefined,
-      phone: idxPhone >= 0 ? (cols[idxPhone] || '').trim() || undefined : undefined,
-      teamNameOrId: idxTeam >= 0 ? (cols[idxTeam] || '').trim() || undefined : undefined,
-      guardianName: idxGuardian >= 0 ? (cols[idxGuardian] || '').trim() || undefined : undefined,
-      guardianDni: idxGuardianDni >= 0 ? (cols[idxGuardianDni] || '').trim() || undefined : undefined,
-      feelsportsId: idxFsId >= 0 ? (cols[idxFsId] || '').trim() || undefined : undefined,
-    });
-  }
-  return rows;
-}
-
 export async function GET(req: NextRequest) {
   try {
     const ctx = await requireIntranetSession();
@@ -154,10 +89,6 @@ export async function GET(req: NextRequest) {
         'El acceso al censo del club está restringido al personal autorizado.'
       );
     }
-    const includeDemoParam = req.nextUrl.searchParams.get('includeDemo') === '1';
-    const canIncludeDemo = ctx.isPresident || can(ctx, 'athlete.edit');
-    const allowDemo =
-      process.env.ALLOW_DEMO_PLAYERS === 'true' || (includeDemoParam && canIncludeDemo);
 
     const teamFilterParam = req.nextUrl.searchParams.get('teamId')?.trim() || null;
     const statusFilterParam = req.nextUrl.searchParams.get('status')?.trim() || null;
@@ -189,7 +120,6 @@ export async function GET(req: NextRequest) {
         dni_last5: string | null;
         gender: string;
         favb_license_number: string | null;
-        feelsports_id: string | null;
         shirt_size: string | null;
         jersey_number: number | null;
         emergency_contact_name: string | null;
@@ -202,13 +132,12 @@ export async function GET(req: NextRequest) {
       }>(
         `SELECT
            id, first_name, last_name, birth_year, birth_date_verified, dni_last5, gender,
-           favb_license_number, feelsports_id, shirt_size, jersey_number,
+           favb_license_number, shirt_size, jersey_number,
            emergency_contact_name, emergency_contact_phone,
            user_id::text AS user_id, status, is_demo, verified_at::text, updated_at::text
          FROM intranet_athletes
-         WHERE ($1::boolean = true OR is_demo = false)
-         ORDER BY last_name ASC, first_name ASC;`,
-        [allowDemo]
+         WHERE status <> 'SHREDDED'
+         ORDER BY last_name ASC, first_name ASC;`
       ),
       queryNeon<{
         athlete_id: string;
@@ -355,7 +284,6 @@ export async function GET(req: NextRequest) {
         dniLast5: isShredded ? null : a.dni_last5,
         gender: a.gender,
         favbLicenseNumber: isShredded ? null : a.favb_license_number,
-        feelsportsId: isShredded ? null : a.feelsports_id,
         shirtSize: isShredded ? null : a.shirt_size,
         jerseyNumber: isShredded ? null : a.jersey_number,
         status: (isShredded ? 'SHREDDED' : a.status) as AthleteStatus,
@@ -385,10 +313,6 @@ export async function GET(req: NextRequest) {
         emergencyContactPhone: allowEmergency ? a.emergency_contact_phone : null,
         hasGuardianAccount: !isShredded && Boolean(guardian?.guardian_user_id),
         hasAthleteAccount: !isShredded && Boolean(a.user_id),
-        canInvite:
-          !isShredded &&
-          a.status !== 'BAJA' &&
-          canForAnyTeam(ctx, 'invitation.send', teamIds),
         canEditRow:
           !isShredded &&
           canForAnyTeam(ctx, 'athlete.edit', teamIds),
@@ -420,8 +344,11 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Aplicar filtros opcionales de query
+    // Aplicar filtros opcionales de query (siempre excluyendo SHREDDED)
     const filteredAthletes = enrichedAll.filter((a) => {
+      if (a.status === 'SHREDDED') {
+        return false;
+      }
       if (teamFilterParam && !a.teams.some((t) => t.teamSeasonId === teamFilterParam)) {
         return false;
       }
@@ -438,68 +365,6 @@ export async function GET(req: NextRequest) {
       return true;
     });
 
-    // Cola de deduplicación solo si tiene athlete.import
-    let dedupQueue: Array<{
-      id: string;
-      sourceType: string;
-      matchReason: string;
-      status: string;
-      createdAt: string;
-      payload: FeelSportsImportRow;
-      candidate: {
-        id: string;
-        fullName: string;
-        birthYear: number | null;
-        dniLast5: string | null;
-        status: string;
-        teams: string[];
-      } | null;
-    }> = [];
-
-    if (can(ctx, 'athlete.import')) {
-      const qRows = await queryNeon<{
-        id: string;
-        source_type: string;
-        raw_payload_json: unknown;
-        candidate_athlete_id: string | null;
-        match_reason: string;
-        status: string;
-        created_at: string;
-      }>(
-        `SELECT id::text, source_type, raw_payload_json, candidate_athlete_id, match_reason, status, created_at::text
-         FROM intranet_dedup_queue
-         WHERE status = 'PENDING'
-         ORDER BY created_at DESC;`
-      );
-
-      const athleteById = new Map(enrichedAll.map((a) => [a.id, a]));
-      dedupQueue = qRows.map((q) => {
-        const payload =
-          typeof q.raw_payload_json === 'string'
-            ? (JSON.parse(q.raw_payload_json) as FeelSportsImportRow)
-            : (q.raw_payload_json as FeelSportsImportRow);
-        const cand = q.candidate_athlete_id ? athleteById.get(q.candidate_athlete_id) : undefined;
-        return {
-          id: q.id,
-          sourceType: q.source_type,
-          matchReason: q.match_reason,
-          status: q.status,
-          createdAt: q.created_at,
-          payload,
-          candidate: cand
-            ? {
-                id: cand.id,
-                fullName: cand.fullName,
-                birthYear: cand.birthYear,
-                dniLast5: cand.dniLast5,
-                status: cand.status,
-                teams: cand.teams.map((t) => t.teamName),
-              }
-            : null,
-        };
-      });
-    }
-
     return NextResponse.json({
       success: true,
       season: CURRENT_SEASON_SEED,
@@ -512,7 +377,6 @@ export async function GET(req: NextRequest) {
         association: t.association,
         gender: t.gender,
       })),
-      dedupQueue,
       permissions: {
         isPresident: ctx.isPresident,
         canImport: can(ctx, 'athlete.import'),
@@ -520,10 +384,8 @@ export async function GET(req: NextRequest) {
         canDeactivate: can(ctx, 'athlete.deactivate'),
         canViewEmergency: can(ctx, 'athlete.view_emergency'),
         canViewSensitive: can(ctx, 'athlete.view_sensitive'),
-        canSendInvitation: can(ctx, 'invitation.send'),
         canViewTrafficLight:
           paymentsGlobalView || paymentsTeamScope.teamIds.length > 0,
-        canIncludeDemo,
       },
     });
   } catch (err) {
@@ -693,13 +555,6 @@ export async function POST(req: NextRequest) {
         new Set(secondaryTeamIdsRaw.filter((tid) => validTeamSet.has(tid) && tid !== primaryTeamId))
       );
 
-      if (!editScope.isGlobal) {
-        const targetTeams = [primaryTeamId, ...secondaryTeamIds].filter((x): x is string => Boolean(x));
-        if (targetTeams.some((tid) => !editScope.teamIds.includes(tid))) {
-          throw new IntranetForbiddenError('No tienes permiso para asignar equipos fuera de tu ámbito.');
-        }
-      }
-
       let existingRow: {
         id: string;
         status: AthleteStatus;
@@ -711,9 +566,10 @@ export async function POST(req: NextRequest) {
         dni_blind_index: string | null;
         medical_allergies_enc: string | null;
       } | null = null;
+      let existingTeamRows: Array<{ team_season_id: string; is_primary: boolean }> = [];
 
       if (!isCreate) {
-        const [existingRows, existingTeamRows] = await Promise.all([
+        const [existingRows, loadedTeamRows] = await Promise.all([
           queryNeon<{
             id: string;
             status: AthleteStatus;
@@ -730,13 +586,14 @@ export async function POST(req: NextRequest) {
              FROM intranet_athletes WHERE id = $1 LIMIT 1;`,
             [athleteId]
           ),
-          queryNeon<{ team_season_id: string }>(
-            `SELECT team_season_id FROM intranet_athlete_teams WHERE athlete_id = $1;`,
+          queryNeon<{ team_season_id: string; is_primary: boolean }>(
+            `SELECT team_season_id, is_primary FROM intranet_athlete_teams WHERE athlete_id = $1;`,
             [athleteId]
           ),
         ]);
 
         existingRow = existingRows[0] || null;
+        existingTeamRows = loadedTeamRows;
         if (!existingRow) {
           return NextResponse.json({ success: false, error: 'Deportista no encontrado.' }, { status: 404 });
         }
@@ -747,12 +604,42 @@ export async function POST(req: NextRequest) {
           );
         }
         if (!editScope.isGlobal) {
-          const hasExistingTeamAccess =
-            existingTeamRows.length === 0
-              ? Boolean(primaryTeamId && editScope.teamIds.includes(primaryTeamId))
-              : existingTeamRows.some((r) => editScope.teamIds.includes(r.team_season_id));
+          if (existingTeamRows.length === 0) {
+            throw new IntranetForbiddenError(
+              'Se requiere permiso global para asignar un deportista sin equipo previo.'
+            );
+          }
+          const hasExistingTeamAccess = existingTeamRows.some((r) =>
+            editScope.teamIds.includes(r.team_season_id)
+          );
           if (!hasExistingTeamAccess) {
             throw new IntranetForbiddenError('No tienes permiso para editar deportistas de este equipo.');
+          }
+        }
+      }
+
+      if (!editScope.isGlobal) {
+        const existingTeamSet = new Set(existingTeamRows.map((r) => r.team_season_id));
+        const existingPrimaryId = existingTeamRows.find((r) => r.is_primary)?.team_season_id || null;
+
+        if (isCreate) {
+          const targetTeams = [primaryTeamId, ...secondaryTeamIds].filter((x): x is string => Boolean(x));
+          if (targetTeams.length === 0 || targetTeams.some((tid) => !editScope.teamIds.includes(tid))) {
+            throw new IntranetForbiddenError('No tienes permiso para asignar equipos fuera de tu ámbito.');
+          }
+        } else {
+          if (
+            primaryTeamId &&
+            !editScope.teamIds.includes(primaryTeamId) &&
+            primaryTeamId !== existingPrimaryId
+          ) {
+            throw new IntranetForbiddenError('No tienes permiso para asignar equipos fuera de tu ámbito.');
+          }
+          const newForbiddenSecondary = secondaryTeamIds.some(
+            (tid) => !editScope.teamIds.includes(tid) && !existingTeamSet.has(tid)
+          );
+          if (newForbiddenSecondary) {
+            throw new IntranetForbiddenError('No tienes permiso para asignar equipos fuera de tu ámbito.');
           }
         }
       }
@@ -971,22 +858,78 @@ export async function POST(req: NextRequest) {
 
       // Actualizar equipos si se han enviado en el payload
       if ('primaryTeamId' in body || 'secondaryTeamIds' in body) {
-        await queryNeon(`DELETE FROM intranet_athlete_teams WHERE athlete_id = $1;`, [athleteId]);
-        if (primaryTeamId) {
+        if (editScope.isGlobal) {
+          await queryNeon(`DELETE FROM intranet_athlete_teams WHERE athlete_id = $1;`, [athleteId]);
+          if (primaryTeamId) {
+            await queryNeon(
+              `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary, dorsal)
+               VALUES ($1, $2, true, $3)
+               ON CONFLICT (athlete_id, team_season_id) DO UPDATE SET is_primary = true, dorsal = EXCLUDED.dorsal;`,
+              [athleteId, primaryTeamId, jerseyNumber]
+            );
+          }
+          for (const secId of secondaryTeamIds) {
+            await queryNeon(
+              `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary)
+               VALUES ($1, $2, false)
+               ON CONFLICT (athlete_id, team_season_id) DO NOTHING;`,
+              [athleteId, secId]
+            );
+          }
+        } else {
+          // Conservar intactos los equipos fuera del ámbito del editor y actualizar solo los propios
           await queryNeon(
-            `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary, dorsal)
-             VALUES ($1, $2, true, $3)
-             ON CONFLICT (athlete_id, team_season_id) DO UPDATE SET is_primary = true, dorsal = EXCLUDED.dorsal;`,
-            [athleteId, primaryTeamId, jerseyNumber]
+            `DELETE FROM intranet_athlete_teams
+             WHERE athlete_id = $1
+               AND team_season_id = ANY($2::text[]);`,
+            [athleteId, editScope.teamIds]
           );
-        }
-        for (const secId of secondaryTeamIds) {
-          await queryNeon(
-            `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary)
-             VALUES ($1, $2, false)
-             ON CONFLICT (athlete_id, team_season_id) DO NOTHING;`,
-            [athleteId, secId]
+
+          const managedPrimaryId =
+            primaryTeamId && editScope.teamIds.includes(primaryTeamId) ? primaryTeamId : null;
+          const managedSecondaryIds = secondaryTeamIds.filter((tid) =>
+            editScope.teamIds.includes(tid)
           );
+
+          if (managedPrimaryId) {
+            await queryNeon(
+              `UPDATE intranet_athlete_teams
+               SET is_primary = false
+               WHERE athlete_id = $1 AND team_season_id <> $2;`,
+              [athleteId, managedPrimaryId]
+            );
+            await queryNeon(
+              `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary, dorsal)
+               VALUES ($1, $2, true, $3)
+               ON CONFLICT (athlete_id, team_season_id) DO UPDATE SET is_primary = true, dorsal = EXCLUDED.dorsal;`,
+              [athleteId, managedPrimaryId, jerseyNumber]
+            );
+          }
+
+          for (const secId of managedSecondaryIds) {
+            await queryNeon(
+              `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary)
+               VALUES ($1, $2, false)
+               ON CONFLICT (athlete_id, team_season_id) DO UPDATE SET is_primary = false;`,
+              [athleteId, secId]
+            );
+          }
+
+          const remainingTeams = await queryNeon<{ team_season_id: string; is_primary: boolean }>(
+            `SELECT team_season_id, is_primary
+             FROM intranet_athlete_teams
+             WHERE athlete_id = $1
+             ORDER BY is_primary DESC, team_season_id ASC;`,
+            [athleteId]
+          );
+          if (remainingTeams.length > 0 && !remainingTeams.some((r) => r.is_primary)) {
+            await queryNeon(
+              `UPDATE intranet_athlete_teams
+               SET is_primary = true
+               WHERE athlete_id = $1 AND team_season_id = $2;`,
+              [athleteId, remainingTeams[0].team_season_id]
+            );
+          }
         }
       }
 
@@ -1111,534 +1054,6 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json({ success: true, athleteId });
-    }
-
-    // 5. Importar CSV de FeelSports
-    if (action === 'import_feelsports_csv') {
-      assertCan(ctx, 'athlete.import');
-
-      let parsedRows: FeelSportsImportRow[] = [];
-      if (Array.isArray(body.rows) && body.rows.length > 0) {
-        parsedRows = body.rows
-          .filter((r): r is Record<string, unknown> => Boolean(r && typeof r === 'object'))
-          .map((r) => ({
-            firstName: stripCrlf(String(r.firstName || '')).slice(0, 80),
-            lastName: stripCrlf(String(r.lastName || '')).slice(0, 100),
-            dni: typeof r.dni === 'string' ? stripCrlf(r.dni).slice(0, 24) : undefined,
-            birthDate: typeof r.birthDate === 'string' ? stripCrlf(r.birthDate).slice(0, 20) : undefined,
-            teamNameOrId: typeof r.teamNameOrId === 'string' ? stripCrlf(r.teamNameOrId).slice(0, 100) : undefined,
-            guardianName: typeof r.guardianName === 'string' ? stripCrlf(r.guardianName).slice(0, 120) : undefined,
-            guardianDni: typeof r.guardianDni === 'string' ? stripCrlf(r.guardianDni).slice(0, 24) : undefined,
-            email: typeof r.email === 'string' ? r.email.trim().toLowerCase().slice(0, 150) : undefined,
-            phone: typeof r.phone === 'string' ? stripCrlf(r.phone).slice(0, 40) : undefined,
-            feelsportsId: typeof r.feelsportsId === 'string' ? stripCrlf(r.feelsportsId).slice(0, 60) : undefined,
-          }))
-          .filter((r) => Boolean(r.firstName || r.lastName));
-      } else if (typeof body.csvText === 'string' && body.csvText.trim()) {
-        parsedRows = parseCsvRowsToFeelSports(body.csvText);
-      }
-
-      if (parsedRows.length === 0) {
-        return NextResponse.json(
-          { success: false, error: 'No se encontraron filas válidas para importar.' },
-          { status: 400 }
-        );
-      }
-      if (parsedRows.length > 1000) {
-        return NextResponse.json(
-          { success: false, error: 'Límite máximo de 1.000 filas por importación.' },
-          { status: 400 }
-        );
-      }
-
-      const result = await importFeelSportsRows(parsedRows, {
-        userId: ctx.user.id,
-        email: ctx.user.email,
-        ipAddress: clientIp,
-      });
-
-      return NextResponse.json({ success: true, result });
-    }
-
-    // 6. Resolver elemento en cola de deduplicación
-    if (action === 'resolve_dedup') {
-      assertCan(ctx, 'athlete.import');
-      const queueId = typeof body.queueId === 'string' ? body.queueId.trim() : '';
-      const resolution = typeof body.resolution === 'string' ? body.resolution.trim() : '';
-
-      if (!queueId || !['MERGE', 'CREATE_NEW', 'DISCARD'].includes(resolution)) {
-        return NextResponse.json(
-          { success: false, error: 'queueId o resolution no válido (MERGE | CREATE_NEW | DISCARD).' },
-          { status: 400 }
-        );
-      }
-
-      const qRows = await queryNeon<{
-        id: string;
-        raw_payload_json: unknown;
-        candidate_athlete_id: string | null;
-        status: string;
-      }>(
-        `SELECT id::text, raw_payload_json, candidate_athlete_id, status
-         FROM intranet_dedup_queue
-         WHERE id = $1::uuid AND status = 'PENDING'
-         LIMIT 1;`,
-        [queueId]
-      );
-
-      const qItem = qRows[0];
-      if (!qItem) {
-        return NextResponse.json(
-          { success: false, error: 'Elemento de cola no encontrado o ya resuelto.' },
-          { status: 404 }
-        );
-      }
-
-      const payload = (
-        typeof qItem.raw_payload_json === 'string'
-          ? JSON.parse(qItem.raw_payload_json)
-          : qItem.raw_payload_json
-      ) as FeelSportsImportRow;
-
-      let resolvedAthleteId: string | null = null;
-
-      if (resolution === 'MERGE') {
-        const targetId =
-          (typeof body.targetAthleteId === 'string' && body.targetAthleteId.trim()) ||
-          qItem.candidate_athlete_id;
-        if (!targetId) {
-          return NextResponse.json(
-            { success: false, error: 'No hay deportista candidato para fusionar.' },
-            { status: 400 }
-          );
-        }
-
-        const targetRows = await queryNeon<{ id: string; status: string }>(
-          `SELECT id, status FROM intranet_athletes WHERE id = $1 LIMIT 1;`,
-          [targetId]
-        );
-        if (!targetRows[0]) {
-          return NextResponse.json({ success: false, error: 'Deportista candidato no encontrado.' }, { status: 404 });
-        }
-        if (targetRows[0].status === 'SHREDDED') {
-          return NextResponse.json(
-            { success: false, error: 'El deportista candidato está suprimido (SHREDDED).' },
-            { status: 409 }
-          );
-        }
-
-        const cleanDni = payload.dni?.trim().toUpperCase().replace(/[\s-]/g, '') || '';
-        const blindIdx = cleanDni.length >= 6 ? generateBlindIndex(cleanDni) : null;
-        const dniEnc = cleanDni.length >= 6 ? encryptData(cleanDni, `${targetId}:dni_enc`) : null;
-        const dniLast5 = cleanDni.length >= 5 ? cleanDni.slice(-5) : null;
-        const birthParts = parseBirthDateParts(payload.birthDate);
-        const birthYear = birthParts?.year || null;
-        const bdIso = birthParts
-          ? `${String(birthParts.year).padStart(4, '0')}-${String(birthParts.month).padStart(2, '0')}-${String(birthParts.day).padStart(2, '0')}`
-          : null;
-        const bdEnc = bdIso ? encryptData(bdIso, `${targetId}:birth_date_enc`) : null;
-        const teamId = resolveTeamIdByNameOrId(payload.teamNameOrId);
-
-        await queryNeon(
-          `UPDATE intranet_athletes
-           SET birth_year = COALESCE(birth_year, $2),
-               birth_date_enc = COALESCE(birth_date_enc, $3),
-               dni_last5 = COALESCE(dni_last5, $4),
-               dni_enc = COALESCE(dni_enc, $5),
-               dni_blind_index = COALESCE(dni_blind_index, $6),
-               feelsports_id = COALESCE(feelsports_id, $7),
-               updated_at = NOW()
-           WHERE id = $1;`,
-          [targetId, birthYear, bdEnc, dniLast5, dniEnc, blindIdx, payload.feelsportsId || null]
-        );
-
-        if (teamId) {
-          await queryNeon(
-            `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary)
-             VALUES ($1, $2, false)
-             ON CONFLICT (athlete_id, team_season_id) DO NOTHING;`,
-            [targetId, teamId]
-          );
-        }
-
-        if (payload.guardianName || payload.email || payload.phone) {
-          const existingG = await queryNeon<{ id: string }>(
-            `SELECT id::text AS id FROM intranet_guardianships WHERE athlete_id = $1 LIMIT 1;`,
-            [targetId]
-          );
-          if (existingG.length === 0) {
-            const gDniEnc = payload.guardianDni
-              ? encryptData(payload.guardianDni.trim().toUpperCase(), `${targetId}:guardian_dni`)
-              : null;
-            const gDniIdx = payload.guardianDni
-              ? generateBlindIndex(payload.guardianDni.trim().toUpperCase())
-              : null;
-            await queryNeon(
-              `INSERT INTO intranet_guardianships (
-                 athlete_id, full_name, dni_enc, dni_blind_index, relationship, email, phone, is_primary_payer
-               ) VALUES ($1, $2, $3, $4, 'TUTOR_LEGAL', $5, $6, true);`,
-              [
-                targetId,
-                payload.guardianName?.trim() || `${payload.firstName} ${payload.lastName}`.trim(),
-                gDniEnc,
-                gDniIdx,
-                payload.email?.trim().toLowerCase() || null,
-                payload.phone?.trim() || null,
-              ]
-            );
-          }
-        }
-
-        await queryNeon(
-          `UPDATE intranet_dedup_queue
-           SET status = 'MERGED', resolved_by = $2::uuid, resolved_at = NOW()
-           WHERE id = $1::uuid;`,
-          [queueId, ctx.user.id]
-        );
-        resolvedAthleteId = targetId;
-      } else if (resolution === 'CREATE_NEW') {
-        const newId = `fs-${crypto.randomUUID().slice(0, 12)}`;
-        const first = (payload.firstName || '').trim() || 'Deportista';
-        const last = (payload.lastName || '').trim();
-        const fullNorm = normalizeNameKey(`${first} ${last}`);
-        const cleanDni = payload.dni?.trim().toUpperCase().replace(/[\s-]/g, '') || '';
-        const blindIdx = cleanDni.length >= 6 ? generateBlindIndex(cleanDni) : null;
-        const dniEnc = cleanDni.length >= 6 ? encryptData(cleanDni, `${newId}:dni_enc`) : null;
-        const dniLast5 = cleanDni.length >= 5 ? cleanDni.slice(-5) : null;
-        const birthParts = parseBirthDateParts(payload.birthDate);
-        const birthYear = birthParts?.year || null;
-        const bdIso = birthParts
-          ? `${String(birthParts.year).padStart(4, '0')}-${String(birthParts.month).padStart(2, '0')}-${String(birthParts.day).padStart(2, '0')}`
-          : null;
-        const bdEnc = bdIso ? encryptData(bdIso, `${newId}:birth_date_enc`) : null;
-        const teamId = resolveTeamIdByNameOrId(payload.teamNameOrId);
-        const teamMeta = teamId ? INITIAL_TEAM_SEASONS.find((t) => t.id === teamId) : null;
-
-        await queryNeon(
-          `INSERT INTO intranet_athletes (
-             id, first_name, last_name, full_name_normalized, birth_year, birth_date_enc,
-             dni_last5, dni_enc, dni_blind_index, gender, feelsports_id, status
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'IMPORTADO');`,
-          [
-            newId,
-            first,
-            last,
-            fullNorm,
-            birthYear,
-            bdEnc,
-            dniLast5,
-            dniEnc,
-            blindIdx,
-            teamMeta?.gender || 'FEMENINO',
-            payload.feelsportsId || null,
-          ]
-        );
-
-        if (teamId) {
-          await queryNeon(
-            `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary)
-             VALUES ($1, $2, true)
-             ON CONFLICT (athlete_id, team_season_id) DO NOTHING;`,
-            [newId, teamId]
-          );
-        }
-
-        if (payload.guardianName || payload.email || payload.phone) {
-          const gDniEnc = payload.guardianDni
-            ? encryptData(payload.guardianDni.trim().toUpperCase(), `${newId}:guardian_dni`)
-            : null;
-          const gDniIdx = payload.guardianDni
-            ? generateBlindIndex(payload.guardianDni.trim().toUpperCase())
-            : null;
-          await queryNeon(
-            `INSERT INTO intranet_guardianships (
-               athlete_id, full_name, dni_enc, dni_blind_index, relationship, email, phone, is_primary_payer
-             ) VALUES ($1, $2, $3, $4, 'TUTOR_LEGAL', $5, $6, true);`,
-            [
-              newId,
-              payload.guardianName?.trim() || `${first} ${last}`.trim(),
-              gDniEnc,
-              gDniIdx,
-              payload.email?.trim().toLowerCase() || null,
-              payload.phone?.trim() || null,
-            ]
-          );
-        }
-
-        await queryNeon(
-          `UPDATE intranet_dedup_queue
-           SET status = 'CREATED_NEW', resolved_by = $2::uuid, resolved_at = NOW()
-           WHERE id = $1::uuid;`,
-          [queueId, ctx.user.id]
-        );
-        resolvedAthleteId = newId;
-      } else {
-        await queryNeon(
-          `UPDATE intranet_dedup_queue
-           SET status = 'DISCARDED', resolved_by = $2::uuid, resolved_at = NOW()
-           WHERE id = $1::uuid;`,
-          [queueId, ctx.user.id]
-        );
-      }
-
-      await recordAuditLog({
-        actorUserId: ctx.user.id,
-        actorEmail: ctx.user.email,
-        action: 'RESOLVE_DEDUP_QUEUE',
-        module: 'Censo',
-        targetType: 'DEDUP_QUEUE',
-        targetId: queueId,
-        details: { resolution, resolvedAthleteId },
-        ipAddress: clientIp,
-      });
-
-      return NextResponse.json({ success: true, resolution, resolvedAthleteId });
-    }
-
-    // 7. Enviar invitaciones de onboarding (individual o masiva por equipo)
-    if (action === 'send_invitations') {
-      assertCan(ctx, 'invitation.send');
-      const invScope = getAuthorizedTeamScope(ctx, 'invitation.send');
-
-      const athleteId = typeof body.athleteId === 'string' ? body.athleteId.trim() : null;
-      const teamSeasonId = typeof body.teamSeasonId === 'string' ? body.teamSeasonId.trim() : null;
-      const sendEmail = body.sendEmail !== false;
-      const requestedTargetType =
-        body.targetType === 'GUARDIAN' || body.targetType === 'ATHLETE' ? body.targetType : 'AUTO';
-      const emailOverride =
-        typeof body.email === 'string' && body.email.trim() ? body.email.trim().toLowerCase() : null;
-
-      if (!athleteId && !teamSeasonId) {
-        return NextResponse.json(
-          { success: false, error: 'Indica athleteId o teamSeasonId para enviar invitaciones.' },
-          { status: 400 }
-        );
-      }
-
-      if (teamSeasonId && !invScope.isGlobal && !invScope.teamIds.includes(teamSeasonId)) {
-        throw new IntranetForbiddenError('No tienes permiso para enviar invitaciones en este equipo.');
-      }
-
-      if (emailOverride && !isStrictEmail(emailOverride)) {
-        return NextResponse.json(
-          { success: false, error: 'El correo electrónico indicado no es válido.' },
-          { status: 400 }
-        );
-      }
-
-      type TargetAthleteRow = {
-        id: string;
-        first_name: string;
-        last_name: string;
-        birth_year: number | null;
-        birth_date_enc: string | null;
-        user_id: string | null;
-        status: AthleteStatus;
-      };
-
-      let targetAthletes: TargetAthleteRow[] = [];
-      if (athleteId) {
-        targetAthletes = await queryNeon<TargetAthleteRow>(
-          `SELECT id, first_name, last_name, birth_year, birth_date_enc, user_id::text, status
-           FROM intranet_athletes WHERE id = $1 LIMIT 1;`,
-          [athleteId]
-        );
-        if (targetAthletes.length === 0) {
-          return NextResponse.json({ success: false, error: 'Deportista no encontrado.' }, { status: 404 });
-        }
-      } else if (teamSeasonId) {
-        targetAthletes = await queryNeon<TargetAthleteRow>(
-          `SELECT a.id, a.first_name, a.last_name, a.birth_year, a.birth_date_enc, a.user_id::text, a.status
-           FROM intranet_athletes a
-           INNER JOIN intranet_athlete_teams at ON at.athlete_id = a.id
-           WHERE at.team_season_id = $1
-             AND a.status NOT IN ('BAJA', 'SHREDDED')
-             AND a.is_demo = false
-           ORDER BY a.last_name ASC, a.first_name ASC;`,
-          [teamSeasonId]
-        );
-      }
-
-      const targetIds = targetAthletes.map((a) => a.id);
-      const [allTeamRels, allGuardians] = targetIds.length
-        ? await Promise.all([
-            queryNeon<{ athlete_id: string; team_season_id: string }>(
-              `SELECT athlete_id, team_season_id FROM intranet_athlete_teams WHERE athlete_id = ANY($1::text[]);`,
-              [targetIds]
-            ),
-            queryNeon<{
-              athlete_id: string;
-              guardian_user_id: string | null;
-              full_name: string;
-              email: string | null;
-            }>(
-              `SELECT athlete_id, guardian_user_id::text, full_name, email
-               FROM intranet_guardianships
-               WHERE athlete_id = ANY($1::text[])
-               ORDER BY is_primary_payer DESC, created_at ASC;`,
-              [targetIds]
-            ),
-          ])
-        : [[], []];
-
-      const teamsMap = new Map<string, string[]>();
-      for (const r of allTeamRels) {
-        const list = teamsMap.get(r.athlete_id) || [];
-        list.push(r.team_season_id);
-        teamsMap.set(r.athlete_id, list);
-      }
-
-      const guardianMap = new Map<string, (typeof allGuardians)[0]>();
-      for (const g of allGuardians) {
-        if (!guardianMap.has(g.athlete_id)) guardianMap.set(g.athlete_id, g);
-      }
-
-      const onlyPending = Boolean(teamSeasonId && body.onlyPending !== false);
-
-      const results: Array<{
-        athleteId: string;
-        athleteName: string;
-        targetType: 'GUARDIAN' | 'ATHLETE';
-        email: string;
-        inviteUrl: string;
-        emailSent: boolean;
-        emailError?: string;
-      }> = [];
-      const skipped: Array<{ athleteId: string; athleteName: string; reason: string }> = [];
-
-      for (const ath of targetAthletes) {
-        const fullName = `${ath.first_name} ${ath.last_name}`.trim();
-        const athTeams = teamsMap.get(ath.id) || [];
-
-        if (athleteId && !invScope.isGlobal) {
-          const allowed = athTeams.some((tid) => invScope.teamIds.includes(tid));
-          if (!allowed) {
-            throw new IntranetForbiddenError('No tienes permiso para invitar a este deportista.');
-          }
-        }
-
-        if (ath.status === 'SHREDDED') {
-          if (athleteId) {
-            return NextResponse.json(
-              { success: false, error: 'Ficha suprimida (SHREDDED).' },
-              { status: 409 }
-            );
-          }
-          skipped.push({ athleteId: ath.id, athleteName: fullName, reason: 'Ficha suprimida' });
-          continue;
-        }
-        if (ath.status === 'BAJA') {
-          if (athleteId) {
-            return NextResponse.json(
-              { success: false, error: 'El deportista está dado de baja.' },
-              { status: 400 }
-            );
-          }
-          skipped.push({ athleteId: ath.id, athleteName: fullName, reason: 'Deportista de baja' });
-          continue;
-        }
-
-        const guardian = guardianMap.get(ath.id) || null;
-        if (onlyPending && (ath.user_id || guardian?.guardian_user_id)) {
-          skipped.push({ athleteId: ath.id, athleteName: fullName, reason: 'Ya dispone de cuenta activada' });
-          continue;
-        }
-
-        const bdPlain = safeDecrypt(ath.birth_date_enc, [
-          `${ath.id}:birth_date_enc`,
-          `${ath.id}:birth_date_encrypted`,
-        ]);
-        const ageEval = computeAgeInMadrid(bdPlain, ath.birth_year);
-
-        let finalTargetType: 'GUARDIAN' | 'ATHLETE';
-        if (requestedTargetType === 'ATHLETE') {
-          if (ageEval.isMinor && !ageEval.isMinor14To17) {
-            if (athleteId) {
-              return NextResponse.json(
-                {
-                  success: false,
-                  error: 'Menores de 14 años deben activar cuenta mediante su tutor legal.',
-                },
-                { status: 400 }
-              );
-            }
-            finalTargetType = 'GUARDIAN';
-          } else {
-            finalTargetType = 'ATHLETE';
-          }
-        } else if (requestedTargetType === 'GUARDIAN') {
-          finalTargetType = 'GUARDIAN';
-        } else {
-          // AUTO: <18 -> GUARDIAN, >=18 -> ATHLETE
-          finalTargetType = ageEval.isMinor ? 'GUARDIAN' : 'ATHLETE';
-        }
-
-        const roleCodes: RoleCode[] = finalTargetType === 'GUARDIAN' ? ['TUTOR'] : ['JUGADOR'];
-        const targetEmail = (emailOverride || guardian?.email || '').trim().toLowerCase();
-
-        if (!targetEmail || !isStrictEmail(targetEmail)) {
-          if (athleteId) {
-            return NextResponse.json(
-              {
-                success: false,
-                error: 'No hay un correo electrónico válido registrado para enviar la invitación.',
-              },
-              { status: 400 }
-            );
-          }
-          skipped.push({ athleteId: ath.id, athleteName: fullName, reason: 'Sin correo electrónico válido' });
-          continue;
-        }
-
-        const inv = await createIntranetInvitation({
-          email: targetEmail,
-          targetType: finalTargetType,
-          roleCodes,
-          teamSeasonIds: athTeams,
-          athleteId: ath.id,
-          metadata: {
-            athleteName: fullName,
-            guardianName: guardian?.full_name || null,
-          },
-          invitedByUserId: ctx.user.id,
-          expiresDays: 14,
-          sendEmail,
-          recipientName:
-            finalTargetType === 'GUARDIAN' ? guardian?.full_name || fullName : fullName,
-        });
-
-        results.push({
-          athleteId: ath.id,
-          athleteName: fullName,
-          targetType: finalTargetType,
-          email: targetEmail,
-          inviteUrl: inv.inviteUrl,
-          emailSent: inv.emailSent,
-          emailError: inv.emailError,
-        });
-      }
-
-      await recordAuditLog({
-        actorUserId: ctx.user.id,
-        actorEmail: ctx.user.email,
-        action: athleteId ? 'SEND_CENSUS_INVITATION' : 'SEND_BATCH_CENSUS_INVITATIONS',
-        module: 'Censo',
-        targetType: athleteId ? 'ATHLETE' : 'TEAM',
-        targetId: athleteId || teamSeasonId,
-        details: {
-          generated: results.length,
-          emailed: results.filter((r) => r.emailSent).length,
-          skipped: skipped.length,
-          sendEmail,
-        },
-        ipAddress: clientIp,
-      });
-
-      return NextResponse.json({
-        success: true,
-        results,
-        skipped,
-      });
     }
 
     return NextResponse.json({ success: false, error: `Acción no soportada: ${action}` }, { status: 400 });

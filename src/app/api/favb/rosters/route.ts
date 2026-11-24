@@ -1,13 +1,11 @@
-import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { syncFavbRosters } from '@/lib/favb-scraper';
 import { FAVB_PLAYERS, resolveCanonicalPlayerId } from '@/lib/favb-data';
+import { formatPlayerNameWithInitials } from '@/lib/club-info';
 import { resolveCensusBirthDate } from '@/lib/consent-store';
 import { queryNeon, NeonUnavailableError } from '@/lib/streaming-store';
 import { checkNeonRateLimit, getClientIp, verifyAdminSessionToken } from '@/lib/rate-limiter';
-import { computeAgeInMadrid } from '@/lib/date-utils';
-import { getOtpPepper } from '@/lib/encryption';
 import type { Player } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -118,12 +116,10 @@ export async function GET(req: NextRequest) {
     // Índices canónicos para cruzar censo y consentimientos
     const canonicalInfoById = new Map<
       string,
-      { isMinor: boolean; isDemo: boolean }
+      { isDemo: boolean }
     >();
     const canonicalIdByName = new Map<string, string>();
 
-    // Semilla canónica de edades conocidas del catálogo (para registros sin birth_date aún en censo)
-    const staticById = new Map(FAVB_PLAYERS.map((p) => [p.id, p]));
     for (const p of FAVB_PLAYERS) {
       const nKey = normalizeNameKey(`${p.firstName} ${p.lastName}`);
       if (nKey) canonicalIdByName.set(nKey, p.id);
@@ -131,21 +127,16 @@ export async function GET(req: NextRequest) {
 
     for (const row of censusRows) {
       const canonicalId = resolveCanonicalPlayerId(row.canonical_player_id || row.player_id);
-      const birthDate = resolveBirthDateFromRow(row, canonicalId);
-      const staticPlayer = staticById.get(canonicalId);
-      const birthYear = row.birth_year ?? (staticPlayer?.birthYear && staticPlayer.birthYear > 0 ? staticPlayer.birthYear : null);
-      const ageEval = computeAgeInMadrid(birthDate, birthYear);
+      resolveBirthDateFromRow(row, canonicalId);
 
       const prev = canonicalInfoById.get(canonicalId);
-      // Criterio pro-menor si existieran filas duplicadas aún no fusionadas en Neon
-      const isMinor = prev ? prev.isMinor || ageEval.isMinor : ageEval.isMinor;
       const isDemo =
         Boolean(row.is_demo) ||
         row.player_id.startsWith('demo-') ||
         row.player_id === 'p-test-prueba' ||
         Boolean(prev?.isDemo);
 
-      canonicalInfoById.set(canonicalId, { isMinor, isDemo });
+      canonicalInfoById.set(canonicalId, { isDemo });
 
       const nKey = normalizeNameKey(row.player_name);
       if (nKey && !canonicalIdByName.has(nKey)) {
@@ -214,19 +205,6 @@ export async function GET(req: NextRequest) {
         consentByCanonicalId.get(p.id) ||
         consentByName.get(nameKey);
 
-      const staticPlayer = staticById.get(canonicalId);
-      const fallbackMinor =
-        staticPlayer && staticPlayer.birthYear > 0
-          ? computeAgeInMadrid(null, staticPlayer.birthYear).isMinor
-          : true;
-
-      const isMinor =
-        consent?.is_minor === true
-          ? true
-          : censusInfo
-          ? censusInfo.isMinor
-          : fallbackMinor;
-
       const hasExplicitDenialOrRevocation = Boolean(
         consent && (consent.status !== 'ACTIVE' || consent.consent_social_media === false)
       );
@@ -234,31 +212,19 @@ export async function GET(req: NextRequest) {
         consent && consent.status === 'ACTIVE' && consent.consent_social_media === true
       );
 
-      // Regla unánime: Default-Deny en menores sin consentimiento ACTIVE + Opt-Out inmediato en todos
-      const canShowName = hasExplicitDenialOrRevocation
-        ? false
-        : isMinor
-        ? hasActiveSocialConsent
-        : true;
-
       const canShowPhoto = hasActiveSocialConsent && !hasExplicitDenialOrRevocation;
 
       const { birthYear: _by, heightCm: _hc, ...rest } = p;
-      const dorsalLabel = p.number ? `#${p.number}` : '#?';
-      const opaqueAnonId = `anon-${crypto
-        .createHmac('sha256', getOtpPepper())
-        .update(canonicalId)
-        .digest('hex')
-        .slice(0, 12)}`;
+      const formattedName = formatPlayerNameWithInitials(p.firstName, p.lastName);
 
       sanitizedPlayers.push({
         ...rest,
-        id: canShowName ? canonicalId : opaqueAnonId,
-        firstName: canShowName ? p.firstName : 'Deportista',
-        lastName: canShowName ? p.lastName : dorsalLabel,
-        displayName: canShowName ? fullName : `Deportista ${dorsalLabel}`,
+        id: canonicalId,
+        firstName: formattedName.firstName || p.firstName,
+        lastName: formattedName.lastInitials,
+        displayName: formattedName.displayName || `${p.firstName} ${p.lastName}`.trim(),
         photoUrl: canShowPhoto ? p.photoUrl || '/images/player-placeholder.svg' : '/images/player-placeholder.svg',
-        isAnonymized: !canShowName,
+        isAnonymized: false,
       });
     }
 

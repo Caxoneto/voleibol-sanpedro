@@ -17,6 +17,7 @@ Lee los documentos en este orden según tu tarea:
 | [`doc/02-BASE-DE-DATOS-Y-CRIPTOGRAFIA.md`](02-BASE-DE-DATOS-Y-CRIPTOGRAFIA.md) | Tablas en Neon PostgreSQL, trigger WORM, cifrado AES-256-GCM + AAD, crypto-shredding Art. 17 y hashes HMAC (`v1`/`v2`/`v3`). |
 | [`doc/03-AUTORIZACIONES-NORMATIVA-Y-FLUJOS.md`](03-AUTORIZACIONES-NORMATIVA-Y-FLUJOS.md) | Marco legal (RGPD, LOPDGDD, LO 1/1982, Orden 18/11/2024 Junta de Andalucía), tramos de edad, OTP por propósito, `?directToken=`, PDF 1 página y jugadores demo. |
 | [`doc/04-VARIABLES-DESPLIEGUE-Y-QA.md`](04-VARIABLES-DESPLIEGUE-Y-QA.md) | Variables de entorno (`process.env`), reglas de Netlify/UTC, cookies LSSI-CE (`v2`) y checklist obligatorio pre-despliegue. |
+| [`doc/05-ESPECIFICACIONES-Y-CONTROL-INTRANET.md`](05-ESPECIFICACIONES-Y-CONTROL-INTRANET.md) | Documento de control con todas las especificaciones funcionales/UX de la intranet, criterios de aceptación y mapa de archivos. |
 | [`doc/CHANGELOG.md`](CHANGELOG.md) | Historial vivo de cambios y decisiones consensuadas para no reintroducir regresiones. |
 
 > Nota: existe también un documento heredado en [`docs/social-followers-checkpoint.md`](../docs/social-followers-checkpoint.md). La documentación viva y oficial del proyecto reside en `doc/`.

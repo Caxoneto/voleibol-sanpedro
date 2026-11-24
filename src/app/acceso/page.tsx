@@ -50,7 +50,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   error_interno: 'No se pudo completar el inicio de sesión. Inténtalo de nuevo.',
   proveedor_no_soportado: 'El proveedor de acceso seleccionado no está soportado.',
   oauth_no_configurado_google: 'El acceso con Google no está configurado en el servidor.',
-  oauth_no_configurado_microsoft: 'El acceso con Microsoft no está configurado en el servidor.',
+  oauth_no_configurado_microsoft: 'El proveedor OAuth seleccionado no está disponible.',
   oauth_estado_invalido: 'La sesión de verificación OAuth caducó. Inténtalo de nuevo.',
   oauth_csrf: 'Error de validación de seguridad en el acceso OAuth.',
   oauth_token_fallido: 'No se pudo validar el token con el proveedor externo.',
@@ -85,17 +85,6 @@ function GoogleMark() {
   );
 }
 
-function MicrosoftMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" aria-hidden="true">
-      <rect x="2" y="2" width="9.2" height="9.2" fill="#F25022" />
-      <rect x="12.8" y="2" width="9.2" height="9.2" fill="#7FBA00" />
-      <rect x="2" y="12.8" width="9.2" height="9.2" fill="#00A4EF" />
-      <rect x="12.8" y="12.8" width="9.2" height="9.2" fill="#FFB900" />
-    </svg>
-  );
-}
-
 const magicConsumeInFlight = new Map<
   string,
   Promise<{ ok: boolean; redirectTo?: string; error?: string }>
@@ -114,7 +103,7 @@ function AccesoPageContent() {
 
   const [loadingMe, setLoadingMe] = useState(true);
   const [presidentExists, setPresidentExists] = useState(true);
-  const [oauthConfig, setOauthConfig] = useState({ google: false, microsoft: false });
+  const [oauthConfig, setOauthConfig] = useState({ google: false });
   const [session, setSession] = useState<IntranetMeSession | null>(null);
   const [globalError, setGlobalError] = useState<string>(
     errorParam ? ERROR_MESSAGES[errorParam] || 'Error de autenticación.' : ''
@@ -179,7 +168,6 @@ function AccesoPageContent() {
     setPresidentExists(Boolean(data.presidentExists));
     setOauthConfig({
       google: Boolean(data.oauth?.google),
-      microsoft: Boolean(data.oauth?.microsoft),
     });
     setSession(data.session || null);
     return data;
@@ -548,13 +536,8 @@ function AccesoPageContent() {
     );
   }
 
-  const canAccessConsents =
-    session?.isPresident ||
-    session?.effectivePermissions.includes('consent.manage') ||
-    session?.effectivePermissions.includes('consent.view_status');
-
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 py-6 sm:py-10 overflow-x-hidden">
+    <div className="w-full max-w-2xl mx-auto px-4 py-6 sm:py-10 overflow-x-clip">
       {/* Cabecera */}
       <div className="mb-6 text-center sm:text-left">
         <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-primary-container/20 border border-primary-container/40 text-primary text-[10px] font-label-sm uppercase tracking-widest font-bold mb-2">
@@ -1138,7 +1121,7 @@ function AccesoPageContent() {
                 <button
                   type="submit"
                   disabled={invBusy}
-                  className="w-full py-3 px-4 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e] cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 px-4 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
                 >
                   {invBusy ? (
                     <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -1152,32 +1135,19 @@ function AccesoPageContent() {
               {/* OAuth rápido manteniendo ?invite= */}
               <div className="pt-4 border-t border-white/10 space-y-2.5">
                 <p className="text-[11px] uppercase tracking-wider font-bold text-tertiary text-center">
-                  O activa con tu cuenta vinculada ({inviteInfo.email})
+                  O activa con tu cuenta de Google vinculada ({inviteInfo.email})
                 </p>
-                {oauthConfig.google || oauthConfig.microsoft ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {oauthConfig.google && (
-                      <a
-                        href={`/api/intranet/auth/oauth/google?invite=${encodeURIComponent(inviteToken)}`}
-                        className="flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-bold text-on-surface transition-colors"
-                      >
-                        <GoogleMark />
-                        <span>Activar con Google</span>
-                      </a>
-                    )}
-                    {oauthConfig.microsoft && (
-                      <a
-                        href={`/api/intranet/auth/oauth/microsoft?invite=${encodeURIComponent(inviteToken)}`}
-                        className="flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-bold text-on-surface transition-colors"
-                      >
-                        <MicrosoftMark />
-                        <span>Activar con Microsoft</span>
-                      </a>
-                    )}
-                  </div>
+                {oauthConfig.google ? (
+                  <a
+                    href={`/api/intranet/auth/oauth/google?invite=${encodeURIComponent(inviteToken)}`}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-bold text-on-surface transition-colors active:translate-x-[1px] active:translate-y-[1px]"
+                  >
+                    <GoogleMark />
+                    <span>Activar con Google</span>
+                  </a>
                 ) : (
                   <p className="text-[11px] text-tertiary text-center">
-                    Acceso rápido con Google / Microsoft disponible cuando se configuren las credenciales OAuth en el servidor.
+                    El acceso rápido con Google estará disponible cuando se configuren las credenciales OAuth en el servidor.
                   </p>
                 )}
               </div>
@@ -1225,16 +1195,6 @@ function AccesoPageContent() {
                 className="flex items-center justify-between gap-2 px-4 py-3.5 bg-surface-container-high hover:border-primary border border-white/15 text-on-surface font-label-md text-xs uppercase tracking-wider font-bold"
               >
                 <span>Portal Familias y Jugadores (/mi-club)</span>
-                <ArrowRight className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-              </Link>
-            )}
-
-            {canAccessConsents && (
-              <Link
-                href="/admin/consentimientos"
-                className="flex items-center justify-between gap-2 px-4 py-3 bg-surface-container-low hover:border-primary border border-white/10 text-on-surface font-label-md text-xs uppercase tracking-wider font-bold"
-              >
-                <span>Autorizaciones LOPD</span>
                 <ArrowRight className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
               </Link>
             )}
@@ -1327,7 +1287,7 @@ function AccesoPageContent() {
                 <button
                   type="submit"
                   disabled={loginBusy}
-                  className="w-full py-3 px-4 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e] transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 px-4 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e] transition-colors active:translate-x-[1px] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
                 >
                   {loginBusy ? (
                     <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -1361,7 +1321,7 @@ function AccesoPageContent() {
                 <button
                   type="submit"
                   disabled={magicBusy}
-                  className="w-full py-3 px-4 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e] transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 px-4 bg-primary-container hover:bg-cta-hover text-white font-label-md text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e] transition-colors active:translate-x-[1px] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
                 >
                   {magicBusy ? (
                     <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -1373,46 +1333,23 @@ function AccesoPageContent() {
               </form>
             )}
 
-            {/* Acceso OAuth Google y Microsoft */}
+            {/* Acceso OAuth Google */}
             <div className="pt-5 border-t border-white/10 space-y-3">
               <p className="text-[11px] uppercase tracking-widest font-bold text-tertiary text-center">
                 Acceso rápido con cuenta vinculada
               </p>
 
-              {oauthConfig.google || oauthConfig.microsoft ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {oauthConfig.google ? (
-                    <a
-                      href="/api/intranet/auth/oauth/google"
-                      className="flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-bold text-on-surface transition-colors"
-                    >
-                      <GoogleMark />
-                      <span>Google</span>
-                    </a>
-                  ) : (
-                    <div className="flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-low border border-white/5 text-[11px] text-tertiary/80 text-center">
-                      <span>Google OAuth no configurado</span>
-                    </div>
-                  )}
-
-                  {oauthConfig.microsoft ? (
-                    <a
-                      href="/api/intranet/auth/oauth/microsoft"
-                      className="flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-bold text-on-surface transition-colors"
-                    >
-                      <MicrosoftMark />
-                      <span>Microsoft / Outlook</span>
-                    </a>
-                  ) : (
-                    <div className="flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-low border border-white/5 text-[11px] text-tertiary/80 text-center">
-                      <span>Microsoft OAuth no configurado</span>
-                    </div>
-                  )}
-                </div>
+              {oauthConfig.google ? (
+                <a
+                  href="/api/intranet/auth/oauth/google"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-bold text-on-surface transition-colors active:translate-x-[1px] active:translate-y-[1px]"
+                >
+                  <GoogleMark />
+                  <span>Continuar con Google</span>
+                </a>
               ) : (
                 <div className="bg-surface-container-low border border-white/10 px-3.5 py-2.5 text-[11px] text-tertiary text-center leading-relaxed">
-                  El acceso con <strong className="text-on-surface">Google</strong> y{' '}
-                  <strong className="text-on-surface">Microsoft (Hotmail/Outlook)</strong> estará disponible al configurar las variables OAuth en el servidor.
+                  El acceso con <strong className="text-on-surface">Google</strong> estará disponible al configurar las variables OAuth en el servidor.
                 </div>
               )}
             </div>
@@ -1431,17 +1368,6 @@ function AccesoPageContent() {
           </div>
         </section>
       )}
-
-      {/* Enlace discreto al acceso legado de Secretariado */}
-      <div className="mt-6 text-center">
-        <Link
-          href="/admin/consentimientos"
-          className="inline-flex items-center gap-1.5 text-xs text-tertiary/80 hover:text-primary transition-colors"
-        >
-          <span>Acceso legado Secretariado (Autorizaciones)</span>
-          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-        </Link>
-      </div>
     </div>
   );
 }

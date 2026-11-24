@@ -21,7 +21,7 @@
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
     Cross-Origin-Resource-Policy = "same-origin"
     X-Permitted-Cross-Domain-Policies = "none"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net https://ligaafade.es; connect-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net https://ligaafade.es https://www.ligaafade.es; connect-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
 
 [[headers]]
   for = "/admin/*"
@@ -32,7 +32,58 @@
     X-Robots-Tag = "noindex, nofollow"
 
 [[headers]]
-  for = "/autorizaciones/*"
+  for = "/autorizaciones*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"
+
+[[headers]]
+  for = "/inscripcion*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"
+
+[[headers]]
+  for = "/acceso*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"
+
+[[headers]]
+  for = "/club"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/club/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/mi-club"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/mi-club/*"
   [headers.values]
     Cache-Control = "no-store, no-cache, must-revalidate, private"
     Pragma = "no-cache"
@@ -49,6 +100,14 @@
 
 [[headers]]
   for = "/api/consent/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, private"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/api/intranet/*"
   [headers.values]
     Cache-Control = "no-store, no-cache, must-revalidate, private"
     Pragma = "no-cache"

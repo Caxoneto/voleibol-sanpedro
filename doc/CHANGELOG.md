@@ -4,6 +4,24 @@ Este registro documenta el estado consolidado del proyecto y los cambios recient
 
 ---
 
+## 2026-11-24 — Remediación Integral: Seguridad (F-01 a F-10), Web/SEO/Rendimiento y Sistema de Diseño Impeccable
+
+* **Seguridad de Autenticación y OAuth (`src/app/acceso/page.tsx`, `api/intranet/auth/*`)**:
+  * Desactivación definitiva y bloqueo de Microsoft OAuth multi-tenant (`tenant common`), dejando **Google OAuth** como único proveedor externo activo junto a correo/usuario + contraseña y enlace mágico SMTP.
+  * Helper compartido `isMemberBlockedByPendingApproval` aplicado uniformemente en login, enlace mágico y callback de Google OAuth; protección anti-DoS en login y endurecimiento de endpoints cron (`check-reminders`, `payments/send-reminders`) rechazando con `401` cualquier `x-cron-secret` inválido sin fallback a sesión.
+* **Cifrado RGPD y Solicitudes de Auto-Inscripción (`src/app/api/intranet/registration/*`, `src/lib/consent-store.ts`)**:
+  * Añadida la columna `pending_payload_enc` en `intranet_registration_requests` (cifrado AES-256-GCM con AAD `reg_pending:<athleteId>`) para aislar los datos propuestos de auto-registro hasta su aprobación administrativa (`approve_registration`) sin corromper censo ni consentimientos activos.
+  * Generación de tokens de enlaces de categoría con `>= 128` bits (`crypto.randomBytes(16).toString('base64url')`).
+  * Endurecimiento de `shredPlayerCryptoKey()` (Art. 17 RGPD) para purgar y anonimizar atómicamente también `intranet_athletes` (`status = 'SHREDDED'`), `intranet_sessions`, `intranet_guardianships`, `intranet_athlete_teams`, `intranet_registration_requests` y PII de pagador en `intranet_enrollments` conservando importes contables y respetando las bitácoras WORM.
+* **SEO, Rendimiento y Optimizaciones de Cliente (`src/app/noticias/[slug]`, `src/lib/public-content.ts`, `layout.tsx`, `sitemap.ts`, `robots.ts`, `next.config.mjs`)**:
+  * Conversión de `/noticias/[slug]` a **Server Component** (`generateStaticParams`, `generateMetadata`, JSON-LD `NewsArticle`, `lucide-react` a través de `CopyLinkButton`).
+  * Nuevo módulo seguro para cliente `src/lib/public-content.ts` (editorial, patrocinadores, cánticos y wallpapers sin arrastrar dependencias de servidor).
+  * Nuevos `layout.tsx` de metadatos SEO (`canonical` + `openGraph`) en las 8 rutas públicas cliente y `robots: { index: false, follow: false }` en rutas privadas y de autenticación; sitemap ampliado con `/proteccion-menor`, `robots.ts` y `netlify.toml` con directivas `Disallow` / `X-Robots-Tag: noindex, nofollow` para `/club/`, `/mi-club/`, `/acceso`, `/inscripcion/` y `/api/intranet/*`, `Referrer-Policy: no-referrer` en `/autorizaciones`, `/inscripcion`, `/acceso`, y dominio `https://www.ligaafade.es` añadido a CSP y `remotePatterns`.
+  * Optimización de imágenes en origen con `sharp` manteniendo `images: { unoptimized: true }` (0 créditos CDN Netlify).
+* **Accesibilidad Impeccable y Componentes UI (`IntranetModal`, `CategoryTeamSelectorBar`, formularios)**:
+  * Focus trap, retorno de foco y geometría brutalista `0px` (`shadow-brutal-dark`) en modales y paneles clave.
+  * Asociación estricta `<label htmlFor>` en formularios de `/mi-club*` y `/club/*`, prevención de modificación de mayoría de edad por menores y aislamiento de alcance `EQUIPO`.
+
 ## 2026-11-19 — Soporte de inicio de sesión por nombre de usuario en `/acceso`
 
 * **Cambio**: `/acceso` (`#login-email` como `type="text"`) y `POST /api/intranet/auth/login` permiten ahora iniciar sesión tanto mediante correo electrónico como mediante nombre de usuario/alias local registrado en `intranet_users` manteniendo el rate limiting por IP y por identificador.

@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { AlertCircle, Radio, Square, X } from 'lucide-react';
-import { StreamingStatus, MatchRecordingsMap, useStreaming, isValidYouTubeUrl } from '@/lib/use-streaming';
+import {
+  StreamingStatus,
+  MatchRecordingsMap,
+  useStreaming,
+  isValidYouTubeUrl,
+} from '@/lib/use-streaming';
 
 interface StreamingModalProps {
   isOpen: boolean;
@@ -11,6 +16,7 @@ interface StreamingModalProps {
   currentUrl: string | null;
   matchId?: string | null;
   matchTitle?: string | null;
+  defaultMatchId?: string | null;
   onSuccess: (newStatus: StreamingStatus, recordings?: MatchRecordingsMap) => void;
 }
 
@@ -21,12 +27,12 @@ export default function StreamingModal({
   currentUrl,
   matchId: initialMatchId,
   matchTitle: initialMatchTitle,
+  defaultMatchId,
   onSuccess,
 }: StreamingModalProps) {
-  const { todayMatches, status: liveStatus } = useStreaming();
+  const { todayMatches, upcomingMatches, status: liveStatus } = useStreaming();
 
   const [url, setUrl] = useState('');
-  const [password, setPassword] = useState('');
   const [selectedMatchId, setSelectedMatchId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,13 +45,13 @@ export default function StreamingModal({
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Reiniciar campos ÚNICAMENTE cuando se abre el modal (evita perder inputs si todayMatches refresca en background)
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) {
       lastFocusedRef.current = document.activeElement as HTMLElement | null;
       setUrl('');
-      setPassword('');
-      setSelectedMatchId(todayMatches.length > 0 ? todayMatches[0].id : 'general');
+      setSelectedMatchId(
+        defaultMatchId || (todayMatches.length > 0 ? todayMatches[0].id : 'general')
+      );
       setError(null);
       setIsSubmitting(false);
     }
@@ -56,16 +62,26 @@ export default function StreamingModal({
       }
     }
     wasOpenRef.current = isOpen;
-  }, [isOpen, todayMatches]);
+  }, [isOpen, todayMatches, defaultMatchId]);
 
-  // Si todayMatches llega tras abrir sin selección previa, preseleccionar el primero sin borrar inputs
   useEffect(() => {
-    if (isOpen && (!selectedMatchId || selectedMatchId === 'general') && todayMatches.length > 0 && !url && !password) {
+    if (isOpen && defaultMatchId) {
+      setSelectedMatchId(defaultMatchId);
+    }
+  }, [isOpen, defaultMatchId]);
+
+  useEffect(() => {
+    if (
+      isOpen &&
+      !defaultMatchId &&
+      (!selectedMatchId || selectedMatchId === 'general') &&
+      todayMatches.length > 0 &&
+      !url
+    ) {
       setSelectedMatchId(todayMatches[0].id);
     }
-  }, [isOpen, todayMatches, selectedMatchId, url, password]);
+  }, [isOpen, todayMatches, selectedMatchId, url, defaultMatchId]);
 
-  // Gestión accesible de Escape + focus trap (solo enfoca en apertura real)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -101,7 +117,10 @@ export default function StreamingModal({
             e.preventDefault();
             last.focus();
           }
-        } else if (document.activeElement === last || !modalRef.current.contains(document.activeElement)) {
+        } else if (
+          document.activeElement === last ||
+          !modalRef.current.contains(document.activeElement)
+        ) {
           e.preventDefault();
           first.focus();
         }
@@ -119,34 +138,30 @@ export default function StreamingModal({
     liveStatus.matchTitle ||
     (initialMatchId || liveStatus.matchId ? `Partido ${initialMatchId || liveStatus.matchId}` : null);
 
-  // Iniciar nueva retransmisión
+  const allSelectableMatches = [...todayMatches, ...upcomingMatches];
+
   const handleStartStream = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!url.trim()) {
-      setError('Por favor, introduce la dirección del streaming de YouTube.');
-      return;
-    }
-
-    if (!password) {
-      setError('Por favor, introduce la contraseña de autorización.');
-      return;
-    }
-
     const trimmedUrl = url.trim();
+    if (!trimmedUrl) {
+      setError('Introduce la URL del streaming de YouTube.');
+      return;
+    }
+
     if (!isValidYouTubeUrl(trimmedUrl)) {
       setError(
-        'La dirección debe ser un enlace válido de YouTube (ej. https://www.youtube.com/watch?v=... o https://youtu.be/...)'
+        'La dirección debe ser un enlace válido de YouTube (ej. https://www.youtube.com/watch?v=... o https://youtu.be/...).'
       );
       return;
     }
 
     let chosenTitle: string | null = null;
     if (selectedMatchId && selectedMatchId !== 'general') {
-      const matchFound = todayMatches.find((m) => m.id === selectedMatchId);
+      const matchFound = allSelectableMatches.find((m) => m.id === selectedMatchId);
       if (matchFound) {
-        chosenTitle = matchFound.categoryName;
+        chosenTitle = `${matchFound.categoryName}: ${matchFound.homeTeam} vs ${matchFound.awayTeam}`;
       }
     }
 
@@ -158,26 +173,15 @@ export default function StreamingModal({
         body: JSON.stringify({
           action: 'start',
           url: trimmedUrl,
-          password,
           matchId: selectedMatchId || null,
           matchTitle: chosenTitle,
         }),
       });
 
-      let data: {
-        success?: boolean;
-        error?: string;
-        startedAt?: string;
-        matchId?: string;
-        matchTitle?: string;
-      } | null = null;
+      const data = await res.json().catch(() => null);
 
-      try {
-        data = await res.json();
-      } catch {}
-
-      if (res.status === 401) {
-        setError(data?.error || 'Contraseña de autorización incorrecta.');
+      if (res.status === 401 || res.status === 403) {
+        setError(data?.error || 'Tu cuenta no tiene permisos de staff para publicar retransmisiones.');
         return;
       }
 
@@ -196,10 +200,6 @@ export default function StreamingModal({
 
       onSuccess(newStatus);
       onClose();
-
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 100);
     } catch (err) {
       console.error('Error publicando streaming:', err);
       setError('Error de conexión con el servidor. Inténtalo de nuevo.');
@@ -208,39 +208,22 @@ export default function StreamingModal({
     }
   };
 
-  // Finalizar retransmisión activa con confirmación de contraseña y guardado de vídeo
   const handleStopStream = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password) {
-      setError('Por favor, introduce la contraseña para confirmar la finalización.');
-      return;
-    }
-
     setIsSubmitting(true);
     setError(null);
+
     try {
       const res = await fetch('/api/streaming', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'stop',
-          password,
-        }),
+        body: JSON.stringify({ action: 'stop' }),
       });
 
-      let data: {
-        success?: boolean;
-        error?: string;
-        recordedMatchId?: string;
-        recordings?: MatchRecordingsMap;
-      } | null = null;
+      const data = await res.json().catch(() => null);
 
-      try {
-        data = await res.json();
-      } catch {}
-
-      if (res.status === 401) {
-        setError(data?.error || 'Contraseña de autorización incorrecta.');
+      if (res.status === 401 || res.status === 403) {
+        setError(data?.error || 'Tu cuenta no tiene permisos para finalizar retransmisiones.');
         return;
       }
 
@@ -271,14 +254,14 @@ export default function StreamingModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="streaming-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         ref={modalRef}
-        className="relative w-full max-w-lg bg-surface-container-low border border-white/15 rounded-lg p-5 sm:p-7 shadow-[0_0_50px_rgba(220,38,38,0.35)] max-h-[90dvh] overflow-y-auto overflow-x-hidden"
+        className="relative w-full max-w-lg bg-surface-container-low border-2 border-white/15 rounded-none p-5 sm:p-7 shadow-brutal-dark max-h-[90dvh] overflow-y-auto overflow-x-hidden"
       >
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-primary-container to-amber-500" />
 
@@ -286,7 +269,7 @@ export default function StreamingModal({
           type="button"
           onClick={onClose}
           aria-label="Cerrar ventana de streaming"
-          className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+          className="absolute top-3.5 right-3.5 w-10 h-10 flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 border border-white/15 rounded-none transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" aria-hidden="true" />
         </button>
@@ -305,36 +288,33 @@ export default function StreamingModal({
 
             <h3
               id="streaming-modal-title"
-              className="font-headline-md text-xl sm:text-2xl text-on-surface uppercase tracking-wide mb-2"
+              className="font-headline-md text-xl sm:text-2xl text-on-surface uppercase tracking-wide mb-2 pr-10"
             >
-              ¿Finalizar Retransmisión?
+              Finalizar Retransmisión
             </h3>
 
-            <p className="text-xs sm:text-sm text-tertiary mb-3.5 leading-relaxed font-body-sm">
-              Al finalizar, la emisión en directo se cerrará y el enlace de YouTube se guardará automáticamente en el partido correspondiente con el botón <strong className="text-white">«Ver partido»</strong> para visualización en diferido.
+            <p className="text-xs sm:text-sm text-tertiary mb-4 leading-relaxed">
+              La emisión se detendrá y el vídeo quedará vinculado automáticamente en diferido al partido seleccionado.
             </p>
 
-            <div className="space-y-2 mb-4">
+            <div className="space-y-2 mb-5">
               {currentMatchTitle && (
-                <div className="p-3 bg-red-950/30 border border-red-500/30 rounded flex items-start gap-2.5">
+                <div className="p-3 bg-red-950/30 border border-red-500/30 rounded-none flex items-start gap-2.5">
                   <Radio className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[10px] text-red-200 uppercase font-bold tracking-wider block">
                       Partido Asociado
                     </span>
-                    <p className="text-xs text-white font-semibold">{currentMatchTitle}</p>
-                    <span className="text-[11px] text-emerald-300 font-medium block mt-1">
-                      El botón «Ver partido» se añadirá a este partido en la web.
-                    </span>
+                    <p className="text-xs text-white font-semibold break-words">{currentMatchTitle}</p>
                   </div>
                 </div>
               )}
 
               {currentUrl && isValidYouTubeUrl(currentUrl) && (
-                <div className="p-3 bg-black/50 border border-white/10 rounded flex items-center justify-between gap-2 overflow-hidden">
+                <div className="p-3 bg-black/50 border border-white/10 rounded-none flex items-center justify-between gap-2 overflow-hidden">
                   <div className="min-w-0">
                     <span className="text-[10px] text-tertiary uppercase tracking-wider block">
-                      URL del vídeo de YouTube
+                      URL de YouTube
                     </span>
                     <p className="text-xs text-white truncate font-mono">{currentUrl}</p>
                   </div>
@@ -342,7 +322,7 @@ export default function StreamingModal({
                     href={currentUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold rounded transition-colors"
+                    className="shrink-0 px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold rounded-none border border-white/15 transition-colors"
                   >
                     Ver ↗
                   </a>
@@ -351,53 +331,38 @@ export default function StreamingModal({
             </div>
 
             {error && (
-              <div role="alert" className="p-2.5 bg-red-950/80 border border-red-500/50 rounded text-red-200 text-xs mb-4 flex items-center gap-2">
+              <div
+                role="alert"
+                className="p-2.5 bg-red-950/80 border border-red-500/50 rounded-none text-red-200 text-xs mb-4 flex items-center gap-2"
+              >
                 <AlertCircle className="w-4 h-4 text-red-300 shrink-0" aria-hidden="true" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="mb-4">
-              <label
-                htmlFor="stop-streaming-password"
-                className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-1"
-              >
-                Contraseña de Autorización
-              </label>
-              <input
-                id="stop-streaming-password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Introduce la contraseña para finalizar"
-                className="w-full px-3 py-2 text-base sm:text-xs bg-black/60 border border-white/15 focus:border-primary focus:outline-none rounded text-white placeholder-tertiary/60 transition-colors"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-white/10">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tertiary hover:text-white hover:bg-white/5 rounded border border-white/15 transition-colors cursor-pointer"
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tertiary hover:text-white hover:bg-white/5 rounded-none border border-white/15 transition-colors cursor-pointer"
               >
                 Mantener Directo
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-primary-container hover:bg-cta-hover text-white rounded border border-red-400/50 shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-primary-container hover:bg-cta-hover text-white rounded-none border border-red-400/50 shadow-brutal-dark active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer flex items-center gap-1.5"
               >
                 {isSubmitting ? (
                   <>
                     <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full" />
-                    <span>Guardando y finalizando...</span>
+                    <span>Finalizando...</span>
                   </>
                 ) : (
                   <>
                     <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-                    <span>Finalizar y Guardar Vídeo</span>
+                    <span>Finalizar y Guardar</span>
                   </>
                 )}
               </button>
@@ -406,27 +371,24 @@ export default function StreamingModal({
         ) : (
           <form onSubmit={handleStartStream}>
             <div className="flex items-center gap-2 mb-2 text-primary">
-              <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-              </svg>
+              <Radio className="w-4 h-4" aria-hidden="true" />
               <span className="font-headline-sm text-xs uppercase tracking-wider font-bold">
-                Retransmisión Oficial
+                Emisión Oficial en Directo
               </span>
             </div>
 
             <h3
               id="streaming-modal-title"
-              className="font-headline-md text-xl sm:text-2xl text-on-surface uppercase tracking-wide mb-1.5"
+              className="font-headline-md text-xl sm:text-2xl text-on-surface uppercase tracking-wide mb-3 pr-10"
             >
               Publicar Streaming
             </h3>
 
-            <p className="text-xs text-tertiary mb-4 leading-relaxed font-body-sm">
-              Selecciona el partido que se va a retransmitir, introduce la URL del directo de YouTube y la contraseña autorizada.
-            </p>
-
             {error && (
-              <div role="alert" className="p-2.5 bg-red-950/80 border border-red-500/50 rounded text-red-200 text-xs mb-4 flex items-center gap-2">
+              <div
+                role="alert"
+                className="p-2.5 bg-red-950/80 border border-red-500/50 rounded-none text-red-200 text-xs mb-4 flex items-center gap-2"
+              >
                 <AlertCircle className="w-4 h-4 text-red-300 shrink-0" aria-hidden="true" />
                 <span>{error}</span>
               </div>
@@ -444,31 +406,40 @@ export default function StreamingModal({
                   id="streaming-match-select"
                   value={selectedMatchId}
                   onChange={(e) => setSelectedMatchId(e.target.value)}
-                  className="w-full px-3 py-2 text-base sm:text-xs bg-black/80 border border-white/20 focus:border-primary focus:outline-none rounded text-white transition-colors cursor-pointer"
+                  className="w-full px-3 py-2 text-base sm:text-xs bg-black/80 border border-white/20 focus:border-primary focus:outline-none rounded-none text-white transition-colors cursor-pointer"
                 >
-                  {todayMatches.length > 0 ? (
-                    <optgroup label="── Partidos de Hoy ──" className="bg-neutral-900 text-red-300 font-bold">
+                  {todayMatches.length > 0 && (
+                    <optgroup
+                      label="── Partidos de Hoy ──"
+                      className="bg-neutral-900 text-red-300 font-bold"
+                    >
                       {todayMatches.map((m) => (
                         <option key={m.id} value={m.id} className="text-white bg-neutral-900 font-normal">
-                          {m.categoryName}
+                          {m.timeStr ? `${m.timeStr} · ` : ''}{m.categoryName} ({m.homeTeam} vs {m.awayTeam})
                         </option>
                       ))}
                     </optgroup>
-                  ) : (
-                    <option value="" disabled className="text-tertiary bg-neutral-900">
-                      No hay partidos programados para hoy
-                    </option>
                   )}
 
-                  <optgroup label="── Opciones ──" className="bg-neutral-900 text-tertiary font-bold">
+                  {upcomingMatches.length > 0 && (
+                    <optgroup
+                      label="── Próximos Partidos ──"
+                      className="bg-neutral-900 text-tertiary font-bold"
+                    >
+                      {upcomingMatches.slice(0, 10).map((m) => (
+                        <option key={m.id} value={m.id} className="text-white bg-neutral-900 font-normal">
+                          {m.dateStr} {m.timeStr ? `${m.timeStr} ` : ''}· {m.categoryName}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+
+                  <optgroup label="── General ──" className="bg-neutral-900 text-tertiary font-bold">
                     <option value="general" className="text-white bg-neutral-900 font-normal">
                       Retransmisión General / Amistoso
                     </option>
                   </optgroup>
                 </select>
-                <p className="text-[11px] text-tertiary mt-1">
-                  Al finalizar la retransmisión, el enlace quedará guardado automáticamente en el partido con el botón «Ver partido».
-                </p>
               </div>
 
               <div>
@@ -485,53 +456,33 @@ export default function StreamingModal({
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://www.youtube.com/watch?v=... o https://youtu.be/..."
-                  className="w-full px-3 py-2 text-base sm:text-xs bg-black/60 border border-white/15 focus:border-primary focus:outline-none rounded text-white placeholder-tertiary/60 transition-colors"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="streaming-password"
-                  className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-1"
-                >
-                  Contraseña de Autorización
-                </label>
-                <input
-                  id="streaming-password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Introduce la contraseña del club"
-                  className="w-full px-3 py-2 text-base sm:text-xs bg-black/60 border border-white/15 focus:border-primary focus:outline-none rounded text-white placeholder-tertiary/60 transition-colors"
+                  className="w-full px-3 py-2 text-base sm:text-xs bg-black/60 border border-white/15 focus:border-primary focus:outline-none rounded-none text-white placeholder-tertiary/75 transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-white/10">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tertiary hover:text-white hover:bg-white/5 rounded border border-white/15 transition-colors cursor-pointer"
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-tertiary hover:text-white hover:bg-white/5 rounded-none border border-white/15 transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-primary-container hover:bg-cta-hover text-white rounded border border-red-400/50 shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-primary-container hover:bg-cta-hover text-white rounded-none border border-red-400/50 shadow-brutal-dark active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer flex items-center gap-1.5"
               >
                 {isSubmitting ? (
                   <>
                     <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full" />
-                    <span>Conectando...</span>
+                    <span>Publicando...</span>
                   </>
                 ) : (
                   <>
-                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                    </svg>
+                    <Radio className="w-4 h-4" aria-hidden="true" />
                     <span>Emitir en Directo</span>
                   </>
                 )}

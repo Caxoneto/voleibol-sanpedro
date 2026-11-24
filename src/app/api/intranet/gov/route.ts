@@ -15,6 +15,7 @@ import { handleIntranetApiError } from '@/lib/intranet/api-helpers';
 import {
   PERMISSIONS_CATALOG,
   ROLES_CATALOG,
+  SIMPLIFIED_PERMISSION_GROUPS,
   type PermissionCode,
   type PermissionScope,
   type RoleCode,
@@ -27,7 +28,11 @@ const VALID_STAFF_ROLES = new Set<RoleCode>(
   ROLES_CATALOG.filter((r) => r.isStaff && r.code !== 'PRESIDENTE').map((r) => r.code)
 );
 const PERMISSION_META_MAP = new Map(PERMISSIONS_CATALOG.map((p) => [p.code, p]));
-const VALID_SCOPES = new Set<PermissionScope>(['GLOBAL', 'EQUIPO', 'PROPIO']);
+const SIMPLIFIED_GROUP_MAP = new Map(SIMPLIFIED_PERMISSION_GROUPS.map((g) => [g.id, g]));
+const SIMPLIFIED_GROUP_BY_CODE = new Map(
+  SIMPLIFIED_PERMISSION_GROUPS.flatMap((g) => g.memberCodes.map((code) => [code, g] as const))
+);
+const VALID_SCOPES = new Set<PermissionScope>(['GLOBAL', 'EQUIPO']);
 const VALID_STAFF_FUNCTIONS = new Set(['HEAD_COACH', 'ASSISTANT', 'DELEGATE', 'TRAINER']);
 
 function isUuid(val: unknown): val is string {
@@ -49,13 +54,41 @@ export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams;
     const auditModule = sp.get('auditModule')?.trim() || undefined;
     const auditSearch = sp.get('auditSearch')?.trim() || undefined;
+    const auditActor = sp.get('auditActor')?.trim() || undefined;
     const auditLimit = Math.min(Math.max(10, Number(sp.get('auditLimit') || 80)), 250);
 
-    const auditLogs = await listAuditLogs({
-      module: auditModule,
-      search: auditSearch,
-      limit: auditLimit,
-    });
+    const [auditLogs, auditActorRows] = await Promise.all([
+      listAuditLogs({
+        module: auditModule,
+        search: auditSearch,
+        actor: auditActor,
+        limit: auditLimit,
+      }),
+      queryNeon<{ email: string; name: string | null }>(
+        `SELECT DISTINCT ON (LOWER(l.actor_email))
+           LOWER(l.actor_email) AS email,
+           u.name AS name
+         FROM intranet_audit_logs l
+         LEFT JOIN intranet_users u ON LOWER(u.email) = LOWER(l.actor_email)
+         WHERE TRIM(COALESCE(l.actor_email, '')) <> ''
+         ORDER BY LOWER(l.actor_email), u.name NULLS LAST;`
+      ),
+    ]);
+
+    const formatSortedActors = (rows: Array<{ email: string; name: string | null }>) => {
+      const actorMap = new Map<string, { email: string; name: string | null }>();
+      for (const r of rows) {
+        const key = r.email.trim().toLowerCase();
+        if (!key) continue;
+        const existing = actorMap.get(key);
+        if (!existing || (!existing.name && r.name)) {
+          actorMap.set(key, { email: key, name: r.name || existing?.name || null });
+        }
+      }
+      return Array.from(actorMap.values()).sort((a, b) =>
+        (a.name || a.email).localeCompare(b.name || b.email, 'es')
+      );
+    };
 
     // Si solo tiene audit.view (no es Presidente), limitar la respuesta a auditoría por mínimo privilegio
     if (!ctx.isPresident) {
@@ -68,9 +101,11 @@ export async function GET(req: NextRequest) {
         rolePermissions: [],
         overrides: [],
         auditLogs,
+        auditActors: formatSortedActors(auditActorRows),
         catalog: {
           roles: ROLES_CATALOG,
           permissions: PERMISSIONS_CATALOG,
+          permissionGroups: SIMPLIFIED_PERMISSION_GROUPS,
           teams: [],
         },
       });
@@ -298,9 +333,14 @@ export async function GET(req: NextRequest) {
         createdAt: o.created_at,
       })),
       auditLogs,
+      auditActors: formatSortedActors([
+        ...auditActorRows,
+        ...userRows.map((u) => ({ email: u.email, name: u.name })),
+      ]),
       catalog: {
         roles: ROLES_CATALOG,
         permissions: PERMISSIONS_CATALOG,
+        permissionGroups: SIMPLIFIED_PERMISSION_GROUPS,
         teams: teamRows.map((t) => ({
           id: t.id,
           seasonId: t.season_id,
@@ -690,6 +730,7 @@ export async function POST(req: NextRequest) {
       assertCan(ctx, 'permissions.manage');
 
       const roleCode = String(body?.roleCode || '').trim() as RoleCode;
+      const permissionGroupId = String(body?.permissionGroupId || '').trim();
       const permissionCode = String(body?.permissionCode || '').trim() as PermissionCode;
       const enabled = Boolean(body?.enabled);
 
@@ -700,6 +741,82 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      if (permissionGroupId) {
+        const group = SIMPLIFIED_GROUP_MAP.get(permissionGroupId);
+        if (!group) {
+          return NextResponse.json(
+            { success: false, error: 'Grupo de permisos no válido.' },
+            { status: 400 }
+          );
+        }
+
+        const hasPresidentOnlyMember = group.memberCodes.some(
+          (code) => PERMISSION_META_MAP.get(code)?.isPresidentOnly
+        );
+        if (hasPresidentOnlyMember) {
+          return NextResponse.json(
+            { success: false, error: 'Permiso no válido o exclusivo de Presidencia.' },
+            { status: 400 }
+          );
+        }
+
+        const requestedScope = String(body?.scope || group.defaultScope).trim() as PermissionScope;
+        if (!group.allowedScopes.includes(requestedScope as 'EQUIPO' | 'GLOBAL')) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `El alcance "${requestedScope}" no es válido para "${group.name}".`,
+            },
+            { status: 400 }
+          );
+        }
+
+        if (!enabled) {
+          await queryNeon(
+            `DELETE FROM intranet_role_permissions
+             WHERE role_code = $1 AND permission_code = ANY($2::text[]);`,
+            [roleCode, group.memberCodes]
+          );
+        } else {
+          for (const memberCode of group.memberCodes) {
+            await queryNeon(
+              `INSERT INTO intranet_role_permissions (role_code, permission_code, scope)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (role_code, permission_code) DO UPDATE SET scope = EXCLUDED.scope;`,
+              [roleCode, memberCode, requestedScope]
+            );
+          }
+        }
+
+        await recordAuditLog({
+          actorUserId: ctx.user.id,
+          actorEmail: ctx.user.email,
+          action: 'TOGGLE_ROLE_PERMISSION',
+          module: 'Gobernanza',
+          targetType: 'ROLE_PERMISSION',
+          targetId: `${roleCode}:${group.id}`,
+          details: {
+            roleCode,
+            permissionGroupId: group.id,
+            permissionCode: group.primaryCode,
+            memberCodes: group.memberCodes,
+            enabled,
+            scope: requestedScope,
+          },
+          ipAddress: clientIp,
+        });
+
+        return NextResponse.json({
+          success: true,
+          roleCode,
+          permissionGroupId: group.id,
+          permissionCode: group.primaryCode,
+          memberCodes: group.memberCodes,
+          enabled,
+          scope: requestedScope,
+        });
+      }
+
       const permMeta = PERMISSION_META_MAP.get(permissionCode);
       if (!permMeta || permMeta.isPresidentOnly) {
         return NextResponse.json(
@@ -708,10 +825,18 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const requestedScope = String(body?.scope || permMeta.defaultScope).trim() as PermissionScope;
-      const scope: PermissionScope = VALID_SCOPES.has(requestedScope)
-        ? requestedScope
-        : permMeta.defaultScope;
+      const matchedGroup = SIMPLIFIED_GROUP_BY_CODE.get(permissionCode);
+      const fallbackScope: PermissionScope = matchedGroup ? matchedGroup.defaultScope : permMeta.defaultScope === 'PROPIO' ? 'EQUIPO' : permMeta.defaultScope;
+      const requestedScope = String(body?.scope || fallbackScope).trim() as PermissionScope;
+      if (
+        !VALID_SCOPES.has(requestedScope) ||
+        (matchedGroup && !matchedGroup.allowedScopes.includes(requestedScope as 'EQUIPO' | 'GLOBAL'))
+      ) {
+        return NextResponse.json(
+          { success: false, error: `El alcance "${requestedScope}" no está permitido para este permiso.` },
+          { status: 400 }
+        );
+      }
 
       if (!enabled) {
         await queryNeon(
@@ -723,7 +848,7 @@ export async function POST(req: NextRequest) {
           `INSERT INTO intranet_role_permissions (role_code, permission_code, scope)
            VALUES ($1, $2, $3)
            ON CONFLICT (role_code, permission_code) DO UPDATE SET scope = EXCLUDED.scope;`,
-          [roleCode, permissionCode, scope]
+          [roleCode, permissionCode, requestedScope]
         );
       }
 
@@ -734,11 +859,11 @@ export async function POST(req: NextRequest) {
         module: 'Gobernanza',
         targetType: 'ROLE_PERMISSION',
         targetId: `${roleCode}:${permissionCode}`,
-        details: { roleCode, permissionCode, enabled, scope },
+        details: { roleCode, permissionCode, enabled, scope: requestedScope },
         ipAddress: clientIp,
       });
 
-      return NextResponse.json({ success: true, roleCode, permissionCode, enabled, scope });
+      return NextResponse.json({ success: true, roleCode, permissionCode, enabled, scope: requestedScope });
     }
 
     // 6. Crear excepción individual ALLOW/DENY
@@ -746,6 +871,7 @@ export async function POST(req: NextRequest) {
       assertCan(ctx, 'permissions.manage');
 
       const targetUserId = String(body?.userId || '').trim();
+      const permissionGroupId = String(body?.permissionGroupId || '').trim();
       const permissionCode = String(body?.permissionCode || '').trim() as PermissionCode;
       const effect = String(body?.effect || '').trim();
       const scope = String(body?.scope || 'GLOBAL').trim() as PermissionScope;
@@ -753,15 +879,8 @@ export async function POST(req: NextRequest) {
       const reason = String(body?.reason || '').trim();
       const validToDate = body?.validToDate ? String(body.validToDate).trim() : '';
 
-      const permMeta = PERMISSION_META_MAP.get(permissionCode);
-      if (!isUuid(targetUserId) || !permMeta) {
-        return NextResponse.json({ success: false, error: 'Usuario o permiso no válido.' }, { status: 400 });
-      }
-      if (permMeta.isPresidentOnly) {
-        return NextResponse.json(
-          { success: false, error: 'Los permisos exclusivos de Presidencia no admiten excepciones.' },
-          { status: 400 }
-        );
+      if (!isUuid(targetUserId)) {
+        return NextResponse.json({ success: false, error: 'Usuario no válido.' }, { status: 400 });
       }
       if (effect !== 'ALLOW' && effect !== 'DENY') {
         return NextResponse.json({ success: false, error: 'Efecto debe ser ALLOW o DENY.' }, { status: 400 });
@@ -790,6 +909,91 @@ export async function POST(req: NextRequest) {
         validToIso = madridLocalToUtcIso(validToDate, '23:59');
       }
 
+      if (permissionGroupId) {
+        const group = SIMPLIFIED_GROUP_MAP.get(permissionGroupId);
+        if (!group) {
+          return NextResponse.json({ success: false, error: 'Grupo de permisos no válido.' }, { status: 400 });
+        }
+        if (group.memberCodes.some((c) => PERMISSION_META_MAP.get(c)?.isPresidentOnly)) {
+          return NextResponse.json(
+            { success: false, error: 'Los permisos exclusivos de Presidencia no admiten excepciones.' },
+            { status: 400 }
+          );
+        }
+        if (!group.allowedScopes.includes(scope as 'EQUIPO' | 'GLOBAL')) {
+          return NextResponse.json(
+            { success: false, error: `El ámbito "${scope}" no es válido para "${group.name}".` },
+            { status: 400 }
+          );
+        }
+
+        const insertedIds: string[] = [];
+        for (const memberCode of group.memberCodes) {
+          const inserted = await queryNeon<{ id: string }>(
+            `INSERT INTO intranet_permission_overrides (
+               user_id, permission_code, effect, scope, team_season_id, reason, valid_to, granted_by
+             ) VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::timestamptz, $8::uuid)
+             RETURNING id::text AS id;`,
+            [
+              targetUserId,
+              memberCode,
+              effect,
+              scope,
+              scope === 'EQUIPO' ? teamSeasonId : null,
+              reason.slice(0, 300),
+              validToIso,
+              ctx.user.id,
+            ]
+          );
+          if (inserted[0]?.id) insertedIds.push(inserted[0].id);
+        }
+
+        await recordAuditLog({
+          actorUserId: ctx.user.id,
+          actorEmail: ctx.user.email,
+          action: 'UPSERT_PERMISSION_OVERRIDE',
+          module: 'Gobernanza',
+          targetType: 'OVERRIDE',
+          targetId: insertedIds[0] || null,
+          details: {
+            targetUserId,
+            permissionGroupId: group.id,
+            permissionCode: group.primaryCode,
+            memberCodes: group.memberCodes,
+            effect,
+            scope,
+            teamSeasonId: scope === 'EQUIPO' ? teamSeasonId : null,
+            reason,
+            validTo: validToIso,
+          },
+          ipAddress: clientIp,
+        });
+
+        return NextResponse.json({
+          success: true,
+          overrideId: insertedIds[0],
+          overrideIds: insertedIds,
+        });
+      }
+
+      const permMeta = PERMISSION_META_MAP.get(permissionCode);
+      if (!permMeta) {
+        return NextResponse.json({ success: false, error: 'Permiso no válido.' }, { status: 400 });
+      }
+      if (permMeta.isPresidentOnly) {
+        return NextResponse.json(
+          { success: false, error: 'Los permisos exclusivos de Presidencia no admiten excepciones.' },
+          { status: 400 }
+        );
+      }
+      const matchedGroup = SIMPLIFIED_GROUP_BY_CODE.get(permissionCode);
+      if (matchedGroup && !matchedGroup.allowedScopes.includes(scope as 'EQUIPO' | 'GLOBAL')) {
+        return NextResponse.json(
+          { success: false, error: `El ámbito "${scope}" no es válido para este permiso.` },
+          { status: 400 }
+        );
+      }
+
       const inserted = await queryNeon<{ id: string }>(
         `INSERT INTO intranet_permission_overrides (
            user_id, permission_code, effect, scope, team_season_id, reason, valid_to, granted_by
@@ -810,7 +1014,7 @@ export async function POST(req: NextRequest) {
       await recordAuditLog({
         actorUserId: ctx.user.id,
         actorEmail: ctx.user.email,
-        action: 'CREATE_PERMISSION_OVERRIDE',
+        action: 'UPSERT_PERMISSION_OVERRIDE',
         module: 'Gobernanza',
         targetType: 'OVERRIDE',
         targetId: inserted[0]?.id || null,
@@ -833,17 +1037,23 @@ export async function POST(req: NextRequest) {
     if (action === 'revoke_override') {
       assertCan(ctx, 'permissions.manage');
 
-      const overrideId = String(body?.overrideId || '').trim();
-      if (!isUuid(overrideId)) {
+      const rawIds: unknown[] = Array.isArray(body?.overrideIds)
+        ? body.overrideIds
+        : [body?.overrideId];
+      const overrideIds = rawIds
+        .map((val) => String(val || '').trim())
+        .filter((val) => isUuid(val));
+
+      if (overrideIds.length === 0) {
         return NextResponse.json({ success: false, error: 'ID de excepción no válido.' }, { status: 400 });
       }
 
       const rows = await queryNeon<{ id: string; user_id: string; permission_code: string }>(
         `UPDATE intranet_permission_overrides
          SET valid_to = NOW()
-         WHERE id = $1::uuid AND (valid_to IS NULL OR valid_to > NOW())
+         WHERE id = ANY($1::uuid[]) AND (valid_to IS NULL OR valid_to > NOW())
          RETURNING id::text, user_id::text, permission_code;`,
-        [overrideId]
+        [overrideIds]
       );
       if (rows.length === 0) {
         return NextResponse.json({ success: false, error: 'Excepción no encontrada o ya caducada.' }, { status: 404 });
@@ -855,12 +1065,16 @@ export async function POST(req: NextRequest) {
         action: 'REVOKE_PERMISSION_OVERRIDE',
         module: 'Gobernanza',
         targetType: 'OVERRIDE',
-        targetId: overrideId,
-        details: { targetUserId: rows[0].user_id, permissionCode: rows[0].permission_code },
+        targetId: rows[0].id,
+        details: {
+          targetUserId: rows[0].user_id,
+          permissionCode: rows[0].permission_code,
+          revokedIds: rows.map((r) => r.id),
+        },
         ipAddress: clientIp,
       });
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, revokedCount: rows.length });
     }
 
     // 8. Transferencia de Presidencia

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { queryNeon } from '@/lib/streaming-store';
+import { can } from '@/lib/intranet/rbac';
 import {
   getIntranetSession,
   hasActivePresident,
@@ -16,7 +18,6 @@ export async function GET() {
     ]);
 
     const googleCfg = getOAuthProviderConfig('google');
-    const msCfg = getOAuthProviderConfig('microsoft');
 
     const staffEffectivePermissions = session
       ? Object.values(session.effectivePermissions)
@@ -29,13 +30,36 @@ export async function GET() {
         )
       : {};
 
+    let pendingRegistrationsCount = 0;
+    let pendingLopiviCount = 0;
+    if (session) {
+      const canSeeReg =
+        session.isPresident ||
+        can(session, 'registration.approve') ||
+        can(session, 'athlete.edit');
+      const [regCntRows, lopiviCntRows] = await Promise.all([
+        canSeeReg
+          ? queryNeon<{ cnt: number }>(
+              `SELECT COUNT(*)::int AS cnt FROM intranet_registration_requests WHERE status = 'PENDING';`
+            ).catch(() => [{ cnt: 0 }])
+          : Promise.resolve([{ cnt: 0 }]),
+        session.isPresident
+          ? queryNeon<{ cnt: number }>(
+              `SELECT COUNT(*)::int AS cnt FROM intranet_lopivi_incidents WHERE status IN ('RECIBIDA', 'EN_VALORACION');`
+            ).catch(() => [{ cnt: 0 }])
+          : Promise.resolve([{ cnt: 0 }]),
+      ]);
+      pendingRegistrationsCount = Number(regCntRows[0]?.cnt || 0);
+      pendingLopiviCount = Number(lopiviCntRows[0]?.cnt || 0);
+    }
+
     return NextResponse.json({
       success: true,
       authenticated: Boolean(session),
       presidentExists,
       oauth: {
         google: googleCfg.configured,
-        microsoft: msCfg.configured,
+        microsoft: false,
       },
       session: session
         ? {
@@ -54,6 +78,8 @@ export async function GET() {
             effectivePermissions: staffEffectivePermissions,
             staffEffectivePermissions,
             effectivePermissionScopes,
+            pendingRegistrationsCount,
+            pendingLopiviCount,
           }
         : null,
     });

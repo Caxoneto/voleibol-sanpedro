@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Users,
   RefreshCw,
-  Upload,
   UserPlus,
   Download,
   Search,
@@ -14,32 +14,44 @@ import {
   ShieldCheck,
   Edit2,
   Eye,
-  Mail,
-  Send,
   Copy,
   Check,
   X,
   UserX,
-  GitMerge,
-  Trash2,
   PlusCircle,
   AlertTriangle,
   CheckCircle2,
   ArrowLeft,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Loader2,
-  FileSpreadsheet,
   Lock,
+  Link2,
+  Share2,
+  ToggleLeft,
+  ToggleRight,
+  UserCheck,
+  CreditCard,
+  BarChart3,
+  Plus,
+  ChevronDown,
 } from 'lucide-react';
 import {
-  parseCsv,
-  buildCsvString,
-  FEELSPORTS_CSV_TEMPLATE,
-} from '@/lib/intranet/csv-utils';
+  CLUB_CATEGORIES_META,
+  getShortTeamLabelInFamily,
+  getTeamColorTheme,
+  groupByCategoryFamily,
+} from '@/lib/club-info';
+import { buildCsvString } from '@/lib/intranet/csv-utils';
 import { formatMadridDateString } from '@/lib/date-utils';
+import IntranetModal from '@/components/intranet/IntranetModal';
 
 type AthleteStatus = 'IMPORTADO' | 'PENDIENTE_VALIDAR' | 'VERIFICADO' | 'BAJA' | 'SHREDDED';
 type RgpdStatus = 'ACTIVE' | 'REVOKED' | 'SHREDDED' | 'PENDING';
 type TrafficLight = 'GREEN' | 'YELLOW' | 'RED' | 'NONE';
+type SortField = 'athlete' | 'team' | 'age' | 'status' | 'rgpd' | 'payment';
+type SortDir = 'asc' | 'desc';
 
 interface AthleteTeamItem {
   teamSeasonId: string;
@@ -61,7 +73,6 @@ interface AthleteRecord {
   dniLast5: string | null;
   gender: string;
   favbLicenseNumber: string | null;
-  feelsportsId: string | null;
   shirtSize: string | null;
   jerseyNumber: number | null;
   status: AthleteStatus;
@@ -88,7 +99,6 @@ interface AthleteRecord {
   emergencyContactPhone: string | null;
   hasGuardianAccount: boolean;
   hasAthleteAccount: boolean;
-  canInvite: boolean;
   canEditRow: boolean;
 }
 
@@ -111,34 +121,6 @@ interface TeamOption {
   gender: string;
 }
 
-interface DedupItem {
-  id: string;
-  sourceType: string;
-  matchReason: string;
-  status: string;
-  createdAt: string;
-  payload: {
-    firstName: string;
-    lastName: string;
-    dni?: string;
-    birthDate?: string;
-    teamNameOrId?: string;
-    guardianName?: string;
-    guardianDni?: string;
-    email?: string;
-    phone?: string;
-    feelsportsId?: string;
-  };
-  candidate: {
-    id: string;
-    fullName: string;
-    birthYear: number | null;
-    dniLast5: string | null;
-    status: string;
-    teams: string[];
-  } | null;
-}
-
 interface PermissionsInfo {
   isPresident: boolean;
   canImport: boolean;
@@ -146,9 +128,7 @@ interface PermissionsInfo {
   canDeactivate: boolean;
   canViewEmergency: boolean;
   canViewSensitive: boolean;
-  canSendInvitation: boolean;
   canViewTrafficLight: boolean;
-  canIncludeDemo: boolean;
 }
 
 interface SensitivePayload {
@@ -164,14 +144,84 @@ interface SensitivePayload {
   guardianDni: string | null;
 }
 
-interface InviteResultItem {
+interface RegLinkRecord {
+  id: string;
+  token: string;
+  categoryCode: string;
+  categoryLabel: string;
+  defaultTeamSeasonId: string | null;
+  defaultTeamName: string | null;
+  seasonId: string;
+  isActive: boolean;
+  submissionsCount: number;
+  expiresAt: string | null;
+  createdAt: string;
+  registrationPath: string;
+  registrationUrl: string;
+}
+
+interface RegRequestRecord {
+  id: string;
   athleteId: string;
-  athleteName: string;
-  targetType: 'GUARDIAN' | 'ATHLETE';
-  email: string;
-  inviteUrl: string;
-  emailSent: boolean;
-  emailError?: string;
+  userId: string;
+  linkId: string | null;
+  defaultTeamSeasonId: string | null;
+  categoryCode: string;
+  categoryLabel: string;
+  athleteFirstName: string;
+  athleteLastName: string;
+  athleteFullName: string;
+  birthYear: number | null;
+  gender: string;
+  dniMasked: string | null;
+  shirtSize: string | null;
+  jerseyNumber: number | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  athleteStatus: AthleteStatus;
+  selectedProductId: string | null;
+  selectedProductName: string | null;
+  selectedPricePlanId: string | null;
+  selectedPlanName: string | null;
+  selectedPlanPeriodicity: string | null;
+  selectedPlanAmount: number | null;
+  isMinor: boolean;
+  guardianName: string | null;
+  guardianRelationship: string | null;
+  contactEmail: string;
+  contactPhone: string | null;
+  consentImage: boolean;
+  consentTravel: boolean;
+  consentDocumentHash: string | null;
+  consentId: string | null;
+  consentStatus: string;
+  consentSignedAt: string | null;
+  assignedTeamIds: string[];
+  athleteTeams: AthleteTeamItem[];
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  enrollmentId: string | null;
+  adminNotes: string | null;
+  createdAt: string;
+}
+
+interface RegPaymentPlanOption {
+  planId: string;
+  productId: string;
+  productName: string;
+  productType: string;
+  planName: string;
+  periodicity: string;
+  totalAmount: number;
+  installmentsCount: number;
+  dueDay: number;
+}
+
+interface RegDiscountOption {
+  id: string;
+  name: string;
+  kind: string;
+  valueType: 'PERCENTAGE' | 'FIXED';
+  value: number;
 }
 
 const STATUS_BADGE: Record<AthleteStatus, { label: string; cls: string }> = {
@@ -189,7 +239,7 @@ const STATUS_BADGE: Record<AthleteStatus, { label: string; cls: string }> = {
   },
   BAJA: {
     label: 'Baja',
-    cls: 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
+    cls: 'bg-white/10 text-on-surface/90 border-white/20',
   },
   SHREDDED: {
     label: 'Suprimido',
@@ -220,43 +270,13 @@ const TRAFFIC_LIGHT_META: Record<TrafficLight, { dot: string; label: string; cls
   GREEN: { dot: '🟢', label: 'Al corriente', cls: 'text-emerald-300' },
   YELLOW: { dot: '🟡', label: 'Pendiente', cls: 'text-amber-300' },
   RED: { dot: '🔴', label: 'Vencido', cls: 'text-rose-300' },
-  NONE: { dot: '⚪', label: 'Sin cuota', cls: 'text-zinc-400' },
+  NONE: { dot: '⚪', label: 'Sin cuota', cls: 'text-tertiary' },
 };
 
-type CsvColumnKey =
-  | 'firstName'
-  | 'lastName'
-  | 'dni'
-  | 'birthDate'
-  | 'email'
-  | 'phone'
-  | 'teamNameOrId'
-  | 'guardianName'
-  | 'guardianDni'
-  | 'feelsportsId';
+function ClubCensoPageContent() {
+  const searchParams = useSearchParams();
+  const initialTabParam = searchParams.get('tab');
 
-const CSV_FIELD_LABELS: Array<{ key: CsvColumnKey; label: string; hints: string[] }> = [
-  { key: 'firstName', label: 'Nombre *', hints: ['nombre', 'first', 'firstname'] },
-  { key: 'lastName', label: 'Apellidos', hints: ['apellido', 'last', 'lastname'] },
-  { key: 'dni', label: 'DNI / NIE', hints: ['dni', 'nie', 'nif', 'documento'] },
-  { key: 'birthDate', label: 'Fecha nacimiento', hints: ['fecha', 'nacimiento', 'birth', 'fnac'] },
-  { key: 'email', label: 'Email', hints: ['email', 'correo', 'mail'] },
-  { key: 'phone', label: 'Teléfono', hints: ['telefono', 'teléfono', 'movil', 'móvil', 'phone'] },
-  { key: 'teamNameOrId', label: 'Equipo / Categoría', hints: ['equipo', 'categoria', 'categoría', 'team'] },
-  { key: 'guardianName', label: 'Tutor Legal', hints: ['tutor', 'padre', 'madre', 'responsable'] },
-  { key: 'guardianDni', label: 'DNI Tutor', hints: ['dni tutor', 'nif tutor'] },
-  { key: 'feelsportsId', label: 'ID FeelSports', hints: ['feelsports', 'id externo'] },
-];
-
-function normalizeHeader(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
-export default function ClubCensoPage() {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
@@ -265,7 +285,6 @@ export default function ClubCensoPage() {
   const [athletes, setAthletes] = useState<AthleteRecord[]>([]);
   const [teamSummaries, setTeamSummaries] = useState<TeamSummary[]>([]);
   const [teams, setTeams] = useState<TeamOption[]>([]);
-  const [dedupQueue, setDedupQueue] = useState<DedupItem[]>([]);
   const [permissions, setPermissions] = useState<PermissionsInfo>({
     isPresident: false,
     canImport: false,
@@ -273,17 +292,53 @@ export default function ClubCensoPage() {
     canDeactivate: false,
     canViewEmergency: false,
     canViewSensitive: false,
-    canSendInvitation: false,
     canViewTrafficLight: false,
-    canIncludeDemo: false,
   });
 
-  const [activeTab, setActiveTab] = useState<'censo' | 'dedup'>('censo');
+  const [activeTab, setActiveTab] = useState<'plantilla' | 'inscripciones'>(
+    initialTabParam === 'inscripciones' ? 'inscripciones' : 'plantilla'
+  );
+  const [sortField, setSortField] = useState<SortField>('athlete');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  // Estado módulo Inscripciones y Enlaces por Categoría
+  const [regSupported, setRegSupported] = useState(false);
+  const [regCanApprove, setRegCanApprove] = useState(false);
+  const [regLoading, setRegLoading] = useState(false);
+  const [regLinks, setRegLinks] = useState<RegLinkRecord[]>([]);
+  const [regRequests, setRegRequests] = useState<RegRequestRecord[]>([]);
+  const [regTeams, setRegTeams] = useState<TeamOption[]>([]);
+  const [regPaymentPlans, setRegPaymentPlans] = useState<RegPaymentPlanOption[]>([]);
+  const [regDiscountRules, setRegDiscountRules] = useState<RegDiscountOption[]>([]);
+  const [regStatusFilter, setRegStatusFilter] = useState<'PENDING' | 'ALL'>('PENDING');
+
+  // Modales de resumen por equipo y nuevo enlace categoría
+  const [teamSummaryModalOpen, setTeamSummaryModalOpen] = useState(false);
+  const [newLinkModalOpen, setNewLinkModalOpen] = useState(false);
+
+  // Crear nuevo enlace categoría
+  const [newLinkCatCode, setNewLinkCatCode] = useState(CLUB_CATEGORIES_META[0]?.id || 'cat-cadete-fem-rojo');
+  const [newLinkLabel, setNewLinkLabel] = useState('');
+  const [newLinkTeamId, setNewLinkTeamId] = useState('');
+  const [creatingLink, setCreatingLink] = useState(false);
+  const [busyLinkId, setBusyLinkId] = useState<string | null>(null);
+
+  // Modal Aceptar Inscripción y Asignar Equipos
+  const [approveModalReq, setApproveModalReq] = useState<RegRequestRecord | null>(null);
+  const [appTeamIds, setAppTeamIds] = useState<string[]>([]);
+  const [appPrimaryTeamId, setAppPrimaryTeamId] = useState<string>('');
+  const [appDorsal, setAppDorsal] = useState<string>('');
+  const [appPosition, setAppPosition] = useState<string>('');
+  const [appPlanId, setAppPlanId] = useState<string>('');
+  const [appDiscountIds, setAppDiscountIds] = useState<string[]>([]);
+  const [appNotes, setAppNotes] = useState<string>('');
+  const [approvingBusy, setApprovingBusy] = useState(false);
+  const [rejectingReqId, setRejectingReqId] = useState<string | null>(null);
+  const regFetchingRef = useRef(false);
   const [teamFilter, setTeamFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [rgpdFilter, setRgpdFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [includeDemo, setIncludeDemo] = useState<boolean>(false);
 
   const [syncing, setSyncing] = useState(false);
 
@@ -316,49 +371,9 @@ export default function ClubCensoPage() {
   const [fGuardianPhone, setFGuardianPhone] = useState('');
   const [fGuardianDni, setFGuardianDni] = useState('');
 
-  // Modal Importador CSV FeelSports
-  const [csvModalOpen, setCsvModalOpen] = useState(false);
-  const [csvRawText, setCsvRawText] = useState('');
-  const [csvMapping, setCsvMapping] = useState<Record<CsvColumnKey, number>>({
-    firstName: -1,
-    lastName: -1,
-    dni: -1,
-    birthDate: -1,
-    email: -1,
-    phone: -1,
-    teamNameOrId: -1,
-    guardianName: -1,
-    guardianDni: -1,
-    feelsportsId: -1,
-  });
-  const [importingCsv, setImportingCsv] = useState(false);
-  const [csvImportResult, setCsvImportResult] = useState<{
-    created: number;
-    enriched: number;
-    queuedForDedup: number;
-    skippedShredded: number;
-  } | null>(null);
-
-  // Modal Invitaciones (individual o masivo)
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [inviteMode, setInviteMode] = useState<'SINGLE' | 'BATCH'>('SINGLE');
-  const [inviteAthlete, setInviteAthlete] = useState<AthleteRecord | null>(null);
-  const [inviteTeamId, setInviteTeamId] = useState<string>('');
-  const [inviteEmail, setInviteEmail] = useState<string>('');
-  const [inviteTargetType, setInviteTargetType] = useState<'AUTO' | 'GUARDIAN' | 'ATHLETE'>('AUTO');
-  const [inviteSendEmail, setInviteSendEmail] = useState<boolean>(true);
-  const [inviteOnlyPending, setInviteOnlyPending] = useState<boolean>(true);
-  const [sendingInvite, setSendingInvite] = useState(false);
-  const [inviteResults, setInviteResults] = useState<InviteResultItem[]>([]);
-  const [inviteSkipped, setInviteSkipped] = useState<Array<{ athleteId: string; athleteName: string; reason: string }>>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Cola dedup loading por fila
-  const [resolvingDedupId, setResolvingDedupId] = useState<string | null>(null);
-
   // Referencia estable para evitar bucles en useEffect
-  const includeDemoRef = useRef(includeDemo);
-  includeDemoRef.current = includeDemo;
   const isFetchingRef = useRef(false);
 
   const showToast = useCallback((msg: string) => {
@@ -368,16 +383,14 @@ export default function ClubCensoPage() {
     }, 5000);
   }, []);
 
-  const loadCensus = useCallback(async (demoFlag?: boolean) => {
+  const loadCensus = useCallback(async () => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
     setLoading(true);
     setErrorBanner(null);
 
     try {
-      const useDemo = demoFlag !== undefined ? demoFlag : includeDemoRef.current;
-      const url = useDemo ? '/api/intranet/census?includeDemo=1' : '/api/intranet/census';
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch('/api/intranet/census', { cache: 'no-store' });
       const data = await res.json();
 
       if (res.status === 401 || res.status === 403) {
@@ -387,7 +400,7 @@ export default function ClubCensoPage() {
       }
 
       if (!res.ok || !data?.success) {
-        setErrorBanner(data?.error || 'Error cargando el censo unificado.');
+        setErrorBanner(data?.error || 'Error cargando el módulo de Jugadoras/es.');
         setLoading(false);
         return;
       }
@@ -396,12 +409,11 @@ export default function ClubCensoPage() {
       setAthletes(Array.isArray(data.athletes) ? data.athletes : []);
       setTeamSummaries(Array.isArray(data.teamSummaries) ? data.teamSummaries : []);
       setTeams(Array.isArray(data.teams) ? data.teams : []);
-      setDedupQueue(Array.isArray(data.dedupQueue) ? data.dedupQueue : []);
       if (data.permissions) {
         setPermissions(data.permissions);
       }
     } catch {
-      setErrorBanner('Error de red cargando el censo.');
+      setErrorBanner('Error de red cargando el listado de jugadoras/es.');
     } finally {
       isFetchingRef.current = false;
       setLoading(false);
@@ -409,8 +421,240 @@ export default function ClubCensoPage() {
   }, []);
 
   useEffect(() => {
-    void loadCensus(false);
+    void loadCensus();
   }, [loadCensus]);
+
+  useEffect(() => {
+    if (initialTabParam === 'inscripciones') setActiveTab('inscripciones');
+  }, [initialTabParam]);
+
+  const loadRegistrations = useCallback(async () => {
+    if (regFetchingRef.current) return;
+    regFetchingRef.current = true;
+    setRegLoading(true);
+    try {
+      const res = await fetch('/api/intranet/registration?mode=admin', { cache: 'no-store' });
+      if (res.status === 401 || res.status === 403) {
+        setRegSupported(false);
+        return;
+      }
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setRegSupported(true);
+        setRegCanApprove(Boolean(data.canApprove));
+        setRegLinks(Array.isArray(data.links) ? data.links : []);
+        setRegRequests(Array.isArray(data.requests) ? data.requests : []);
+        setRegTeams(Array.isArray(data.teams) ? data.teams : []);
+        setRegPaymentPlans(Array.isArray(data.paymentPlans) ? data.paymentPlans : []);
+        setRegDiscountRules(Array.isArray(data.discountRules) ? data.discountRules : []);
+      }
+    } catch {
+      // No bloquear carga principal del censo
+    } finally {
+      regFetchingRef.current = false;
+      setRegLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRegistrations();
+  }, [loadRegistrations]);
+
+  const pendingRegCount = useMemo(
+    () => regRequests.filter((r) => r.status === 'PENDING').length,
+    [regRequests]
+  );
+
+  const visibleRegRequests = useMemo(
+    () =>
+      regStatusFilter === 'PENDING'
+        ? regRequests.filter((r) => r.status === 'PENDING')
+        : regRequests,
+    [regRequests, regStatusFilter]
+  );
+
+  const handleCreateRegLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const catMeta = CLUB_CATEGORIES_META.find((c) => c.id === newLinkCatCode);
+    const label = newLinkLabel.trim() || catMeta?.name || newLinkCatCode;
+    if (!label) return;
+    setCreatingLink(true);
+    setErrorBanner(null);
+    try {
+      const res = await fetch('/api/intranet/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_link',
+          categoryCode: newLinkCatCode,
+          categoryLabel: label,
+          defaultTeamSeasonId: newLinkTeamId || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setErrorBanner(json.error || 'No se pudo crear el enlace de categoría.');
+        return;
+      }
+      setNewLinkLabel('');
+      setNewLinkModalOpen(false);
+      showToast(`Enlace creado para ${label}.`);
+      await loadRegistrations();
+    } catch {
+      setErrorBanner('Error de red al crear el enlace.');
+    } finally {
+      setCreatingLink(false);
+    }
+  };
+
+  const handleToggleRegLink = async (link: RegLinkRecord) => {
+    setBusyLinkId(link.id);
+    try {
+      const res = await fetch('/api/intranet/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'toggle_link',
+          linkId: link.id,
+          isActive: !link.isActive,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setErrorBanner(json.error || 'No se pudo cambiar el estado del enlace.');
+        return;
+      }
+      showToast(`Enlace ${!link.isActive ? 'activado' : 'pausado'}.`);
+      await loadRegistrations();
+    } catch {
+      setErrorBanner('Error de red actualizando enlace.');
+    } finally {
+      setBusyLinkId(null);
+    }
+  };
+
+  const handleRegenerateRegLink = async (link: RegLinkRecord) => {
+    setBusyLinkId(link.id);
+    try {
+      const res = await fetch('/api/intranet/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'regenerate_link', linkId: link.id }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setErrorBanner(json.error || 'No se pudo regenerar el enlace.');
+        return;
+      }
+      showToast(`Token regenerado para ${link.categoryLabel}.`);
+      await loadRegistrations();
+    } catch {
+      setErrorBanner('Error de red regenerando enlace.');
+    } finally {
+      setBusyLinkId(null);
+    }
+  };
+
+  const openApproveModal = (reqItem: RegRequestRecord) => {
+    setErrorBanner(null);
+    const initialTeams =
+      reqItem.defaultTeamSeasonId
+        ? [reqItem.defaultTeamSeasonId]
+        : reqItem.athleteTeams.length > 0
+          ? reqItem.athleteTeams.map((t) => t.teamSeasonId)
+          : [];
+    setApproveModalReq(reqItem);
+    setAppTeamIds(initialTeams);
+    setAppPrimaryTeamId(initialTeams[0] || '');
+    setAppDorsal(reqItem.jerseyNumber ? String(reqItem.jerseyNumber) : '');
+    setAppPosition('');
+    setAppPlanId(reqItem.selectedPricePlanId || regPaymentPlans[0]?.planId || '');
+    setAppDiscountIds([]);
+    setAppNotes('');
+  };
+
+  const toggleApproveTeam = (tid: string) => {
+    setAppTeamIds((prev) => {
+      const next = prev.includes(tid) ? prev.filter((x) => x !== tid) : [...prev, tid];
+      if (!next.includes(appPrimaryTeamId)) {
+        setAppPrimaryTeamId(next[0] || '');
+      }
+      return next;
+    });
+  };
+
+  const handleApproveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!approveModalReq) return;
+    if (appTeamIds.length === 0) {
+      setErrorBanner('Debes seleccionar al menos un equipo para activar al deportista.');
+      return;
+    }
+    const chosenPlan = regPaymentPlans.find((p) => p.planId === appPlanId) || null;
+    setApprovingBusy(true);
+    setErrorBanner(null);
+    try {
+      const res = await fetch('/api/intranet/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'approve_registration',
+          requestId: approveModalReq.id,
+          teamSeasonIds: appTeamIds,
+          primaryTeamId: appPrimaryTeamId || appTeamIds[0],
+          dorsal: appDorsal ? Number(appDorsal) : undefined,
+          position: appPosition.trim() || undefined,
+          productId: chosenPlan?.productId || approveModalReq.selectedProductId || undefined,
+          pricePlanId: chosenPlan?.planId || approveModalReq.selectedPricePlanId || undefined,
+          discountRuleIds: appDiscountIds.length > 0 ? appDiscountIds : undefined,
+          adminNotes: appNotes.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setErrorBanner(json.error || 'No se pudo aprobar la inscripción.');
+        return;
+      }
+      showToast(
+        `Inscripción de ${approveModalReq.athleteFullName} aceptada y equipo asignado${json.emailSent ? ' (aviso enviado por email)' : ''}.`
+      );
+      setApproveModalReq(null);
+      window.dispatchEvent(new Event('cdv-refresh-me'));
+      await Promise.all([loadRegistrations(), loadCensus()]);
+    } catch {
+      setErrorBanner('Error de red al aprobar la solicitud.');
+    } finally {
+      setApprovingBusy(false);
+    }
+  };
+
+  const handleRejectRequest = async (reqItem: RegRequestRecord) => {
+    setRejectingReqId(reqItem.id);
+    setErrorBanner(null);
+    try {
+      const res = await fetch('/api/intranet/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reject_registration',
+          requestId: reqItem.id,
+          adminNotes: 'Solicitud rechazada desde el panel administrativo',
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setErrorBanner(json.error || 'No se pudo rechazar la solicitud.');
+        return;
+      }
+      showToast(`Solicitud de ${reqItem.athleteFullName} marcada como rechazada.`);
+      window.dispatchEvent(new Event('cdv-refresh-me'));
+      await loadRegistrations();
+    } catch {
+      setErrorBanner('Error de red rechazando solicitud.');
+    } finally {
+      setRejectingReqId(null);
+    }
+  };
 
   const filteredAthletes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -425,6 +669,77 @@ export default function ClubCensoPage() {
       return true;
     });
   }, [athletes, teamFilter, statusFilter, rgpdFilter, searchQuery]);
+
+  const toggleSort = useCallback((field: SortField) => {
+    setSortField((prevField) => {
+      if (prevField === field) {
+        setSortDir((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
+        return prevField;
+      }
+      setSortDir(field === 'age' ? 'desc' : 'asc');
+      return field;
+    });
+  }, []);
+
+  const sortedAthletes = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const paymentRank: Record<TrafficLight, number> = {
+      RED: 1,
+      YELLOW: 2,
+      GREEN: 3,
+      NONE: 4,
+    };
+    const currentYear = new Date().getUTCFullYear();
+    const getPrimaryTeamName = (a: AthleteRecord) =>
+      a.teams.find((t) => t.isPrimary)?.teamName || a.teams[0]?.teamName || '';
+    const getBirthYear = (a: AthleteRecord) =>
+      a.birthYear ?? (a.approxAge !== null ? currentYear - a.approxAge : null);
+
+    return [...filteredAthletes].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'athlete':
+          cmp = a.fullName.localeCompare(b.fullName, 'es', { sensitivity: 'base' });
+          break;
+        case 'team': {
+          const tA = getPrimaryTeamName(a);
+          const tB = getPrimaryTeamName(b);
+          if (!tA && tB) return 1;
+          if (tA && !tB) return -1;
+          cmp = tA.localeCompare(tB, 'es', { sensitivity: 'base' });
+          break;
+        }
+        case 'age': {
+          const yA = getBirthYear(a);
+          const yB = getBirthYear(b);
+          if (yA === null && yB !== null) return 1;
+          if (yA !== null && yB === null) return -1;
+          cmp = (yA ?? 0) - (yB ?? 0);
+          break;
+        }
+        case 'status': {
+          const sA = STATUS_BADGE[a.status]?.label || a.status;
+          const sB = STATUS_BADGE[b.status]?.label || b.status;
+          cmp = sA.localeCompare(sB, 'es', { sensitivity: 'base' });
+          break;
+        }
+        case 'rgpd': {
+          const rA = RGPD_BADGE[a.rgpdStatus]?.label || a.rgpdStatus;
+          const rB = RGPD_BADGE[b.rgpdStatus]?.label || b.rgpdStatus;
+          cmp = rA.localeCompare(rB, 'es', { sensitivity: 'base' });
+          break;
+        }
+        case 'payment': {
+          const pA = paymentRank[a.paymentTrafficLight || 'NONE'] ?? 4;
+          const pB = paymentRank[b.paymentTrafficLight || 'NONE'] ?? 4;
+          cmp = pA - pB;
+          break;
+        }
+      }
+      if (cmp !== 0) return cmp * dir;
+      return a.fullName.localeCompare(b.fullName, 'es', { sensitivity: 'base' });
+    });
+  }, [filteredAthletes, sortField, sortDir]);
 
   const globalStats = useMemo(() => {
     const active = athletes.filter((a) => a.status !== 'BAJA' && a.status !== 'SHREDDED');
@@ -487,7 +802,7 @@ export default function ClubCensoPage() {
       ...(permissions.canViewEmergency ? ['Email Tutor', 'Teléfono Tutor'] : []),
     ];
 
-    const rows = filteredAthletes.map((a) => {
+    const rows = sortedAthletes.map((a) => {
       const primary = a.teams.find((t) => t.isPrimary)?.teamName || a.teams[0]?.teamName || '';
       const others = a.teams
         .filter((t) => t.teamName !== primary)
@@ -525,7 +840,7 @@ export default function ClubCensoPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showToast(`Exportadas ${filteredAthletes.length} fichas a CSV.`);
+    showToast(`Exportadas ${sortedAthletes.length} fichas a CSV.`);
   };
 
   // Abrir modal ficha (crear o editar/ver)
@@ -700,220 +1015,6 @@ export default function ClubCensoPage() {
     }
   };
 
-  // CSV FeelSports parsing & auto-mapping
-  const csvMatrix = useMemo(() => {
-    if (!csvRawText.trim()) return [];
-    return parseCsv(csvRawText);
-  }, [csvRawText]);
-
-  const csvHeaders = useMemo(() => (csvMatrix.length > 0 ? csvMatrix[0] : []), [csvMatrix]);
-  const csvDataRows = useMemo(() => (csvMatrix.length > 1 ? csvMatrix.slice(1) : []), [csvMatrix]);
-
-  const applyAutoMapping = (text: string) => {
-    setCsvRawText(text);
-    setCsvImportResult(null);
-    const matrix = parseCsv(text);
-    if (matrix.length === 0) return;
-    const headers = matrix[0].map(normalizeHeader);
-    const nextMap: Record<CsvColumnKey, number> = {
-      firstName: -1,
-      lastName: -1,
-      dni: -1,
-      birthDate: -1,
-      email: -1,
-      phone: -1,
-      teamNameOrId: -1,
-      guardianName: -1,
-      guardianDni: -1,
-      feelsportsId: -1,
-    };
-    for (const field of CSV_FIELD_LABELS) {
-      const idx = headers.findIndex((h) => field.hints.some((hint) => h === hint || h.includes(hint)));
-      nextMap[field.key] = idx;
-    }
-    // Evitar colisión dni vs guardianDni
-    if (nextMap.guardianDni !== -1 && nextMap.dni === nextMap.guardianDni) {
-      const altDni = headers.findIndex(
-        (h, idx) => idx !== nextMap.guardianDni && (h.includes('dni') || h.includes('nie'))
-      );
-      nextMap.dni = altDni;
-    }
-    setCsvMapping(nextMap);
-  };
-
-  const handleCsvFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        applyAutoMapping(reader.result);
-      }
-    };
-    reader.readAsText(file, 'utf-8');
-  };
-
-  const handleDownloadFeelSportsTemplate = () => {
-    const blob = new Blob([FEELSPORTS_CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'plantilla-feelsports-cdvsp.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const mappedPreviewRows = useMemo(() => {
-    return csvDataRows
-      .map((cols) => ({
-        firstName: csvMapping.firstName >= 0 ? (cols[csvMapping.firstName] || '').trim() : '',
-        lastName: csvMapping.lastName >= 0 ? (cols[csvMapping.lastName] || '').trim() : '',
-        dni: csvMapping.dni >= 0 ? (cols[csvMapping.dni] || '').trim() || undefined : undefined,
-        birthDate: csvMapping.birthDate >= 0 ? (cols[csvMapping.birthDate] || '').trim() || undefined : undefined,
-        email: csvMapping.email >= 0 ? (cols[csvMapping.email] || '').trim() || undefined : undefined,
-        phone: csvMapping.phone >= 0 ? (cols[csvMapping.phone] || '').trim() || undefined : undefined,
-        teamNameOrId:
-          csvMapping.teamNameOrId >= 0 ? (cols[csvMapping.teamNameOrId] || '').trim() || undefined : undefined,
-        guardianName:
-          csvMapping.guardianName >= 0 ? (cols[csvMapping.guardianName] || '').trim() || undefined : undefined,
-        guardianDni:
-          csvMapping.guardianDni >= 0 ? (cols[csvMapping.guardianDni] || '').trim() || undefined : undefined,
-        feelsportsId:
-          csvMapping.feelsportsId >= 0 ? (cols[csvMapping.feelsportsId] || '').trim() || undefined : undefined,
-      }))
-      .filter((r) => Boolean(r.firstName || r.lastName));
-  }, [csvDataRows, csvMapping]);
-
-  const handleRunCsvImport = async () => {
-    if (mappedPreviewRows.length === 0) return;
-    setImportingCsv(true);
-    setErrorBanner(null);
-    try {
-      const res = await fetch('/api/intranet/census', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'import_feelsports_csv', rows: mappedPreviewRows }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.success) {
-        setErrorBanner(data?.error || 'Error importando el CSV.');
-        return;
-      }
-      setCsvImportResult(data.result);
-      showToast(
-        `CSV importado: ${data.result.created} creados, ${data.result.enriched} enriquecidos, ${data.result.queuedForDedup} en revisión.`
-      );
-      await loadCensus();
-    } catch {
-      setErrorBanner('Error de red importando CSV.');
-    } finally {
-      setImportingCsv(false);
-    }
-  };
-
-  // Resolver cola de deduplicación
-  const handleResolveDedup = async (
-    queueId: string,
-    resolution: 'MERGE' | 'CREATE_NEW' | 'DISCARD'
-  ) => {
-    setResolvingDedupId(queueId);
-    setErrorBanner(null);
-    try {
-      const res = await fetch('/api/intranet/census', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'resolve_dedup', queueId, resolution }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.success) {
-        setErrorBanner(data?.error || 'No se pudo resolver la coincidencia.');
-        return;
-      }
-      showToast(
-        resolution === 'MERGE'
-          ? 'Fichas fusionadas correctamente.'
-          : resolution === 'CREATE_NEW'
-            ? 'Nueva ficha creada desde cola de revisión.'
-            : 'Registro descartado.'
-      );
-      await loadCensus();
-    } catch {
-      setErrorBanner('Error de red resolviendo deduplicación.');
-    } finally {
-      setResolvingDedupId(null);
-    }
-  };
-
-  // Modal Invitaciones
-  const openSingleInviteModal = (ath: AthleteRecord) => {
-    setInviteMode('SINGLE');
-    setInviteAthlete(ath);
-    setInviteEmail(ath.guardianEmail || '');
-    setInviteTargetType(ath.ageBracket === '+18' ? 'ATHLETE' : 'GUARDIAN');
-    setInviteSendEmail(true);
-    setInviteResults([]);
-    setInviteSkipped([]);
-    setInviteModalOpen(true);
-  };
-
-  const openBatchInviteModal = () => {
-    setInviteMode('BATCH');
-    setInviteAthlete(null);
-    setInviteTeamId(teamFilter || teams[0]?.id || '');
-    setInviteTargetType('AUTO');
-    setInviteSendEmail(true);
-    setInviteOnlyPending(true);
-    setInviteResults([]);
-    setInviteSkipped([]);
-    setInviteModalOpen(true);
-  };
-
-  const handleSendInvitations = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSendingInvite(true);
-    setErrorBanner(null);
-    try {
-      const body =
-        inviteMode === 'SINGLE' && inviteAthlete
-          ? {
-              action: 'send_invitations',
-              athleteId: inviteAthlete.id,
-              email: inviteEmail.trim() || undefined,
-              targetType: inviteTargetType,
-              sendEmail: inviteSendEmail,
-            }
-          : {
-              action: 'send_invitations',
-              teamSeasonId: inviteTeamId,
-              onlyPending: inviteOnlyPending,
-              sendEmail: inviteSendEmail,
-            };
-
-      const res = await fetch('/api/intranet/census', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.success) {
-        setErrorBanner(data?.error || 'Error enviando invitaciones.');
-        return;
-      }
-
-      setInviteResults(Array.isArray(data.results) ? data.results : []);
-      setInviteSkipped(Array.isArray(data.skipped) ? data.skipped : []);
-      showToast(
-        `Generadas ${data.results?.length || 0} invitaciones (${data.results?.filter((r: InviteResultItem) => r.emailSent).length || 0} enviadas por SMTP).`
-      );
-    } catch {
-      setErrorBanner('Error de red generando invitaciones.');
-    } finally {
-      setSendingInvite(false);
-    }
-  };
-
   const handleCopyText = async (key: string, text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -927,20 +1028,20 @@ export default function ClubCensoPage() {
   if (authError) {
     return (
       <main className="min-h-[75vh] bg-surface px-4 py-12 text-on-surface">
-        <div className="mx-auto max-w-xl rounded-2xl border border-rose-500/30 bg-surface-container p-8 text-center">
+        <div className="mx-auto max-w-xl rounded-none border border-rose-500/30 bg-surface-container p-8 text-center">
           <Lock className="mx-auto mb-4 h-12 w-12 text-primary" />
           <h1 className="font-headline text-2xl font-bold text-white">Acceso restringido</h1>
-          <p className="mt-2 text-sm text-zinc-300">{authError}</p>
+          <p className="mt-2 text-sm text-on-surface/90">{authError}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
               href="/acceso"
-              className="rounded-xl bg-primary-container px-5 py-2.5 text-sm font-bold text-white transition hover:bg-cta-hover"
+              className="rounded-none bg-primary-container px-5 py- active:translate-x-[1px] active:translate-y-[1px]2.5 text-sm font-bold text-white transition hover:bg-cta-hover"
             >
               Iniciar sesión
             </Link>
             <Link
               href="/club"
-              className="rounded-xl border border-white/15 bg-surface-container-high px-5 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/10"
+              className="rounded-none border border-white/15 bg-surface-container-high px-5 py-2.5 text-sm font-semibold text-on-surface transition hover:bg-white/10"
             >
               Volver al panel
             </Link>
@@ -954,58 +1055,42 @@ export default function ClubCensoPage() {
     <main className="min-h-screen bg-surface pb-16 pt-6 text-on-surface">
       <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
         {/* Cabecera */}
-        <header className="mb-6 flex flex-col gap-4 rounded-2xl border border-white/10 bg-surface-container-low p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+        <header className="mb-6 flex flex-col gap-4 rounded-none border border-white/10 bg-surface-container-low p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 shadow-brutal-dark">
           <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-tertiary">
               <Link
                 href="/club"
-                className="inline-flex items-center gap-1.5 font-medium text-zinc-300 transition hover:text-white"
+                className="inline-flex items-center gap-1.5 font-medium text-on-surface/90 transition hover:text-white"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Panel Club
               </Link>
               <span>/</span>
-              <span className="font-semibold text-primary">Censo Unificado</span>
-              <span className="rounded-full border border-white/10 bg-surface-container-high px-2.5 py-0.5 text-[11px] font-semibold text-zinc-300">
+              <span className="font-semibold text-primary">Jugadoras/es</span>
+              <span className="rounded-none border border-white/10 bg-surface-container-high px-2.5 py-0.5 text-[11px] font-semibold text-on-surface/90">
                 Temporada 2026/2027
               </span>
             </div>
             <h1 className="font-headline text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Censo Unificado, Deduplicación e Invitaciones
+              Jugadoras/es
             </h1>
-            <p className="mt-1 text-sm text-zinc-400">
-              Gestión centralizada de plantillas FAVB/AFADE, FeelSports, estados RGPD, semáforo de cuotas e invitaciones de onboarding.
-            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             {permissions.canImport && (
               <button
                 type="button"
                 onClick={handleSyncSources}
                 disabled={syncing}
-                className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs font-bold text-amber-200 transition hover:bg-amber-500/20 disabled:opacity-50 sm:text-sm"
+                title="Sincronizar FAVB + Jugadoras/es + RGPD"
+                aria-label="Sincronizar FAVB + Jugadoras/es + RGPD"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-none border border-amber-500/30 bg-amber-500/10 text-amber-200 transition hover:bg-amber-500/20 disabled:opacity-50"
               >
                 {syncing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
                 )}
-                Sincronizar FAVB + Censo + RGPD
-              </button>
-            )}
-
-            {permissions.canImport && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCsvImportResult(null);
-                  setCsvModalOpen(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-surface-container-high px-3.5 py-2.5 text-xs font-bold text-white transition hover:border-primary/50 hover:bg-white/10 sm:text-sm"
-              >
-                <Upload className="h-4 w-4 text-primary" />
-                Importar CSV FeelSports
               </button>
             )}
 
@@ -1013,28 +1098,30 @@ export default function ClubCensoPage() {
               <button
                 type="button"
                 onClick={() => openAthleteModal(null)}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary-container px-4 py-2.5 text-xs font-bold text-white shadow-glow-crimson transition hover:bg-cta-hover sm:text-sm"
+                title="Nuevo Deportista"
+                aria-label="Nuevo Deportista"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-none bg-primary-container text-white shadow-glow-crimson transition hover:bg-cta-hover"
               >
-                <UserPlus className="h-4 w-4" />
-                Nuevo Deportista
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
 
             <button
               type="button"
               onClick={handleExportCsv}
-              disabled={filteredAthletes.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-surface-container-high px-3.5 py-2.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/10 disabled:opacity-40 sm:text-sm"
+              disabled={sortedAthletes.length === 0}
+              title="Exportar CSV"
+              aria-label="Exportar CSV"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-none border border-white/15 bg-surface-container-high text-on-surface transition hover:bg-white/10 disabled:opacity-40"
             >
-              <Download className="h-4 w-4" />
-              Exportar CSV
+              <Download className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </header>
 
         {/* Alertas y Toast */}
         {errorBanner && (
-          <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-4 flex items-start justify-between gap-3 rounded-none border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-sm text-rose-200">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
               <span>{errorBanner}</span>
@@ -1051,7 +1138,7 @@ export default function ClubCensoPage() {
         )}
 
         {toastMsg && (
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/50 px-4 py-3 text-sm text-emerald-200">
+          <div className="mb-4 flex items-center gap-2 rounded-none border border-emerald-500/40 bg-emerald-950/50 px-4 py-3 text-sm text-emerald-200">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
             <span>{toastMsg}</span>
           </div>
@@ -1059,185 +1146,142 @@ export default function ClubCensoPage() {
 
         {/* KPIs rápidos */}
         <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-white/10 bg-surface-container p-4">
-            <div className="text-xs font-medium text-zinc-400">Deportistas activos</div>
+          <div className="rounded-none border border-white/10 bg-surface-container p-4 shadow-brutal-dark">
+            <div className="text-xs font-medium text-tertiary">Deportistas activos</div>
             <div className="mt-1 font-headline text-2xl font-bold text-white">
               {globalStats.totalActive}
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-surface-container p-4">
-            <div className="text-xs font-medium text-zinc-400">Fichas verificadas</div>
+          <div className="rounded-none border border-white/10 bg-surface-container p-4 shadow-brutal-dark">
+            <div className="text-xs font-medium text-tertiary">Fichas verificadas</div>
             <div className="mt-1 font-headline text-2xl font-bold text-emerald-400">
               {globalStats.verified}
-              <span className="ml-1.5 text-xs font-normal text-zinc-400">
+              <span className="ml-1.5 text-xs font-normal text-tertiary">
                 / {globalStats.totalActive}
               </span>
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-surface-container p-4">
-            <div className="text-xs font-medium text-zinc-400">RGPD Activo</div>
+          <div className="rounded-none border border-white/10 bg-surface-container p-4 shadow-brutal-dark">
+            <div className="text-xs font-medium text-tertiary">RGPD Activo</div>
             <div className="mt-1 font-headline text-2xl font-bold text-sky-400">
               {globalStats.rgpdActive}
-              <span className="ml-1.5 text-xs font-normal text-zinc-400">
+              <span className="ml-1.5 text-xs font-normal text-tertiary">
                 / {globalStats.totalActive}
               </span>
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-surface-container p-4">
-            <div className="text-xs font-medium text-zinc-400">Pendientes de cuenta</div>
+          <div className="rounded-none border border-white/10 bg-surface-container p-4 shadow-brutal-dark">
+            <div className="text-xs font-medium text-tertiary">Pendientes de cuenta</div>
             <div className="mt-1 font-headline text-2xl font-bold text-amber-400">
               {globalStats.withoutAccount}
             </div>
           </div>
         </section>
 
-        {/* Tarjetas de Progreso de campaña por equipo */}
-        {teamSummaries.length > 0 && (
-          <section className="mb-6">
-            <div className="mb-2.5 flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                Progreso de campaña por equipo
-              </h2>
-              {teamFilter && (
-                <button
-                  type="button"
-                  onClick={() => setTeamFilter('')}
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Ver todos los equipos
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {teamSummaries.map((ts) => {
-                const pct = ts.total > 0 ? Math.round((ts.verificados / ts.total) * 100) : 0;
-                const isSelected = teamFilter === ts.teamId;
-                return (
-                  <button
-                    key={ts.teamId}
-                    type="button"
-                    onClick={() =>
-                      setTeamFilter((prev) => (prev === ts.teamId ? '' : ts.teamId))
-                    }
-                    className={`rounded-xl border p-3.5 text-left transition ${
-                      isSelected
-                        ? 'border-primary bg-primary-container/15 shadow-glow-crimson'
-                        : 'border-white/10 bg-surface-container hover:border-white/25'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="truncate text-sm font-bold text-white">
-                        {ts.teamName}
-                      </span>
-                      <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-zinc-300">
-                        {ts.association}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-baseline justify-between text-xs">
-                      <span className="font-semibold text-emerald-300">
-                        {ts.verificados}/{ts.total} verificadas
-                      </span>
-                      <span className="text-zinc-400">{ts.conRgpd} RGPD</span>
-                    </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-primary-container transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
         {/* Pestañas principales */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setActiveTab('censo')}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition ${
-                activeTab === 'censo'
+              onClick={() => setActiveTab('plantilla')}
+              className={`inline-flex items-center gap-2 rounded-none px-4 py-2 text-sm font-bold transition ${
+                activeTab === 'plantilla'
                   ? 'bg-primary-container text-white'
-                  : 'bg-surface-container text-zinc-300 hover:bg-white/10'
+                  : 'bg-surface-container text-on-surface/90 hover:bg-white/10'
               }`}
             >
               <Users className="h-4 w-4" />
-              Censo unificado
-              <span className="rounded-full bg-black/30 px-2 py-0.5 text-xs">
-                {filteredAthletes.length}
+              Plantilla
+              <span className="rounded-none bg-black/30 px-2 py-0.5 text-xs">
+                {sortedAthletes.length}
               </span>
             </button>
 
-            {permissions.canImport && (
+            {regSupported && (
               <button
                 type="button"
-                onClick={() => setActiveTab('dedup')}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition ${
-                  activeTab === 'dedup'
+                onClick={() => setActiveTab('inscripciones')}
+                className={`inline-flex items-center gap-2 rounded-none px-4 py-2 text-sm font-bold transition ${
+                  activeTab === 'inscripciones'
                     ? 'bg-primary-container text-white'
-                    : 'bg-surface-container text-zinc-300 hover:bg-white/10'
+                    : 'bg-surface-container text-on-surface/90 hover:bg-white/10'
                 }`}
               >
-                <GitMerge className="h-4 w-4" />
-                Cola de Deduplicación
+                <Link2 className="h-4 w-4" />
+                Inscripciones y Enlaces
                 <span
-                  className={`rounded-full px-2 py-0.5 text-xs ${
-                    dedupQueue.length > 0
-                      ? 'bg-amber-500 text-black'
-                      : 'bg-black/30 text-zinc-300'
+                  className={`rounded-none px-2 py-0.5 text-xs ${
+                    pendingRegCount > 0
+                      ? 'bg-amber-400 text-black'
+                      : 'bg-black/30 text-on-surface/90'
                   }`}
                 >
-                  {dedupQueue.length}
+                  {pendingRegCount}
                 </span>
               </button>
             )}
           </div>
 
-          {permissions.canSendInvitation && activeTab === 'censo' && (
-            <button
-              type="button"
-              onClick={openBatchInviteModal}
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/35 bg-emerald-500/15 px-3.5 py-2 text-xs font-bold text-emerald-200 transition hover:bg-emerald-500/25 sm:text-sm"
-            >
-              <Send className="h-4 w-4" />
-              Invitar pendientes del equipo
-            </button>
+          {activeTab === 'plantilla' && (
+            <div className="flex flex-wrap items-center gap-2">
+              {teamSummaries.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTeamSummaryModalOpen(true)}
+                  className={`inline-flex items-center gap-2 rounded-none border px-3.5 py-2 text-xs font-bold transition sm:text-sm ${
+                    teamFilter
+                      ? 'border-primary bg-primary-container/15 text-primary'
+                      : 'border-white/15 bg-surface-container text-on-surface hover:bg-white/10'
+                  }`}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Resumen por equipo
+                  <span className="rounded-none bg-black/30 px-2 py-0.5 text-[11px] text-on-surface">
+                    {teamSummaries.length}
+                  </span>
+                </button>
+              )}
+            </div>
           )}
         </div>
 
-        {/* TAB 1: CENSO */}
-        {activeTab === 'censo' && (
+        {/* TAB 1: PLANTILLA */}
+        {activeTab === 'plantilla' && (
           <>
             {/* Barra de filtros */}
-            <section className="mb-5 grid grid-cols-1 gap-3 rounded-2xl border border-white/10 bg-surface-container p-4 sm:grid-cols-2 lg:grid-cols-5">
+            <section className="mb-5 grid grid-cols-1 gap-3 rounded-none border border-white/10 bg-surface-container p-4 sm:grid-cols-2 lg:grid-cols-5">
               <div className="relative lg:col-span-2">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tertiary" aria-hidden="true" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Buscar por nombre, tutor, DNI o licencia"
                   placeholder="Buscar por nombre, tutor, DNI (últ. 5) o licencia..."
-                  className="w-full rounded-xl border border-white/10 bg-surface-container-lowest py-2.5 pl-9 pr-3 text-sm text-white placeholder-zinc-500 focus:border-primary focus:outline-none"
+                  className="w-full rounded-none border border-white/10 bg-surface-container-lowest py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-tertiary/75 focus:border-primary focus:outline-none"
                 />
               </div>
 
               <div className="relative">
-                <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tertiary" />
                 <select
                   value={teamFilter}
                   onChange={(e) => setTeamFilter(e.target.value)}
                   aria-label="Filtrar por equipo"
-                  className="w-full appearance-none rounded-xl border border-white/10 bg-surface-container-lowest py-2.5 pl-9 pr-3 text-sm text-white focus:border-primary focus:outline-none"
+                  className="w-full appearance-none rounded-none border border-white/10 bg-surface-container-lowest py-2.5 pl-9 pr-3 text-sm text-white focus:border-primary focus:outline-none"
                 >
                   <option value="">Todos los equipos</option>
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
+                  {groupByCategoryFamily(teams, (t) => `${t.id} ${t.name}`).map(
+                    ({ family, items: familyTeams }) => (
+                      <optgroup key={family.code} label={family.label}>
+                        {familyTeams.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {getShortTeamLabelInFamily(t.name, family.code)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )
+                  )}
                 </select>
               </div>
 
@@ -1245,83 +1289,218 @@ export default function ClubCensoPage() {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 aria-label="Filtrar por estado de ficha"
-                className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2.5 text-sm text-white focus:border-primary focus:outline-none"
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2.5 text-sm text-white focus:border-primary focus:outline-none"
               >
                 <option value="">Todos los estados</option>
                 <option value="VERIFICADO">Verificado</option>
                 <option value="PENDIENTE_VALIDAR">Pendiente validar</option>
                 <option value="IMPORTADO">Importado</option>
                 <option value="BAJA">Baja</option>
-                <option value="SHREDDED">Suprimido</option>
               </select>
 
               <select
                 value={rgpdFilter}
                 onChange={(e) => setRgpdFilter(e.target.value)}
                 aria-label="Filtrar por estado RGPD"
-                className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2.5 text-sm text-white focus:border-primary focus:outline-none"
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2.5 text-sm text-white focus:border-primary focus:outline-none"
               >
                 <option value="">Todo RGPD</option>
                 <option value="ACTIVE">RGPD Activo</option>
                 <option value="PENDING">RGPD Pendiente</option>
                 <option value="REVOKED">RGPD Revocado</option>
-                <option value="SHREDDED">Suprimido Art.17</option>
               </select>
-
-              {permissions.canIncludeDemo && (
-                <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-zinc-300 sm:col-span-2 lg:col-span-5">
-                  <input
-                    type="checkbox"
-                    checked={includeDemo}
-                    onChange={(e) => {
-                      const next = e.target.checked;
-                      setIncludeDemo(next);
-                      void loadCensus(next);
-                    }}
-                    className="h-4 w-4 rounded border-white/20 bg-surface-container-lowest accent-primary-container"
-                  />
-                  Incluir perfiles de demostración (demo)
-                </label>
-              )}
             </section>
 
             {/* Estado de carga / vacío */}
             {loading ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-surface-container py-16 text-zinc-400">
+              <div className="flex flex-col items-center justify-center rounded-none border border-white/10 bg-surface-container py-16 text-tertiary">
                 <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm">Cargando censo unificado...</p>
+                <p className="text-sm">Cargando plantilla del club...</p>
               </div>
-            ) : filteredAthletes.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-surface-container p-10 text-center">
-                <Users className="mx-auto mb-3 h-10 w-10 text-zinc-500" />
-                <h3 className="text-base font-bold text-white">No hay deportistas que coincidan</h3>
-                <p className="mt-1 text-sm text-zinc-400">
-                  {athletes.length === 0 && permissions.canImport
-                    ? 'Pulsa "Sincronizar FAVB + Censo + RGPD" o importa un CSV de FeelSports para poblar el censo.'
-                    : 'Prueba limpiando los filtros o cambiando la búsqueda.'}
-                </p>
+            ) : sortedAthletes.length === 0 ? (
+              <div className="rounded-none border border-white/10 bg-surface-container p-8 text-center shadow-brutal-dark">
+                <Users className="mx-auto mb-2.5 h-8 w-8 text-tertiary" aria-hidden="true" />
+                <h2 className="text-sm font-bold text-white">Sin deportistas en esta vista</h2>
               </div>
             ) : (
               <>
+                <h2 className="sr-only">Listado de deportistas de la plantilla</h2>
                 {/* Vista Desktop: Tabla */}
-                <div className="hidden overflow-hidden rounded-2xl border border-white/10 bg-surface-container md:block">
+                <div className="hidden overflow-hidden rounded-none border border-white/10 bg-surface-container shadow-brutal-dark md:block">
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-left text-sm">
                       <thead>
-                        <tr className="border-b border-white/10 bg-surface-container-lowest text-xs uppercase tracking-wider text-zinc-400">
-                          <th className="px-4 py-3.5 font-bold">Deportista</th>
-                          <th className="px-4 py-3.5 font-bold">Equipo(s)</th>
-                          <th className="px-4 py-3.5 font-bold">Estado Ficha</th>
+                        <tr className="border-b border-white/10 bg-surface-container-lowest text-xs uppercase tracking-wider text-tertiary">
+                          <th
+                            className="px-4 py-3.5 font-bold"
+                            aria-sort={
+                              sortField === 'athlete'
+                                ? sortDir === 'asc'
+                                  ? 'ascending'
+                                  : 'descending'
+                                : 'none'
+                            }
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleSort('athlete')}
+                              className="inline-flex cursor-pointer items-center gap-1.5 font-bold uppercase tracking-wider text-on-surface/90 transition hover:text-white"
+                            >
+                              <span>Deportista</span>
+                              {sortField === 'athlete' ? (
+                                sortDir === 'asc' ? (
+                                  <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                                ) : (
+                                  <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="h-3.5 w-3.5 text-tertiary" />
+                              )}
+                            </button>
+                          </th>
+                          <th
+                            className="px-4 py-3.5 font-bold"
+                            aria-sort={
+                              sortField === 'team'
+                                ? sortDir === 'asc'
+                                  ? 'ascending'
+                                  : 'descending'
+                                : 'none'
+                            }
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleSort('team')}
+                              className="inline-flex cursor-pointer items-center gap-1.5 font-bold uppercase tracking-wider text-on-surface/90 transition hover:text-white"
+                            >
+                              <span>Equipo</span>
+                              {sortField === 'team' ? (
+                                sortDir === 'asc' ? (
+                                  <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                                ) : (
+                                  <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="h-3.5 w-3.5 text-tertiary" />
+                              )}
+                            </button>
+                          </th>
+                          <th
+                            className="px-4 py-3.5 font-bold"
+                            aria-sort={
+                              sortField === 'age'
+                                ? sortDir === 'asc'
+                                  ? 'ascending'
+                                  : 'descending'
+                                : 'none'
+                            }
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleSort('age')}
+                              className="inline-flex cursor-pointer items-center gap-1.5 font-bold uppercase tracking-wider text-on-surface/90 transition hover:text-white"
+                            >
+                              <span>Año / Edad</span>
+                              {sortField === 'age' ? (
+                                sortDir === 'asc' ? (
+                                  <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                                ) : (
+                                  <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="h-3.5 w-3.5 text-tertiary" />
+                              )}
+                            </button>
+                          </th>
+                          <th
+                            className="px-4 py-3.5 font-bold"
+                            aria-sort={
+                              sortField === 'status'
+                                ? sortDir === 'asc'
+                                  ? 'ascending'
+                                  : 'descending'
+                                : 'none'
+                            }
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleSort('status')}
+                              className="inline-flex cursor-pointer items-center gap-1.5 font-bold uppercase tracking-wider text-on-surface/90 transition hover:text-white"
+                            >
+                              <span>Estado ficha</span>
+                              {sortField === 'status' ? (
+                                sortDir === 'asc' ? (
+                                  <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                                ) : (
+                                  <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="h-3.5 w-3.5 text-tertiary" />
+                              )}
+                            </button>
+                          </th>
                           {permissions.canViewTrafficLight && (
-                            <th className="px-4 py-3.5 font-bold">Semáforo Cuotas</th>
+                            <th
+                              className="px-4 py-3.5 font-bold"
+                              aria-sort={
+                                sortField === 'payment'
+                                  ? sortDir === 'asc'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : 'none'
+                              }
+                            >
+                              <button
+                                type="button"
+                                onClick={() => toggleSort('payment')}
+                                className="inline-flex cursor-pointer items-center gap-1.5 font-bold uppercase tracking-wider text-on-surface/90 transition hover:text-white"
+                              >
+                                <span>Cuota</span>
+                                {sortField === 'payment' ? (
+                                  sortDir === 'asc' ? (
+                                    <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                                  ) : (
+                                    <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                                  )
+                                ) : (
+                                  <ArrowUpDown className="h-3.5 w-3.5 text-tertiary" />
+                                )}
+                              </button>
+                            </th>
                           )}
-                          <th className="px-4 py-3.5 font-bold">Estado RGPD</th>
+                          <th
+                            className="px-4 py-3.5 font-bold"
+                            aria-sort={
+                              sortField === 'rgpd'
+                                ? sortDir === 'asc'
+                                  ? 'ascending'
+                                  : 'descending'
+                                : 'none'
+                            }
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleSort('rgpd')}
+                              className="inline-flex cursor-pointer items-center gap-1.5 font-bold uppercase tracking-wider text-on-surface/90 transition hover:text-white"
+                            >
+                              <span>RGPD</span>
+                              {sortField === 'rgpd' ? (
+                                sortDir === 'asc' ? (
+                                  <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                                ) : (
+                                  <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="h-3.5 w-3.5 text-tertiary" />
+                              )}
+                            </button>
+                          </th>
                           <th className="px-4 py-3.5 font-bold">Tutor / Contacto</th>
                           <th className="px-4 py-3.5 text-right font-bold">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {filteredAthletes.map((ath) => {
+                        {sortedAthletes.map((ath) => {
                           const stMeta = STATUS_BADGE[ath.status] || STATUS_BADGE.IMPORTADO;
                           const rgpdMeta = RGPD_BADGE[ath.rgpdStatus] || RGPD_BADGE.PENDING;
                           const lightMeta = ath.paymentTrafficLight
@@ -1337,18 +1516,12 @@ export default function ClubCensoPage() {
                                 <div className="flex flex-wrap items-center gap-1.5 font-bold text-white">
                                   <span>{ath.fullName}</span>
                                   {ath.isDemo && (
-                                    <span className="rounded bg-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">
+                                    <span className="rounded-none bg-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">
                                       DEMO
                                     </span>
                                   )}
                                 </div>
-                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                                  {ath.ageBracket && (
-                                    <span className="rounded bg-white/5 px-1.5 py-0.5 font-semibold text-zinc-300">
-                                      {ath.ageBracket}
-                                      {ath.approxAge !== null ? ` (~${ath.approxAge}a)` : ''}
-                                    </span>
-                                  )}
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-tertiary">
                                   {ath.dniLast5 && <span>DNI ***{ath.dniLast5}</span>}
                                   {ath.jerseyNumber !== null && <span>#{ath.jerseyNumber}</span>}
                                   {ath.shirtSize && <span>Talla {ath.shirtSize}</span>}
@@ -1358,27 +1531,50 @@ export default function ClubCensoPage() {
                               <td className="px-4 py-3.5 align-top">
                                 <div className="flex flex-wrap gap-1">
                                   {ath.teams.length === 0 ? (
-                                    <span className="text-xs text-zinc-500">Sin equipo</span>
+                                    <span className="text-xs text-tertiary">Sin equipo</span>
                                   ) : (
-                                    ath.teams.map((t) => (
-                                      <span
-                                        key={t.teamSeasonId}
-                                        className={`inline-block rounded-lg px-2 py-0.5 text-xs font-medium ${
-                                          t.isPrimary
-                                            ? 'border border-primary/30 bg-primary-container/15 text-primary'
-                                            : 'border border-white/10 bg-white/5 text-zinc-300'
-                                        }`}
-                                      >
-                                        {t.teamName}
-                                      </span>
-                                    ))
+                                    ath.teams.map((t) => {
+                                      const tTheme = getTeamColorTheme(t.teamName);
+                                      return (
+                                        <span
+                                          key={t.teamSeasonId}
+                                          className={`inline-block rounded-none px-2 py-0.5 text-xs font-medium ${
+                                            t.isPrimary
+                                              ? `border border-white/15 bg-surface-container-highest ${tTheme.textClass}`
+                                              : `border border-white/10 bg-white/5 ${
+                                                  tTheme.colorKey ? tTheme.textClass : 'text-on-surface/90'
+                                                }`
+                                          }`}
+                                        >
+                                          {t.teamName}
+                                        </span>
+                                      );
+                                    })
                                   )}
                                 </div>
                               </td>
 
+                              <td className="px-4 py-3.5 align-top whitespace-nowrap">
+                                {ath.birthYear || ath.approxAge !== null || ath.ageBracket ? (
+                                  <div className="space-y-0.5">
+                                    <div className="text-xs font-semibold text-on-surface">
+                                      {ath.birthYear ? ath.birthYear : '—'}
+                                      {ath.approxAge !== null ? ` (${ath.approxAge}a)` : ''}
+                                    </div>
+                                    {ath.ageBracket && (
+                                      <span className="inline-block rounded-none bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-tertiary">
+                                        {ath.ageBracket}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-tertiary">—</span>
+                                )}
+                              </td>
+
                               <td className="px-4 py-3.5 align-top">
                                 <span
-                                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${stMeta.cls}`}
+                                  className={`inline-flex items-center rounded-none border px-2.5 py-0.5 text-xs font-semibold ${stMeta.cls}`}
                                 >
                                   {stMeta.label}
                                 </span>
@@ -1394,14 +1590,14 @@ export default function ClubCensoPage() {
                                       <span>{lightMeta.label}</span>
                                     </span>
                                   ) : (
-                                    <span className="text-xs text-zinc-500">—</span>
+                                    <span className="text-xs text-tertiary">—</span>
                                   )}
                                 </td>
                               )}
 
                               <td className="px-4 py-3.5 align-top">
                                 <span
-                                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${rgpdMeta.cls}`}
+                                  className={`inline-flex items-center rounded-none border px-2.5 py-0.5 text-xs font-semibold ${rgpdMeta.cls}`}
                                 >
                                   {rgpdMeta.label}
                                 </span>
@@ -1410,9 +1606,9 @@ export default function ClubCensoPage() {
                               <td className="px-4 py-3.5 align-top">
                                 {ath.guardianName ? (
                                   <div>
-                                    <div className="font-medium text-zinc-200">{ath.guardianName}</div>
+                                    <div className="font-medium text-on-surface">{ath.guardianName}</div>
                                     {permissions.canViewEmergency && (
-                                      <div className="mt-0.5 text-xs text-zinc-400">
+                                      <div className="mt-0.5 text-xs text-tertiary">
                                         {ath.guardianPhone && <div>{ath.guardianPhone}</div>}
                                         {ath.guardianEmail && (
                                           <div className="truncate max-w-[200px]">
@@ -1422,13 +1618,13 @@ export default function ClubCensoPage() {
                                       </div>
                                     )}
                                     {(ath.hasGuardianAccount || ath.hasAthleteAccount) && (
-                                      <span className="mt-1 inline-block rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                                      <span className="mt-1 inline-block rounded-none bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
                                         Cuenta activa
                                       </span>
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-zinc-500">Sin tutor vinculado</span>
+                                  <span className="text-xs text-tertiary">Sin tutor vinculado</span>
                                 )}
                               </td>
 
@@ -1438,7 +1634,7 @@ export default function ClubCensoPage() {
                                     type="button"
                                     onClick={() => openAthleteModal(ath)}
                                     title={ath.canEditRow ? 'Ver / Editar ficha' : 'Ver ficha'}
-                                    className="rounded-lg border border-white/10 bg-surface-container-high p-2 text-zinc-200 transition hover:border-white/30 hover:text-white"
+                                    className="rounded-none border border-white/10 bg-surface-container-high p-2 text-on-surface transition hover:border-white/30 hover:text-white"
                                   >
                                     {ath.canEditRow ? (
                                       <Edit2 className="h-4 w-4" />
@@ -1452,20 +1648,9 @@ export default function ClubCensoPage() {
                                       type="button"
                                       onClick={() => openAthleteModal(ath, true)}
                                       title="Ver datos sensibles (auditado)"
-                                      className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300 transition hover:bg-amber-500/20"
+                                      className="rounded-none border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300 transition hover:bg-amber-500/20"
                                     >
                                       <ShieldAlert className="h-4 w-4" />
-                                    </button>
-                                  )}
-
-                                  {ath.canInvite && (
-                                    <button
-                                      type="button"
-                                      onClick={() => openSingleInviteModal(ath)}
-                                      title="Enviar o copiar invitación de onboarding"
-                                      className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-emerald-300 transition hover:bg-emerald-500/20"
-                                    >
-                                      <Mail className="h-4 w-4" />
                                     </button>
                                   )}
 
@@ -1476,7 +1661,7 @@ export default function ClubCensoPage() {
                                         type="button"
                                         onClick={() => handleDeactivateAthlete(ath)}
                                         title="Dar de baja"
-                                        className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2 text-rose-300 transition hover:bg-rose-500/20"
+                                        className="rounded-none border border-rose-500/30 bg-rose-500/10 p-2 text-rose-300 transition hover:bg-rose-500/20"
                                       >
                                         <UserX className="h-4 w-4" />
                                       </button>
@@ -1493,7 +1678,40 @@ export default function ClubCensoPage() {
 
                 {/* Vista Mobile (375px): Cards limpias sin desbordamiento */}
                 <div className="space-y-3 md:hidden">
-                  {filteredAthletes.map((ath) => {
+                  <div className="flex items-center justify-between gap-2 rounded-none border border-white/10 bg-surface-container px-3 py-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-tertiary">
+                      Ordenar
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={sortField}
+                        onChange={(e) => setSortField(e.target.value as SortField)}
+                        aria-label="Ordenar plantilla por"
+                        className="rounded-none border border-white/10 bg-surface-container-lowest px-2.5 py-1 text-xs font-semibold text-white"
+                      >
+                        <option value="athlete">Deportista</option>
+                        <option value="team">Equipo</option>
+                        <option value="age">Año / Edad</option>
+                        <option value="status">Estado ficha</option>
+                        <option value="rgpd">RGPD</option>
+                        {permissions.canViewTrafficLight && <option value="payment">Cuota</option>}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+                        aria-label="Invertir orden"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-none border border-white/10 bg-surface-container-high text-on-surface"
+                      >
+                        {sortDir === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {sortedAthletes.map((ath) => {
                     const stMeta = STATUS_BADGE[ath.status] || STATUS_BADGE.IMPORTADO;
                     const rgpdMeta = RGPD_BADGE[ath.rgpdStatus] || RGPD_BADGE.PENDING;
                     const lightMeta = ath.paymentTrafficLight
@@ -1503,16 +1721,22 @@ export default function ClubCensoPage() {
                     return (
                       <article
                         key={ath.id}
-                        className="rounded-2xl border border-white/10 bg-surface-container p-4"
+                        className="rounded-none border border-white/10 bg-surface-container p-4 shadow-brutal-dark"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <h3 className="truncate font-headline text-base font-bold text-white">
                               {ath.fullName}
                             </h3>
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-zinc-400">
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-tertiary">
+                              {ath.birthYear && (
+                                <span className="rounded-none bg-white/5 px-1.5 py-0.5 text-on-surface">
+                                  {ath.birthYear}
+                                  {ath.approxAge !== null ? ` (${ath.approxAge}a)` : ''}
+                                </span>
+                              )}
                               {ath.ageBracket && (
-                                <span className="rounded bg-white/5 px-1.5 py-0.5 text-zinc-300">
+                                <span className="rounded-none bg-white/5 px-1.5 py-0.5 text-on-surface/90">
                                   {ath.ageBracket}
                                 </span>
                               )}
@@ -1521,7 +1745,7 @@ export default function ClubCensoPage() {
                             </div>
                           </div>
                           <span
-                            className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${stMeta.cls}`}
+                            className={`shrink-0 rounded-none border px-2 py-0.5 text-[11px] font-semibold ${stMeta.cls}`}
                           >
                             {stMeta.label}
                           </span>
@@ -1531,10 +1755,10 @@ export default function ClubCensoPage() {
                           {ath.teams.map((t) => (
                             <span
                               key={t.teamSeasonId}
-                              className={`rounded-lg px-2 py-0.5 text-[11px] font-medium ${
+                              className={`rounded-none px-2 py-0.5 text-[11px] font-medium ${
                                 t.isPrimary
                                   ? 'border border-primary/30 bg-primary-container/15 text-primary'
-                                  : 'border border-white/10 bg-white/5 text-zinc-300'
+                                  : 'border border-white/10 bg-white/5 text-on-surface/90'
                               }`}
                             >
                               {t.teamName}
@@ -1542,19 +1766,19 @@ export default function ClubCensoPage() {
                           ))}
                         </div>
 
-                        <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-surface-container-lowest p-2.5 text-xs">
+                        <div className="mt-3 grid grid-cols-2 gap-2 rounded-none bg-surface-container-lowest p-2.5 text-xs">
                           <div>
-                            <div className="text-[10px] uppercase text-zinc-500">RGPD</div>
-                            <div className="mt-0.5 font-semibold text-zinc-200">
+                            <div className="text-[10px] uppercase text-tertiary">RGPD</div>
+                            <div className="mt-0.5 font-semibold text-on-surface">
                               {rgpdMeta.label}
                             </div>
                           </div>
                           {permissions.canViewTrafficLight && (
                             <div>
-                              <div className="text-[10px] uppercase text-zinc-500">Cuotas</div>
+                              <div className="text-[10px] uppercase text-tertiary">Cuotas</div>
                               <div
                                 className={`mt-0.5 font-semibold ${
-                                  lightMeta ? lightMeta.cls : 'text-zinc-500'
+                                  lightMeta ? lightMeta.cls : 'text-tertiary'
                                 }`}
                               >
                                 {lightMeta ? `${lightMeta.dot} ${lightMeta.label}` : '—'}
@@ -1562,8 +1786,8 @@ export default function ClubCensoPage() {
                             </div>
                           )}
                           <div className="col-span-2">
-                            <div className="text-[10px] uppercase text-zinc-500">Tutor</div>
-                            <div className="mt-0.5 truncate text-zinc-200">
+                            <div className="text-[10px] uppercase text-tertiary">Tutor</div>
+                            <div className="mt-0.5 truncate text-on-surface">
                               {ath.guardianName || 'Sin tutor'}
                               {permissions.canViewEmergency && ath.guardianPhone
                                 ? ` · ${ath.guardianPhone}`
@@ -1576,7 +1800,7 @@ export default function ClubCensoPage() {
                           <button
                             type="button"
                             onClick={() => openAthleteModal(ath)}
-                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-surface-container-high px-3 py-2 text-xs font-bold text-white"
+                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-none border border-white/15 bg-surface-container-high px-3 py-2 text-xs font-bold text-white"
                           >
                             {ath.canEditRow ? (
                               <Edit2 className="h-3.5 w-3.5" />
@@ -1591,20 +1815,9 @@ export default function ClubCensoPage() {
                               type="button"
                               onClick={() => openAthleteModal(ath, true)}
                               aria-label="Ver datos sensibles"
-                              className="inline-flex items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-300"
+                              className="inline-flex items-center justify-center rounded-none border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-300"
                             >
                               <ShieldAlert className="h-4 w-4" />
-                            </button>
-                          )}
-
-                          {ath.canInvite && (
-                            <button
-                              type="button"
-                              onClick={() => openSingleInviteModal(ath)}
-                              className="inline-flex items-center justify-center gap-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300"
-                            >
-                              <Mail className="h-3.5 w-3.5" />
-                              Invitar
                             </button>
                           )}
 
@@ -1615,7 +1828,7 @@ export default function ClubCensoPage() {
                                 type="button"
                                 onClick={() => handleDeactivateAthlete(ath)}
                                 aria-label="Dar de baja"
-                                className="inline-flex items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300"
+                                className="inline-flex items-center justify-center rounded-none border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300"
                               >
                                 <UserX className="h-4 w-4" />
                               </button>
@@ -1630,944 +1843,1250 @@ export default function ClubCensoPage() {
           </>
         )}
 
-        {/* TAB 2: COLA DE DEDUPLICACIÓN */}
-        {activeTab === 'dedup' && permissions.canImport && (
-          <section className="space-y-4">
-            {dedupQueue.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-surface-container p-10 text-center">
-                <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-emerald-400" />
-                <h3 className="text-base font-bold text-white">Cola de deduplicación limpia</h3>
-                <p className="mt-1 text-sm text-zinc-400">
-                  No hay coincidencias dudosas de FeelSports pendientes de revisión manual.
-                </p>
-              </div>
-            ) : (
-              dedupQueue.map((item) => {
-                const isBusy = resolvingDedupId === item.id;
-                return (
-                  <div
-                    key={item.id}
-                    className="rounded-2xl border border-amber-500/30 bg-surface-container p-5"
+        {/* TAB 2: INSCRIPCIONES Y GENERADOR DE ENLACES POR CATEGORÍA */}
+        {activeTab === 'inscripciones' && regSupported && (
+          <section className="space-y-6">
+            {/* Sub-sección 1: Bandeja de Solicitudes Recibidas */}
+            <div className="rounded-none border border-white/10 bg-surface-container p-5">
+              <div className="mb-4 flex flex-col gap-3 border-b border-white/10 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="font-headline text-lg font-bold text-white flex items-center gap-2">
+                  <UserCheck className="h-5 w-5 text-amber-400 shrink-0" />
+                  Solicitudes de Alta ({pendingRegCount} pendientes)
+                </h2>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRegStatusFilter('PENDING')}
+                    className={`rounded-none px-3 py-1.5 text-xs font-bold transition ${
+                      regStatusFilter === 'PENDING'
+                        ? 'bg-amber-400 text-black'
+                        : 'bg-surface-container-high text-on-surface/90 hover:bg-white/10'
+                    }`}
                   >
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
-                      <div>
-                        <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-300">
-                          {item.sourceType}
-                        </span>
-                        <p className="mt-1.5 text-sm font-semibold text-white">
-                          {item.matchReason}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {item.candidate && (
-                          <button
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() => handleResolveDedup(item.id, 'MERGE')}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-emerald-500 disabled:opacity-50"
-                          >
-                            <GitMerge className="h-4 w-4" />
-                            Fusionar
-                          </button>
+                    Pendientes ({pendingRegCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRegStatusFilter('ALL')}
+                    className={`rounded-none px-3 py-1.5 text-xs font-bold transition ${
+                      regStatusFilter === 'ALL'
+                        ? 'bg-primary-container text-white'
+                        : 'bg-surface-container-high text-on-surface/90 hover:bg-white/10'
+                    }`}
+                  >
+                    Todas ({regRequests.length})
+                  </button>
+                </div>
+              </div>
+
+              {regLoading ? (
+                <div className="py-10 text-center text-sm text-tertiary">
+                  <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-primary" />
+                  Cargando solicitudes...
+                </div>
+              ) : visibleRegRequests.length === 0 ? (
+                <div className="rounded-none border border-white/10 bg-surface-container-lowest p-6 text-center">
+                  <CheckCircle2 className="mx-auto mb-2 h-7 w-7 text-emerald-400" />
+                  <p className="text-sm font-semibold text-white">No hay solicitudes en este filtro</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {visibleRegRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      className={`rounded-none border p-4 ${
+                        req.status === 'PENDING'
+                          ? 'border-amber-500/40 bg-amber-950/15'
+                          : req.status === 'APPROVED'
+                            ? 'border-emerald-500/30 bg-emerald-950/10'
+                            : 'border-rose-500/30 bg-rose-950/10'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`rounded-none px-2.5 py-0.5 text-[11px] font-bold uppercase ${
+                                req.status === 'PENDING'
+                                  ? 'bg-amber-400 text-black'
+                                  : req.status === 'APPROVED'
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                              }`}
+                            >
+                              {req.status === 'PENDING'
+                                ? 'Pendiente validar'
+                                : req.status === 'APPROVED'
+                                  ? 'Aprobada'
+                                  : 'Rechazada'}
+                            </span>
+                            <span className="rounded-none bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-on-surface">
+                              {req.categoryLabel}
+                            </span>
+                            {req.isMinor ? (
+                              <span className="rounded-none bg-sky-500/20 border border-sky-500/30 px-2 py-0.5 text-[11px] font-semibold text-sky-200">
+                                Menor (&lt;18) · Tutor: {req.guardianName}
+                              </span>
+                            ) : (
+                              <span className="rounded-none bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 text-[11px] font-semibold text-purple-200">
+                                Adulto (+18)
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="text-base font-bold text-white">
+                            {req.athleteFullName}{' '}
+                            {req.birthYear ? (
+                              <span className="text-xs font-normal text-tertiary">
+                                ({req.birthYear})
+                              </span>
+                            ) : null}
+                          </h3>
+
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-on-surface/90">
+                            <span>Email acceso: <strong className="text-white">{req.contactEmail}</strong></span>
+                            {req.contactPhone && <span>Tel: {req.contactPhone}</span>}
+                            {req.selectedPlanName && (
+                              <span className="text-emerald-300">
+                                Cuota elegida: <strong>{req.selectedPlanName}</strong>
+                                {req.selectedPlanAmount !== null ? ` (${req.selectedPlanAmount} €)` : ''}
+                              </span>
+                            )}
+                            <span>
+                              RGPD OTP:{' '}
+                              <strong className="text-sky-300">
+                                {req.consentStatus} (Img: {req.consentImage ? 'Sí' : 'No'} · Viajes: {req.consentTravel ? 'Sí' : 'No'})
+                              </strong>
+                            </span>
+                          </div>
+
+                          {req.athleteTeams.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {req.athleteTeams.map((t) => (
+                                <span
+                                  key={t.teamSeasonId}
+                                  className="rounded-none border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200"
+                                >
+                                  {t.teamName}{t.isPrimary ? ' (Principal)' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {req.status === 'PENDING' && regCanApprove && (
+                          <div className="flex flex-wrap gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => openApproveModal(req)}
+                              className="inline-flex items-center gap-1.5 rounded-none bg-emerald-600 hover:bg-emerald-500 active:translate-x-[1px] active:translate-y-[1px] px-4 py-2 text-xs font-bold text-white transition"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              Aceptar y Asignar Equipo
+                            </button>
+                            <button
+                              type="button"
+                              disabled={rejectingReqId === req.id}
+                              onClick={() => handleRejectRequest(req)}
+                              className="inline-flex items-center gap-1.5 rounded-none border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/60 px-3 py-2 text-xs font-bold text-rose-200 transition disabled:opacity-50"
+                            >
+                              <X className="h-4 w-4" />
+                              Rechazar
+                            </button>
+                          </div>
                         )}
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => handleResolveDedup(item.id, 'CREATE_NEW')}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-sky-500 disabled:opacity-50"
-                        >
-                          <PlusCircle className="h-4 w-4" />
-                          Crear nuevo
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => handleResolveDedup(item.id, 'DISCARD')}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-surface-container-high px-3.5 py-2 text-xs font-bold text-zinc-300 transition hover:bg-rose-500/20 hover:text-rose-200 disabled:opacity-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Descartar
-                        </button>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="rounded-xl border border-white/10 bg-surface-container-lowest p-4">
-                        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-300">
-                          Registro importado (FeelSports CSV)
-                        </div>
-                        <dl className="space-y-1 text-xs text-zinc-300">
-                          <div>
-                            <dt className="inline text-zinc-500">Nombre: </dt>
-                            <dd className="inline font-semibold text-white">
-                              {item.payload.firstName} {item.payload.lastName}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="inline text-zinc-500">Fecha nac.: </dt>
-                            <dd className="inline">{item.payload.birthDate || '—'}</dd>
-                          </div>
-                          <div>
-                            <dt className="inline text-zinc-500">DNI: </dt>
-                            <dd className="inline">{item.payload.dni || '—'}</dd>
-                          </div>
-                          <div>
-                            <dt className="inline text-zinc-500">Equipo: </dt>
-                            <dd className="inline">{item.payload.teamNameOrId || '—'}</dd>
-                          </div>
-                          <div>
-                            <dt className="inline text-zinc-500">Tutor / Contacto: </dt>
-                            <dd className="inline">
-                              {[item.payload.guardianName, item.payload.email, item.payload.phone]
-                                .filter(Boolean)
-                                .join(' · ') || '—'}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
+            {/* Sub-sección 2: Enlaces por Categoría para WhatsApp */}
+            <div className="rounded-none border border-white/10 bg-surface-container p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+                <h2 className="font-headline text-lg font-bold text-white flex items-center gap-2">
+                  <Share2 className="h-5 w-5 text-primary shrink-0" />
+                  Enlaces por Equipo / Categoría (WhatsApp)
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorBanner(null);
+                    setNewLinkModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-none bg-primary-container hover:bg-cta-hover px-3.5 py- active:translate-x-[1px] active:translate-y-[1px]2 text-xs font-bold text-white shadow-glow-crimson transition"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo enlace
+                </button>
+              </div>
 
-                      <div className="rounded-xl border border-white/10 bg-surface-container-lowest p-4">
-                        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-300">
-                          Ficha existente candidata en Censo
+              {regLinks.length === 0 ? (
+                <div className="rounded-none border border-white/10 bg-surface-container-lowest p-6 text-center text-xs text-tertiary">
+                  Sin enlaces registrados
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {groupByCategoryFamily(
+                    regLinks,
+                    (lnk) => `${lnk.categoryCode} ${lnk.categoryLabel} ${lnk.defaultTeamName || ''}`
+                  ).map(({ family, items: familyLinks }) => {
+                    const activeCount = familyLinks.filter((l) => l.isActive).length;
+                    const submissionsSum = familyLinks.reduce(
+                      (acc, l) => acc + l.submissionsCount,
+                      0
+                    );
+                    return (
+                      <details
+                        key={family.code}
+                        open={family.code === 'SENIOR'}
+                        className="group rounded-none border border-white/10 bg-surface-container-lowest/60 overflow-hidden"
+                      >
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-white/5 [&::-webkit-details-marker]:hidden">
+                          <span className="flex items-center gap-2">
+                            <span>{family.label}</span>
+                            <span className="rounded-none bg-white/10 px-2 py-0.5 text-[10px] font-mono text-on-surface">
+                              {familyLinks.length}{' '}
+                              {familyLinks.length === 1 ? 'enlace' : 'enlaces'}
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-2 text-[11px] font-normal text-tertiary">
+                            <span>
+                              {activeCount} activos · {submissionsSum} envíos
+                            </span>
+                            <ChevronDown className="h-4 w-4 text-tertiary transition-transform group-open:rotate-180" />
+                          </span>
+                        </summary>
+                        <div className="grid grid-cols-1 gap-3 border-t border-white/10 p-3 md:grid-cols-2">
+                          {familyLinks.map((lnk) => {
+                            const fullUrl =
+                              typeof window !== 'undefined'
+                                ? `${window.location.origin}${lnk.registrationPath}`
+                                : lnk.registrationUrl;
+                            const waMessage = `Inscripción oficial C.D. Voleibol San Pedro\nCategoría: ${lnk.categoryLabel}\nCompleta tus datos, modalidad de cuota y autorizaciones aquí:\n${fullUrl}`;
+                            const isBusyLnk = busyLinkId === lnk.id;
+                            return (
+                              <div
+                                key={lnk.id}
+                                className={`rounded-none border p-4 space-y-2.5 min-w-0 ${
+                                  lnk.isActive
+                                    ? 'border-white/10 bg-surface-container-lowest'
+                                    : 'border-white/15 bg-surface-container-low/60 opacity-75'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="font-bold text-sm text-white truncate">
+                                        {lnk.categoryLabel}
+                                      </span>
+                                      <span
+                                        className={`rounded-none px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                                          lnk.isActive
+                                            ? 'bg-emerald-500/20 text-emerald-300'
+                                            : 'bg-white/15 text-on-surface/90'
+                                        }`}
+                                      >
+                                        {lnk.isActive ? 'Activo' : 'Pausado'}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-tertiary mt-0.5 truncate">
+                                      {lnk.defaultTeamName
+                                        ? `Equipo sugerido: ${lnk.defaultTeamName} · `
+                                        : ''}
+                                      Inscripciones recibidas:{' '}
+                                      <strong className="text-white">{lnk.submissionsCount}</strong>
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-none bg-black/30 px-2.5 py-1.5 font-mono text-[11px] text-on-surface/90 truncate select-all">
+                                  {fullUrl}
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyText(`url-${lnk.id}`, fullUrl)}
+                                    className="inline-flex items-center gap-1 rounded-none border border-white/15 bg-surface-container-high px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-white/10"
+                                  >
+                                    {copiedKey === `url-${lnk.id}` ? (
+                                      <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                    ) : (
+                                      <Copy className="h-3.5 w-3.5" />
+                                    )}
+                                    {copiedKey === `url-${lnk.id}` ? 'Copiado' : 'Copiar enlace'}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyText(`wa-${lnk.id}`, waMessage)}
+                                    className="inline-flex items-center gap-1 rounded-none border border-emerald-500/35 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-bold text-emerald-200 hover:bg-emerald-500/25"
+                                  >
+                                    {copiedKey === `wa-${lnk.id}` ? (
+                                      <Check className="h-3.5 w-3.5 text-emerald-300" />
+                                    ) : (
+                                      <Share2 className="h-3.5 w-3.5" />
+                                    )}
+                                    {copiedKey === `wa-${lnk.id}`
+                                      ? 'Mensaje copiado'
+                                      : 'Copiar para WhatsApp'}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={isBusyLnk}
+                                    onClick={() => handleToggleRegLink(lnk)}
+                                    className="inline-flex items-center gap-1 rounded-none border border-white/15 bg-surface-container-high px-2.5 py-1.5 text-[11px] font-semibold text-on-surface hover:bg-white/10 disabled:opacity-50"
+                                  >
+                                    {lnk.isActive ? (
+                                      <ToggleRight className="h-3.5 w-3.5 text-emerald-400" />
+                                    ) : (
+                                      <ToggleLeft className="h-3.5 w-3.5 text-tertiary" />
+                                    )}
+                                    {lnk.isActive ? 'Pausar' : 'Activar'}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={isBusyLnk}
+                                    onClick={() => handleRegenerateRegLink(lnk)}
+                                    className="inline-flex items-center gap-1 rounded-none border border-white/15 bg-surface-container-high px-2.5 py-1.5 text-[11px] font-semibold text-on-surface hover:bg-white/10 disabled:opacity-50"
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                    Regenerar
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        {item.candidate ? (
-                          <dl className="space-y-1 text-xs text-zinc-300">
-                            <div>
-                              <dt className="inline text-zinc-500">Nombre: </dt>
-                              <dd className="inline font-semibold text-white">
-                                {item.candidate.fullName}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="inline text-zinc-500">Año nac.: </dt>
-                              <dd className="inline">{item.candidate.birthYear ?? '—'}</dd>
-                            </div>
-                            <div>
-                              <dt className="inline text-zinc-500">DNI (últ. 5): </dt>
-                              <dd className="inline">
-                                {item.candidate.dniLast5 ? `***${item.candidate.dniLast5}` : '—'}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="inline text-zinc-500">Equipos: </dt>
-                              <dd className="inline">
-                                {item.candidate.teams.join(', ') || '—'}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="inline text-zinc-500">Estado: </dt>
-                              <dd className="inline">{item.candidate.status}</dd>
-                            </div>
-                          </dl>
-                        ) : (
-                          <p className="text-xs text-zinc-500">
-                            No se encontró ficha candidata activa.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                      </details>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </section>
         )}
       </div>
 
-      {/* MODAL FICHA / EDICIÓN / DATOS SENSIBLES AUDITADOS */}
-      {editorOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/15 bg-surface-container-low p-5 sm:p-6">
-            <div className="mb-4 flex items-start justify-between gap-3 border-b border-white/10 pb-3">
-              <div>
-                <h2 className="font-headline text-xl font-bold text-white">
-                  {editingAthlete
-                    ? `Ficha de ${editingAthlete.fullName}`
-                    : 'Nuevo Deportista en el Censo'}
-                </h2>
-                {editingAthlete && (
-                  <p className="mt-0.5 text-xs text-zinc-400">
-                    ID: {editingAthlete.id} · Estado RGPD: {editingAthlete.rgpdStatus}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditorOpen(false)}
-                aria-label="Cerrar modal"
-                className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Bloque Datos Sensibles Auditados */}
-            {editingAthlete &&
-              permissions.canViewSensitive &&
-              editingAthlete.status !== 'SHREDDED' && (
-                <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-amber-200">
-                      <ShieldAlert className="h-4 w-4 text-amber-400" />
-                      Acceso a datos sensibles cifrados (DNI completo, fecha exacta y alergias)
-                    </div>
-                    {!sensitiveData && (
-                      <button
-                        type="button"
-                        disabled={loadingSensitive}
-                        onClick={() => handleRevealSensitive(editingAthlete.id)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-black transition hover:bg-amber-400 disabled:opacity-50"
-                      >
-                        {loadingSensitive ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <ShieldAlert className="h-3.5 w-3.5" />
-                        )}
-                        Revelar (auditado)
-                      </button>
-                    )}
+      {/* MODAL RESUMEN POR EQUIPO */}
+      <IntranetModal
+        isOpen={teamSummaryModalOpen}
+        onClose={() => setTeamSummaryModalOpen(false)}
+        title="Progreso de campaña por equipo"
+        subtitle="Haz clic en un equipo para filtrar la tabla"
+        size="xl"
+        accent="primary"
+        headerRight={
+          teamFilter ? (
+            <button
+              type="button"
+              onClick={() => {
+                setTeamFilter('');
+                setTeamSummaryModalOpen(false);
+              }}
+              className="rounded-none border border-white/15 bg-surface-container-high px-2.5 py-1 text-xs font-semibold text-primary hover:bg-white/10"
+            >
+              Ver todos
+            </button>
+          ) : undefined
+        }
+      >
+        <div className="space-y-3">
+          {groupByCategoryFamily(teamSummaries, (ts) => `${ts.teamId} ${ts.teamName}`).map(
+            ({ family, items: familySummaries }) => {
+              const catVerif = familySummaries.reduce((acc, ts) => acc + ts.verificados, 0);
+              const catTotal = familySummaries.reduce((acc, ts) => acc + ts.total, 0);
+              const hasActiveFilter = familySummaries.some((ts) => teamFilter === ts.teamId);
+              return (
+                <details
+                  key={family.code}
+                  open={hasActiveFilter || family.code === 'SENIOR'}
+                  className="group rounded-none border border-white/10 bg-surface-container-lowest/60 overflow-hidden"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-white/5 [&::-webkit-details-marker]:hidden">
+                    <span className="flex items-center gap-2">
+                      <span>{family.label}</span>
+                      <span className="rounded-none bg-white/10 px-2 py-0.5 text-[10px] font-mono text-on-surface">
+                        {familySummaries.length}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-2 text-[11px] font-semibold text-emerald-300">
+                      <span>
+                        {catVerif}/{catTotal} verificadas
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-tertiary transition-transform group-open:rotate-180" />
+                    </span>
+                  </summary>
+                  <div className="grid grid-cols-1 gap-3 border-t border-white/10 p-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {familySummaries.map((ts) => {
+                      const pct = ts.total > 0 ? Math.round((ts.verificados / ts.total) * 100) : 0;
+                      const isSelected = teamFilter === ts.teamId;
+                      return (
+                        <button
+                          key={ts.teamId}
+                          type="button"
+                          onClick={() => {
+                            setTeamFilter((prev) => (prev === ts.teamId ? '' : ts.teamId));
+                            setTeamSummaryModalOpen(false);
+                          }}
+                          className={`rounded-none border p-3.5 text-left transition ${
+                            isSelected
+                              ? 'border-primary bg-primary-container/15 shadow-glow-crimson'
+                              : 'border-white/10 bg-surface-container hover:border-white/25'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span
+                              className={`truncate text-sm font-bold ${
+                                getTeamColorTheme(ts.teamName).colorKey
+                                  ? getTeamColorTheme(ts.teamName).textClass
+                                  : 'text-white'
+                              }`}
+                            >
+                              {getShortTeamLabelInFamily(ts.teamName, family.code)}
+                            </span>
+                            <span className="shrink-0 rounded-none bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-on-surface/90">
+                              {ts.association}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-baseline justify-between text-xs">
+                            <span className="font-semibold text-emerald-300">
+                              {ts.verificados}/{ts.total} verificadas
+                            </span>
+                            <span className="text-tertiary">{ts.conRgpd} RGPD</span>
+                          </div>
+                          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-none bg-white/10">
+                            <div
+                              className="h-full rounded-none bg-primary-container transition-all"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
+                </details>
+              );
+            }
+          )}
+        </div>
+      </IntranetModal>
 
-                  {sensitiveData && (
-                    <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg bg-black/30 p-3 text-xs text-zinc-200 sm:grid-cols-2">
-                      <div>
-                        <span className="text-zinc-400">DNI / NIE: </span>
-                        <strong className="text-white">{sensitiveData.dni || 'No registrado'}</strong>
-                      </div>
-                      <div>
-                        <span className="text-zinc-400">Fecha nacimiento: </span>
-                        <strong className="text-white">
-                          {sensitiveData.birthDate || 'No verificada'}
-                        </strong>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <span className="text-zinc-400">Alergias / Notas médicas: </span>
-                        <strong className="text-white">
-                          {sensitiveData.medicalAllergies || 'Ninguna registrada'}
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="text-zinc-400">DNI Tutor: </span>
-                        <strong className="text-white">
-                          {sensitiveData.guardianDni || 'No registrado'}
-                        </strong>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+      {/* MODAL NUEVO ENLACE POR CATEGORÍA */}
+      <IntranetModal
+        isOpen={newLinkModalOpen}
+        onClose={() => setNewLinkModalOpen(false)}
+        title="Crear enlace por equipo / categoría"
+        subtitle="Enlace directo para grupos de WhatsApp"
+        size="md"
+        accent="primary"
+      >
+        <form onSubmit={handleCreateRegLink} className="space-y-4">
+          {errorBanner && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-none border border-rose-500/40 bg-rose-950/50 px-3 py-2 text-xs text-rose-200"
+            >
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+              <span>{errorBanner}</span>
+            </div>
+          )}
 
-            <form onSubmit={handleSaveAthlete} className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                    Nombre *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fFirstName}
-                    onChange={(e) => setFFirstName(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                    Apellidos
-                  </label>
-                  <input
-                    type="text"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fLastName}
-                    onChange={(e) => setFLastName(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                    Fecha nacimiento (YYYY-MM-DD)
-                  </label>
-                  <input
-                    type="date"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fBirthDate}
-                    onChange={(e) => setFBirthDate(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                    Año nacimiento (aprox. si no hay fecha)
-                  </label>
-                  <input
-                    type="number"
-                    min={1950}
-                    max={2026}
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fBirthYear}
-                    onChange={(e) => setFBirthYear(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                    DNI / NIE / Pasaporte{' '}
-                    {editingAthlete?.dniLast5 && !fDni ? `(actual: ***${editingAthlete.dniLast5})` : ''}
-                  </label>
-                  <input
-                    type="text"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fDni}
-                    onChange={(e) => setFDni(e.target.value)}
-                    placeholder={editingAthlete?.dniLast5 ? 'Dejar vacío para mantener' : '12345678Z'}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-zinc-300">Estado</label>
-                  <select
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fStatus}
-                    onChange={(e) => setFStatus(e.target.value as AthleteStatus)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  >
-                    <option value="IMPORTADO">Importado</option>
-                    <option value="PENDIENTE_VALIDAR">Pendiente validar</option>
-                    <option value="VERIFICADO">Verificado</option>
-                    <option value="BAJA">Baja</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                    Equipo principal
-                  </label>
-                  <select
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fPrimaryTeam}
-                    onChange={(e) => setFPrimaryTeam(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  >
-                    <option value="">Sin equipo asignado</option>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
+          <div>
+            <label htmlFor="censo-new-link-cat" className="mb-1 block text-xs font-semibold text-on-surface/90">
+              Categoría oficial
+            </label>
+            <select
+              id="censo-new-link-cat"
+              value={newLinkCatCode}
+              onChange={(e) => setNewLinkCatCode(e.target.value)}
+              className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white focus:border-primary focus:outline-none"
+            >
+              {groupByCategoryFamily(CLUB_CATEGORIES_META, (c) => c.id).map(
+                ({ family, items: familyCats }) => (
+                  <optgroup key={family.code} label={family.label}>
+                    {familyCats.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {getShortTeamLabelInFamily(c.name, family.code)}
                       </option>
                     ))}
-                  </select>
-                </div>
+                  </optgroup>
+                )
+              )}
+            </select>
+          </div>
 
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-zinc-300">Género</label>
-                  <select
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fGender}
-                    onChange={(e) =>
-                      setFGender(e.target.value === 'MASCULINO' ? 'MASCULINO' : 'FEMENINO')
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  >
-                    <option value="FEMENINO">Femenino</option>
-                    <option value="MASCULINO">Masculino</option>
-                  </select>
-                </div>
+          <div>
+            <label htmlFor="censo-new-link-label" className="mb-1 block text-xs font-semibold text-on-surface/90">
+              Etiqueta visible (opcional)
+            </label>
+            <input
+              id="censo-new-link-label"
+              type="text"
+              value={newLinkLabel}
+              onChange={(e) => setNewLinkLabel(e.target.value)}
+              placeholder="Ej. Cadete Femenino Rojo 26/27"
+              className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white placeholder:text-tertiary/75 focus:border-primary focus:outline-none"
+            />
+          </div>
 
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                    Licencia FAVB
-                  </label>
-                  <input
-                    type="text"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fFavbLicense}
-                    onChange={(e) => setFFavbLicense(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
+          <div>
+            <label htmlFor="censo-new-link-team" className="mb-1 block text-xs font-semibold text-on-surface/90">
+              Equipo preseleccionado
+            </label>
+            <select
+              id="censo-new-link-team"
+              value={newLinkTeamId}
+              onChange={(e) => setNewLinkTeamId(e.target.value)}
+              className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white focus:border-primary focus:outline-none"
+            >
+              <option value="">Según selección en aprobación</option>
+              {groupByCategoryFamily(regTeams, (t) => `${t.id} ${t.name}`).map(
+                ({ family, items: familyTeams }) => (
+                  <optgroup key={family.code} label={family.label}>
+                    {familyTeams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {getShortTeamLabelInFamily(t.name, family.code)}
+                      </option>
+                    ))}
+                  </optgroup>
+                )
+              )}
+            </select>
+          </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-zinc-300">Dorsal</label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={99}
-                      disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                      value={fJerseyNumber}
-                      onChange={(e) => setFJerseyNumber(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-zinc-300">Talla</label>
-                    <input
-                      type="text"
-                      placeholder="S / M / L"
-                      disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                      value={fShirtSize}
-                      onChange={(e) => setFShirtSize(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                    />
-                  </div>
-                </div>
+          <div className="flex justify-end gap-2 border-t border-white/10 pt-3">
+            <button
+              type="button"
+              onClick={() => setNewLinkModalOpen(false)}
+              className="rounded-none border border-white/15 px-4 py-2 text-xs font-semibold text-on-surface/90 hover:bg-white/10"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={creatingLink}
+              className="inline-flex items-center justify-center gap-2 rounded-none bg-primary-container hover:bg-cta-hover px-4 py- active:translate-x-[1px] active:translate-y-[1px]2 text-xs font-bold text-white transition disabled:opacity-50"
+            >
+              {creatingLink ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <PlusCircle className="h-4 w-4" />
+              )}
+              Crear Enlace
+            </button>
+          </div>
+        </form>
+      </IntranetModal>
+
+      {/* MODAL ACEPTAR INSCRIPCIÓN Y ASIGNAR EQUIPO(S) */}
+      <IntranetModal
+        isOpen={Boolean(approveModalReq)}
+        onClose={() => setApproveModalReq(null)}
+        title={
+          approveModalReq
+            ? `Aceptar Inscripción · ${approveModalReq.athleteFullName}`
+            : 'Aceptar Inscripción'
+        }
+        subtitle={
+          approveModalReq
+            ? `Categoría origen: ${approveModalReq.categoryLabel} · Email: ${approveModalReq.contactEmail}`
+            : undefined
+        }
+        size="lg"
+        accent="emerald"
+      >
+        {approveModalReq && (
+          <form onSubmit={handleApproveSubmit} className="space-y-4">
+            {errorBanner && (
+              <div
+                role="alert"
+                className="flex items-center gap-2 rounded-none border border-rose-500/40 bg-rose-950/50 px-3 py-2 text-xs text-rose-200"
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+                <span>{errorBanner}</span>
               </div>
+            )}
 
-              {/* Equipos secundarios */}
-              {teams.length > 0 && (!editingAthlete || editingAthlete.canEditRow) && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-zinc-300">
-                    Equipos secundarios (convocatorias)
-                  </label>
-                  <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto rounded-xl border border-white/10 bg-surface-container-lowest p-2.5">
-                    {teams
-                      .filter((t) => t.id !== fPrimaryTeam)
-                      .map((t) => {
-                        const checked = fSecondaryTeams.includes(t.id);
-                        return (
-                          <label
-                            key={t.id}
-                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/10 bg-surface-container px-2.5 py-1 text-xs text-zinc-200"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setFSecondaryTeams((prev) => [...prev, t.id]);
-                                } else {
-                                  setFSecondaryTeams((prev) => prev.filter((id) => id !== t.id));
-                                }
-                              }}
-                              className="accent-primary-container"
-                            />
-                            {t.name}
-                          </label>
-                        );
-                      })}
+            <div>
+              <p className="mb-2 block text-xs font-bold uppercase tracking-wider text-primary">
+                1. Asignar Equipo(s) *
+              </p>
+              <div className="max-h-60 space-y-2 overflow-y-auto rounded-none border border-white/10 bg-surface p-2.5">
+                {groupByCategoryFamily(
+                  regTeams.length > 0 ? regTeams : teams,
+                  (t) => `${t.id} ${t.name}`
+                ).map(({ family, items: familyTeams }, familyIdx) => {
+                  const selectedInFamily = familyTeams.filter((t) => appTeamIds.includes(t.id)).length;
+                  return (
+                    <details
+                      key={family.code}
+                      open={selectedInFamily > 0 || (familyIdx === 0 && appTeamIds.length === 0)}
+                      className="group rounded-none border border-white/10 bg-surface-container-lowest/70 overflow-hidden"
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-white/5 [&::-webkit-details-marker]:hidden">
+                        <span>{family.label}</span>
+                        <span className="flex items-center gap-1.5 text-[10px] font-mono text-tertiary">
+                          {selectedInFamily > 0 && (
+                            <span className="rounded-none bg-emerald-500/20 px-1.5 py-0.5 text-emerald-300">
+                              {selectedInFamily} selec.
+                            </span>
+                          )}
+                          <span>{familyTeams.length} eq.</span>
+                          <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                        </span>
+                      </summary>
+                      <div className="grid grid-cols-1 gap-1.5 border-t border-white/10 p-2 sm:grid-cols-2">
+                        {familyTeams.map((t) => {
+                          const checked = appTeamIds.includes(t.id);
+                          return (
+                            <label
+                              key={t.id}
+                              className={`flex items-center gap-2 rounded-none border px-2.5 py-1.5 text-xs cursor-pointer ${
+                                checked
+                                  ? 'border-emerald-500/50 bg-emerald-500/15 text-white'
+                                  : 'border-white/10 bg-surface-container text-on-surface/90'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleApproveTeam(t.id)}
+                                className="accent-emerald-500"
+                              />
+                              <span className="truncate font-semibold">
+                                {getShortTeamLabelInFamily(t.name, family.code)}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            </div>
+
+            {appTeamIds.length > 1 && (
+              <div>
+                <label htmlFor="censo-app-primary-team" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                  Equipo principal
+                </label>
+                <select
+                  id="censo-app-primary-team"
+                  value={appPrimaryTeamId}
+                  onChange={(e) => setAppPrimaryTeamId(e.target.value)}
+                  className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white"
+                >
+                  {appTeamIds.map((tid) => {
+                    const t = (regTeams.length > 0 ? regTeams : teams).find((x) => x.id === tid);
+                    return (
+                      <option key={tid} value={tid}>
+                        {t?.name || tid}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="censo-app-dorsal" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                  Dorsal asignado (opcional)
+                </label>
+                <input
+                  id="censo-app-dorsal"
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={appDorsal}
+                  onChange={(e) => setAppDorsal(e.target.value)}
+                  placeholder="1-99"
+                  className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white placeholder:text-tertiary/75"
+                />
+              </div>
+              <div>
+                <label htmlFor="censo-app-position" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                  Posición (opcional)
+                </label>
+                <input
+                  id="censo-app-position"
+                  type="text"
+                  value={appPosition}
+                  onChange={(e) => setAppPosition(e.target.value)}
+                  placeholder="Colocadora, Receptora, Central..."
+                  className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white placeholder:text-tertiary/75"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-none border border-white/10 bg-surface p-3 space-y-3">
+              <label htmlFor="censo-app-plan" className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-300">
+                <CreditCard className="h-4 w-4" aria-hidden="true" />
+                2. Modalidad de Pago / Cuota
+              </label>
+              <select
+                id="censo-app-plan"
+                value={appPlanId}
+                onChange={(e) => setAppPlanId(e.target.value)}
+                className="w-full rounded-none border border-white/15 bg-surface-container px-3 py-2 text-xs text-white"
+              >
+                {regPaymentPlans.map((p) => (
+                  <option key={p.planId} value={p.planId}>
+                    {p.productName} · {p.planName} ({p.totalAmount.toFixed(2)} € / {p.installmentsCount} plazo{p.installmentsCount === 1 ? '' : 's'})
+                  </option>
+                ))}
+              </select>
+
+              {regDiscountRules.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="block text-[11px] font-semibold text-on-surface/90">
+                    Descuentos configurables (opcional)
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {regDiscountRules.map((d) => {
+                      const sel = appDiscountIds.includes(d.id);
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() =>
+                            setAppDiscountIds((prev) =>
+                              prev.includes(d.id)
+                                ? prev.filter((x) => x !== d.id)
+                                : [...prev, d.id]
+                            )
+                          }
+                          className={`rounded-none border px-2.5 py-1 text-[11px] font-semibold ${
+                            sel
+                              ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200'
+                              : 'border-white/15 bg-surface-container text-on-surface/90'
+                          }`}
+                        >
+                          {d.name} ({d.valueType === 'PERCENTAGE' ? `${d.value}%` : `${d.value}€`})
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
-
-              {/* Emergencia y Alergias */}
-              <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/10 bg-surface-container p-3.5 sm:grid-cols-2">
-                <div className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Contacto de emergencia y datos médicos
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-zinc-300">Contacto emergencia</label>
-                  <input
-                    type="text"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fEmergName}
-                    onChange={(e) => setFEmergName(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-zinc-300">Teléfono emergencia</label>
-                  <input
-                    type="text"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fEmergPhone}
-                    onChange={(e) => setFEmergPhone(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block text-xs text-zinc-300">
-                    Alergias o indicaciones médicas (cifrado AES-256-GCM)
-                  </label>
-                  <input
-                    type="text"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fAllergies}
-                    onChange={(e) => setFAllergies(e.target.value)}
-                    placeholder="Dejar vacío si no se desea sobrescribir sin revelar"
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-              </div>
-
-              {/* Tutor principal */}
-              <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/10 bg-surface-container p-3.5 sm:grid-cols-2">
-                <div className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Tutor / Representante legal
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-zinc-300">Nombre completo tutor</label>
-                  <input
-                    type="text"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fGuardianName}
-                    onChange={(e) => setFGuardianName(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-zinc-300">Parentesco</label>
-                  <select
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fGuardianRel}
-                    onChange={(e) =>
-                      setFGuardianRel(
-                        e.target.value as 'PADRE' | 'MADRE' | 'TUTOR_LEGAL'
-                      )
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  >
-                    <option value="MADRE">Madre</option>
-                    <option value="PADRE">Padre</option>
-                    <option value="TUTOR_LEGAL">Tutor legal</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-zinc-300">Email tutor</label>
-                  <input
-                    type="email"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fGuardianEmail}
-                    onChange={(e) => setFGuardianEmail(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-zinc-300">Teléfono tutor</label>
-                  <input
-                    type="text"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fGuardianPhone}
-                    onChange={(e) => setFGuardianPhone(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block text-xs text-zinc-300">DNI / NIE tutor</label>
-                  <input
-                    type="text"
-                    disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
-                    value={fGuardianDni}
-                    onChange={(e) => setFGuardianDni(e.target.value)}
-                    placeholder="Dejar vacío para mantener existente"
-                    className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditorOpen(false)}
-                  className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-zinc-300 hover:bg-white/10"
-                >
-                  Cerrar
-                </button>
-                {(!editingAthlete || editingAthlete.canEditRow) && permissions.canEdit && (
-                  <button
-                    type="submit"
-                    disabled={savingAthlete}
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary-container px-5 py-2 text-sm font-bold text-white transition hover:bg-cta-hover disabled:opacity-50"
-                  >
-                    {savingAthlete && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {editingAthlete ? 'Guardar cambios' : 'Crear deportista'}
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL IMPORTADOR CSV FEELSPORTS */}
-      {csvModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-white/15 bg-surface-container-low p-5 sm:p-6">
-            <div className="mb-4 flex items-start justify-between gap-3 border-b border-white/10 pb-3">
-              <div>
-                <h2 className="font-headline text-xl font-bold text-white">
-                  Importador CSV FeelSports
-                </h2>
-                <p className="mt-0.5 text-xs text-zinc-400">
-                  Deduplicación automática por DNI (Blind Index) o nombre + año de nacimiento. Los casos dudosos pasan a la cola de revisión.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCsvModalOpen(false)}
-                aria-label="Cerrar importador"
-                className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
             </div>
 
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleDownloadFeelSportsTemplate}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-surface-container-high px-3.5 py-2 text-xs font-bold text-white hover:bg-white/10"
-              >
-                <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
-                Descargar plantilla CSV FeelSports
-              </button>
-
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-primary/40 bg-primary-container/15 px-3.5 py-2 text-xs font-bold text-primary hover:bg-primary-container/25">
-                <Upload className="h-4 w-4" />
-                Subir archivo .csv
-                <input
-                  type="file"
-                  accept=".csv,text/csv"
-                  onChange={handleCsvFileUpload}
-                  className="hidden"
-                />
+            <div>
+              <label htmlFor="censo-app-notes" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                Notas internas (opcional)
               </label>
-            </div>
-
-            <div className="mb-4">
-              <label className="mb-1.5 block text-xs font-semibold text-zinc-300">
-                O pega aquí el contenido CSV (separado por punto y coma `;` o coma `,`)
-              </label>
-              <textarea
-                rows={5}
-                value={csvRawText}
-                onChange={(e) => applyAutoMapping(e.target.value)}
-                placeholder="Nombre;Apellidos;DNI/NIE;Fecha Nacimiento;Email;Teléfono;Categoría;Equipo;Tutor Legal"
-                className="w-full rounded-xl border border-white/10 bg-surface-container-lowest p-3 font-mono text-xs text-white placeholder-zinc-600 focus:border-primary focus:outline-none"
+              <input
+                id="censo-app-notes"
+                type="text"
+                value={appNotes}
+                onChange={(e) => setAppNotes(e.target.value)}
+                placeholder="Observaciones de Secretaría / Coordinación"
+                className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white placeholder:text-tertiary/75"
               />
             </div>
 
-            {csvHeaders.length > 0 && (
-              <div className="mb-4 space-y-3 rounded-xl border border-white/10 bg-surface-container p-4">
-                <div className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Mapeo de columnas detectadas ({csvDataRows.length} filas)
-                </div>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-                  {CSV_FIELD_LABELS.map((field) => (
-                    <div key={field.key}>
-                      <label className="mb-1 block text-[11px] font-semibold text-zinc-300">
-                        {field.label}
-                      </label>
-                      <select
-                        value={csvMapping[field.key]}
-                        onChange={(e) =>
-                          setCsvMapping((prev) => ({
-                            ...prev,
-                            [field.key]: Number(e.target.value),
-                          }))
-                        }
-                        className="w-full rounded-lg border border-white/10 bg-surface-container-lowest px-2 py-1.5 text-xs text-white"
-                      >
-                        <option value={-1}>— Ignorar —</option>
-                        {csvHeaders.map((h, idx) => (
-                          <option key={`${h}-${idx}`} value={idx}>
-                            {h || `Col ${idx + 1}`}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
+            <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setApproveModalReq(null)}
+                className="rounded-none border border-white/15 bg-surface-container-high px-4 py-2 text-xs font-semibold text-on-surface"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={approvingBusy || appTeamIds.length === 0}
+                className="inline-flex items-center gap-2 rounded-none bg-emerald-600 hover:bg-emerald-500 active:translate-x-[1px] active:translate-y-[1px] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {approvingBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+                Aceptar Inscripción y Activar Acceso
+              </button>
+            </div>
+          </form>
+        )}
+      </IntranetModal>
 
-                {mappedPreviewRows.length > 0 && (
-                  <div className="overflow-x-auto pt-2">
-                    <div className="mb-1.5 text-xs font-semibold text-zinc-400">
-                      Vista previa (primeras {Math.min(5, mappedPreviewRows.length)} filas de{' '}
-                      {mappedPreviewRows.length}):
-                    </div>
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-white/10 text-zinc-400">
-                          <th className="py-1.5 pr-3">Nombre</th>
-                          <th className="py-1.5 pr-3">DNI</th>
-                          <th className="py-1.5 pr-3">Nacimiento</th>
-                          <th className="py-1.5 pr-3">Equipo</th>
-                          <th className="py-1.5 pr-3">Tutor / Email</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5 text-zinc-200">
-                        {mappedPreviewRows.slice(0, 5).map((r, i) => (
-                          <tr key={i}>
-                            <td className="py-1.5 pr-3 font-medium">
-                              {r.firstName} {r.lastName}
-                            </td>
-                            <td className="py-1.5 pr-3">{r.dni || '—'}</td>
-                            <td className="py-1.5 pr-3">{r.birthDate || '—'}</td>
-                            <td className="py-1.5 pr-3">{r.teamNameOrId || '—'}</td>
-                            <td className="py-1.5 pr-3">
-                              {[r.guardianName, r.email].filter(Boolean).join(' · ') || '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+      {/* MODAL FICHA / EDICIÓN / DATOS SENSIBLES AUDITADOS */}
+      <IntranetModal
+        isOpen={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        title={
+          editingAthlete
+            ? `Ficha de ${editingAthlete.fullName}`
+            : 'Nuevo Deportista'
+        }
+        subtitle={
+          editingAthlete
+            ? `ID: ${editingAthlete.id} · Estado RGPD: ${editingAthlete.rgpdStatus}`
+            : undefined
+        }
+        size="xl"
+        accent="primary"
+      >
+        {errorBanner && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-none border border-rose-500/40 bg-rose-950/50 px-3 py-2 text-xs text-rose-200"
+          >
+            <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+            <span>{errorBanner}</span>
+          </div>
+        )}
+
+        {/* Bloque Datos Sensibles Auditados */}
+        {editingAthlete &&
+          permissions.canViewSensitive &&
+          editingAthlete.status !== 'SHREDDED' && (
+            <div className="rounded-none border border-amber-500/30 bg-amber-500/10 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-200">
+                  <ShieldAlert className="h-4 w-4 text-amber-400" />
+                  Acceso a datos sensibles cifrados (DNI completo, fecha exacta y alergias)
+                </div>
+                {!sensitiveData && (
+                  <button
+                    type="button"
+                    disabled={loadingSensitive}
+                    onClick={() => handleRevealSensitive(editingAthlete.id)}
+                    className="inline-flex items-center gap-1.5 rounded-none bg-amber-500 px-3 py-1.5 text-xs font-bold text-black transition hover:bg-amber-400 disabled:opacity-50"
+                  >
+                    {loadingSensitive ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ShieldAlert className="h-3.5 w-3.5" />
+                    )}
+                    Revelar (auditado)
+                  </button>
                 )}
               </div>
-            )}
 
-            {csvImportResult && (
-              <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-4 text-center sm:grid-cols-4">
-                <div>
-                  <div className="text-xs text-zinc-400">Creados</div>
-                  <div className="text-xl font-bold text-emerald-300">{csvImportResult.created}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-zinc-400">Enriquecidos</div>
-                  <div className="text-xl font-bold text-sky-300">{csvImportResult.enriched}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-zinc-400">En cola revisión</div>
-                  <div className="text-xl font-bold text-amber-300">
-                    {csvImportResult.queuedForDedup}
+              {sensitiveData && (
+                <div className="mt-3 grid grid-cols-1 gap-2 rounded-none bg-black/30 p-3 text-xs text-on-surface sm:grid-cols-2">
+                  <div>
+                    <span className="text-tertiary">DNI / NIE: </span>
+                    <strong className="text-white">{sensitiveData.dni || 'No registrado'}</strong>
                   </div>
-                </div>
-                <div>
-                  <div className="text-xs text-zinc-400">Suprimidos omitidos</div>
-                  <div className="text-xl font-bold text-zinc-300">
-                    {csvImportResult.skippedShredded}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setCsvModalOpen(false)}
-                className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-zinc-300 hover:bg-white/10"
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                disabled={importingCsv || mappedPreviewRows.length === 0}
-                onClick={handleRunCsvImport}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary-container px-5 py-2 text-sm font-bold text-white transition hover:bg-cta-hover disabled:opacity-50"
-              >
-                {importingCsv && <Loader2 className="h-4 w-4 animate-spin" />}
-                Importar {mappedPreviewRows.length} filas
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL INVITACIONES ONBOARDING */}
-      {inviteModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/15 bg-surface-container-low p-5 sm:p-6">
-            <div className="mb-4 flex items-start justify-between gap-3 border-b border-white/10 pb-3">
-              <div>
-                <h2 className="font-headline text-xl font-bold text-white">
-                  {inviteMode === 'SINGLE' && inviteAthlete
-                    ? `Invitar a ${inviteAthlete.fullName}`
-                    : 'Invitar pendientes del equipo'}
-                </h2>
-                <p className="mt-0.5 text-xs text-zinc-400">
-                  Genera enlaces personales de activación (`/mi-club/onboarding?invite=...`) válidos durante 14 días.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInviteModalOpen(false)}
-                aria-label="Cerrar modal invitaciones"
-                className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSendInvitations} className="space-y-4">
-              {inviteMode === 'SINGLE' && inviteAthlete ? (
-                <>
-                  <div className="rounded-xl border border-white/10 bg-surface-container p-3.5 text-xs text-zinc-300">
-                    Tramo de edad detectado:{' '}
+                  <div>
+                    <span className="text-tertiary">Fecha nacimiento: </span>
                     <strong className="text-white">
-                      {inviteAthlete.ageBracket || 'Sin fecha verificada (tratado como menor)'}
+                      {sensitiveData.birthDate || 'No verificada'}
                     </strong>
                   </div>
-
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                      Tipo de cuenta destino
-                    </label>
-                    <select
-                      value={inviteTargetType}
-                      onChange={(e) =>
-                        setInviteTargetType(e.target.value as 'AUTO' | 'GUARDIAN' | 'ATHLETE')
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white"
-                    >
-                      <option value="GUARDIAN">Tutor legal / Padre / Madre (GUARDIAN)</option>
-                      {(inviteAthlete.ageBracket === '14-17' ||
-                        inviteAthlete.ageBracket === '+18') && (
-                        <option value="ATHLETE">
-                          Cuenta propia de deportista (ATHLETE · ≥14 años)
-                        </option>
-                      )}
-                    </select>
+                  <div className="sm:col-span-2">
+                    <span className="text-tertiary">Alergias / Notas médicas: </span>
+                    <strong className="text-white">
+                      {sensitiveData.medicalAllergies || 'Ninguna registrada'}
+                    </strong>
                   </div>
-
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                      Correo electrónico destinatario *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="familia@ejemplo.com"
-                      className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white"
-                    />
+                    <span className="text-tertiary">DNI Tutor: </span>
+                    <strong className="text-white">
+                      {sensitiveData.guardianDni || 'No registrado'}
+                    </strong>
                   </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-zinc-300">
-                      Equipo a invitar *
-                    </label>
-                    <select
-                      required
-                      value={inviteTeamId}
-                      onChange={(e) => setInviteTeamId(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white"
-                    >
-                      {teams.map((t) => (
+                </div>
+              )}
+            </div>
+          )}
+
+        <form onSubmit={handleSaveAthlete} className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="censo-f-first-name" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                Nombre *
+              </label>
+              <input
+                id="censo-f-first-name"
+                type="text"
+                required
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fFirstName}
+                onChange={(e) => setFFirstName(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label htmlFor="censo-f-last-name" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                Apellidos
+              </label>
+              <input
+                id="censo-f-last-name"
+                type="text"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fLastName}
+                onChange={(e) => setFLastName(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="censo-f-birth-date" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                Fecha de nacimiento
+              </label>
+              <input
+                id="censo-f-birth-date"
+                type="date"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fBirthDate}
+                onChange={(e) => setFBirthDate(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="censo-f-birth-year" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                Año nacimiento (aprox. si no hay fecha)
+              </label>
+              <input
+                id="censo-f-birth-year"
+                type="number"
+                min={1950}
+                max={2026}
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fBirthYear}
+                onChange={(e) => setFBirthYear(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="censo-f-dni" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                DNI / NIE / Pasaporte{' '}
+                {editingAthlete?.dniLast5 && !fDni ? `(actual: ***${editingAthlete.dniLast5})` : ''}
+              </label>
+              <input
+                id="censo-f-dni"
+                type="text"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fDni}
+                onChange={(e) => setFDni(e.target.value)}
+                placeholder={editingAthlete?.dniLast5 ? 'Dejar vacío para mantener' : '12345678Z'}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white placeholder:text-tertiary/75 disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="censo-f-status" className="mb-1 block text-xs font-semibold text-on-surface/90">Estado</label>
+              <select
+                id="censo-f-status"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fStatus}
+                onChange={(e) => setFStatus(e.target.value as AthleteStatus)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              >
+                <option value="IMPORTADO">Importado</option>
+                <option value="PENDIENTE_VALIDAR">Pendiente validar</option>
+                <option value="VERIFICADO">Verificado</option>
+                <option value="BAJA">Baja</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="censo-f-primary-team" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                Equipo principal
+              </label>
+              <select
+                id="censo-f-primary-team"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fPrimaryTeam}
+                onChange={(e) => setFPrimaryTeam(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              >
+                <option value="">Sin equipo asignado</option>
+                {groupByCategoryFamily(teams, (t) => `${t.id} ${t.name}`).map(
+                  ({ family, items: familyTeams }) => (
+                    <optgroup key={family.code} label={family.label}>
+                      {familyTeams.map((t) => (
                         <option key={t.id} value={t.id}>
-                          {t.name}
+                          {getShortTeamLabelInFamily(t.name, family.code)}
                         </option>
                       ))}
-                    </select>
-                  </div>
+                    </optgroup>
+                  )
+                )}
+              </select>
+            </div>
 
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                    <input
-                      type="checkbox"
-                      checked={inviteOnlyPending}
-                      onChange={(e) => setInviteOnlyPending(e.target.checked)}
-                      className="accent-primary-container"
-                    />
-                    Solo deportistas sin cuenta de tutor o deportista activada
-                  </label>
-                </>
-              )}
+            <div>
+              <label htmlFor="censo-f-gender" className="mb-1 block text-xs font-semibold text-on-surface/90">Género</label>
+              <select
+                id="censo-f-gender"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fGender}
+                onChange={(e) =>
+                  setFGender(e.target.value === 'MASCULINO' ? 'MASCULINO' : 'FEMENINO')
+                }
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              >
+                <option value="FEMENINO">Femenino</option>
+                <option value="MASCULINO">Masculino</option>
+              </select>
+            </div>
 
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={inviteSendEmail}
-                  onChange={(e) => setInviteSendEmail(e.target.checked)}
-                  className="accent-primary-container"
-                />
-                Enviar invitación automáticamente por correo electrónico (SMTP)
+            <div>
+              <label htmlFor="censo-f-favb" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                Licencia FAVB
               </label>
+              <input
+                id="censo-f-favb"
+                type="text"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fFavbLicense}
+                onChange={(e) => setFFavbLicense(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
 
-              <div className="flex justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setInviteModalOpen(false)}
-                  className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-zinc-300 hover:bg-white/10"
-                >
-                  Cerrar
-                </button>
-                <button
-                  type="submit"
-                  disabled={sendingInvite}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:opacity-50"
-                >
-                  {sendingInvite ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  {inviteSendEmail ? 'Generar y enviar' : 'Generar enlace copiable'}
-                </button>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="censo-f-jersey" className="mb-1 block text-xs font-semibold text-on-surface/90">Dorsal</label>
+                <input
+                  id="censo-f-jersey"
+                  type="number"
+                  min={0}
+                  max={99}
+                  disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                  value={fJerseyNumber}
+                  onChange={(e) => setFJerseyNumber(e.target.value)}
+                  className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+                />
               </div>
-            </form>
+              <div>
+                <label htmlFor="censo-f-shirt" className="mb-1 block text-xs font-semibold text-on-surface/90">Talla</label>
+                <input
+                  id="censo-f-shirt"
+                  type="text"
+                  placeholder="S / M / L"
+                  disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                  value={fShirtSize}
+                  onChange={(e) => setFShirtSize(e.target.value)}
+                  className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white placeholder:text-tertiary/75 disabled:opacity-60"
+                />
+              </div>
+            </div>
+          </div>
 
-            {inviteResults.length > 0 && (
-              <div className="mt-5 space-y-2.5 border-t border-white/10 pt-4">
-                <div className="text-xs font-bold uppercase tracking-wider text-emerald-300">
-                  Enlaces generados ({inviteResults.length})
-                </div>
-                <div className="max-h-60 space-y-2 overflow-y-auto">
-                  {inviteResults.map((r) => (
-                    <div
-                      key={r.athleteId}
-                      className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-container-lowest p-3 text-xs sm:flex-row sm:items-center sm:justify-between"
+          {/* Equipos secundarios */}
+          {teams.length > 0 && (!editingAthlete || editingAthlete.canEditRow) && (
+            <div>
+              <p className="mb-1.5 block text-xs font-semibold text-on-surface/90">
+                Equipos secundarios (convocatorias)
+              </p>
+              <div className="max-h-44 space-y-2 overflow-y-auto rounded-none border border-white/10 bg-surface-container-lowest p-2.5">
+                {groupByCategoryFamily(
+                  teams.filter((t) => t.id !== fPrimaryTeam),
+                  (t) => `${t.id} ${t.name}`
+                ).map(({ family, items: familyTeams }) => {
+                  const selectedCount = familyTeams.filter((t) =>
+                    fSecondaryTeams.includes(t.id)
+                  ).length;
+                  return (
+                    <details
+                      key={family.code}
+                      open={selectedCount > 0}
+                      className="group rounded-none border border-white/10 bg-surface-container/60 overflow-hidden"
                     >
-                      <div className="min-w-0">
-                        <div className="font-bold text-white">
-                          {r.athleteName}{' '}
-                          <span className="font-normal text-zinc-400">({r.targetType})</span>
-                        </div>
-                        <div className="truncate text-zinc-400">
-                          {r.email} ·{' '}
-                          {r.emailSent ? (
-                            <span className="text-emerald-400">Email SMTP enviado</span>
-                          ) : r.emailError ? (
-                            <span className="text-amber-300">SMTP: {r.emailError}</span>
-                          ) : (
-                            <span className="text-zinc-400">Solo enlace</span>
+                      <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-on-surface hover:bg-white/5 [&::-webkit-details-marker]:hidden">
+                        <span>{family.label}</span>
+                        <span className="flex items-center gap-1.5 text-[10px] font-mono text-tertiary">
+                          {selectedCount > 0 && (
+                            <span className="rounded-none bg-primary-container/30 px-1.5 py- active:translate-x-[1px] active:translate-y-[1px]0.5 text-primary">
+                              {selectedCount} selec.
+                            </span>
                           )}
-                        </div>
+                          <span>{familyTeams.length} eq.</span>
+                          <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                        </span>
+                      </summary>
+                      <div className="flex flex-wrap gap-1.5 border-t border-white/10 p-2">
+                        {familyTeams.map((t) => {
+                          const checked = fSecondaryTeams.includes(t.id);
+                          return (
+                            <label
+                              key={t.id}
+                              className="inline-flex cursor-pointer items-center gap-1.5 rounded-none border border-white/10 bg-surface-container px-2.5 py-1 text-xs text-on-surface"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFSecondaryTeams((prev) => [...prev, t.id]);
+                                  } else {
+                                    setFSecondaryTeams((prev) =>
+                                      prev.filter((id) => id !== t.id)
+                                    );
+                                  }
+                                }}
+                                className="accent-primary-container"
+                              />
+                              {getShortTeamLabelInFamily(t.name, family.code)}
+                            </label>
+                          );
+                        })}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyText(r.athleteId, r.inviteUrl)}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/15 bg-surface-container-high px-3 py-1.5 font-bold text-white hover:bg-white/10"
-                      >
-                        {copiedKey === r.athleteId ? (
-                          <>
-                            <Check className="h-3.5 w-3.5 text-emerald-400" />
-                            Copiado
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3.5 w-3.5" />
-                            Copiar enlace
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                    </details>
+                  );
+                })}
               </div>
-            )}
+            </div>
+          )}
 
-            {inviteSkipped.length > 0 && (
-              <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 text-xs text-amber-200">
-                <div className="mb-1 font-bold">Omitidos ({inviteSkipped.length}):</div>
-                <ul className="max-h-32 list-disc space-y-0.5 overflow-y-auto pl-4 text-zinc-300">
-                  {inviteSkipped.map((s) => (
-                    <li key={s.athleteId}>
-                      {s.athleteName}: {s.reason}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          {/* Emergencia y Alergias */}
+          <div className="grid grid-cols-1 gap-3 rounded-none border border-white/10 bg-surface-container p-3.5 sm:grid-cols-2">
+            <div className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-tertiary">
+              Contacto de emergencia y datos médicos
+            </div>
+            <div>
+              <label htmlFor="censo-f-emerg-name" className="mb-1 block text-xs text-on-surface/90">Contacto emergencia</label>
+              <input
+                id="censo-f-emerg-name"
+                type="text"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fEmergName}
+                onChange={(e) => setFEmergName(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label htmlFor="censo-f-emerg-phone" className="mb-1 block text-xs text-on-surface/90">Teléfono emergencia</label>
+              <input
+                id="censo-f-emerg-phone"
+                type="text"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fEmergPhone}
+                onChange={(e) => setFEmergPhone(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="censo-f-allergies" className="mb-1 block text-xs text-on-surface/90">
+                Alergias o indicaciones médicas (cifrado AES-256-GCM)
+              </label>
+              <input
+                id="censo-f-allergies"
+                type="text"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fAllergies}
+                onChange={(e) => setFAllergies(e.target.value)}
+                placeholder="Dejar vacío si no se desea sobrescribir sin revelar"
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white placeholder:text-tertiary/75 disabled:opacity-60"
+              />
+            </div>
+          </div>
+
+          {/* Tutor principal */}
+          <div className="grid grid-cols-1 gap-3 rounded-none border border-white/10 bg-surface-container p-3.5 sm:grid-cols-2">
+            <div className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-tertiary">
+              Tutor / Representante legal
+            </div>
+            <div>
+              <label htmlFor="censo-f-guardian-name" className="mb-1 block text-xs text-on-surface/90">Nombre completo tutor</label>
+              <input
+                id="censo-f-guardian-name"
+                type="text"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fGuardianName}
+                onChange={(e) => setFGuardianName(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label htmlFor="censo-f-guardian-rel" className="mb-1 block text-xs text-on-surface/90">Parentesco</label>
+              <select
+                id="censo-f-guardian-rel"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fGuardianRel}
+                onChange={(e) =>
+                  setFGuardianRel(
+                    e.target.value as 'PADRE' | 'MADRE' | 'TUTOR_LEGAL'
+                  )
+                }
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              >
+                <option value="MADRE">Madre</option>
+                <option value="PADRE">Padre</option>
+                <option value="TUTOR_LEGAL">Tutor legal</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="censo-f-guardian-email" className="mb-1 block text-xs text-on-surface/90">Email tutor</label>
+              <input
+                id="censo-f-guardian-email"
+                type="email"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fGuardianEmail}
+                onChange={(e) => setFGuardianEmail(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label htmlFor="censo-f-guardian-phone" className="mb-1 block text-xs text-on-surface/90">Teléfono tutor</label>
+              <input
+                id="censo-f-guardian-phone"
+                type="text"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fGuardianPhone}
+                onChange={(e) => setFGuardianPhone(e.target.value)}
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="censo-f-guardian-dni" className="mb-1 block text-xs text-on-surface/90">DNI / NIE tutor</label>
+              <input
+                id="censo-f-guardian-dni"
+                type="text"
+                disabled={Boolean(editingAthlete && !editingAthlete.canEditRow)}
+                value={fGuardianDni}
+                onChange={(e) => setFGuardianDni(e.target.value)}
+                placeholder="Dejar vacío para mantener existente"
+                className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white placeholder:text-tertiary/75 disabled:opacity-60"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-white/10">
+            <button
+              type="button"
+              onClick={() => setEditorOpen(false)}
+              className="rounded-none border border-white/15 px-4 py-2 text-sm font-semibold text-on-surface/90 hover:bg-white/10"
+            >
+              Cerrar
+            </button>
+            {(!editingAthlete || editingAthlete.canEditRow) && permissions.canEdit && (
+              <button
+                type="submit"
+                disabled={savingAthlete}
+                className="inline-flex items-center gap-2 rounded-none bg-primary-container px-5 py- active:translate-x-[1px] active:translate-y-[1px]2 text-sm font-bold text-white transition hover:bg-cta-hover disabled:opacity-50"
+              >
+                {savingAthlete && <Loader2 className="h-4 w-4 animate-spin" />}
+                {editingAthlete ? 'Guardar cambios' : 'Crear deportista'}
+              </button>
             )}
           </div>
-        </div>
-      )}
+        </form>
+      </IntranetModal>
     </main>
+  );
+}
+
+export default function ClubCensoPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="h-7 w-7 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <ClubCensoPageContent />
+    </Suspense>
   );
 }

@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryNeon } from '@/lib/streaming-store';
-import { checkNeonRateLimit, getClientIp } from '@/lib/rate-limiter';
+import {
+  checkNeonRateLimit,
+  clearNeonRateLimit,
+  getClientIp,
+  recordNeonFailedAttempt,
+} from '@/lib/rate-limiter';
 import {
   verifyIntranetPassword,
   createIntranetSession,
   setIntranetSessionCookie,
+  isMemberBlockedByPendingApproval,
 } from '@/lib/intranet/auth';
 import { buildUserAccessContext } from '@/lib/intranet/rbac';
 import { ensureIntranetSeeded } from '@/lib/intranet/seed-bootstrap';
@@ -42,7 +48,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const acctRl = await checkNeonRateLimit(`intranet-login-acct:${identifier}`, 8, 600, 900);
+    const acctRl = await checkNeonRateLimit(`intranet-login-acct:${identifier}`, 8, 600, 900, {
+      increment: false,
+    });
     if (!acctRl.allowed) {
       return NextResponse.json(
         {
@@ -74,6 +82,7 @@ export async function POST(req: NextRequest) {
 
     const user = rows[0];
     if (!user || user.status !== 'ACTIVE' || !verifyIntranetPassword(password, user.password_hash)) {
+      await recordNeonFailedAttempt(`intranet-login-acct:${identifier}`, 8, 600, 900);
       await recordAuditLog({
         actorEmail: identifier,
         action: 'LOGIN_FAILED',
@@ -87,16 +96,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { rawToken, expiresAt } = await createIntranetSession({
-      userId: user.id,
-      ipAddress: clientIp,
-      userAgent: req.headers.get('user-agent'),
-      twoFactorVerified: true,
-    });
-    setIntranetSessionCookie(rawToken, expiresAt);
+    await clearNeonRateLimit(`intranet-login-acct:${identifier}`);
 
     const ctx = await buildUserAccessContext({
-      sessionId: 'new',
+      sessionId: 'pre-login',
       twoFactorVerified: true,
       user: {
         id: user.id,
@@ -108,6 +111,39 @@ export async function POST(req: NextRequest) {
         status: user.status,
       },
     });
+
+    const pendingApproval = await isMemberBlockedByPendingApproval(user.id, ctx);
+    if (pendingApproval.blocked) {
+      await recordAuditLog({
+        actorUserId: user.id,
+        actorEmail: user.email,
+        action: 'LOGIN_BLOCKED_PENDING_APPROVAL',
+        module: 'Auth',
+        details: {
+          pendingRequests: pendingApproval.pendingRequests,
+          pendingAthletes: pendingApproval.pendingAthletes,
+        },
+        ipAddress: clientIp,
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'PENDING_ADMIN_APPROVAL',
+          error:
+            'Tu inscripción y autorizaciones ya están registradas, pero aún están pendientes de aceptación y asignación de equipo por parte de la administración del club. Recibirás un correo en cuanto se active tu acceso.',
+        },
+        { status: 403 }
+      );
+    }
+
+    const { rawToken, expiresAt } = await createIntranetSession({
+      userId: user.id,
+      ipAddress: clientIp,
+      userAgent: req.headers.get('user-agent'),
+      twoFactorVerified: true,
+    });
+    setIntranetSessionCookie(rawToken, expiresAt);
 
     await recordAuditLog({
       actorUserId: user.id,

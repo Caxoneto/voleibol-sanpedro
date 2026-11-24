@@ -20,11 +20,19 @@ import {
   Navigation,
   Plane,
   RefreshCw,
-  Scale,
   Smartphone,
   X,
 } from 'lucide-react';
-import { CLUB_CATEGORIES_META, CLUB_TEAMS_META, CLUB_INFO } from '@/lib/club-info';
+import {
+  CLUB_CATEGORIES_META,
+  CLUB_TEAMS_META,
+  CLUB_INFO,
+  ClubCategoryFamilyCode,
+  doesMatchBelongToCategory,
+  doesMatchBelongToCategoryFamily,
+  getTeamColorTheme,
+} from '@/lib/club-info';
+import CategoryTeamSelectorBar from '@/components/CategoryTeamSelectorBar';
 import { Match } from '@/lib/types';
 import {
   formatMadridDate,
@@ -49,7 +57,7 @@ interface RoundSummary {
   earliestPendingTime: number;
 }
 
-const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v7';
+const MATCHES_STORAGE_KEY = 'cdv_synced_matches_v8';
 
 function formatSyncHourMadrid(iso?: string): string {
   try {
@@ -86,7 +94,6 @@ export default function CalendarioPage() {
   }, []);
 
   const roundsScrollRef = useRef<HTMLDivElement | null>(null);
-  const catScrollRef = useRef<HTMLDivElement | null>(null);
   const venueModalRef = useRef<HTMLDivElement | null>(null);
   const venueTriggerRef = useRef<HTMLElement | null>(null);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -352,8 +359,13 @@ export default function CalendarioPage() {
     return allMatches
       .filter((match) => {
         if (selectedCategory !== 'ALL') {
-          const team = CLUB_TEAMS_META.find((t) => t.id === match.teamId);
-          if (!team || team.categoryId !== selectedCategory) return false;
+          if (selectedCategory.startsWith('FAMILY:')) {
+            const famCode = selectedCategory.replace('FAMILY:', '') as ClubCategoryFamilyCode;
+            if (!doesMatchBelongToCategoryFamily(match, famCode)) return false;
+          } else if (!doesMatchBelongToCategory(match, selectedCategory)) {
+            const team = CLUB_TEAMS_META.find((t) => t.id === match.teamId);
+            if (!team || team.categoryId !== selectedCategory) return false;
+          }
         }
         if (conditionFilter === 'LOCAL' && !match.isClubHome) return false;
         if (conditionFilter === 'VISITANTE' && match.isClubHome) return false;
@@ -459,17 +471,6 @@ export default function CalendarioPage() {
     setSelectedCategory(catId);
     setSelectedRound(null); // Fuerza recalcular la próxima jornada pendiente para la nueva categoría
   };
-
-  // Centrar automáticamente la categoría seleccionada en el carrusel horizontal
-  useEffect(() => {
-    const container = catScrollRef.current;
-    const pill = document.getElementById(`cal-cat-pill-${selectedCategory}`);
-    if (container && pill) {
-      const targetLeft = pill.offsetLeft - (container.clientWidth - pill.clientWidth) / 2;
-      const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
-      container.scrollTo({ left: Math.max(0, Math.min(maxScroll, targetLeft)), behavior: 'smooth' });
-    }
-  }, [selectedCategory]);
 
   const activeRound = selectedRound ?? recommendedRound;
 
@@ -648,7 +649,7 @@ export default function CalendarioPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background relative overflow-hidden">
+    <div className="w-full min-h-screen bg-background relative overflow-x-clip">
       {/* Subtle Page-Wide Ambient Background */}
       <div
         className="pointer-events-none fixed inset-0 w-full h-full bg-cover bg-center mix-blend-luminosity opacity-[0.14] blur-[3px] z-0"
@@ -687,7 +688,7 @@ export default function CalendarioPage() {
             <button
               type="button"
               onClick={handleDownloadFullCalendarIcs}
-              className="w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-bright text-white transition-all shadow-md border border-white/10 hover:border-primary-container cursor-pointer"
+              className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-bright text-white transition-all shadow-md border border-white/10 hover:border-primary-container active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
               title="Guardar calendario completo en mi móvil (iPhone, Android, Outlook)"
               aria-label="Guardar calendario en mi móvil"
             >
@@ -697,7 +698,7 @@ export default function CalendarioPage() {
             <button
               type="button"
               onClick={() => void handleExportPdf()}
-              className="w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-bright text-white transition-all shadow-md border border-white/10 hover:border-primary-container cursor-pointer"
+              className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-bright text-white transition-all shadow-md border border-white/10 hover:border-primary-container active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
               title="Exportar calendario en PDF imprimible"
               aria-label="Exportar PDF"
             >
@@ -710,7 +711,7 @@ export default function CalendarioPage() {
                 venueTriggerRef.current = e.currentTarget;
                 setShowVenueModal(true);
               }}
-              className="w-9 h-9 flex items-center justify-center bg-primary-container hover:bg-cta-hover text-white transition-all shadow-xl border border-white/15 cursor-pointer"
+              className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center bg-primary-container hover:bg-cta-hover text-white transition-all shadow-xl border border-white/15 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
               title="Cómo llegar al Pabellón Polideportivo Sergio Scariolo"
               aria-label="Cómo llegar al Pabellón"
             >
@@ -720,45 +721,18 @@ export default function CalendarioPage() {
         </div>
       </section>
 
-      {/* Filter Toolbar (Categorías) */}
-      <section className="sticky top-28 z-30 bg-[#131313] border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5">
-          {/* Categorías */}
-          <div
-            ref={catScrollRef}
-            className="flex items-center gap-2 overflow-x-auto category-scrollbar pb-1 sm:pb-1.5 scroll-smooth snap-x snap-mandatory w-full"
-          >
-            <button
-              id="cal-cat-pill-ALL"
-              onClick={() => handleSelectCategory('ALL')}
-              aria-pressed={selectedCategory === 'ALL'}
-              className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
-                selectedCategory === 'ALL'
-                  ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e]'
-                  : 'bg-surface-container-high text-tertiary hover:text-white'
-              }`}
-            >
-              Todas las categorías
-            </button>
-            {CLUB_CATEGORIES_META.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                id={`cal-cat-pill-${cat.id}`}
-                onClick={() => handleSelectCategory(cat.id)}
-                aria-pressed={selectedCategory === cat.id}
-                className={`w-auto snap-start flex items-center justify-center text-center px-3.5 py-2 sm:py-1.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shrink-0 cursor-pointer ${
-                  selectedCategory === cat.id
-                    ? 'bg-primary-container text-white shadow-[2px_2px_0px_0px_#0e0e0e]'
-                    : 'bg-surface-container-high text-tertiary hover:text-white'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Filter Toolbar (Categorías con desplegable de equipos) */}
+      <CategoryTeamSelectorBar
+        items={CLUB_CATEGORIES_META}
+        selectedValue={selectedCategory}
+        valueKey="id"
+        idPrefix="cal-cat-pill-"
+        allowAll
+        allowFamilyAll
+        allLabel="Todas las categorías"
+        ariaLabel="Categorías y equipos del calendario"
+        onSelect={(val) => handleSelectCategory(val)}
+      />
 
       {syncFeedback && (
         <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-fade-in">
@@ -810,7 +784,7 @@ export default function CalendarioPage() {
               type="button"
               onClick={() => void fetchLiveCalendarMatches(true)}
               disabled={syncing}
-              className="w-9 h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] transition-all shrink-0 cursor-pointer"
+              className="w-10 h-10 sm:w-9 sm:h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] transition-all shrink-0 cursor-pointer"
               title={`Actualizar calendario, horarios y resultados oficiales (FAVB y Liga AFADE) (Última: ${lastSyncTime})`}
               aria-label="Actualizar calendario"
             >
@@ -844,7 +818,7 @@ export default function CalendarioPage() {
                     type="button"
                     disabled={!prevRoundObj}
                     onClick={() => prevRoundObj && setSelectedRound(prevRoundObj.round)}
-                    className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors cursor-pointer"
+                    className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors cursor-pointer"
                     title={prevRoundObj ? `Jornada anterior (J${prevRoundObj.round})` : 'Primera jornada'}
                     aria-label="Jornada anterior"
                   >
@@ -854,7 +828,7 @@ export default function CalendarioPage() {
                     type="button"
                     disabled={!nextRoundObj}
                     onClick={() => nextRoundObj && setSelectedRound(nextRoundObj.round)}
-                    className="w-8 h-8 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors cursor-pointer"
+                    className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center bg-surface-container-high hover:bg-primary-container disabled:opacity-30 disabled:pointer-events-none text-white border border-white/10 transition-colors cursor-pointer"
                     title={nextRoundObj ? `Siguiente jornada (J${nextRoundObj.round})` : 'Última jornada'}
                     aria-label="Siguiente jornada"
                   >
@@ -883,7 +857,7 @@ export default function CalendarioPage() {
                           : isRecommended
                           ? 'bg-surface-container-high text-white border-red-500/60 hover:border-red-500'
                           : r.allFinished
-                          ? 'bg-surface-container-low/70 text-tertiary/70 border-white/5 hover:text-white hover:border-white/20'
+                          ? 'bg-surface-container-low/70 text-tertiary/85 border-white/5 hover:text-white hover:border-white/20'
                           : 'bg-surface-container-high text-tertiary border-white/10 hover:text-white hover:border-white/25'
                       }`}
                     >
@@ -899,8 +873,8 @@ export default function CalendarioPage() {
                         J{r.round}
                       </span>
                       <span
-                        className={`text-[9px] uppercase tracking-tighter mt-0.5 whitespace-nowrap ${
-                          isSelected ? 'text-white/90 font-semibold' : 'text-tertiary'
+                        className={`text-[10px] uppercase tracking-tighter mt-0.5 whitespace-nowrap ${
+                          isSelected ? 'text-white/95 font-semibold' : 'text-tertiary'
                         }`}
                       >
                         {r.dateLabel}
@@ -917,11 +891,11 @@ export default function CalendarioPage() {
         {currentRoundObj && (
           <div className="flex items-center justify-between gap-2 px-1">
             <div className="flex items-center gap-2.5">
-              <span className="px-2 py-0.5 bg-primary-container text-white font-display-xl text-sm uppercase tracking-wider">
+              <h2 className="px-2.5 py-0.5 bg-primary-container text-white font-display-xl text-sm uppercase tracking-wider">
                 Jornada {currentRoundObj.round}
-              </span>
+              </h2>
               {currentRoundObj.round === recommendedRound && (
-                <span className="px-2 py-0.5 bg-red-500/15 text-red-400 border border-red-500/30 text-[10px] font-bold uppercase tracking-wider">
+                <span className="px-2 py-0.5 bg-red-950/90 text-red-200 border border-red-400/50 text-[10px] font-bold uppercase tracking-wider">
                   Siguiente / Activa
                 </span>
               )}
@@ -973,19 +947,21 @@ export default function CalendarioPage() {
                           <span className="font-display-xl text-lg text-tertiary leading-none">
                             J{match.round}
                           </span>
-                          <span className="text-[8px] uppercase tracking-wider text-tertiary/70">
+                          <span className="text-[10px] uppercase tracking-wider text-tertiary/85">
                             Jornada
                           </span>
                         </div>
                         <div className="flex flex-col">
                           <span className="text-xs uppercase font-bold text-white/80">
-                            {formatMadridDate(match.matchDate, {
-                              weekday: 'short',
-                              day: 'numeric',
-                              month: 'short',
-                            })}
+                            {formatMadridDate(match.matchDate)}
                           </span>
-                          <span className="text-[10px] text-tertiary uppercase mt-0.5">
+                          <span
+                            className={`text-[10px] uppercase mt-0.5 font-bold ${
+                              getTeamColorTheme(team?.name || clubTeamName).colorKey
+                                ? getTeamColorTheme(team?.name || clubTeamName).textClass
+                                : 'text-tertiary'
+                            }`}
+                          >
                             {team?.name || 'Oficial FAVB/AFADE'}
                           </span>
                         </div>
@@ -1000,7 +976,13 @@ export default function CalendarioPage() {
                             height={28}
                             className="w-7 h-7 object-contain shrink-0"
                           />
-                          <span className="font-headline-sm text-sm sm:text-base uppercase font-bold text-white">
+                          <span
+                            className={`font-headline-sm text-sm sm:text-base uppercase font-bold ${
+                              getTeamColorTheme(team?.name || clubTeamName).colorKey
+                                ? getTeamColorTheme(team?.name || clubTeamName).textClass
+                                : 'text-white'
+                            }`}
+                          >
                             {clubTeamName}
                           </span>
                         </div>
@@ -1053,18 +1035,14 @@ export default function CalendarioPage() {
                           <span className="font-display-xl text-lg text-primary leading-none">
                             J{match.round}
                           </span>
-                          <span className="text-[8px] uppercase tracking-wider text-tertiary">
+                          <span className="text-[10px] uppercase tracking-wider text-tertiary">
                             Jornada
                           </span>
                         </div>
 
                         <div className="flex flex-col">
                           <span className="text-xs uppercase font-bold text-white">
-                            {formatMadridDate(match.matchDate, {
-                              weekday: 'short',
-                              day: 'numeric',
-                              month: 'short',
-                            })}
+                            {formatMadridDate(match.matchDate)}
                           </span>
                           {match.status === 'POSTPONED' ? (
                             <span className="font-display-xl text-base sm:text-lg text-amber-400 leading-none mt-0.5">
@@ -1084,7 +1062,13 @@ export default function CalendarioPage() {
                               {formatMadridTime(match.matchDate)}h
                             </span>
                           )}
-                          <span className="text-[10px] text-tertiary uppercase mt-0.5">
+                          <span
+                            className={`text-[10px] uppercase mt-0.5 font-bold ${
+                              getTeamColorTheme(team?.name || '').colorKey
+                                ? getTeamColorTheme(team?.name || '').textClass
+                                : 'text-tertiary'
+                            }`}
+                          >
                             {team?.name || 'Oficial FAVB'}
                           </span>
                         </div>
@@ -1107,7 +1091,7 @@ export default function CalendarioPage() {
                           </a>
                         )}
                         <span
-                          className={`w-7 h-7 flex items-center justify-center border ${
+                          className={`w-10 h-10 flex items-center justify-center border ${
                             match.isClubHome
                               ? 'bg-primary-container/20 text-primary border-primary-container/30'
                               : 'bg-white/5 text-tertiary border-white/10'
@@ -1119,9 +1103,9 @@ export default function CalendarioPage() {
                           }
                         >
                           {match.isClubHome ? (
-                            <Home className="w-3.5 h-3.5" aria-hidden="true" />
+                            <Home className="w-4 h-4" aria-hidden="true" />
                           ) : (
-                            <Plane className="w-3.5 h-3.5" aria-hidden="true" />
+                            <Plane className="w-4 h-4" aria-hidden="true" />
                           )}
                         </span>
 
@@ -1129,48 +1113,22 @@ export default function CalendarioPage() {
                           href={googleCalUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
+                          className="w-10 h-10 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
                           title="Guardar en Google Calendar"
                           aria-label="Google Calendar"
                         >
-                          <Calendar className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                          <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
                         </a>
 
                         <button
                           type="button"
                           onClick={() => handleDownloadIcs(match)}
-                          className="w-7 h-7 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container cursor-pointer"
+                          className="w-10 h-10 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container cursor-pointer"
                           title="Añadir a la agenda del móvil (.ics)"
                           aria-label="Añadir al móvil"
                         >
-                          <Smartphone className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                          <Smartphone className="w-4 h-4 text-primary" aria-hidden="true" />
                         </button>
-
-                        {match.isClubHome ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              venueTriggerRef.current = e.currentTarget;
-                              setShowVenueModal(true);
-                            }}
-                            className="w-7 h-7 bg-primary-container hover:bg-cta-hover text-white flex items-center justify-center transition-colors shadow cursor-pointer"
-                            title="Ver ubicación del Pabellón Sergio Scariolo"
-                            aria-label="Ubicación"
-                          >
-                            <Navigation className="w-3.5 h-3.5" aria-hidden="true" />
-                          </button>
-                        ) : (
-                          <a
-                            href={mapsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-7 h-7 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white flex items-center justify-center transition-colors border border-white/10"
-                            title={`Cómo llegar a ${match.venueName}`}
-                            aria-label="Cómo llegar al pabellón visitante"
-                          >
-                            <Navigation className="w-3.5 h-3.5" aria-hidden="true" />
-                          </a>
-                        )}
                       </div>
                     </div>
 
@@ -1188,7 +1146,11 @@ export default function CalendarioPage() {
                           {match.isClubHome ? (
                             <Link
                               href={`/plantillas?categoria=${team?.categoryId || 'cat-senior-fem'}`}
-                              className="font-headline-sm text-sm sm:text-base uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
+                              className={`font-headline-sm text-sm sm:text-base uppercase font-bold truncate hover:underline underline-offset-2 ${
+                                getTeamColorTheme(team?.name || match.homeTeamName).colorKey
+                                  ? `${getTeamColorTheme(team?.name || match.homeTeamName).textClass} decoration-current`
+                                  : 'text-primary decoration-primary'
+                              }`}
                               title={`Ver plantilla de ${team?.name || 'nuestro equipo'}`}
                             >
                               {match.homeTeamName}
@@ -1222,6 +1184,17 @@ export default function CalendarioPage() {
                               {scoreResult.awaySetsWon}
                             </span>
                           </span>
+                        ) : match.status === 'POSTPONED' || match.status === 'CANCELLED' ? (
+                          <span
+                            className={`px-2 py-0.5 border font-display-xl text-[11px] sm:text-xs tracking-wider uppercase font-black shrink-0 rounded-[2px] ${
+                              match.status === 'CANCELLED'
+                                ? 'bg-red-950/95 text-red-200 border-red-500/80'
+                                : 'bg-amber-500/95 text-black border-amber-200'
+                            }`}
+                          >
+                            {match.statusText?.toUpperCase() ||
+                              (match.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
+                          </span>
                         ) : (
                           <span className="text-xs text-tertiary font-mono">vs</span>
                         )}
@@ -1237,7 +1210,11 @@ export default function CalendarioPage() {
                           {!match.isClubHome ? (
                             <Link
                               href={`/plantillas?categoria=${team?.categoryId || 'cat-senior-fem'}`}
-                              className="font-headline-sm text-sm sm:text-base uppercase font-bold truncate text-primary hover:underline decoration-primary underline-offset-2"
+                              className={`font-headline-sm text-sm sm:text-base uppercase font-bold truncate hover:underline underline-offset-2 ${
+                                getTeamColorTheme(team?.name || match.awayTeamName).colorKey
+                                  ? `${getTeamColorTheme(team?.name || match.awayTeamName).textClass} decoration-current`
+                                  : 'text-primary decoration-primary'
+                              }`}
                               title={`Ver plantilla de ${team?.name || 'nuestro equipo'}`}
                             >
                               {match.awayTeamName}
@@ -1250,57 +1227,31 @@ export default function CalendarioPage() {
                         </div>
                       </div>
 
-                      {/* Funcionalidad 2: Venue con badge de Pista exacta, Localidad y enlace Cómo llegar */}
-                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-tertiary mt-1.5 min-w-0">
-                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
-                        {match.court && (
-                          <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
-                            {match.court}
-                          </span>
-                        )}
-                        {match.locality && !match.venueName.toLowerCase().includes(match.locality.toLowerCase()) && (
-                          <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 text-white/80 text-[10px] font-semibold shrink-0">
-                            {match.locality}
-                          </span>
-                        )}
-                        <div className="min-w-0 flex-1 overflow-hidden mask-fade-edges max-w-md">
-                          <div className="animate-venue-marquee items-center whitespace-nowrap text-xs text-tertiary">
-                            <span className="pr-8">{match.venueName}</span>
-                            <span className="pr-8" aria-hidden="true">{match.venueName}</span>
-                          </div>
-                        </div>
-                        <a
-                          href={mapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white border border-white/10 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
-                          title={`Cómo llegar a ${match.venueName}`}
-                        >
-                          <Navigation className="w-3 h-3 text-primary shrink-0" />
-                          <span>Cómo llegar</span>
-                        </a>
-                      </div>
-
-                      {/* Funcionalidad 1: Árbitros designados */}
-                      {match.referees && match.referees.length > 0 && (
-                        <div className="flex items-center gap-1.5 flex-wrap mt-2 pt-1.5 border-t border-white/5 text-[10px]">
-                          <span className="inline-flex items-center gap-1 text-primary font-bold uppercase tracking-wider shrink-0">
-                            <Scale className="w-3 h-3" />
-                            <span>Árbitros:</span>
-                          </span>
-                          {match.referees.map((ref, rIdx) => (
-                            <span
-                              key={`${match.id}-cal-ref-${rIdx}`}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white/[0.04] border border-white/10 text-white/90 font-medium"
-                            >
-                              <strong className="text-tertiary font-mono">{ref.role}:</strong> {ref.name}
-                              {ref.isTrainee && (
-                                <span className="text-amber-300 font-bold">(Prácticas)</span>
-                              )}
+                      {/* Sede enlazada directamente a Google Maps */}
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-1.5 w-full max-w-full min-w-0 text-xs text-tertiary hover:text-white transition-colors mt-1.5 group/venue"
+                        title={`Abrir ubicación de ${match.venueName} en Google Maps`}
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                        <span className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
+                          {match.court && (
+                            <span className="px-1.5 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
+                              {match.court}
                             </span>
-                          ))}
-                        </div>
-                      )}
+                          )}
+                          {match.locality && !match.venueName.toLowerCase().includes(match.locality.toLowerCase()) && (
+                            <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 text-white/80 text-[10px] font-semibold shrink-0">
+                              {match.locality}
+                            </span>
+                          )}
+                          <span className="text-xs text-tertiary group-hover/venue:text-primary group-hover/venue:underline break-words leading-snug min-w-0">
+                            {match.venueName}
+                          </span>
+                        </span>
+                      </a>
 
                       {/* Funcionalidad 3 (Móvil): Botón Acta / Convocatoria */}
                       <div className="mt-2 pt-1.5 border-t border-white/5 flex lg:hidden items-center justify-between gap-2">
@@ -1312,7 +1263,7 @@ export default function CalendarioPage() {
                           <FileText className="w-3 h-3 shrink-0" />
                           <span>Acta / Convocatoria</span>
                           {getCalledUpCount(match) > 0 && (
-                            <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[9px]">
+                            <span className="px-1.5 py-0.5 bg-black/40 text-white font-mono text-[10px]">
                               {getCalledUpCount(match)} conv.
                             </span>
                           )}
@@ -1341,7 +1292,7 @@ export default function CalendarioPage() {
                           href={recordingUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider rounded transition-all shadow-sm hover:shadow-[0_0_12px_rgba(239,68,68,0.5)] cursor-pointer mr-1"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider rounded-none transition-all shadow-sm hover:shadow-[0_0_12px_rgba(239,68,68,0.5)] cursor-pointer mr-1"
                           title="Ver retransmisión completa del partido en YouTube"
                         >
                           <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
@@ -1351,7 +1302,7 @@ export default function CalendarioPage() {
                         </a>
                       )}
                       <span
-                        className={`w-8 h-8 flex items-center justify-center border ${
+                        className={`w-9 h-9 flex items-center justify-center border ${
                           match.isClubHome
                             ? 'bg-primary-container/20 text-primary border-primary-container/30'
                             : 'bg-white/5 text-tertiary border-white/10'
@@ -1373,7 +1324,7 @@ export default function CalendarioPage() {
                         href={googleCalUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-8 h-8 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
+                        className="w-9 h-9 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container"
                         title="Abrir y guardar este partido en Google Calendar"
                         aria-label="Google Calendar"
                       >
@@ -1383,56 +1334,14 @@ export default function CalendarioPage() {
                       <button
                         type="button"
                         onClick={() => handleDownloadIcs(match)}
-                        className="w-8 h-8 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container cursor-pointer"
+                        className="w-9 h-9 bg-surface-container-highest hover:bg-surface-bright text-white flex items-center justify-center transition-all border border-white/10 hover:border-primary-container cursor-pointer"
                         title="Añadir cita a la agenda de tu móvil (Apple Calendar, Android, etc.)"
                         aria-label="Añadir a mi móvil"
                       >
                         <Smartphone className="w-4 h-4 text-primary" aria-hidden="true" />
                       </button>
-
-                      {match.isClubHome ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            venueTriggerRef.current = e.currentTarget;
-                            setShowVenueModal(true);
-                          }}
-                          className="w-8 h-8 bg-primary-container hover:bg-cta-hover text-white flex items-center justify-center transition-colors shadow cursor-pointer"
-                          title="Ubicación del Pabellón Sergio Scariolo"
-                          aria-label="Ubicación"
-                        >
-                          <Navigation className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                      ) : (
-                        <a
-                          href={mapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-8 h-8 bg-surface-container-highest hover:bg-primary-container text-tertiary hover:text-white flex items-center justify-center transition-colors border border-white/10"
-                          title={`Cómo llegar a ${match.venueName} en Google Maps`}
-                          aria-label="Cómo llegar al pabellón visitante"
-                        >
-                          <Navigation className="w-4 h-4" aria-hidden="true" />
-                        </a>
-                      )}
                     </div>
                   </div>
-
-                  {/* Sello diagonal de APLAZADO / CANCELADO a la derecha donde irían los marcadores (desktop) */}
-                  {(match.status === 'POSTPONED' || match.status === 'CANCELLED') && (
-                    <div className="pointer-events-none hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-10 items-center justify-end">
-                      <div
-                        className={`-rotate-6 sm:-rotate-12 transform px-2.5 sm:px-3 py-1 border-2 font-display-xl text-xs sm:text-sm tracking-[0.16em] uppercase font-black shadow-[0_6px_20px_rgba(0,0,0,0.85)] select-none rounded-[2px] ${
-                          match.status === 'CANCELLED'
-                            ? 'bg-red-950/95 text-red-200 border-red-500'
-                            : 'bg-amber-500/95 text-black border-amber-200'
-                        }`}
-                      >
-                        {match.statusText?.toUpperCase() ||
-                          (match.status === 'CANCELLED' ? 'CANCELADO' : 'APLAZADO')}
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })
@@ -1490,7 +1399,7 @@ export default function CalendarioPage() {
             <button
               type="button"
               onClick={closeVenueModal}
-              className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-tertiary hover:text-white cursor-pointer"
+              className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-surface-container-high border border-white/15 text-tertiary hover:text-white cursor-pointer"
               aria-label="Cerrar información del pabellón"
             >
               <X className="w-5 h-5" aria-hidden="true" />
@@ -1504,9 +1413,9 @@ export default function CalendarioPage() {
                 <span className="text-[10px] uppercase tracking-widest text-primary font-bold block">
                   Sede Oficial de Juego
                 </span>
-                <h3 id="venue-modal-title" className="font-display-xl text-xl sm:text-2xl uppercase text-white">
+                <h2 id="venue-modal-title" className="font-display-xl text-xl sm:text-2xl uppercase text-white">
                   Pabellón Sergio Scariolo
-                </h3>
+                </h2>
               </div>
             </div>
 

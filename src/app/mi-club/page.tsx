@@ -6,22 +6,30 @@ import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  ClipboardCheck,
+  Clock,
   CreditCard,
   Download,
   ExternalLink,
   FileCheck2,
   Loader2,
   LogOut,
+  MapPin,
   Phone,
+  ShieldAlert,
   ShieldCheck,
   User,
   Users,
 } from 'lucide-react';
 import { SignaturePad } from '@/components/SignaturePad';
 import { CLUB_INFO } from '@/lib/club-info';
+import { formatDisplayDate } from '@/lib/date-utils';
+import { ABSENCE_REASONS, ATTENDANCE_STATES } from '@/lib/intranet/catalog';
 
-type MemberTab = 'ficha' | 'rgpd' | 'pagos';
+type MemberTab = 'ficha' | 'asistencia' | 'rgpd' | 'pagos';
 
 interface MemberTeam {
   teamSeasonId: string;
@@ -30,6 +38,17 @@ interface MemberTeam {
   isPrimary: boolean;
   dorsal: number | null;
   position: string | null;
+}
+
+interface MemberTrainingSlot {
+  teamSeasonId: string;
+  teamName: string;
+  weekday: number;
+  weekdayLabel: string;
+  startTime: string;
+  endTime: string;
+  venueName: string;
+  courtName: string;
 }
 
 interface MemberAthlete {
@@ -55,6 +74,7 @@ interface MemberAthlete {
   isOwnAccount: boolean;
   isGuardianView: boolean;
   teams: MemberTeam[];
+  trainingSchedule?: MemberTrainingSlot[];
   guardian: {
     fullName: string;
     relationship: string;
@@ -122,6 +142,25 @@ interface MemberAthlete {
       totalOverdue: number;
     };
   };
+  attendance?: {
+    totalSessions: number;
+    presentCount: number;
+    lateCount: number;
+    justifiedCount: number;
+    unjustifiedCount: number;
+    injuredCount: number;
+    ratePercent: number;
+    recentRecords: Array<{
+      sessionId: string;
+      madridDate: string;
+      startTime: string;
+      endTime: string;
+      teamName: string;
+      status: string;
+      absenceReason: string | null;
+      notes: string | null;
+    }>;
+  };
 }
 
 interface MemberApiResponse {
@@ -134,10 +173,30 @@ interface MemberApiResponse {
   };
   selectedAthleteId: string | null;
   athletes: MemberAthlete[];
+  pendingRegistrationCount?: number;
   bankIban: string | null;
 }
 
 const SHIRT_SIZES = ['6', '8', '10', '12', '14', 'XS', 'S', 'M', 'L', 'XL', '2XL'];
+
+const ATTENDANCE_LABEL_MAP = new Map<string, string>(
+  ATTENDANCE_STATES.map((s) => [s.code, s.label])
+);
+const ABSENCE_REASON_MAP = new Map<string, string>(
+  ABSENCE_REASONS.map((r) => [r.code, r.label])
+);
+
+const ATTENDANCE_DARK_BADGE: Record<string, string> = {
+  PRESENTE: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35',
+  RETRASO: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
+  FALTA_JUSTIFICADA: 'bg-sky-500/15 text-sky-300 border-sky-500/35',
+  FALTA_INJUSTIFICADA: 'bg-rose-500/20 text-rose-300 border-rose-500/45',
+  LESIONADO_ASISTE: 'bg-purple-500/15 text-purple-300 border-purple-500/35',
+};
+
+function formatYmdEs(ymd: string): string {
+  return formatDisplayDate(ymd);
+}
 
 function eur(v: number): string {
   return `${v.toFixed(2)} €`;
@@ -150,6 +209,8 @@ export default function MiClubPage() {
 
   const [loading, setLoading] = useState(true);
   const [isStaffUser, setIsStaffUser] = useState(false);
+  const [pendingApprovalMsg, setPendingApprovalMsg] = useState<string | null>(null);
+  const [downloadingConsentPdf, setDownloadingConsentPdf] = useState(false);
   const [memberData, setMemberData] = useState<MemberApiResponse | null>(null);
   const [selectedId, setSelectedId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<MemberTab>('ficha');
@@ -181,6 +242,7 @@ export default function MiClubPage() {
   const loadPortal = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setErrorMsg(null);
+    setPendingApprovalMsg(null);
     try {
       const meRes = await fetch('/api/intranet/auth/me', { cache: 'no-store', signal });
       if (!meRes.ok) {
@@ -201,7 +263,15 @@ export default function MiClubPage() {
       setIsStaffUser(Boolean(s.isStaff));
 
       const memRes = await fetch('/api/intranet/member', { cache: 'no-store', signal });
-      const memJson = (await memRes.json()) as MemberApiResponse & { error?: string };
+      const memJson = (await memRes.json()) as MemberApiResponse & { error?: string; code?: string };
+      if (memRes.status === 403 || memJson?.code === 'PENDING_ADMIN_APPROVAL') {
+        setPendingApprovalMsg(
+          memJson?.error ||
+            'Tu inscripción y autorizaciones ya están registradas, pero aún están pendientes de aceptación y asignación de equipo por parte de la administración del club.'
+        );
+        setLoading(false);
+        return;
+      }
       if (!memRes.ok || !memJson.success) {
         setErrorMsg(memJson.error || 'No se pudo cargar tu zona privada.');
         setLoading(false);
@@ -364,6 +434,61 @@ export default function MiClubPage() {
     }
   }
 
+  async function handleDownloadConsentReceiptPdf() {
+    if (!selectedAthlete) return;
+    setDownloadingConsentPdf(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch('/api/intranet/member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'get_consent_receipt',
+          athleteId: selectedAthlete.id,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success || !json?.receipt) {
+        setErrorMsg(json?.error || 'No se pudo generar el justificante PDF.');
+        return;
+      }
+      const r = json.receipt;
+      const { generateConsentPdf } = await import('@/lib/pdf-consent');
+      const doc = generateConsentPdf({
+        consentId: r.consentId,
+        playerName: r.playerName,
+        teamName: r.teamName,
+        birthYear: r.birthYear,
+        birthDate: r.birthDate,
+        isMinor: r.isMinor,
+        isMinor14To17: r.isMinor14To17,
+        signerName: r.signerName,
+        signerDni: r.signerDni,
+        signerRelationship: r.signerRelationship,
+        signerPhone: r.signerPhone,
+        signerEmail: r.signerEmail,
+        consentSocialMedia: r.consentSocialMedia,
+        consentStreaming: r.consentStreaming,
+        consentPress: r.consentPress,
+        consentTravel: r.consentTravel,
+        signatureMethod: r.signatureMethod,
+        signatureData: r.signatureData,
+        documentHash: r.documentHash,
+        signedAt: r.signedAt,
+      });
+      const safeName =
+        String(r.playerName || 'deportista')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '') || 'deportista';
+      doc.save(`justificante_rgpd_${safeName}.pdf`);
+    } catch {
+      setErrorMsg('Error de red al descargar el justificante PDF.');
+    } finally {
+      setDownloadingConsentPdf(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4 py-16">
@@ -376,8 +501,61 @@ export default function MiClubPage() {
     );
   }
 
+  if (pendingApprovalMsg) {
+    return (
+      <div className="w-full max-w-2xl mx-auto px-4 py-10 overflow-x-clip">
+        <div className="bg-surface-container border-2 border-amber-500/50 p-6 sm:p-8 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-5">
+          <div className="flex items-start gap-3 border-b border-white/10 pb-4">
+            <div className="w-11 h-11 bg-amber-500/20 border border-amber-400/50 text-amber-300 flex items-center justify-center shrink-0">
+              <Clock className="w-6 h-6" aria-hidden="true" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-amber-300">
+                {CLUB_INFO.shortName} · Solicitud en Revisión
+              </span>
+              <h1 className="font-headline text-2xl font-bold uppercase text-white mt-0.5">
+                Inscripción Pendiente de Aceptación
+              </h1>
+            </div>
+          </div>
+
+          <p className="text-sm text-amber-100 leading-relaxed">{pendingApprovalMsg}</p>
+
+          <p className="text-xs text-tertiary leading-relaxed">
+            Recibirás una notificación en tu correo electrónico en cuanto Secretaría o
+            Coordinación asigne equipo y active tu acceso a la zona de deportistas y familias. Si
+            tienes cualquier consulta escribe a{' '}
+            <a href={`mailto:${CLUB_INFO.contactEmail}`} className="text-primary underline">
+              {CLUB_INFO.contactEmail}
+            </a>
+            .
+          </p>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/10">
+            <Link
+              href="/proteccion-menor"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+            >
+              <ShieldAlert className="w-4 h-4" aria-hidden="true" />
+              <span>Código de Conducta y Protección al Menor (LOPIVI)</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-error-container/50 hover:bg-error-container/80 border border-error/40 text-xs font-bold uppercase text-error cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" aria-hidden="true" />
+              <span>Cerrar sesión</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-6 overflow-x-hidden">
+    <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-6 overflow-x-clip">
       {/* Cabecera */}
       <div className="bg-surface-container border border-white/10 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e]">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -466,6 +644,15 @@ export default function MiClubPage() {
         </div>
       )}
 
+      {Boolean(memberData?.pendingRegistrationCount && memberData.pendingRegistrationCount > 0) && (
+        <div className="bg-amber-950/35 border border-amber-500/40 text-amber-100 px-4 py-3 text-xs sm:text-sm flex items-start gap-2.5">
+          <Clock className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" aria-hidden="true" />
+          <span>
+            Tienes <strong>{memberData?.pendingRegistrationCount}</strong> solicitud(es) de inscripción adicional(es) pendiente(s) de aceptación y asignación de equipo por parte del club.
+          </span>
+        </div>
+      )}
+
       {!selectedAthlete ? (
         <div className="bg-surface-container border border-white/10 p-6 text-center space-y-2">
           <p className="font-headline text-lg uppercase text-white">Sin deportistas vinculados</p>
@@ -499,6 +686,7 @@ export default function MiClubPage() {
             {(
               [
                 { id: 'ficha', label: 'Mi Ficha', icon: User },
+                { id: 'asistencia', label: 'Asistencia', icon: ClipboardCheck },
                 { id: 'rgpd', label: 'Autorizaciones RGPD', icon: FileCheck2 },
                 { id: 'pagos', label: 'Mis Pagos (Solo Lectura)', icon: CreditCard },
               ] as const
@@ -579,12 +767,19 @@ export default function MiClubPage() {
                           key={t.teamSeasonId}
                           className="bg-surface-container-low border border-white/10 px-3 py-2 flex items-center justify-between gap-2 text-xs"
                         >
-                          <div>
+                          <div className="min-w-0">
                             <p className="font-bold text-white">{t.teamName}</p>
                             <p className="text-[11px] text-tertiary">{t.division}</p>
+                            {(t.dorsal !== null || t.position) && (
+                              <p className="text-[11px] text-on-surface mt-0.5">
+                                {t.dorsal !== null ? `Dorsal #${t.dorsal}` : ''}
+                                {t.dorsal !== null && t.position ? ' · ' : ''}
+                                {t.position ? `Posición: ${t.position}` : ''}
+                              </p>
+                            )}
                           </div>
                           {t.isPrimary && (
-                            <span className="px-2 py-0.5 text-[10px] uppercase font-bold bg-primary-container/20 text-primary border border-primary-container/40">
+                            <span className="px-2 py-0.5 text-[10px] uppercase font-bold bg-primary-container/20 text-primary border border-primary-container/40 shrink-0">
                               Principal
                             </span>
                           )}
@@ -593,6 +788,75 @@ export default function MiClubPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Resumen rápido de cuota */}
+                <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-tertiary block">
+                      Estado de Cuota y Pagos
+                    </span>
+                    <span className="font-bold text-white">
+                      {selectedAthlete.payments.statusSummary}
+                    </span>
+                    {selectedAthlete.payments.enrollments[0] && (
+                      <span className="text-tertiary block text-[11px]">
+                        Modalidad: {selectedAthlete.payments.enrollments[0].planName}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('pagos')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-[11px] font-bold uppercase text-white cursor-pointer"
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                    <span>Ver Pagos</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Horarios y pistas de entrenamiento + Contacto de emergencia */}
+              <div className="space-y-6">
+              <div className="bg-surface-container border border-white/10 p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h2 className="font-headline text-lg font-bold uppercase text-white flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-primary" aria-hidden="true" />
+                    <span>Horarios y Pistas de Entrenamiento</span>
+                  </h2>
+                </div>
+
+                {!selectedAthlete.trainingSchedule || selectedAthlete.trainingSchedule.length === 0 ? (
+                  <p className="text-xs text-tertiary">
+                    No hay sesiones semanales publicadas todavía para tu equipo. Consulta con tu entrenador o en Secretaría.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedAthlete.trainingSchedule.map((slot, idx) => (
+                      <div
+                        key={`${slot.teamSeasonId}-${slot.weekday}-${slot.startTime}-${idx}`}
+                        className="bg-surface-container-low border border-white/10 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-2 py-0.5 bg-primary-container/20 border border-primary-container/40 text-primary font-bold uppercase text-[10px]">
+                              {slot.weekdayLabel}
+                            </span>
+                            <span className="font-mono font-bold text-white">
+                              {slot.startTime} – {slot.endTime}
+                            </span>
+                            <span className="text-tertiary truncate">· {slot.teamName}</span>
+                          </div>
+                          <p className="text-on-surface flex items-center gap-1.5 pt-0.5">
+                            <MapPin className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
+                            <span>
+                              {slot.venueName} — <strong>{slot.courtName}</strong>
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Contacto de emergencia */}
@@ -643,10 +907,11 @@ export default function MiClubPage() {
                 ) : (
                   <form onSubmit={handleProfileUpdate} className="space-y-3">
                     <div>
-                      <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                      <label htmlFor="miclub-em-name" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                         Nombre contacto de emergencia *
                       </label>
                       <input
+                        id="miclub-em-name"
                         type="text"
                         required
                         value={emName}
@@ -656,10 +921,11 @@ export default function MiClubPage() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                        <label htmlFor="miclub-em-phone" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                           Teléfono emergencia *
                         </label>
                         <input
+                          id="miclub-em-phone"
                           type="tel"
                           required
                           value={emPhone}
@@ -668,10 +934,11 @@ export default function MiClubPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                        <label htmlFor="miclub-user-phone" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                           Teléfono personal
                         </label>
                         <input
+                          id="miclub-user-phone"
                           type="tel"
                           value={userPhone}
                           onChange={(e) => setUserPhone(e.target.value)}
@@ -681,10 +948,11 @@ export default function MiClubPage() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                        <label htmlFor="miclub-shirt-size" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                           Talla equipación
                         </label>
                         <select
+                          id="miclub-shirt-size"
                           value={shirtSize}
                           onChange={(e) => setShirtSize(e.target.value)}
                           className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
@@ -698,10 +966,11 @@ export default function MiClubPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
-                          Fecha nacimiento
+                        <label htmlFor="miclub-birth-date" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                          Fecha de nacimiento
                         </label>
                         <input
+                          id="miclub-birth-date"
                           type="date"
                           value={birthDateInput}
                           onChange={(e) => setBirthDateInput(e.target.value)}
@@ -712,17 +981,220 @@ export default function MiClubPage() {
                     <button
                       type="submit"
                       disabled={busy}
-                      className="w-full py-2.5 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+                      className="w-full py-2.5 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase active:translate-x-[1px] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
                     >
                       {busy ? 'Guardando...' : 'Guardar y Confirmar Ficha'}
                     </button>
                   </form>
                 )}
               </div>
+              </div>
             </div>
           )}
 
-          {/* TAB 2: AUTORIZACIONES RGPD */}
+          {/* TAB 2: MI ASISTENCIA */}
+          {activeTab === 'asistencia' && (() => {
+            const att = selectedAthlete.attendance || {
+              totalSessions: 0,
+              presentCount: 0,
+              lateCount: 0,
+              justifiedCount: 0,
+              unjustifiedCount: 0,
+              injuredCount: 0,
+              ratePercent: 0,
+              recentRecords: [],
+            };
+            return (
+              <div className="space-y-5">
+                <div className="bg-surface-container border border-white/10 p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/10 pb-3">
+                    <div>
+                      <h2 className="font-headline text-xl font-bold uppercase text-white">
+                        Registro de Asistencia a Entrenamientos
+                      </h2>
+                      <p className="text-xs text-tertiary mt-0.5">
+                        Estadísticas propias y sesiones registradas de {selectedAthlete.fullName}.
+                      </p>
+                    </div>
+                    <span
+                      className={`px-3 py-1.5 text-xs font-bold uppercase border shrink-0 self-start sm:self-auto ${
+                        att.totalSessions === 0
+                          ? 'bg-white/5 text-tertiary border-white/15'
+                          : att.ratePercent >= 80
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                          : att.ratePercent >= 60
+                          ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                          : 'bg-rose-500/20 text-rose-300 border-rose-500/45'
+                      }`}
+                    >
+                      {att.totalSessions > 0
+                        ? `Asistencia: ${att.ratePercent}% (${att.totalSessions} sesiones)`
+                        : 'Sin sesiones registradas'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div className="bg-surface-container-low border border-white/10 p-3.5">
+                      <p className="text-[11px] uppercase text-tertiary font-bold">% Asistencia</p>
+                      <p className="font-headline text-xl font-bold text-white mt-0.5">
+                        {att.totalSessions > 0 ? `${att.ratePercent}%` : '—'}
+                      </p>
+                    </div>
+                    <div className="bg-surface-container-low border border-emerald-500/25 p-3.5">
+                      <p className="text-[11px] uppercase text-emerald-300 font-bold">Presentes</p>
+                      <p className="font-headline text-xl font-bold text-emerald-300 mt-0.5">
+                        {att.presentCount}
+                      </p>
+                    </div>
+                    <div className="bg-surface-container-low border border-amber-500/25 p-3.5">
+                      <p className="text-[11px] uppercase text-amber-300 font-bold">Retrasos</p>
+                      <p className="font-headline text-xl font-bold text-amber-300 mt-0.5">
+                        {att.lateCount}
+                      </p>
+                    </div>
+                    <div className="bg-surface-container-low border border-sky-500/25 p-3.5">
+                      <p className="text-[11px] uppercase text-sky-300 font-bold">F. Justificadas</p>
+                      <p className="font-headline text-xl font-bold text-sky-300 mt-0.5">
+                        {att.justifiedCount}
+                      </p>
+                    </div>
+                    <div className="bg-surface-container-low border border-rose-500/25 p-3.5">
+                      <p className="text-[11px] uppercase text-rose-300 font-bold">F. Injustificadas</p>
+                      <p className="font-headline text-xl font-bold text-rose-300 mt-0.5">
+                        {att.unjustifiedCount}
+                      </p>
+                    </div>
+                    <div className="bg-surface-container-low border border-purple-500/25 p-3.5">
+                      <p className="text-[11px] uppercase text-purple-300 font-bold">Lesión (Asiste)</p>
+                      <p className="font-headline text-xl font-bold text-purple-300 mt-0.5">
+                        {att.injuredCount}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Historial Reciente de Sesiones */}
+                <div className="bg-surface-container border border-white/10 p-5 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-headline text-base font-bold uppercase text-white">
+                      Historial Reciente de Entrenamientos
+                    </h3>
+                    {att.totalSessions > 0 && (
+                      <span className="text-[11px] text-tertiary">
+                        Últimas {att.recentRecords.length} de {att.totalSessions} sesiones
+                      </span>
+                    )}
+                  </div>
+
+                  {att.recentRecords.length === 0 ? (
+                    <p className="text-xs text-tertiary">
+                      Aún no constan registros de asistencia en entrenamientos para este deportista.
+                    </p>
+                  ) : (
+                    <>
+                      {/* Vista móvil sin desbordamiento horizontal */}
+                      <div className="md:hidden space-y-2.5">
+                        {att.recentRecords.map((rec) => {
+                          const statusLabel =
+                            ATTENDANCE_LABEL_MAP.get(rec.status) || rec.status;
+                          const badgeCls =
+                            ATTENDANCE_DARK_BADGE[rec.status] ||
+                            'bg-white/5 text-tertiary border-white/15';
+                          const reasonLabel = rec.absenceReason
+                            ? ABSENCE_REASON_MAP.get(rec.absenceReason) || rec.absenceReason
+                            : null;
+                          return (
+                            <div
+                              key={rec.sessionId}
+                              className="bg-surface-container-low border border-white/10 p-3 space-y-1.5 text-xs"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono font-bold text-white">
+                                  {formatYmdEs(rec.madridDate)} · {rec.startTime}–{rec.endTime}
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 text-[10px] font-bold uppercase border shrink-0 ${badgeCls}`}
+                                >
+                                  {statusLabel}
+                                </span>
+                              </div>
+                              <p className="text-tertiary font-medium">{rec.teamName}</p>
+                              {(reasonLabel || rec.notes) && (
+                                <p className="text-[11px] text-on-surface/85 border-t border-white/5 pt-1">
+                                  {reasonLabel ? `Motivo: ${reasonLabel}` : ''}
+                                  {reasonLabel && rec.notes ? ' · ' : ''}
+                                  {rec.notes || ''}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Vista escritorio */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-white/10 text-tertiary uppercase text-[11px]">
+                              <th className="py-2 pr-3">Fecha</th>
+                              <th className="py-2 pr-3">Horario</th>
+                              <th className="py-2 pr-3">Equipo</th>
+                              <th className="py-2 pr-3">Estado</th>
+                              <th className="py-2">Motivo / Observaciones</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {att.recentRecords.map((rec) => {
+                              const statusLabel =
+                                ATTENDANCE_LABEL_MAP.get(rec.status) || rec.status;
+                              const badgeCls =
+                                ATTENDANCE_DARK_BADGE[rec.status] ||
+                                'bg-white/5 text-tertiary border-white/15';
+                              const reasonLabel = rec.absenceReason
+                                ? ABSENCE_REASON_MAP.get(rec.absenceReason) || rec.absenceReason
+                                : null;
+                              const detailText = [
+                                reasonLabel ? `Motivo: ${reasonLabel}` : null,
+                                rec.notes || null,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ');
+
+                              return (
+                                <tr key={rec.sessionId}>
+                                  <td className="py-2.5 pr-3 font-mono text-white whitespace-nowrap">
+                                    {formatYmdEs(rec.madridDate)}
+                                  </td>
+                                  <td className="py-2.5 pr-3 font-mono text-tertiary whitespace-nowrap">
+                                    {rec.startTime} – {rec.endTime}
+                                  </td>
+                                  <td className="py-2.5 pr-3 font-medium text-white">
+                                    {rec.teamName}
+                                  </td>
+                                  <td className="py-2.5 pr-3 whitespace-nowrap">
+                                    <span
+                                      className={`px-2 py-0.5 text-[10px] font-bold uppercase border ${badgeCls}`}
+                                    >
+                                      {statusLabel}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 text-tertiary">
+                                    {detailText || '—'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* TAB 3: AUTORIZACIONES RGPD */}
           {activeTab === 'rgpd' && (
             <div className="bg-surface-container border border-white/10 p-5 space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/10 pb-4">
@@ -735,6 +1207,22 @@ export default function MiClubPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {selectedAthlete.consent.status === 'ACTIVE' &&
+                    selectedAthlete.consent.canSignInPortal && (
+                      <button
+                        type="button"
+                        disabled={downloadingConsentPdf}
+                        onClick={handleDownloadConsentReceiptPdf}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+                      >
+                        {downloadingConsentPdf ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" aria-hidden="true" />
+                        )}
+                        <span>Descargar Justificante RGPD (PDF)</span>
+                      </button>
+                    )}
                   <Link
                     href="/autorizaciones"
                     className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-bold uppercase text-white"
@@ -773,7 +1261,7 @@ export default function MiClubPage() {
                   </p>
                   {selectedAthlete.consent.signedAtIso && (
                     <p className="text-tertiary mt-1">
-                      Firmado: {selectedAthlete.consent.signedAtIso.slice(0, 10)}
+                      Firmado: {formatDisplayDate(selectedAthlete.consent.signedAtIso)}
                     </p>
                   )}
                 </div>
@@ -898,12 +1386,13 @@ export default function MiClubPage() {
                   {/* Datos del firmante según tramo de edad */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                      <label htmlFor="miclub-signer-name" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                         {selectedAthlete.ageEvaluation.isMinor
                           ? 'Nombre completo Padre / Madre / Tutor *'
                           : 'Nombre del deportista firmante (+18) *'}
                       </label>
                       <input
+                        id="miclub-signer-name"
                         type="text"
                         required
                         readOnly={!selectedAthlete.ageEvaluation.isMinor}
@@ -917,10 +1406,11 @@ export default function MiClubPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                      <label htmlFor="miclub-signer-dni" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                         DNI / NIE / Pasaporte del firmante *
                       </label>
                       <input
+                        id="miclub-signer-dni"
                         type="text"
                         required
                         value={signerDni}
@@ -931,10 +1421,11 @@ export default function MiClubPage() {
                     </div>
                     {selectedAthlete.ageEvaluation.isMinor && (
                       <div>
-                        <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                        <label htmlFor="miclub-signer-rel" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                           Relación con el menor *
                         </label>
                         <select
+                          id="miclub-signer-rel"
                           value={signerRel}
                           onChange={(e) =>
                             setSignerRel(e.target.value as 'PADRE' | 'MADRE' | 'TUTOR_LEGAL')
@@ -948,10 +1439,11 @@ export default function MiClubPage() {
                       </div>
                     )}
                     <div>
-                      <label className="block text-[11px] font-bold uppercase text-tertiary mb-1">
+                      <label htmlFor="miclub-signer-phone" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                         Teléfono de contacto
                       </label>
                       <input
+                        id="miclub-signer-phone"
                         type="tel"
                         value={signerPhone}
                         onChange={(e) => setSignerPhone(e.target.value)}
@@ -1024,7 +1516,7 @@ export default function MiClubPage() {
                   <button
                     type="submit"
                     disabled={busy}
-                    className="w-full py-2.5 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase cursor-pointer disabled:opacity-50"
+                    className="w-full py-2.5 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase active:translate-x-[1px] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
                   >
                     {busy ? 'Registrando firma...' : 'Firmar y Sellar Autorización'}
                   </button>
@@ -1033,7 +1525,7 @@ export default function MiClubPage() {
             </div>
           )}
 
-          {/* TAB 3: MIS PAGOS (SOLO LECTURA) */}
+          {/* TAB 4: MIS PAGOS (SOLO LECTURA) */}
           {activeTab === 'pagos' && (
             <div className="space-y-5">
               {/* Semáforo y Totales */}
@@ -1062,6 +1554,33 @@ export default function MiClubPage() {
                   </span>
                 </div>
 
+                {selectedAthlete.payments.enrollments.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    {selectedAthlete.payments.enrollments.map((enr) => (
+                      <div
+                        key={enr.id}
+                        className="bg-surface-container-low border border-white/10 p-3 flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-[10px] uppercase font-bold text-tertiary">
+                            Modalidad Contratada ({enr.seasonId})
+                          </p>
+                          <p className="font-bold text-white truncate">
+                            {enr.productName} · {enr.planName}
+                          </p>
+                          <p className="text-[11px] text-tertiary">
+                            Ref. transferencia:{' '}
+                            <code className="text-primary font-bold">{enr.paymentReferenceCode}</code>
+                          </p>
+                        </div>
+                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 shrink-0">
+                          {enr.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="bg-surface-container-low border border-white/10 p-3.5">
                     <p className="text-[11px] uppercase text-tertiary font-bold">Total Cuotas</p>
@@ -1083,34 +1602,41 @@ export default function MiClubPage() {
                   </div>
                 </div>
 
-                {/* Instrucciones de Transferencia + Aviso Redsys */}
-                <div className="bg-surface-container-low border border-white/10 p-4 text-xs space-y-2">
-                  <p className="font-bold uppercase text-white">Instrucciones de Pago y Transferencia</p>
-                  {selectedAthlete.payments.enrollments.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedAthlete.payments.enrollments.map((enr) => (
-                        <div
-                          key={enr.id}
-                          className="px-2.5 py-1.5 bg-surface-container border border-primary-container/40 text-on-surface"
-                        >
-                          <span className="text-tertiary">{enr.productName}: </span>
-                          <code className="font-bold text-primary">{enr.paymentReferenceCode}</code>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-tertiary">
-                    <strong className="text-on-surface">Cuenta IBAN:</strong>{' '}
-                    {memberData?.bankIban ? (
-                      <code className="text-white font-bold">{memberData.bankIban}</code>
-                    ) : (
-                      <span>Consulta el IBAN oficial en Tesorería ({CLUB_INFO.contactEmail}).</span>
-                    )}{' '}
-                    Indica el código de referencia <code>CDVSP-...</code> y el nombre del deportista.
-                  </p>
+                {/* Aviso Redsys compacto + Instrucciones de Transferencia plegables */}
+                <div className="bg-surface-container-low border border-white/10 px-4 py-3 text-xs space-y-2">
                   <p className="text-amber-200/90">
-                    Aviso: La pasarela de pago online con tarjeta y Bizum (Redsys) se habilitará próximamente. Actualmente los abonos se realizan mediante Transferencia Bancaria, Efectivo o TPV Físico en el club.
+                    Aviso: La pasarela de pago online con tarjeta y Bizum (Redsys) se habilitará próximamente. Actualmente los abonos se realizan mediante Transferencia Bancaria.
                   </p>
+                  <details className="group border-t border-white/10 pt-2">
+                    <summary className="flex cursor-pointer list-none items-center justify-between font-bold uppercase text-white hover:text-primary transition-colors [&::-webkit-details-marker]:hidden">
+                      <span>Ver instrucciones de pago por transferencia bancaria y referencias</span>
+                      <ChevronDown className="w-4 h-4 text-tertiary shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                    </summary>
+                    <div className="mt-2.5 space-y-2">
+                      {selectedAthlete.payments.enrollments.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {selectedAthlete.payments.enrollments.map((enr) => (
+                            <div
+                              key={enr.id}
+                              className="px-2.5 py-1.5 bg-surface-container border border-primary-container/40 text-on-surface"
+                            >
+                              <span className="text-tertiary">{enr.productName}: </span>
+                              <code className="font-bold text-primary">{enr.paymentReferenceCode}</code>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-tertiary">
+                        <strong className="text-on-surface">Cuenta IBAN:</strong>{' '}
+                        {memberData?.bankIban ? (
+                          <code className="text-white font-bold">{memberData.bankIban}</code>
+                        ) : (
+                          <span>Consulta el IBAN oficial en Tesorería ({CLUB_INFO.contactEmail}).</span>
+                        )}{' '}
+                        Indica el código de referencia <code>CDVSP-...</code> y el nombre del deportista.
+                      </p>
+                    </div>
+                  </details>
                 </div>
               </div>
 
@@ -1137,7 +1663,9 @@ export default function MiClubPage() {
                         {selectedAthlete.payments.charges.map((ch) => (
                           <tr key={ch.id}>
                             <td className="py-2.5 pr-3 font-medium text-white">{ch.concept}</td>
-                            <td className="py-2.5 pr-3 font-mono text-tertiary">{ch.dueMadridDate}</td>
+                            <td className="py-2.5 pr-3 font-mono text-tertiary">
+                              {formatDisplayDate(ch.dueMadridDate)}
+                            </td>
                             <td className="py-2.5 pr-3 text-right font-semibold text-white">{eur(ch.finalAmount)}</td>
                             <td className="py-2.5 pr-3 text-right text-emerald-300">{eur(ch.paidAmount)}</td>
                             <td className="py-2.5 text-right font-bold uppercase text-[10px]">
@@ -1180,7 +1708,7 @@ export default function MiClubPage() {
                             {p.receiptNumber} · <span className="text-emerald-300">{eur(p.amount)}</span>
                           </p>
                           <p className="text-tertiary">
-                            {p.paidMadridDate} · {p.methodLabel}
+                            {formatDisplayDate(p.paidMadridDate)} · {p.methodLabel}
                             {p.reference ? ` · Ref: ${p.reference}` : ''}
                           </p>
                         </div>

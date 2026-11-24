@@ -6,7 +6,7 @@ const contentSecurityPolicy = [
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
-  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net https://ligaafade.es",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://favoley.net https://www.favoley.net https://ligaafade.es https://www.ligaafade.es",
   "connect-src 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
@@ -36,6 +36,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'ligaafade.es',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.ligaafade.es',
       },
     ],
   },
