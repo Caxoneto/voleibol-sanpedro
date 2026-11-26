@@ -1,21 +1,19 @@
 import { queryNeon } from '@/lib/streaming-store';
 import { FAVB_PLAYERS } from '@/lib/favb-data';
+import { syncFavbRosters } from '@/lib/favb-scraper';
 import { encryptData, decryptDataStrict, generateBlindIndex } from '@/lib/encryption';
 import { resolveCensusBirthDate } from '@/lib/consent-store';
 import { parseBirthDateParts } from '@/lib/date-utils';
+import {
+  normalizeNameKey,
+  matchAthleteCandidatesFromList,
+  type AthleteMatchCandidateRecord,
+} from './athlete-matcher';
 import { INITIAL_TEAM_SEASONS } from './catalog';
 import { ensureIntranetSeeded } from './seed-bootstrap';
 import { recordAuditLog } from './audit';
 
-export function normalizeNameKey(text: string): string {
-  return String(text || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+export { normalizeNameKey };
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {
   const clean = String(fullName || '').trim().replace(/\s+/g, ' ');
@@ -100,8 +98,10 @@ export async function syncCensusFromClubSources(actor?: {
 
   const validTeamIds = new Set(INITIAL_TEAM_SEASONS.map((t) => t.id));
   const shreddedIds = new Set<string>();
+  const verifiedAthleteIds = new Set<string>();
   for (const row of existingIntranetRows) {
     if (row.status === 'SHREDDED') shreddedIds.add(row.id);
+    if (row.status === 'VERIFICADO') verifiedAthleteIds.add(row.id);
   }
   for (const c of consentRows) {
     if (c.status === 'SHREDDED') shreddedIds.add(c.player_id);
@@ -311,10 +311,14 @@ export async function syncCensusFromClubSources(actor?: {
          id, first_name, last_name, full_name_normalized, birth_year, birth_date_enc,
          birth_date_verified, dni_last5, dni_enc, dni_blind_index, gender, jersey_number,
          status, is_demo
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'PENDIENTE_VALIDAR', $13)
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'IMPORTADO', $13)
        ON CONFLICT (id) DO UPDATE SET
          first_name = COALESCE(NULLIF(intranet_athletes.first_name, ''), EXCLUDED.first_name),
          last_name = COALESCE(NULLIF(intranet_athletes.last_name, ''), EXCLUDED.last_name),
+         full_name_normalized = CASE
+           WHEN intranet_athletes.status = 'VERIFICADO' THEN intranet_athletes.full_name_normalized
+           ELSE EXCLUDED.full_name_normalized
+         END,
          birth_year = COALESCE(intranet_athletes.birth_year, EXCLUDED.birth_year),
          birth_date_enc = COALESCE(intranet_athletes.birth_date_enc, EXCLUDED.birth_date_enc),
          birth_date_verified = intranet_athletes.birth_date_verified OR EXCLUDED.birth_date_verified,
@@ -341,7 +345,7 @@ export async function syncCensusFromClubSources(actor?: {
     );
     upserted++;
 
-    if (d.primaryTeamId) {
+    if (d.primaryTeamId && !verifiedAthleteIds.has(d.id)) {
       await queryNeon(
         `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary, dorsal, position)
          VALUES ($1, $2, true, $3, $4)
@@ -352,13 +356,15 @@ export async function syncCensusFromClubSources(actor?: {
       );
     }
 
-    for (const secTeamId of Array.from(d.secondaryTeamIds)) {
-      await queryNeon(
-        `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary)
-         VALUES ($1, $2, false)
-         ON CONFLICT (athlete_id, team_season_id) DO NOTHING;`,
-        [d.id, secTeamId]
-      );
+    if (!verifiedAthleteIds.has(d.id)) {
+      for (const secTeamId of Array.from(d.secondaryTeamIds)) {
+        await queryNeon(
+          `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary)
+           VALUES ($1, $2, false)
+           ON CONFLICT (athlete_id, team_season_id) DO NOTHING;`,
+          [d.id, secTeamId]
+        );
+      }
     }
 
     if (d.guardian) {
@@ -406,5 +412,280 @@ export async function syncCensusFromClubSources(actor?: {
     athletesInsertedOrUpdated: upserted,
     guardiansLinked,
     skippedShredded,
+  };
+}
+
+export interface FederationDiscrepancyMissingItem {
+  favbId: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  teamId: string;
+  teamName: string;
+  dorsal: number | null;
+  birthYear: number | null;
+  registrationUrl: string | null;
+}
+
+export interface FederationDiscrepancyMismatchItem {
+  athleteId: string;
+  clubFullName: string;
+  favbFullName: string;
+  clubStatus: string;
+  missingTeamIds: string[];
+  missingTeamNames: string[];
+  dorsalDiff: { clubDorsal: number | null; favbDorsal: number } | null;
+  nameDiff: { clubName: string; favbName: string } | null;
+}
+
+export interface FederationOnlyInClubItem {
+  athleteId: string;
+  fullName: string;
+  teamNames: string[];
+  status: string;
+}
+
+export interface FederationDiscrepancyReport {
+  checkedAtIso: string;
+  favbPlayersCount: number;
+  clubAthletesCount: number;
+  missingInClub: FederationDiscrepancyMissingItem[];
+  discrepancies: FederationDiscrepancyMismatchItem[];
+  onlyInClub: FederationOnlyInClubItem[];
+}
+
+/**
+ * Compara en modo SOLO LECTURA el censo actual del club frente a las actas/rosters FAVB
+ * sin crear ni eliminar deportistas automáticamente.
+ */
+export async function checkFederationDiscrepancies(params?: {
+  allowedTeamIds?: string[] | null;
+  actor?: { userId?: string | null; email: string; ipAddress?: string | null };
+}): Promise<FederationDiscrepancyReport> {
+  await ensureIntranetSeeded();
+
+  const teamAllowSet =
+    params?.allowedTeamIds && params.allowedTeamIds.length > 0
+      ? new Set(params.allowedTeamIds)
+      : null;
+
+  const [favbSnapshot, athRows, teamRelRows, regLinkRows] = await Promise.all([
+    syncFavbRosters(false),
+    queryNeon<{
+      id: string;
+      first_name: string;
+      last_name: string;
+      birth_year: number | null;
+      birth_date_verified: boolean;
+      gender: string | null;
+      jersey_number: number | null;
+      status: string;
+    }>(
+      `SELECT id, first_name, last_name, birth_year, birth_date_verified, gender, jersey_number, status
+       FROM intranet_athletes
+       WHERE status NOT IN ('BAJA', 'SHREDDED')
+         AND COALESCE(is_demo, false) = false
+       ORDER BY last_name ASC, first_name ASC;`
+    ),
+    queryNeon<{ athlete_id: string; team_season_id: string }>(
+      `SELECT athlete_id, team_season_id FROM intranet_athlete_teams;`
+    ),
+    queryNeon<{
+      token: string;
+      category_code: string;
+      default_team_season_id: string | null;
+    }>(
+      `SELECT token, category_code, default_team_season_id
+       FROM intranet_category_registration_links
+       WHERE is_active = true;`
+    ),
+  ]);
+
+  const teamNameMap = new Map(INITIAL_TEAM_SEASONS.map((t) => [t.id, t.name]));
+  const teamCategoryMap = new Map(INITIAL_TEAM_SEASONS.map((t) => [t.id, t.categoryId]));
+  const teamGenderMap = new Map(INITIAL_TEAM_SEASONS.map((t) => [t.id, t.gender]));
+
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.URL ||
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://voleibolsanpedro.es')
+  ).replace(/\/+$/, '');
+  const linkByTeam = new Map<string, string>();
+  const linkByCategory = new Map<string, string>();
+  for (const l of regLinkRows) {
+    const url = `${baseUrl}/inscripcion?cat=${encodeURIComponent(l.token)}`;
+    if (l.default_team_season_id && !linkByTeam.has(l.default_team_season_id)) {
+      linkByTeam.set(l.default_team_season_id, url);
+    }
+    if (!linkByCategory.has(l.category_code)) {
+      linkByCategory.set(l.category_code, url);
+    }
+  }
+
+  const clubTeamsByAth = new Map<string, string[]>();
+  for (const rel of teamRelRows) {
+    const list = clubTeamsByAth.get(rel.athlete_id) || [];
+    list.push(rel.team_season_id);
+    clubTeamsByAth.set(rel.athlete_id, list);
+  }
+
+  const scopedClubAths = athRows.filter((a) => {
+    if (!teamAllowSet) return true;
+    const tids = clubTeamsByAth.get(a.id) || [];
+    return tids.some((tid) => teamAllowSet.has(tid));
+  });
+
+  const clubById = new Map(scopedClubAths.map((a) => [a.id, a]));
+  const clubPool: AthleteMatchCandidateRecord[] = scopedClubAths.map((a) => ({
+    id: a.id,
+    firstName: a.first_name || '',
+    lastName: a.last_name || '',
+    birthYear: a.birth_year,
+    birthDateVerified: Boolean(a.birth_date_verified),
+    birthDatePlain: null,
+    gender: a.gender === 'MASCULINO' ? 'MASCULINO' : 'FEMENINO',
+    teamIds: clubTeamsByAth.get(a.id) || [],
+    status: a.status,
+  }));
+
+  // Agrupar entradas FAVB reales por identidad normalizada (o id canónico si coincide)
+  type FedGrouped = {
+    favbId: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    birthYear: number | null;
+    primaryTeamId: string;
+    teamIds: Set<string>;
+    dorsal: number | null;
+  };
+  const fedGroups = new Map<string, FedGrouped>();
+
+  for (const fp of favbSnapshot.players || []) {
+    if (!fp.id || fp.id.startsWith('demo-') || fp.id === 'p-test-prueba') continue;
+    if (teamAllowSet && !teamAllowSet.has(fp.teamId)) continue;
+    const fullName = `${fp.firstName || ''} ${fp.lastName || ''}`.trim();
+    const norm = normalizeNameKey(fullName);
+    if (!norm) continue;
+    const key = clubById.has(fp.id) ? `id:${fp.id}` : `name:${norm}`;
+    let g = fedGroups.get(key);
+    if (!g) {
+      g = {
+        favbId: fp.id,
+        firstName: fp.firstName.trim(),
+        lastName: fp.lastName.trim(),
+        fullName,
+        birthYear: fp.birthYear && fp.birthYear > 1940 ? fp.birthYear : null,
+        primaryTeamId: fp.teamId,
+        teamIds: new Set<string>(),
+        dorsal: fp.number && fp.number > 0 ? fp.number : null,
+      };
+      fedGroups.set(key, g);
+    }
+    if (fp.teamId) g.teamIds.add(fp.teamId);
+    if (!g.dorsal && fp.number && fp.number > 0) g.dorsal = fp.number;
+  }
+
+  const matchedClubIds = new Set<string>();
+  const missingInClub: FederationDiscrepancyMissingItem[] = [];
+  const discrepancies: FederationDiscrepancyMismatchItem[] = [];
+
+  for (const fed of Array.from(fedGroups.values())) {
+    let matchedAth = clubById.get(fed.favbId) || null;
+    if (!matchedAth) {
+      const gender = teamGenderMap.get(fed.primaryTeamId) || 'FEMENINO';
+      const catId = teamCategoryMap.get(fed.primaryTeamId) || fed.primaryTeamId;
+      const m = matchAthleteCandidatesFromList(clubPool, {
+        firstName: fed.firstName,
+        lastName: fed.lastName,
+        birthYear: fed.birthYear || 2010,
+        birthDateIso: `${fed.birthYear || 2010}-06-15`,
+        gender,
+        categoryCode: catId,
+        defaultTeamSeasonId: fed.primaryTeamId,
+      });
+      if (m.kind === 'MATCH') {
+        matchedAth = clubById.get(m.best.candidate.id) || null;
+      }
+    }
+
+    if (!matchedAth) {
+      const catId = teamCategoryMap.get(fed.primaryTeamId) || '';
+      missingInClub.push({
+        favbId: fed.favbId,
+        firstName: fed.firstName,
+        lastName: fed.lastName,
+        fullName: fed.fullName,
+        teamId: fed.primaryTeamId,
+        teamName: teamNameMap.get(fed.primaryTeamId) || fed.primaryTeamId,
+        dorsal: fed.dorsal,
+        birthYear: fed.birthYear,
+        registrationUrl: linkByTeam.get(fed.primaryTeamId) || linkByCategory.get(catId) || null,
+      });
+      continue;
+    }
+
+    matchedClubIds.add(matchedAth.id);
+    const clubTeams = new Set(clubTeamsByAth.get(matchedAth.id) || []);
+    const missingTeamIds = Array.from(fed.teamIds).filter(
+      (tid) => tid && !clubTeams.has(tid) && teamNameMap.has(tid)
+    );
+    const missingTeamNames = missingTeamIds.map((tid) => teamNameMap.get(tid) || tid);
+    const dorsalDiff =
+      fed.dorsal && matchedAth.jersey_number !== fed.dorsal
+        ? { clubDorsal: matchedAth.jersey_number, favbDorsal: fed.dorsal }
+        : null;
+    const clubFullName = `${matchedAth.first_name} ${matchedAth.last_name}`.trim();
+    const nameDiff =
+      normalizeNameKey(clubFullName) !== normalizeNameKey(fed.fullName)
+        ? { clubName: clubFullName, favbName: fed.fullName }
+        : null;
+
+    if (missingTeamIds.length > 0 || dorsalDiff || nameDiff) {
+      discrepancies.push({
+        athleteId: matchedAth.id,
+        clubFullName,
+        favbFullName: fed.fullName,
+        clubStatus: matchedAth.status,
+        missingTeamIds,
+        missingTeamNames,
+        dorsalDiff,
+        nameDiff,
+      });
+    }
+  }
+
+  const onlyInClub: FederationOnlyInClubItem[] = scopedClubAths
+    .filter((a) => !matchedClubIds.has(a.id))
+    .map((a) => ({
+      athleteId: a.id,
+      fullName: `${a.first_name} ${a.last_name}`.trim(),
+      teamNames: (clubTeamsByAth.get(a.id) || []).map((tid) => teamNameMap.get(tid) || tid),
+      status: a.status,
+    }));
+
+  if (params?.actor) {
+    await recordAuditLog({
+      actorUserId: params.actor.userId,
+      actorEmail: params.actor.email,
+      action: 'CHECK_FAVB_DISCREPANCIES',
+      module: 'Censo',
+      details: {
+        favbPlayersCount: fedGroups.size,
+        clubAthletesCount: scopedClubAths.length,
+        missingInClubCount: missingInClub.length,
+        discrepanciesCount: discrepancies.length,
+      },
+      ipAddress: params.actor.ipAddress,
+    });
+  }
+
+  return {
+    checkedAtIso: new Date().toISOString(),
+    favbPlayersCount: fedGroups.size,
+    clubAthletesCount: scopedClubAths.length,
+    missingInClub,
+    discrepancies,
+    onlyInClub,
   };
 }

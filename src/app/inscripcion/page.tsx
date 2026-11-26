@@ -221,6 +221,8 @@ function InscripcionContent() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [step1Error, setStep1Error] = useState<string | null>(null);
+  const [validatingStep1, setValidatingStep1] = useState(false);
+  const [matchedExistingRoster, setMatchedExistingRoster] = useState(false);
 
   // Paso 2 · RGPD y Firma OTP
   const [consentImage, setConsentImage] = useState<boolean | null>(null);
@@ -359,7 +361,7 @@ function InscripcionContent() {
     };
   }
 
-  function handleStep1Continue(e: React.FormEvent) {
+  async function handleStep1Continue(e: React.FormEvent) {
     e.preventDefault();
     setStep1Error(null);
 
@@ -412,9 +414,16 @@ function InscripcionContent() {
         );
         return;
       }
-      if (!isValidSpanishDniOrNie(guardianDni.trim().toUpperCase())) {
+      const cleanGuardianDni = guardianDni.trim().toUpperCase().replace(/[\s-]/g, '');
+      if (!isValidSpanishDniOrNie(cleanGuardianDni)) {
         setStep1Error(
           'El DNI, NIE o Pasaporte del padre, madre o tutor/a legal no es válido.'
+        );
+        return;
+      }
+      if (cleanPlayerDni && cleanPlayerDni === cleanGuardianDni) {
+        setStep1Error(
+          'El documento del/de la deportista menor no puede coincidir con el DNI/NIE del padre, madre o tutor/a legal. Si es menor de 14 años y aún no tiene DNI propio, deja en blanco el documento del deportista.'
         );
         return;
       }
@@ -442,6 +451,31 @@ function InscripcionContent() {
     if (password !== passwordConfirm) {
       setStep1Error('Las contraseñas introducidas no coinciden.');
       return;
+    }
+
+    setValidatingStep1(true);
+    try {
+      const res = await fetch('/api/intranet/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'validate_step1',
+          ...buildStep1Payload(),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setStep1Error(
+          data?.error || 'No se pudieron validar tus datos en el servidor. Revísalos e inténtalo de nuevo.'
+        );
+        return;
+      }
+      setMatchedExistingRoster(Boolean(data.matchedExistingRoster));
+    } catch {
+      setStep1Error('Error de conexión al verificar los datos del formulario.');
+      return;
+    } finally {
+      setValidatingStep1(false);
     }
 
     // Reiniciar estado de Paso 2 sin preselección
@@ -1300,11 +1334,20 @@ function InscripcionContent() {
 
           <button
             type="submit"
-            disabled={paymentPlans.length === 0}
+            disabled={paymentPlans.length === 0 || validatingStep1}
             className="w-full py-3.5 px-5 bg-primary-container hover:bg-cta-hover text-white font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer disabled:opacity-40"
           >
-            <span>Continuar a Autorizaciones y Firma</span>
-            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            {validatingStep1 ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                <span>Verificando datos...</span>
+              </>
+            ) : (
+              <>
+                <span>Continuar a Autorizaciones y Firma</span>
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+              </>
+            )}
           </button>
         </form>
       )}
@@ -1338,6 +1381,20 @@ function InscripcionContent() {
               </p>
             </div>
           </div>
+
+          {matchedExistingRoster && (
+            <div
+              role="status"
+              className="bg-emerald-950/40 border border-emerald-500/45 px-4 py-3 text-xs text-emerald-200 flex items-start gap-2.5"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>
+                Ficha deportiva identificada en el club: al validar tu correo con el código OTP y
+                revisarse la solicitud, tu usuario quedará vinculado automáticamente a tu ficha
+                actual sin crear duplicados.
+              </span>
+            </div>
+          )}
 
           {/* Resumen plegable de datos introducidos en Paso 1 */}
           <details className="group bg-surface-container-lowest border border-white/15 text-xs">

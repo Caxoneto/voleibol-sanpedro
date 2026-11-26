@@ -4,6 +4,38 @@ Este registro documenta el estado consolidado del proyecto y los cambios recient
 
 ---
 
+## 2026-11-26 (Rev. UI/API Censo y Solicitudes) — Refinamiento Operativo de `/club/censo` y Limpieza de Producción
+
+* **Inscripciones y Aprobación (`src/app/club/censo/page.tsx`, `src/app/api/intranet/registration/route.ts`)**:
+  * Añadido filtro por equipo y paginación de `15` registros por página en `Solicitudes de Alta` (`Todas` y filtradas).
+  * Sustituidos los estados técnicos RGPD por etiquetas claras en español (`RGPD: Firmado` / `No firmado` / `Revocado`) con píldoras verde (`Sí autorizo`) y roja (`No autorizo`).
+  * Corregida la persistencia de modificaciones del staff en `approve_registration`: la cuota/plan, descuentos, equipos, dorsal, posición, nombre, apellidos y talla elegidos por el staff prevalecen siempre sobre la solicitud original, regeneran matrícula y cargos si aún no hay abonos (con protección `409` si ya existen pagos), actualizan `selected_product_id` / `selected_price_plan_id` y se comunican íntegramente en el email de confirmación al deportista/tutor.
+  * Al rechazar una solicitud `staged` sin otra solicitud ni cuenta asociada, la ficha revierte limpiamente a `'IMPORTADO'` (`Sin registrar`).
+* **Plantilla y Comprobador FAVB (`src/app/api/intranet/census/route.ts`, `src/lib/intranet/census-sync.ts`)**:
+  * Retirado el botón extra de datos sensibles por fila y tarjeta móvil; al abrir el modal de ficha para el staff se cargan directamente todos los campos (incluidos DNI, fecha de nacimiento, alergias y DNI tutor).
+  * Reemplazado `window.confirm` de baja por un modal brutalista (`Confirmar Baja`) acorde al diseño del portal.
+  * Separado el estado `'IMPORTADO'` (`"Sin registrar"`) de `'PENDIENTE_VALIDAR'` (`"Pendiente validar"` solo cuando existe solicitud `PENDING` real) y añadido filtro anti-demo en `GET /api/intranet/census`.
+  * Sustituido el botón de sincronización destructiva por `Comprobar FAVB`, un comprobador federativo de solo lectura (`checkFederationDiscrepancies`) que no crea ni elimina fichas y ofrece subsanación puntual en 1 clic (`resolve_federation_discrepancy`) o copia del enlace de inscripción.
+* **Validación y Limpieza**: Verificación E2E completa (suite API/BBDD `24/24 PASS` + QA visual en navegador Desktop `1440x900` y Mobile `375x812`) y purga íntegra de registros de prueba/demo y normalización de estado `IMPORTADO` en `dev-intranet` y producción (`main`).
+
+---
+
+## 2026-11-26 — Unificación Tolerante de Inscripciones, Mejoras UX Staff y Validación E2E Integral
+
+* **Motor de Unificación con Censo Existente (`src/lib/intranet/athlete-matcher.ts`, `src/lib/intranet/census-sync.ts`)**:
+  * Incorporada normalización avanzada (`normalizeNameKey` con pre-transliteración Unicode `ł/ø/ß/...`, eliminación de tildes/diacríticos, partículas `de/del/la/los/...`, guiones y abreviaturas españolas), formato de nombre propio (`formatProperPersonName`), compatibilidad con años estimados FAVB (`birth_date_verified = false`) y scoring por niveles con errata máxima de 1 letra (Damerau-Levenshtein) y prioridad por equipo/categoría sin falsos negativos ni duplicación de fichas.
+  * Reutilización de `normalizeNameKey` en `census-sync.ts` preservando los equipos asignados de deportistas ya `VERIFICADO`.
+* **Flujo `/inscripcion`, `/acceso` y API (`/api/intranet/registration`)**:
+  * Nueva acción `validate_step1` que valida credenciales, bloqueos (`409`), DNI de menor distinto al del tutor (`playerDni !== guardianDni`, `400`) y muestra el aviso de ficha existente identificada antes del Paso 2.
+  * Ciclo completo de correos de inscripción: `[OTP-CDV]` en Paso 2 -> `[CDV San Pedro] Solicitud de inscripción recibida (pendiente de revisión)` al enviar -> al **aprobar** (`approve_registration`, tanto nuevas fichas como `staged`), envío de confirmación de acceso a `/mi-club` + resguardo oficial `[AUTORIZACION-CDV]` con PDF adjunto -> al **rechazar** (`reject_registration`), liberación limpia (`BAJA` / `REVOKED` en borradores o `PENDIENTE_VALIDAR` intacta en `staged`) y envío de `[CDV San Pedro] Solicitud de inscripción rechazada · Motivo y subsanación` con el motivo y botón directo al formulario para subsanar con el mismo correo y contraseña.
+  * Alineamiento del alcance `EQUIPO` mediante `hasScopedRequestAccess` sobre `intranet_athlete_teams` y aviso ámbar dedicado en `/acceso` ante `403 PENDING_ADMIN_APPROVAL`.
+* **Panel Administrativo de Staff (`/club/censo?tab=inscripciones`) y Aislamiento de Correo (`src/lib/email-otp.ts`)**:
+  * Badge `"Ficha existente unificada"` vs `"Nueva ficha"` en tarjetas y modal de aprobación + modal de confirmación de rechazo con motivo obligatorio (`adminNotes` mín. 5 caracteres) visible en tarjeta y enviado al solicitante.
+  * En desarrollo local, validación MIME + PDF completa mediante `buildMimeMessagePayload` hacia `DEV_E2E_OUTBOX_FILE` para buzones `@e2e-test.voleibolsanpedro.local` sin conectar con Zoho SMTP ni enviar copias al correo real del club.
+  * Verificación E2E 100 % superada (adultos `+18`, menores `<14` y `14–17` con tutor compartido, rechazo/re-inscripción, matriz de errores/OTP, flujo UI móvil/desktop en navegador real) con limpieza íntegra de datos temporales en `dev-intranet`.
+
+---
+
 ## 2026-11-24 — Remediación Integral: Seguridad (F-01 a F-10), Web/SEO/Rendimiento y Sistema de Diseño Impeccable
 
 * **Seguridad de Autenticación y OAuth (`src/app/acceso/page.tsx`, `api/intranet/auth/*`)**:

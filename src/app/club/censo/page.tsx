@@ -10,8 +10,6 @@ import {
   Download,
   Search,
   Filter,
-  ShieldAlert,
-  ShieldCheck,
   Edit2,
   Eye,
   Copy,
@@ -36,6 +34,9 @@ import {
   BarChart3,
   Plus,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  FileCheck2,
 } from 'lucide-react';
 import {
   CLUB_CATEGORIES_META,
@@ -194,6 +195,7 @@ interface RegRequestRecord {
   consentTravel: boolean;
   consentDocumentHash: string | null;
   consentId: string | null;
+  isConsentSigned?: boolean;
   consentStatus: string;
   consentSignedAt: string | null;
   assignedTeamIds: string[];
@@ -202,6 +204,45 @@ interface RegRequestRecord {
   enrollmentId: string | null;
   adminNotes: string | null;
   createdAt: string;
+}
+
+interface FavbMissingReportItem {
+  favbId: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  teamId: string;
+  teamName: string;
+  dorsal: number | null;
+  birthYear: number | null;
+  registrationUrl: string | null;
+}
+
+interface FavbMismatchReportItem {
+  athleteId: string;
+  clubFullName: string;
+  favbFullName: string;
+  clubStatus: string;
+  missingTeamIds: string[];
+  missingTeamNames: string[];
+  dorsalDiff: { clubDorsal: number | null; favbDorsal: number } | null;
+  nameDiff: { clubName: string; favbName: string } | null;
+}
+
+interface FavbOnlyClubReportItem {
+  athleteId: string;
+  fullName: string;
+  teamNames: string[];
+  status: string;
+}
+
+interface FavbDiscrepancyReport {
+  checkedAtIso: string;
+  favbPlayersCount: number;
+  clubAthletesCount: number;
+  missingInClub: FavbMissingReportItem[];
+  discrepancies: FavbMismatchReportItem[];
+  onlyInClub: FavbOnlyClubReportItem[];
 }
 
 interface RegPaymentPlanOption {
@@ -234,8 +275,8 @@ const STATUS_BADGE: Record<AthleteStatus, { label: string; cls: string }> = {
     cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
   },
   IMPORTADO: {
-    label: 'Importado',
-    cls: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    label: 'Sin registrar',
+    cls: 'bg-white/5 text-on-surface/85 border-white/15',
   },
   BAJA: {
     label: 'Baja',
@@ -249,16 +290,16 @@ const STATUS_BADGE: Record<AthleteStatus, { label: string; cls: string }> = {
 
 const RGPD_BADGE: Record<RgpdStatus, { label: string; cls: string }> = {
   ACTIVE: {
-    label: 'RGPD Activo',
+    label: 'Firmado',
     cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
   },
   PENDING: {
-    label: 'RGPD Pendiente',
-    cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    label: 'No firmado',
+    cls: 'bg-rose-500/10 text-rose-300 border-rose-500/30',
   },
   REVOKED: {
-    label: 'RGPD Revocado',
-    cls: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    label: 'Revocado',
+    cls: 'bg-rose-500/20 text-rose-200 border-rose-500/40',
   },
   SHREDDED: {
     label: 'Suprimido Art.17',
@@ -311,6 +352,8 @@ function ClubCensoPageContent() {
   const [regPaymentPlans, setRegPaymentPlans] = useState<RegPaymentPlanOption[]>([]);
   const [regDiscountRules, setRegDiscountRules] = useState<RegDiscountOption[]>([]);
   const [regStatusFilter, setRegStatusFilter] = useState<'PENDING' | 'ALL'>('PENDING');
+  const [regTeamFilter, setRegTeamFilter] = useState<string>('');
+  const [regPage, setRegPage] = useState<number>(1);
 
   // Modales de resumen por equipo y nuevo enlace categoría
   const [teamSummaryModalOpen, setTeamSummaryModalOpen] = useState(false);
@@ -325,6 +368,9 @@ function ClubCensoPageContent() {
 
   // Modal Aceptar Inscripción y Asignar Equipos
   const [approveModalReq, setApproveModalReq] = useState<RegRequestRecord | null>(null);
+  const [appFirstName, setAppFirstName] = useState<string>('');
+  const [appLastName, setAppLastName] = useState<string>('');
+  const [appShirtSize, setAppShirtSize] = useState<string>('');
   const [appTeamIds, setAppTeamIds] = useState<string[]>([]);
   const [appPrimaryTeamId, setAppPrimaryTeamId] = useState<string>('');
   const [appDorsal, setAppDorsal] = useState<string>('');
@@ -333,19 +379,27 @@ function ClubCensoPageContent() {
   const [appDiscountIds, setAppDiscountIds] = useState<string[]>([]);
   const [appNotes, setAppNotes] = useState<string>('');
   const [approvingBusy, setApprovingBusy] = useState(false);
+  const [rejectModalReq, setRejectModalReq] = useState<RegRequestRecord | null>(null);
+  const [rejectNotes, setRejectNotes] = useState<string>('');
   const [rejectingReqId, setRejectingReqId] = useState<string | null>(null);
+
+  // Modal Confirmar Baja y Comprobador FAVB
+  const [deactivateModalAth, setDeactivateModalAth] = useState<AthleteRecord | null>(null);
+  const [deactivateReason, setDeactivateReason] = useState<string>('');
+  const [deactivatingBusy, setDeactivatingBusy] = useState(false);
+  const [favbModalOpen, setFavbModalOpen] = useState(false);
+  const [favbLoading, setFavbLoading] = useState(false);
+  const [favbReport, setFavbReport] = useState<FavbDiscrepancyReport | null>(null);
+  const [favbBusyId, setFavbBusyId] = useState<string | null>(null);
   const regFetchingRef = useRef(false);
   const [teamFilter, setTeamFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [rgpdFilter, setRgpdFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const [syncing, setSyncing] = useState(false);
-
   // Modal Ficha / Edición / Datos sensibles
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingAthlete, setEditingAthlete] = useState<AthleteRecord | null>(null);
-  const [sensitiveData, setSensitiveData] = useState<SensitivePayload | null>(null);
   const [loadingSensitive, setLoadingSensitive] = useState(false);
   const [savingAthlete, setSavingAthlete] = useState(false);
 
@@ -465,13 +519,39 @@ function ClubCensoPageContent() {
     [regRequests]
   );
 
-  const visibleRegRequests = useMemo(
-    () =>
-      regStatusFilter === 'PENDING'
-        ? regRequests.filter((r) => r.status === 'PENDING')
-        : regRequests,
-    [regRequests, regStatusFilter]
-  );
+  const REG_PAGE_SIZE = 15;
+
+  const visibleRegRequests = useMemo(() => {
+    const selectedTeamMeta = (regTeams.length > 0 ? regTeams : teams).find(
+      (t) => t.id === regTeamFilter
+    );
+    return regRequests.filter((r) => {
+      if (regStatusFilter === 'PENDING' && r.status !== 'PENDING') return false;
+      if (regTeamFilter) {
+        const matchDefault = r.defaultTeamSeasonId === regTeamFilter;
+        const matchAssigned = r.assignedTeamIds.includes(regTeamFilter);
+        const matchAthleteTeams = r.athleteTeams.some((t) => t.teamSeasonId === regTeamFilter);
+        const matchCategory =
+          Boolean((selectedTeamMeta as { categoryId?: string } | undefined)?.categoryId) &&
+          r.categoryCode === (selectedTeamMeta as { categoryId?: string }).categoryId;
+        if (!matchDefault && !matchAssigned && !matchAthleteTeams && !matchCategory) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [regRequests, regStatusFilter, regTeamFilter, regTeams, teams]);
+
+  const regTotalPages = Math.max(1, Math.ceil(visibleRegRequests.length / REG_PAGE_SIZE));
+  const currentRegPage = Math.min(regPage, regTotalPages);
+  const paginatedRegRequests = useMemo(() => {
+    const start = (currentRegPage - 1) * REG_PAGE_SIZE;
+    return visibleRegRequests.slice(start, start + REG_PAGE_SIZE);
+  }, [visibleRegRequests, currentRegPage]);
+
+  useEffect(() => {
+    setRegPage(1);
+  }, [regStatusFilter, regTeamFilter]);
 
   const handleCreateRegLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -564,6 +644,9 @@ function ClubCensoPageContent() {
           ? reqItem.athleteTeams.map((t) => t.teamSeasonId)
           : [];
     setApproveModalReq(reqItem);
+    setAppFirstName(reqItem.athleteFirstName || '');
+    setAppLastName(reqItem.athleteLastName || '');
+    setAppShirtSize(reqItem.shirtSize || '');
     setAppTeamIds(initialTeams);
     setAppPrimaryTeamId(initialTeams[0] || '');
     setAppDorsal(reqItem.jerseyNumber ? String(reqItem.jerseyNumber) : '');
@@ -600,6 +683,9 @@ function ClubCensoPageContent() {
         body: JSON.stringify({
           action: 'approve_registration',
           requestId: approveModalReq.id,
+          firstName: appFirstName.trim() || undefined,
+          lastName: appLastName.trim() || undefined,
+          shirtSize: appShirtSize.trim() || undefined,
           teamSeasonIds: appTeamIds,
           primaryTeamId: appPrimaryTeamId || appTeamIds[0],
           dorsal: appDorsal ? Number(appDorsal) : undefined,
@@ -615,8 +701,9 @@ function ClubCensoPageContent() {
         setErrorBanner(json.error || 'No se pudo aprobar la inscripción.');
         return;
       }
+      const approvedDisplay = `${appFirstName.trim()} ${appLastName.trim()}`.trim() || approveModalReq.athleteFullName;
       showToast(
-        `Inscripción de ${approveModalReq.athleteFullName} aceptada y equipo asignado${json.emailSent ? ' (aviso enviado por email)' : ''}.`
+        `Inscripción de ${approvedDisplay} aceptada y equipo/cuota actualizados${json.emailSent ? ' (aviso enviado por email)' : ''}.`
       );
       setApproveModalReq(null);
       window.dispatchEvent(new Event('cdv-refresh-me'));
@@ -628,7 +715,21 @@ function ClubCensoPageContent() {
     }
   };
 
-  const handleRejectRequest = async (reqItem: RegRequestRecord) => {
+  const openRejectModal = (reqItem: RegRequestRecord) => {
+    setErrorBanner(null);
+    setRejectModalReq(reqItem);
+    setRejectNotes('');
+  };
+
+  const handleRejectRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rejectModalReq) return;
+    const cleanReason = rejectNotes.trim();
+    if (cleanReason.length < 5) {
+      setErrorBanner('Debes indicar el motivo del rechazo (mínimo 5 caracteres) para enviarlo al solicitante.');
+      return;
+    }
+    const reqItem = rejectModalReq;
     setRejectingReqId(reqItem.id);
     setErrorBanner(null);
     try {
@@ -638,7 +739,7 @@ function ClubCensoPageContent() {
         body: JSON.stringify({
           action: 'reject_registration',
           requestId: reqItem.id,
-          adminNotes: 'Solicitud rechazada desde el panel administrativo',
+          adminNotes: cleanReason,
         }),
       });
       const json = await res.json();
@@ -646,7 +747,11 @@ function ClubCensoPageContent() {
         setErrorBanner(json.error || 'No se pudo rechazar la solicitud.');
         return;
       }
-      showToast(`Solicitud de ${reqItem.athleteFullName} marcada como rechazada.`);
+      showToast(
+        `Solicitud de ${reqItem.athleteFullName} rechazada${json.emailSent ? ' (correo con motivo enviado al solicitante)' : ''}.`
+      );
+      setRejectModalReq(null);
+      setRejectNotes('');
       window.dispatchEvent(new Event('cdv-refresh-me'));
       await loadRegistrations();
     } catch {
@@ -754,31 +859,67 @@ function ClubCensoPageContent() {
     };
   }, [athletes]);
 
-  // Sincronización con fuentes del club
-  const handleSyncSources = async () => {
-    setSyncing(true);
+  // Comprobador no destructivo de discrepancias frente a actas FAVB
+  const handleCheckFavbDiscrepancies = async () => {
+    setFavbModalOpen(true);
+    setFavbLoading(true);
     setErrorBanner(null);
     try {
       const res = await fetch('/api/intranet/census', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'sync_sources' }),
+        body: JSON.stringify({ action: 'check_federation_discrepancies' }),
       });
       const data = await res.json();
       if (!res.ok || !data?.success) {
-        setErrorBanner(data?.error || 'No se pudo sincronizar el censo.');
+        setErrorBanner(data?.error || 'No se pudo comprobar las discrepancias con FAVB.');
         return;
       }
-      const s = data.summary;
-      showToast(
-        `Sincronización completada: ${s.athletesInsertedOrUpdated} fichas procesadas, ${s.guardiansLinked} tutores vinculados.`
-      );
-      await loadCensus();
+      setFavbReport(data.report as FavbDiscrepancyReport);
     } catch {
-      setErrorBanner('Error de red sincronizando el censo.');
+      setErrorBanner('Error de red comprobando discrepancias con Federación.');
     } finally {
-      setSyncing(false);
+      setFavbLoading(false);
     }
+  };
+
+  const handleResolveFavbDiscrepancy = async (item: FavbMismatchReportItem) => {
+    setFavbBusyId(item.athleteId);
+    setErrorBanner(null);
+    try {
+      const res = await fetch('/api/intranet/census', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'resolve_federation_discrepancy',
+          athleteId: item.athleteId,
+          addTeamIds: item.missingTeamIds.length > 0 ? item.missingTeamIds : undefined,
+          applyDorsal: item.dorsalDiff ? item.dorsalDiff.favbDorsal : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        setErrorBanner(data?.error || 'No se pudo subsanar la discrepancia.');
+        return;
+      }
+      showToast(`Discrepancia de ${item.clubFullName} subsanada.`);
+      await Promise.all([loadCensus(), handleCheckFavbDiscrepancies()]);
+    } catch {
+      setErrorBanner('Error de red al subsanar discrepancia.');
+    } finally {
+      setFavbBusyId(null);
+    }
+  };
+
+  const openNewAthleteFromFavb = (missing: FavbMissingReportItem) => {
+    setFavbModalOpen(false);
+    openAthleteModal(null);
+    setFFirstName(missing.firstName);
+    setFLastName(missing.lastName);
+    setFPrimaryTeam(missing.teamId);
+    if (missing.birthYear) setFBirthYear(String(missing.birthYear));
+    if (missing.dorsal) setFJerseyNumber(String(missing.dorsal));
+    setFStatus('VERIFICADO');
   };
 
   // Exportar CSV con datos básicos autorizados
@@ -843,10 +984,9 @@ function ClubCensoPageContent() {
     showToast(`Exportadas ${sortedAthletes.length} fichas a CSV.`);
   };
 
-  // Abrir modal ficha (crear o editar/ver)
-  const openAthleteModal = (ath: AthleteRecord | null, revealImmediately = false) => {
+  // Abrir modal ficha (crear o editar/ver cargando automáticamente los campos completos para el staff)
+  const openAthleteModal = (ath: AthleteRecord | null) => {
     setEditingAthlete(ath);
-    setSensitiveData(null);
     setErrorBanner(null);
 
     if (ath) {
@@ -883,7 +1023,7 @@ function ClubCensoPageContent() {
       setFBirthYear('');
       setFDni('');
       setFGender('FEMENINO');
-      setFStatus('PENDIENTE_VALIDAR');
+      setFStatus('VERIFICADO');
       setFPrimaryTeam(teamFilter || teams[0]?.id || '');
       setFSecondaryTeams([]);
       setFFavbLicense('');
@@ -901,14 +1041,13 @@ function ClubCensoPageContent() {
 
     setEditorOpen(true);
 
-    if (ath && revealImmediately && permissions.canViewSensitive && ath.status !== 'SHREDDED') {
+    if (ath && permissions.canViewSensitive && ath.status !== 'SHREDDED') {
       void handleRevealSensitive(ath.id);
     }
   };
 
   const handleRevealSensitive = async (athleteId: string) => {
     setLoadingSensitive(true);
-    setErrorBanner(null);
     try {
       const res = await fetch('/api/intranet/census', {
         method: 'POST',
@@ -917,18 +1056,15 @@ function ClubCensoPageContent() {
       });
       const data = await res.json();
       if (!res.ok || !data?.success) {
-        setErrorBanner(data?.error || 'No se pudieron revelar los datos sensibles.');
         return;
       }
       const s = data.sensitive as SensitivePayload;
-      setSensitiveData(s);
       if (s.dni) setFDni(s.dni);
       if (s.birthDate) setFBirthDate(s.birthDate);
       if (s.medicalAllergies) setFAllergies(s.medicalAllergies);
       if (s.guardianDni) setFGuardianDni(s.guardianDni);
-      showToast('Acceso a datos sensibles registrado en auditoría.');
     } catch {
-      setErrorBanner('Error de red revelando datos sensibles.');
+      // Silencioso para no bloquear visualización base de ficha
     } finally {
       setLoadingSensitive(false);
     }
@@ -994,24 +1130,40 @@ function ClubCensoPageContent() {
     }
   };
 
-  const handleDeactivateAthlete = async (ath: AthleteRecord) => {
-    if (!window.confirm(`¿Confirmas dar de baja a ${ath.fullName}?`)) return;
+  const openDeactivateModal = (ath: AthleteRecord) => {
+    setErrorBanner(null);
+    setDeactivateModalAth(ath);
+    setDeactivateReason('');
+  };
+
+  const handleConfirmDeactivate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deactivateModalAth) return;
+    setDeactivatingBusy(true);
     setErrorBanner(null);
     try {
       const res = await fetch('/api/intranet/census', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'deactivate_athlete', athleteId: ath.id }),
+        body: JSON.stringify({
+          action: 'deactivate_athlete',
+          athleteId: deactivateModalAth.id,
+          reason: deactivateReason.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data?.success) {
         setErrorBanner(data?.error || 'No se pudo dar de baja.');
         return;
       }
-      showToast(`${ath.fullName} marcado como BAJA.`);
+      showToast(`${deactivateModalAth.fullName} marcado como BAJA.`);
+      setDeactivateModalAth(null);
+      setDeactivateReason('');
       await loadCensus();
     } catch {
       setErrorBanner('Error de red al dar de baja.');
+    } finally {
+      setDeactivatingBusy(false);
     }
   };
 
@@ -1077,20 +1229,21 @@ function ClubCensoPageContent() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {permissions.canImport && (
+            {(permissions.canImport || permissions.canEdit) && (
               <button
                 type="button"
-                onClick={handleSyncSources}
-                disabled={syncing}
-                title="Sincronizar FAVB + Jugadoras/es + RGPD"
-                aria-label="Sincronizar FAVB + Jugadoras/es + RGPD"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-none border border-amber-500/30 bg-amber-500/10 text-amber-200 transition hover:bg-amber-500/20 disabled:opacity-50"
+                onClick={handleCheckFavbDiscrepancies}
+                disabled={favbLoading}
+                title="Comprobar discrepancias con Federación (FAVB)"
+                aria-label="Comprobar discrepancias con Federación (FAVB)"
+                className="inline-flex h-10 items-center gap-1.5 rounded-none border border-amber-500/35 bg-amber-500/10 px-3 text-xs font-bold text-amber-200 transition hover:bg-amber-500/20 disabled:opacity-50"
               >
-                {syncing ? (
+                {favbLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  <FileCheck2 className="h-4 w-4" aria-hidden="true" />
                 )}
+                <span>Comprobar FAVB</span>
               </button>
             )}
 
@@ -1162,7 +1315,7 @@ function ClubCensoPageContent() {
             </div>
           </div>
           <div className="rounded-none border border-white/10 bg-surface-container p-4 shadow-brutal-dark">
-            <div className="text-xs font-medium text-tertiary">RGPD Activo</div>
+            <div className="text-xs font-medium text-tertiary">RGPD Firmado</div>
             <div className="mt-1 font-headline text-2xl font-bold text-sky-400">
               {globalStats.rgpdActive}
               <span className="ml-1.5 text-xs font-normal text-tertiary">
@@ -1293,8 +1446,8 @@ function ClubCensoPageContent() {
               >
                 <option value="">Todos los estados</option>
                 <option value="VERIFICADO">Verificado</option>
+                <option value="IMPORTADO">Sin registrar</option>
                 <option value="PENDIENTE_VALIDAR">Pendiente validar</option>
-                <option value="IMPORTADO">Importado</option>
                 <option value="BAJA">Baja</option>
               </select>
 
@@ -1305,9 +1458,9 @@ function ClubCensoPageContent() {
                 className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2.5 text-sm text-white focus:border-primary focus:outline-none"
               >
                 <option value="">Todo RGPD</option>
-                <option value="ACTIVE">RGPD Activo</option>
-                <option value="PENDING">RGPD Pendiente</option>
-                <option value="REVOKED">RGPD Revocado</option>
+                <option value="ACTIVE">Firmado</option>
+                <option value="PENDING">No firmado</option>
+                <option value="REVOKED">Revocado</option>
               </select>
             </section>
 
@@ -1643,23 +1796,12 @@ function ClubCensoPageContent() {
                                     )}
                                   </button>
 
-                                  {permissions.canViewSensitive && ath.status !== 'SHREDDED' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => openAthleteModal(ath, true)}
-                                      title="Ver datos sensibles (auditado)"
-                                      className="rounded-none border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300 transition hover:bg-amber-500/20"
-                                    >
-                                      <ShieldAlert className="h-4 w-4" />
-                                    </button>
-                                  )}
-
                                   {permissions.canDeactivate &&
                                     ath.status !== 'BAJA' &&
                                     ath.status !== 'SHREDDED' && (
                                       <button
                                         type="button"
-                                        onClick={() => handleDeactivateAthlete(ath)}
+                                        onClick={() => openDeactivateModal(ath)}
                                         title="Dar de baja"
                                         className="rounded-none border border-rose-500/30 bg-rose-500/10 p-2 text-rose-300 transition hover:bg-rose-500/20"
                                       >
@@ -1810,23 +1952,12 @@ function ClubCensoPageContent() {
                             {ath.canEditRow ? 'Editar' : 'Ficha'}
                           </button>
 
-                          {permissions.canViewSensitive && ath.status !== 'SHREDDED' && (
-                            <button
-                              type="button"
-                              onClick={() => openAthleteModal(ath, true)}
-                              aria-label="Ver datos sensibles"
-                              className="inline-flex items-center justify-center rounded-none border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-300"
-                            >
-                              <ShieldAlert className="h-4 w-4" />
-                            </button>
-                          )}
-
                           {permissions.canDeactivate &&
                             ath.status !== 'BAJA' &&
                             ath.status !== 'SHREDDED' && (
                               <button
                                 type="button"
-                                onClick={() => handleDeactivateAthlete(ath)}
+                                onClick={() => openDeactivateModal(ath)}
                                 aria-label="Dar de baja"
                                 className="inline-flex items-center justify-center rounded-none border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300"
                               >
@@ -1854,7 +1985,28 @@ function ClubCensoPageContent() {
                   Solicitudes de Alta ({pendingRegCount} pendientes)
                 </h2>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={regTeamFilter}
+                    onChange={(e) => setRegTeamFilter(e.target.value)}
+                    aria-label="Filtrar solicitudes por equipo"
+                    className="rounded-none border border-white/15 bg-surface-container-lowest px-3 py-1.5 text-xs text-white focus:border-primary focus:outline-none"
+                  >
+                    <option value="">Todos los equipos</option>
+                    {groupByCategoryFamily(
+                      regTeams.length > 0 ? regTeams : teams,
+                      (t) => `${t.id} ${t.name}`
+                    ).map(({ family, items: familyTeams }) => (
+                      <optgroup key={family.code} label={family.label}>
+                        {familyTeams.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {getShortTeamLabelInFamily(t.name, family.code)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+
                   <button
                     type="button"
                     onClick={() => setRegStatusFilter('PENDING')}
@@ -1892,7 +2044,7 @@ function ClubCensoPageContent() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {visibleRegRequests.map((req) => (
+                  {paginatedRegRequests.map((req) => (
                     <div
                       key={req.id}
                       className={`rounded-none border p-4 ${
@@ -1933,6 +2085,15 @@ function ClubCensoPageContent() {
                                 Adulto (+18)
                               </span>
                             )}
+                            {!req.athleteId.startsWith('reg-') ? (
+                              <span className="rounded-none bg-emerald-500/15 border border-emerald-500/40 px-2 py-0.5 text-[11px] font-bold text-emerald-300">
+                                Ficha existente unificada
+                              </span>
+                            ) : (
+                              <span className="rounded-none bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
+                                Nueva ficha
+                              </span>
+                            )}
                           </div>
 
                           <h3 className="text-base font-bold text-white">
@@ -1949,17 +2110,55 @@ function ClubCensoPageContent() {
                             {req.contactPhone && <span>Tel: {req.contactPhone}</span>}
                             {req.selectedPlanName && (
                               <span className="text-emerald-300">
-                                Cuota elegida: <strong>{req.selectedPlanName}</strong>
+                                {req.status === 'APPROVED' ? 'Cuota asignada: ' : 'Cuota elegida: '}
+                                <strong>{req.selectedPlanName}</strong>
                                 {req.selectedPlanAmount !== null ? ` (${req.selectedPlanAmount} €)` : ''}
                               </span>
                             )}
-                            <span>
-                              RGPD OTP:{' '}
-                              <strong className="text-sky-300">
-                                {req.consentStatus} (Img: {req.consentImage ? 'Sí' : 'No'} · Viajes: {req.consentTravel ? 'Sí' : 'No'})
-                              </strong>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            <span
+                              className={`rounded-none border px-2 py-0.5 text-[11px] font-bold ${
+                                req.consentStatus === 'Revocado'
+                                  ? 'border-rose-500/40 bg-rose-500/20 text-rose-200'
+                                  : req.isConsentSigned || req.consentStatus === 'Firmado'
+                                    ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                                    : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
+                              }`}
+                            >
+                              RGPD:{' '}
+                              {req.consentStatus === 'Revocado'
+                                ? 'Revocado'
+                                : req.isConsentSigned || req.consentStatus === 'Firmado'
+                                  ? 'Firmado'
+                                  : 'No firmado'}
+                            </span>
+                            <span
+                              className={`rounded-none border px-2 py-0.5 text-[11px] font-semibold ${
+                                req.consentImage
+                                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                                  : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
+                              }`}
+                            >
+                              Imágenes: {req.consentImage ? 'Sí autorizo' : 'No autorizo'}
+                            </span>
+                            <span
+                              className={`rounded-none border px-2 py-0.5 text-[11px] font-semibold ${
+                                req.consentTravel
+                                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                                  : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
+                              }`}
+                            >
+                              Viajes: {req.consentTravel ? 'Sí autorizo' : 'No autorizo'}
                             </span>
                           </div>
+
+                          {req.status === 'REJECTED' && req.adminNotes && (
+                            <p className="text-[11px] text-rose-300/90">
+                              Motivo rechazo: {req.adminNotes}
+                            </p>
+                          )}
 
                           {req.athleteTeams.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 pt-1">
@@ -1988,7 +2187,7 @@ function ClubCensoPageContent() {
                             <button
                               type="button"
                               disabled={rejectingReqId === req.id}
-                              onClick={() => handleRejectRequest(req)}
+                              onClick={() => openRejectModal(req)}
                               className="inline-flex items-center gap-1.5 rounded-none border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/60 px-3 py-2 text-xs font-bold text-rose-200 transition disabled:opacity-50"
                             >
                               <X className="h-4 w-4" />
@@ -1999,6 +2198,39 @@ function ClubCensoPageContent() {
                       </div>
                     </div>
                   ))}
+
+                  {visibleRegRequests.length > REG_PAGE_SIZE && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-on-surface/90">
+                      <span>
+                        Mostrando {(currentRegPage - 1) * REG_PAGE_SIZE + 1}–
+                        {Math.min(currentRegPage * REG_PAGE_SIZE, visibleRegRequests.length)} de{' '}
+                        <strong>{visibleRegRequests.length}</strong> solicitudes
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={currentRegPage <= 1}
+                          onClick={() => setRegPage((p) => Math.max(1, p - 1))}
+                          className="inline-flex items-center gap-1 rounded-none border border-white/15 bg-surface-container-high px-3 py-1.5 font-semibold text-white transition hover:bg-white/10 disabled:opacity-40"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                          Anterior
+                        </button>
+                        <span className="font-mono text-tertiary">
+                          Página {currentRegPage} / {regTotalPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={currentRegPage >= regTotalPages}
+                          onClick={() => setRegPage((p) => Math.min(regTotalPages, p + 1))}
+                          className="inline-flex items-center gap-1 rounded-none border border-white/15 bg-surface-container-high px-3 py-1.5 font-semibold text-white transition hover:bg-white/10 disabled:opacity-40"
+                        >
+                          Siguiente
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2403,6 +2635,16 @@ function ClubCensoPageContent() {
       >
         {approveModalReq && (
           <form onSubmit={handleApproveSubmit} className="space-y-4">
+            {!approveModalReq.athleteId.startsWith('reg-') ? (
+              <div className="rounded-none border border-emerald-500/40 bg-emerald-950/35 px-3 py-2.5 text-xs text-emerald-200">
+                <strong>Ficha existente unificada ({approveModalReq.athleteId}):</strong> al aprobar se unificarán la cuenta de acceso, los datos verificados y la autorización RGPD sobre la ficha deportiva que ya existía en el censo.
+              </div>
+            ) : (
+              <div className="rounded-none border border-sky-500/35 bg-sky-950/30 px-3 py-2 text-xs text-sky-200">
+                <strong>Nueva ficha ({approveModalReq.athleteId}):</strong> se dará de alta como nuevo deportista en el censo tras asignar equipo.
+              </div>
+            )}
+
             {errorBanner && (
               <div
                 role="alert"
@@ -2412,6 +2654,54 @@ function ClubCensoPageContent() {
                 <span>{errorBanner}</span>
               </div>
             )}
+
+            <div className="rounded-none border border-white/10 bg-surface p-3 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-tertiary">
+                  Datos ajustables por Staff (prevalecen y se envían en el email)
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                <div>
+                  <label htmlFor="censo-app-first" className="mb-1 block text-[11px] font-semibold text-on-surface/90">
+                    Nombre
+                  </label>
+                  <input
+                    id="censo-app-first"
+                    type="text"
+                    required
+                    value={appFirstName}
+                    onChange={(e) => setAppFirstName(e.target.value)}
+                    className="w-full rounded-none border border-white/15 bg-surface-container px-2.5 py-1.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="censo-app-last" className="mb-1 block text-[11px] font-semibold text-on-surface/90">
+                    Apellidos
+                  </label>
+                  <input
+                    id="censo-app-last"
+                    type="text"
+                    value={appLastName}
+                    onChange={(e) => setAppLastName(e.target.value)}
+                    className="w-full rounded-none border border-white/15 bg-surface-container px-2.5 py-1.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="censo-app-shirt" className="mb-1 block text-[11px] font-semibold text-on-surface/90">
+                    Talla camiseta
+                  </label>
+                  <input
+                    id="censo-app-shirt"
+                    type="text"
+                    value={appShirtSize}
+                    onChange={(e) => setAppShirtSize(e.target.value)}
+                    placeholder="S / M / L / XL"
+                    className="w-full rounded-none border border-white/15 bg-surface-container px-2.5 py-1.5 text-xs text-white placeholder:text-tertiary/75"
+                  />
+                </div>
+              </div>
+            </div>
 
             <div>
               <p className="mb-2 block text-xs font-bold uppercase tracking-wider text-primary">
@@ -2613,6 +2903,76 @@ function ClubCensoPageContent() {
         )}
       </IntranetModal>
 
+      {/* MODAL CONFIRMAR RECHAZO DE SOLICITUD */}
+      <IntranetModal
+        isOpen={Boolean(rejectModalReq)}
+        onClose={() => {
+          if (!rejectingReqId) {
+            setRejectModalReq(null);
+            setRejectNotes('');
+          }
+        }}
+        title={
+          rejectModalReq
+            ? `Rechazar Solicitud · ${rejectModalReq.athleteFullName}`
+            : 'Rechazar Solicitud'
+        }
+        subtitle={
+          rejectModalReq
+            ? `Email: ${rejectModalReq.contactEmail} · ${!rejectModalReq.athleteId.startsWith('reg-') ? 'Ficha existente sin usuario (quedará intacta para nuevo intento)' : 'Nueva ficha (quedará en Baja para permitir reintento limpio)'}`
+            : undefined
+        }
+        size="md"
+        accent="rose"
+      >
+        {rejectModalReq && (
+          <form onSubmit={handleRejectRequest} className="space-y-4">
+            <p className="text-xs text-on-surface/90 leading-relaxed">
+              Esta acción marcará la solicitud como rechazada, liberará la vinculación pendiente y <strong>enviará un correo electrónico al solicitante con el motivo indicado</strong> y el enlace directo para volver a rellenar el formulario si se trata de un dato subsanable.
+            </p>
+            <div>
+              <label
+                htmlFor="censo-reject-notes"
+                className="mb-1 block text-xs font-semibold text-on-surface/90"
+              >
+                Motivo del rechazo (se enviará por email al solicitante) *
+              </label>
+              <textarea
+                id="censo-reject-notes"
+                rows={3}
+                required
+                minLength={5}
+                value={rejectNotes}
+                onChange={(e) => setRejectNotes(e.target.value)}
+                placeholder="Ej. El DNI introducido no coincide con el del deportista o el enlace elegido corresponde a otra categoría. Vuelve a enviarlo con los datos corregidos."
+                className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white placeholder:text-tertiary/75"
+              />
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                disabled={Boolean(rejectingReqId)}
+                onClick={() => {
+                  setRejectModalReq(null);
+                  setRejectNotes('');
+                }}
+                className="rounded-none border border-white/15 bg-surface-container-high px-4 py-2 text-xs font-semibold text-on-surface disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={rejectingReqId === rejectModalReq.id || rejectNotes.trim().length < 5}
+                className="inline-flex items-center gap-2 rounded-none bg-rose-600 hover:bg-rose-500 active:translate-x-[1px] active:translate-y-[1px] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {rejectingReqId === rejectModalReq.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                Confirmar Rechazo y Enviar Email
+              </button>
+            </div>
+          </form>
+        )}
+      </IntranetModal>
+
       {/* MODAL FICHA / EDICIÓN / DATOS SENSIBLES AUDITADOS */}
       <IntranetModal
         isOpen={editorOpen}
@@ -2624,7 +2984,7 @@ function ClubCensoPageContent() {
         }
         subtitle={
           editingAthlete
-            ? `ID: ${editingAthlete.id} · Estado RGPD: ${editingAthlete.rgpdStatus}`
+            ? `ID: ${editingAthlete.id} · Estado RGPD: ${RGPD_BADGE[editingAthlete.rgpdStatus]?.label || editingAthlete.rgpdStatus}`
             : undefined
         }
         size="xl"
@@ -2640,61 +3000,12 @@ function ClubCensoPageContent() {
           </div>
         )}
 
-        {/* Bloque Datos Sensibles Auditados */}
-        {editingAthlete &&
-          permissions.canViewSensitive &&
-          editingAthlete.status !== 'SHREDDED' && (
-            <div className="rounded-none border border-amber-500/30 bg-amber-500/10 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-200">
-                  <ShieldAlert className="h-4 w-4 text-amber-400" />
-                  Acceso a datos sensibles cifrados (DNI completo, fecha exacta y alergias)
-                </div>
-                {!sensitiveData && (
-                  <button
-                    type="button"
-                    disabled={loadingSensitive}
-                    onClick={() => handleRevealSensitive(editingAthlete.id)}
-                    className="inline-flex items-center gap-1.5 rounded-none bg-amber-500 px-3 py-1.5 text-xs font-bold text-black transition hover:bg-amber-400 disabled:opacity-50"
-                  >
-                    {loadingSensitive ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ShieldAlert className="h-3.5 w-3.5" />
-                    )}
-                    Revelar (auditado)
-                  </button>
-                )}
-              </div>
-
-              {sensitiveData && (
-                <div className="mt-3 grid grid-cols-1 gap-2 rounded-none bg-black/30 p-3 text-xs text-on-surface sm:grid-cols-2">
-                  <div>
-                    <span className="text-tertiary">DNI / NIE: </span>
-                    <strong className="text-white">{sensitiveData.dni || 'No registrado'}</strong>
-                  </div>
-                  <div>
-                    <span className="text-tertiary">Fecha nacimiento: </span>
-                    <strong className="text-white">
-                      {sensitiveData.birthDate || 'No verificada'}
-                    </strong>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <span className="text-tertiary">Alergias / Notas médicas: </span>
-                    <strong className="text-white">
-                      {sensitiveData.medicalAllergies || 'Ninguna registrada'}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="text-tertiary">DNI Tutor: </span>
-                    <strong className="text-white">
-                      {sensitiveData.guardianDni || 'No registrado'}
-                    </strong>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+        {editingAthlete && loadingSensitive && (
+          <div className="flex items-center gap-2 rounded-none border border-white/10 bg-surface-container px-3 py-2 text-xs text-tertiary">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+            <span>Cargando DNI completo, fecha exacta y datos médicos...</span>
+          </div>
+        )}
 
         <form onSubmit={handleSaveAthlete} className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -2781,7 +3092,7 @@ function ClubCensoPageContent() {
                 onChange={(e) => setFStatus(e.target.value as AthleteStatus)}
                 className="w-full rounded-none border border-white/10 bg-surface-container-lowest px-3 py-2 text-sm text-white disabled:opacity-60"
               >
-                <option value="IMPORTADO">Importado</option>
+                <option value="IMPORTADO">Sin registrar</option>
                 <option value="PENDIENTE_VALIDAR">Pendiente validar</option>
                 <option value="VERIFICADO">Verificado</option>
                 <option value="BAJA">Baja</option>
@@ -3064,7 +3375,7 @@ function ClubCensoPageContent() {
               <button
                 type="submit"
                 disabled={savingAthlete}
-                className="inline-flex items-center gap-2 rounded-none bg-primary-container px-5 py- active:translate-x-[1px] active:translate-y-[1px]2 text-sm font-bold text-white transition hover:bg-cta-hover disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-none bg-primary-container px-5 py-2 active:translate-x-[1px] active:translate-y-[1px] text-sm font-bold text-white transition hover:bg-cta-hover disabled:opacity-50"
               >
                 {savingAthlete && <Loader2 className="h-4 w-4 animate-spin" />}
                 {editingAthlete ? 'Guardar cambios' : 'Crear deportista'}
@@ -3072,6 +3383,237 @@ function ClubCensoPageContent() {
             )}
           </div>
         </form>
+      </IntranetModal>
+
+      {/* MODAL CONFIRMAR BAJA DEPORTISTA (ESTILO BRUTALISTA WEB) */}
+      <IntranetModal
+        isOpen={Boolean(deactivateModalAth)}
+        onClose={() => {
+          if (!deactivatingBusy) {
+            setDeactivateModalAth(null);
+            setDeactivateReason('');
+          }
+        }}
+        title={
+          deactivateModalAth
+            ? `Confirmar Baja · ${deactivateModalAth.fullName}`
+            : 'Confirmar Baja'
+        }
+        subtitle="El historial deportivo, pagos y autorizaciones registradas se conservarán conforme a la normativa."
+        size="md"
+        accent="rose"
+      >
+        {deactivateModalAth && (
+          <form onSubmit={handleConfirmDeactivate} className="space-y-4">
+            <p className="text-xs leading-relaxed text-on-surface/90">
+              ¿Confirmas dar de baja a <strong className="text-white">{deactivateModalAth.fullName}</strong> en la plantilla actual? Podrás volver a activarlo en cualquier momento editando su ficha si regresa al club.
+            </p>
+            <div>
+              <label
+                htmlFor="censo-deact-reason"
+                className="mb-1 block text-xs font-semibold text-on-surface/90"
+              >
+                Motivo de la baja (opcional)
+              </label>
+              <input
+                id="censo-deact-reason"
+                type="text"
+                value={deactivateReason}
+                onChange={(e) => setDeactivateReason(e.target.value)}
+                placeholder="Ej. Baja voluntaria, cambio de domicilio, lesión de larga duración..."
+                className="w-full rounded-none border border-white/15 bg-surface-container-lowest px-3 py-2 text-xs text-white placeholder:text-tertiary/75"
+              />
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+              <button
+                type="button"
+                disabled={deactivatingBusy}
+                onClick={() => {
+                  setDeactivateModalAth(null);
+                  setDeactivateReason('');
+                }}
+                className="rounded-none border border-white/15 bg-surface-container-high px-4 py-2 text-xs font-semibold text-on-surface disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={deactivatingBusy}
+                className="inline-flex items-center gap-2 rounded-none bg-rose-600 hover:bg-rose-500 active:translate-x-[1px] active:translate-y-[1px] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {deactivatingBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+                Confirmar Baja
+              </button>
+            </div>
+          </form>
+        )}
+      </IntranetModal>
+
+      {/* MODAL COMPROBADOR NO DESTRUCTIVO CON ACTAS FEDERATIVAS FAVB */}
+      <IntranetModal
+        isOpen={favbModalOpen}
+        onClose={() => setFavbModalOpen(false)}
+        title="Comprobación con Actas Federativas (FAVB)"
+        subtitle="Auditoría en modo seguro: mantiene intacto el censo del club sin crear ni eliminar deportistas automáticamente."
+        size="xl"
+        accent="amber"
+      >
+        {favbLoading && !favbReport ? (
+          <div className="py-12 text-center text-sm text-tertiary">
+            <Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin text-amber-400" />
+            Comparando fichas del club contra las actas federativas...
+          </div>
+        ) : favbReport ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-none border border-amber-500/35 bg-amber-950/25 px-3.5 py-2.5 text-xs text-amber-200">
+              <span>
+                Modo lectura: <strong>{favbReport.favbPlayersCount}</strong> deportistas en actas FAVB frente a{' '}
+                <strong>{favbReport.clubAthletesCount}</strong> activos en el censo del club.
+              </span>
+              <button
+                type="button"
+                disabled={favbLoading}
+                onClick={handleCheckFavbDiscrepancies}
+                className="inline-flex items-center gap-1 rounded-none border border-amber-400/40 bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-100 hover:bg-amber-500/25"
+              >
+                {favbLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Volver a comprobar
+              </button>
+            </div>
+
+            {/* 1. Discrepancias en fichas existentes */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                1. Discrepancias de equipo o dorsal en fichas existentes ({favbReport.discrepancies.length})
+              </h3>
+              {favbReport.discrepancies.length === 0 ? (
+                <p className="rounded-none border border-white/10 bg-surface-container-lowest p-3 text-xs text-emerald-300">
+                  Sin discrepancias de equipo o dorsal entre tu censo y las actas FAVB.
+                </p>
+              ) : (
+                <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                  {favbReport.discrepancies.map((item) => (
+                    <div
+                      key={item.athleteId}
+                      className="flex flex-col gap-2 rounded-none border border-white/10 bg-surface-container-lowest p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="space-y-1 text-xs">
+                        <div className="font-bold text-white">
+                          {item.clubFullName}{' '}
+                          <span className="font-normal text-tertiary">({item.clubStatus})</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[11px]">
+                          {item.missingTeamNames.length > 0 && (
+                            <span className="border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-amber-200">
+                              Falta equipo FAVB: {item.missingTeamNames.join(', ')}
+                            </span>
+                          )}
+                          {item.dorsalDiff && (
+                            <span className="border border-sky-500/40 bg-sky-500/15 px-2 py-0.5 text-sky-200">
+                              Dorsal club: {item.dorsalDiff.clubDorsal ?? '—'} → FAVB: #{item.dorsalDiff.favbDorsal}
+                            </span>
+                          )}
+                          {item.nameDiff && (
+                            <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-on-surface/90">
+                              Grafía en acta FAVB: {item.nameDiff.favbName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 shrink-0">
+                        {(item.missingTeamIds.length > 0 || item.dorsalDiff) && permissions.canEdit && (
+                          <button
+                            type="button"
+                            disabled={favbBusyId === item.athleteId}
+                            onClick={() => handleResolveFavbDiscrepancy(item)}
+                            className="inline-flex items-center gap-1 rounded-none bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                          >
+                            {favbBusyId === item.athleteId && <Loader2 className="h-3 w-3 animate-spin" />}
+                            Subsanar equipo/dorsal
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Jugadores presentes en actas FAVB que aún no figuran en el censo */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                2. Deportistas en actas FAVB sin ficha en el censo web ({favbReport.missingInClub.length})
+              </h3>
+              {favbReport.missingInClub.length === 0 ? (
+                <p className="rounded-none border border-white/10 bg-surface-container-lowest p-3 text-xs text-emerald-300">
+                  Todos los deportistas presentes en las actas FAVB ya existen en el censo.
+                </p>
+              ) : (
+                <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                  {favbReport.missingInClub.map((m) => (
+                    <div
+                      key={`${m.favbId}-${m.teamId}`}
+                      className="flex flex-col gap-2 rounded-none border border-rose-500/30 bg-rose-950/15 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="text-xs">
+                        <div className="font-bold text-white">{m.fullName}</div>
+                        <div className="text-[11px] text-tertiary">
+                          Acta FAVB: {m.teamName}
+                          {m.dorsal ? ` · Dorsal #${m.dorsal}` : ''}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 shrink-0">
+                        {m.registrationUrl && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(`favb-missing-${m.favbId}`, m.registrationUrl!)}
+                            className="inline-flex items-center gap-1 rounded-none border border-white/15 bg-surface-container px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-white/10"
+                          >
+                            {copiedKey === `favb-missing-${m.favbId}` ? (
+                              <Check className="h-3 w-3 text-emerald-400" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                            Copiar enlace inscripción
+                          </button>
+                        )}
+                        {permissions.canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => openNewAthleteFromFavb(m)}
+                            className="inline-flex items-center gap-1 rounded-none bg-primary-container hover:bg-cta-hover px-2.5 py-1.5 text-[11px] font-bold text-white"
+                          >
+                            <UserPlus className="h-3 w-3" />
+                            Alta manual
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 3. En censo web aún sin acta FAVB */}
+            <details className="rounded-none border border-white/10 bg-surface-container-lowest p-3">
+              <summary className="cursor-pointer text-xs font-semibold text-on-surface/90">
+                3. En censo del club sin actas FAVB asociadas aún ({favbReport.onlyInClub.length})
+              </summary>
+              <div className="mt-2 max-h-40 space-y-1 overflow-y-auto text-[11px] text-tertiary">
+                {favbReport.onlyInClub.length === 0 ? (
+                  <p>Todos los deportistas del censo cuentan con acta federativa.</p>
+                ) : (
+                  favbReport.onlyInClub.map((o) => (
+                    <div key={o.athleteId} className="flex justify-between gap-2 border-b border-white/5 py-1">
+                      <span className="text-white">{o.fullName}</span>
+                      <span>{o.teamNames.join(', ') || 'Sin equipo'} · {o.status}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </details>
+          </div>
+        ) : null}
       </IntranetModal>
     </main>
   );

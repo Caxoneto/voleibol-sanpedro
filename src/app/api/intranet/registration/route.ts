@@ -53,7 +53,12 @@ import {
 } from '@/lib/intranet/rbac';
 import { ensureIntranetSeeded } from '@/lib/intranet/seed-bootstrap';
 import { createAthleteEnrollment } from '@/lib/intranet/payments';
-import { normalizeNameKey } from '@/lib/intranet/census-sync';
+import {
+  formatProperPersonName,
+  matchAthleteCandidatesFromList,
+  normalizeNameKey,
+  type AthleteMatchCandidateRecord,
+} from '@/lib/intranet/athlete-matcher';
 import { recordAuditLog } from '@/lib/intranet/audit';
 import { handleIntranetApiError } from '@/lib/intranet/api-helpers';
 
@@ -249,7 +254,7 @@ async function evaluateExistingAccountReuse(params: {
       [existingUser.id]
     ),
     queryNeon<{ id: string }>(
-      `SELECT id FROM intranet_athletes WHERE user_id = $1::uuid AND status <> 'SHREDDED' LIMIT 1;`,
+      `SELECT id FROM intranet_athletes WHERE user_id = $1::uuid AND status NOT IN ('SHREDDED', 'BAJA') LIMIT 1;`,
       [existingUser.id]
     ),
   ]);
@@ -293,8 +298,8 @@ async function validateRegistrationStep1(
     };
   }
 
-  const firstName = cleanText(body.firstName, 80);
-  const lastName = cleanText(body.lastName, 120);
+  const firstName = formatProperPersonName(cleanText(body.firstName, 80));
+  const lastName = formatProperPersonName(cleanText(body.lastName, 120));
   if (firstName.length < 2 || lastName.length < 2) {
     return { ok: false, status: 400, error: 'Introduce el nombre y apellidos completos del deportista.' };
   }
@@ -319,7 +324,7 @@ async function validateRegistrationStep1(
   }
   const gender = genderRaw as 'MASCULINO' | 'FEMENINO';
 
-  const emergencyContactName = cleanText(body.emergencyContactName, 120);
+  const emergencyContactName = formatProperPersonName(cleanText(body.emergencyContactName, 120));
   const emergencyContactPhone = normalizePhone(body.emergencyContactPhone);
   if (emergencyContactName.length < 2 || !hasValidPhoneDigits(emergencyContactPhone)) {
     return {
@@ -372,7 +377,7 @@ async function validateRegistrationStep1(
   let guardianPhone: string | null = null;
 
   if (ageEval.isMinor) {
-    guardianName = cleanText(body.guardianName, 150);
+    guardianName = formatProperPersonName(cleanText(body.guardianName, 150));
     const rawGDni =
       typeof body.guardianDni === 'string'
         ? body.guardianDni.trim().toUpperCase().replace(/[\s-]/g, '')
@@ -395,6 +400,14 @@ async function validateRegistrationStep1(
         ok: false,
         status: 400,
         error: 'El DNI, NIE o Pasaporte del padre, madre o tutor legal no es válido.',
+      };
+    }
+    if (cleanPlayerDni && rawGDni === cleanPlayerDni) {
+      return {
+        ok: false,
+        status: 400,
+        error:
+          'El documento del/de la deportista menor no puede coincidir con el DNI/NIE del padre, madre o tutor/a legal. Si es menor de 14 años y aún no tiene DNI propio, deja en blanco el documento del deportista.',
       };
     }
     if (relRaw !== 'PADRE' && relRaw !== 'MADRE' && relRaw !== 'TUTOR_LEGAL') {
@@ -528,6 +541,25 @@ function getRegistrationAdminScope(ctx: Awaited<ReturnType<typeof requireIntrane
   );
 
   return { allowed: true, isGlobal, teamIds, canApprove };
+}
+
+/**
+ * Comprueba si un miembro del staff con alcance restringido por equipo puede operar
+ * sobre una solicitud (ya sea por el equipo del enlace o por un equipo existente de la ficha unificada).
+ */
+async function hasScopedRequestAccess(
+  adminScope: { teamIds: string[] },
+  athleteId: string,
+  defaultTeamSeasonId: string | null
+): Promise<boolean> {
+  if (defaultTeamSeasonId && adminScope.teamIds.includes(defaultTeamSeasonId)) {
+    return true;
+  }
+  const athleteTeamRows = await queryNeon<{ team_season_id: string }>(
+    `SELECT team_season_id FROM intranet_athlete_teams WHERE athlete_id = $1;`,
+    [athleteId]
+  );
+  return athleteTeamRows.some((r) => adminScope.teamIds.includes(r.team_season_id));
 }
 
 type AthleteMatchCandidateInspection =
@@ -681,14 +713,17 @@ async function inspectExistingAthleteCandidate(
 
 /**
  * Busca una ficha previa en `intranet_athletes` / `player_census` antes de generar un ID `reg-...`:
- * 1) Por `dni_blind_index` (no `SHREDDED`).
- * 2) Si no hay match por DNI, por nombre completo normalizado + `birth_year` en la categoría/equipo del enlace.
+ * 1) Por `dni_blind_index` (no `SHREDDED` ni `BAJA`).
+ * 2) Por normalización Unicode/partículas/compuestos/erratas de 1 letra + compatibilidad de edad y prioridad de equipo/categoría.
  */
 async function findMatchingAthleteForRegistration(params: {
   dniBlindIndex: string | null;
   email: string;
-  fullNorm: string;
+  firstName: string;
+  lastName: string;
   birthYear: number;
+  birthDateIso: string;
+  gender: 'MASCULINO' | 'FEMENINO';
   categoryCode: string;
   defaultTeamSeasonId: string | null;
 }): Promise<
@@ -696,14 +731,14 @@ async function findMatchingAthleteForRegistration(params: {
   | { kind: 'CONFLICT'; error: string }
   | { kind: 'REUSE'; athleteId: string; existingPrimaryTeamId: string | null }
 > {
-  // 1. Coincidencia exacta por DNI Blind Index (no SHREDDED)
+  // 1. Coincidencia exacta por DNI Blind Index (no SHREDDED ni BAJA)
   if (params.dniBlindIndex) {
     const [athByDni, censusByDni] = await Promise.all([
       queryNeon<{ id: string }>(
         `SELECT id
          FROM intranet_athletes
          WHERE dni_blind_index = $1
-           AND status <> 'SHREDDED'
+           AND status NOT IN ('SHREDDED', 'BAJA')
            AND COALESCE(is_demo, false) = false
          ORDER BY updated_at DESC
          LIMIT 5;`,
@@ -741,92 +776,145 @@ async function findMatchingAthleteForRegistration(params: {
     }
   }
 
-  // 2. Coincidencia normalizada por nombre + apellidos + birth_year en la categoría/equipo del enlace
-  const categoryTeams = await queryNeon<{ id: string }>(
-    `SELECT id FROM intranet_team_seasons WHERE category_id = $1;`,
-    [params.categoryCode]
-  );
-  const categoryTeamSet = new Set<string>([
-    params.categoryCode,
-    ...categoryTeams.map((t) => t.id),
-  ]);
-  if (params.defaultTeamSeasonId) {
-    categoryTeamSet.add(params.defaultTeamSeasonId);
-  }
-  const categoryTeamArr = Array.from(categoryTeamSet);
-
-  const [athByNameRows, censusByYearRows] = await Promise.all([
-    queryNeon<{ id: string }>(
-      `SELECT DISTINCT a.id
+  // 2. Cargar candidatos activos/pendientes del censo para emparejamiento tolerante a formato y años orientativos FAVB
+  const [athCandidates, censusOnlyRows] = await Promise.all([
+    queryNeon<{
+      id: string;
+      first_name: string;
+      last_name: string;
+      birth_year: number | null;
+      birth_date_verified: boolean;
+      birth_date_enc: string | null;
+      gender: string | null;
+      status: string;
+      team_ids: string[] | null;
+    }>(
+      `SELECT
+         a.id,
+         a.first_name,
+         a.last_name,
+         a.birth_year,
+         a.birth_date_verified,
+         CASE WHEN a.birth_date_verified THEN a.birth_date_enc ELSE NULL END AS birth_date_enc,
+         a.gender,
+         a.status,
+         ARRAY_REMOVE(
+           ARRAY_AGG(DISTINCT COALESCE(at2.team_season_id, pc.team_id)),
+           NULL
+         ) || COALESCE(MAX(pc.secondary_team_ids), ARRAY[]::varchar[]) AS team_ids
        FROM intranet_athletes a
        LEFT JOIN intranet_athlete_teams at2 ON at2.athlete_id = a.id
        LEFT JOIN player_census pc ON pc.player_id = a.id
-       WHERE a.full_name_normalized = $1
-         AND a.birth_year = $2
-         AND a.status <> 'SHREDDED'
+       WHERE a.status NOT IN ('SHREDDED', 'BAJA')
          AND COALESCE(a.is_demo, false) = false
-         AND (
-           at2.team_season_id = ANY($3::text[])
-           OR pc.team_id = ANY($3::varchar[])
-           OR COALESCE(pc.secondary_team_ids, ARRAY[]::varchar[]) && $3::varchar[]
-         )
-       LIMIT 10;`,
-      [params.fullNorm, params.birthYear, categoryTeamArr]
+       GROUP BY a.id, a.first_name, a.last_name, a.birth_year, a.birth_date_verified, a.birth_date_enc, a.gender, a.status;`
     ),
     queryNeon<{
       player_id: string;
       player_name: string;
       team_id: string;
       secondary_team_ids: string[] | null;
+      birth_year: number | null;
+      birth_date_verified: boolean;
+      birth_date_encrypted: string | null;
     }>(
-      `SELECT COALESCE(canonical_player_id, player_id) AS player_id,
-              player_name,
-              team_id,
-              secondary_team_ids
-       FROM player_census
-       WHERE birth_year = $1
-         AND COALESCE(is_demo, false) = false
-         AND (
-           team_id = ANY($2::varchar[])
-           OR COALESCE(secondary_team_ids, ARRAY[]::varchar[]) && $2::varchar[]
-         );`,
-      [params.birthYear, categoryTeamArr]
+      `SELECT
+         COALESCE(pc.canonical_player_id, pc.player_id) AS player_id,
+         pc.player_name,
+         pc.team_id,
+         pc.secondary_team_ids,
+         pc.birth_year,
+         pc.birth_date_verified,
+         CASE WHEN pc.birth_date_verified THEN pc.birth_date_encrypted ELSE NULL END AS birth_date_encrypted
+       FROM player_census pc
+       WHERE COALESCE(pc.is_demo, false) = false
+         AND NOT EXISTS (
+           SELECT 1 FROM intranet_athletes a
+           WHERE a.id = COALESCE(pc.canonical_player_id, pc.player_id)
+         );`
     ),
   ]);
 
-  const censusMatchedIds = censusByYearRows
-    .filter((r) => normalizeNameKey(r.player_name) === params.fullNorm)
-    .map((r) => r.player_id);
+  const candidateRecords: AthleteMatchCandidateRecord[] = athCandidates.map((row) => {
+    let birthDatePlain: string | null = null;
+    if (row.birth_date_verified && row.birth_date_enc) {
+      const dec = decryptDataStrict(row.birth_date_enc, `${row.id}:birth_date_enc`);
+      if (dec.ok && dec.value) {
+        birthDatePlain = dec.value;
+      } else {
+        const legacy = decryptDataStrict(row.birth_date_enc);
+        if (legacy.ok && legacy.value) birthDatePlain = legacy.value;
+      }
+    }
+    return {
+      id: row.id,
+      firstName: row.first_name || '',
+      lastName: row.last_name || '',
+      birthYear: row.birth_year,
+      birthDateVerified: Boolean(row.birth_date_verified),
+      birthDatePlain,
+      gender: row.gender === 'MASCULINO' ? 'MASCULINO' : 'FEMENINO',
+      teamIds: Array.from(new Set((row.team_ids || []).filter(Boolean))),
+      status: row.status,
+    };
+  });
 
-  const nameCandidates = Array.from(
-    new Set([...athByNameRows.map((r) => r.id), ...censusMatchedIds])
+  for (const cRow of censusOnlyRows) {
+    const clean = String(cRow.player_name || '').trim().replace(/\s+/g, ' ');
+    if (!clean) continue;
+    const parts = clean.split(' ');
+    const firstName = parts.length <= 2 ? parts[0] : parts.slice(0, parts.length - 2).join(' ');
+    const lastName = parts.length === 1 ? '' : parts.length === 2 ? parts[1] : parts.slice(parts.length - 2).join(' ');
+    let birthDatePlain: string | null = null;
+    if (cRow.birth_date_verified && cRow.birth_date_encrypted) {
+      const dec = decryptDataStrict(cRow.birth_date_encrypted, `${cRow.player_id}:birth_date_encrypted`);
+      if (dec.ok && dec.value) birthDatePlain = dec.value;
+    }
+    candidateRecords.push({
+      id: cRow.player_id,
+      firstName,
+      lastName,
+      birthYear: cRow.birth_year,
+      birthDateVerified: Boolean(cRow.birth_date_verified),
+      birthDatePlain,
+      gender: cRow.team_id.includes('-m') && !cRow.team_id.includes('fem') ? 'MASCULINO' : 'FEMENINO',
+      teamIds: Array.from(
+        new Set([cRow.team_id, ...(cRow.secondary_team_ids || [])].filter(Boolean))
+      ),
+      status: 'IMPORTADO',
+    });
+  }
+
+  const outcome = matchAthleteCandidatesFromList(candidateRecords, {
+    firstName: params.firstName,
+    lastName: params.lastName,
+    birthYear: params.birthYear,
+    birthDateIso: params.birthDateIso,
+    gender: params.gender,
+    categoryCode: params.categoryCode,
+    defaultTeamSeasonId: params.defaultTeamSeasonId,
+  });
+
+  if (outcome.kind !== 'MATCH') {
+    return { kind: 'NONE' };
+  }
+
+  const inspection = await inspectExistingAthleteCandidate(
+    outcome.best.candidate.id,
+    params.email,
+    params.dniBlindIndex
   );
-
-  let firstConflict: string | null = null;
-  for (const candidateId of nameCandidates) {
-    const inspection = await inspectExistingAthleteCandidate(
-      candidateId,
-      params.email,
-      params.dniBlindIndex
-    );
-    if (inspection.status === 'SHREDDED') continue;
-    if (inspection.status === 'REUSABLE') {
-      return {
-        kind: 'REUSE',
-        athleteId: inspection.athleteId,
-        existingPrimaryTeamId: inspection.existingPrimaryTeamId,
-      };
-    }
-    if (inspection.status === 'CONFLICT' && !firstConflict) {
-      firstConflict = inspection.error;
-    }
+  if (inspection.status === 'SHREDDED') {
+    return { kind: 'NONE' };
   }
-
-  if (firstConflict) {
-    return { kind: 'CONFLICT', error: firstConflict };
+  if (inspection.status === 'CONFLICT') {
+    return { kind: 'CONFLICT', error: inspection.error };
   }
-
-  return { kind: 'NONE' };
+  return {
+    kind: 'REUSE',
+    athleteId: inspection.athleteId,
+    existingPrimaryTeamId: inspection.existingPrimaryTeamId,
+  };
 }
 
 function decryptConsentFieldForAudit(
@@ -1643,9 +1731,19 @@ export async function GET(req: NextRequest) {
             typeof staged?.consentTravel === 'boolean' ? staged.consentTravel : r.consent_travel,
           consentDocumentHash: staged?.documentHash || r.consent_document_hash,
           consentId: staged?.consentId || r.consent_id,
-          consentStatus: staged?.documentHash
-            ? 'FIRMADO (pendiente validar)'
-            : r.consent_status || 'PENDING',
+          isConsentSigned: Boolean(
+            staged?.documentHash ||
+              (r.consent_document_hash && r.consent_status !== 'REVOKED') ||
+              r.consent_status === 'ACTIVE'
+          ),
+          consentStatus:
+            r.consent_status === 'REVOKED'
+              ? 'Revocado'
+              : staged?.documentHash ||
+                  (r.consent_document_hash && r.consent_status !== 'REVOKED') ||
+                  r.consent_status === 'ACTIVE'
+                ? 'Firmado'
+                : 'No firmado',
           consentSignedAt: staged?.signedAtIso || r.consent_signed_at,
           assignedTeamIds: r.assigned_team_ids,
           athleteTeams: assignedTeamsMap.get(r.athlete_id) || [],
@@ -1713,6 +1811,56 @@ export async function POST(req: NextRequest) {
     const action = typeof body?.action === 'string' ? body.action.trim() : '';
 
     // =====================================================================
+    // 0. FLUJO PÚBLICO: VALIDAR PASO 1 Y COMPROBAR UNIFICACIÓN EN BBDD
+    // =====================================================================
+    if (action === 'validate_step1') {
+      const rl = await checkNeonRateLimit(`reg-step1:${clientIp}`, 30, 300, 300);
+      if (!rl.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Demasiadas verificaciones seguidas. Espera ${Math.ceil(rl.retryAfterSec / 60)} minutos.`,
+          },
+          { status: 429 }
+        );
+      }
+
+      const validation = await validateRegistrationStep1(body);
+      if (!validation.ok) {
+        return NextResponse.json(
+          { success: false, error: validation.error },
+          { status: validation.status }
+        );
+      }
+
+      const v = validation.data;
+      const dniBlindIndex = v.playerDni ? generateBlindIndex(v.playerDni) : null;
+      const matchResult = await findMatchingAthleteForRegistration({
+        dniBlindIndex,
+        email: v.email,
+        firstName: v.firstName,
+        lastName: v.lastName,
+        birthYear: v.birthYear,
+        birthDateIso: v.birthDateIso,
+        gender: v.gender,
+        categoryCode: v.link.category_code,
+        defaultTeamSeasonId: v.link.default_team_season_id,
+      });
+
+      if (matchResult.kind === 'CONFLICT') {
+        return NextResponse.json(
+          { success: false, error: matchResult.error },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        matchedExistingRoster: matchResult.kind === 'REUSE',
+      });
+    }
+
+    // =====================================================================
     // 1. FLUJO PÚBLICO: ENVIAR OTP PARA FIRMA DE AUTO-REGISTRO
     // =====================================================================
     if (action === 'send_otp') {
@@ -1736,6 +1884,26 @@ export async function POST(req: NextRequest) {
       }
 
       const v = validation.data;
+      const dniBlindIndex = v.playerDni ? generateBlindIndex(v.playerDni) : null;
+      const matchResult = await findMatchingAthleteForRegistration({
+        dniBlindIndex,
+        email: v.email,
+        firstName: v.firstName,
+        lastName: v.lastName,
+        birthYear: v.birthYear,
+        birthDateIso: v.birthDateIso,
+        gender: v.gender,
+        categoryCode: v.link.category_code,
+        defaultTeamSeasonId: v.link.default_team_season_id,
+      });
+
+      if (matchResult.kind === 'CONFLICT') {
+        return NextResponse.json(
+          { success: false, error: matchResult.error },
+          { status: 409 }
+        );
+      }
+
       const incomingPlayerId = typeof body.playerId === 'string' ? body.playerId.trim() : '';
       const draftPlayerId = DRAFT_PLAYER_ID_REGEX.test(incomingPlayerId)
         ? incomingPlayerId
@@ -1900,8 +2068,11 @@ export async function POST(req: NextRequest) {
       const matchResult = await findMatchingAthleteForRegistration({
         dniBlindIndex,
         email: v.email,
-        fullNorm,
+        firstName: v.firstName,
+        lastName: v.lastName,
         birthYear: v.birthYear,
+        birthDateIso: v.birthDateIso,
+        gender: v.gender,
         categoryCode: v.link.category_code,
         defaultTeamSeasonId: v.link.default_team_season_id,
       });
@@ -2316,46 +2487,86 @@ export async function POST(req: NextRequest) {
         ipAddress: clientIp,
       });
 
-      const signedAtFormatted = `${new Intl.DateTimeFormat('es-ES', {
-        timeZone: 'Europe/Madrid',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      }).format(new Date(signedAtIso))} ${formatMadridTime(signedAtIso)}`;
+      const baseUrl = getPublicBaseUrl();
+      const accessUrl = `${baseUrl}/acceso`;
+
+      let selectedPlanSummary = 'Según modalidad seleccionada';
+      if (v.selectedPricePlanId) {
+        const planMetaRows = await queryNeon<{
+          product_name: string;
+          plan_name: string;
+          total_amount: string;
+        }>(
+          `SELECT p.name AS product_name, pp.name AS plan_name, pp.total_amount::text AS total_amount
+           FROM intranet_price_plans pp
+           INNER JOIN intranet_products p ON p.id = pp.product_id
+           WHERE pp.id = $1::uuid
+           LIMIT 1;`,
+          [v.selectedPricePlanId]
+        );
+        if (planMetaRows[0]) {
+          selectedPlanSummary = `${planMetaRows[0].product_name} · ${planMetaRows[0].plan_name} (${Number(planMetaRows[0].total_amount).toFixed(2)} €)`;
+        }
+      }
 
       let receiptEmailSent = false;
-      if (!isReusedAthlete) {
-        try {
-          const mailRes = await sendConsentReceiptEmail({
-            toEmail: v.email,
-            playerName: v.fullName,
-            teamName: v.link.category_label,
-            birthYear: v.birthYear,
-            birthDate: v.birthDateIso,
-            isMinor: v.isMinor,
-            isMinor14To17: v.isMinor14To17,
-            signerName,
-            signerDni,
-            signerDniMasked: maskDni(signerDni),
-            signerRelationship,
-            signerPhone,
-            consentId,
-            documentHash,
-            signedAtIso,
-            signedAtFormatted,
-            signatureMethod: 'OTP_EMAIL',
-            signatureMethodLabel: 'Firma Electrónica Simple (OTP Email + Trazo)',
-            signatureData: sigData,
-            consentImage: cImage,
-            consentSocialMedia: cImage,
-            consentStreaming: cImage,
-            consentPress: cImage,
-            consentTravel: cTravel,
-          });
-          receiptEmailSent = mailRes.sent;
-        } catch {
-          // No bloquear el alta si SMTP falla puntualmente
-        }
+      try {
+        const recipientName = (v.isMinor ? v.guardianName : v.fullName) || v.fullName;
+        const imgLabel = cImage ? 'Autorizo' : 'No autorizo';
+        const travelLabel = cTravel ? 'Autorizo' : 'No autorizo';
+        const submissionMail = await sendSmtpMail({
+          to: v.email,
+          subject: `[CDV San Pedro] Solicitud de inscripción recibida (pendiente de revisión) · ${v.fullName}`,
+          text: [
+            `${CLUB_INFO.name} · Acuse de Recibo de Inscripción`,
+            ``,
+            `Hola ${stripCrlf(recipientName)},`,
+            `Hemos recibido correctamente la solicitud de inscripción de ${stripCrlf(v.fullName)} y tu firma electrónica RGPD.`,
+            ``,
+            `- Categoría / Enlace: ${v.link.category_label}`,
+            `- Modalidad de cuota elegida: ${selectedPlanSummary}`,
+            `- Imágenes Deportivas: ${imgLabel}`,
+            `- Desplazamientos Oficiales: ${travelLabel}`,
+            `- Estado actual: PENDIENTE DE REVISIÓN POR EL CLUB`,
+            ``,
+            `Mientras administración valida tus datos y te asigna equipo oficial, tu acceso a Mi Club (${accessUrl}) permanecerá en espera.`,
+            `En cuanto Secretaría tome una decisión, recibirás un nuevo correo confirmando el alta (junto con el resguardo oficial PDF) o, si hubiera algún dato a corregir, indicándote el motivo para subsanarlo.`,
+            ``,
+            `Si necesitas ayuda, contacta con Secretaría: ${CLUB_INFO.contactEmail}.`,
+          ].join('\n'),
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden;">
+              <div style="background: #18181b; padding: 18px 24px; color: #ffffff; border-bottom: 4px solid #d90429;">
+                <div style="font-size: 11px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.85;">${escapeHtml(CLUB_INFO.name)}</div>
+                <h2 style="margin: 4px 0 0 0; font-size: 20px;">Solicitud de Inscripción Recibida</h2>
+              </div>
+              <div style="padding: 24px; color: #18181b; font-size: 14px; line-height: 1.6;">
+                <p>Hola <strong>${escapeHtml(recipientName)}</strong>,</p>
+                <p>Confirmamos que hemos recibido correctamente la solicitud de inscripción de <strong>${escapeHtml(v.fullName)}</strong> junto con la verificación OTP y la firma de autorizaciones RGPD.</p>
+                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin: 16px 0; color: #92400e;">
+                  <strong>Estado actual:</strong> Pendiente de revisión y validación administrativa por el personal del club.
+                </div>
+                <div style="background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 8px; padding: 14px 16px; margin: 16px 0; font-size: 13px;">
+                  <div><strong>Categoría / Enlace:</strong> ${escapeHtml(v.link.category_label)}</div>
+                  <div style="margin-top: 4px;"><strong>Cuota elegida:</strong> ${escapeHtml(selectedPlanSummary)}</div>
+                  <div style="margin-top: 4px;"><strong>Imágenes Deportivas:</strong> ${escapeHtml(imgLabel)} · <strong>Desplazamientos:</strong> ${escapeHtml(travelLabel)}</div>
+                  ${requestId ? `<div style="margin-top: 4px;"><strong>Referencia de solicitud:</strong> <code>${escapeHtml(requestId)}</code></div>` : ''}
+                </div>
+                <p>En cuanto el club revise la solicitud, recibirás otro correo electrónico:</p>
+                <ul style="margin: 8px 0 16px 0; padding-left: 20px; color: #27272a;">
+                  <li><strong>Si es aceptada:</strong> activaremos tu acceso a Mi Club y te enviaremos el documento oficial RGPD firmado en PDF.</li>
+                  <li><strong>Si se detecta algún error o dato a corregir:</strong> te indicaremos el motivo exacto para que puedas subsanarlo fácilmente.</li>
+                </ul>
+                <p style="font-size: 12px; color: #52525b; margin-top: 16px;">
+                  Secretaría · <a href="mailto:${escapeHtml(CLUB_INFO.contactEmail)}" style="color: #d90429;">${escapeHtml(CLUB_INFO.contactEmail)}</a>
+                </p>
+              </div>
+            </div>
+          `,
+        });
+        receiptEmailSent = submissionMail.sent;
+      } catch {
+        // No bloquear el alta si SMTP falla puntualmente
       }
 
       return NextResponse.json({
@@ -2761,10 +2972,12 @@ export async function POST(req: NextRequest) {
         );
       }
       if (!hasGlobalApprove) {
-        if (
-          !reqRow.default_team_season_id ||
-          !adminScope.teamIds.includes(reqRow.default_team_season_id)
-        ) {
+        const canAccessReq = await hasScopedRequestAccess(
+          adminScope,
+          reqRow.athlete_id,
+          reqRow.default_team_season_id
+        );
+        if (!canAccessReq) {
           throw new IntranetForbiddenError(
             'No tienes permiso para aprobar solicitudes de este equipo o categoría.'
           );
@@ -2801,6 +3014,9 @@ export async function POST(req: NextRequest) {
       }
       const position = cleanText(body.position, 60) || null;
       const adminNotes = cleanText(body.adminNotes, 500) || null;
+      const editedFirstRaw = cleanText(body.firstName, 80);
+      const editedLastRaw = cleanText(body.lastName, 100);
+      const editedShirtSize = cleanText(body.shirtSize, 20) || null;
       const secondaryTeamIds = uniqueTeamIds.filter((tid) => tid !== primaryTeamId);
 
       // Si existe carga diferida (reutilización de ficha pendiente de aprobación), descifrar antes de mutar
@@ -2826,6 +3042,15 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const finalFirstName = formatProperPersonName(
+        editedFirstRaw || staged?.firstName || reqRow.first_name || 'Deportista'
+      );
+      const finalLastName = formatProperPersonName(
+        editedLastRaw || staged?.lastName || reqRow.last_name || ''
+      );
+      const finalFullName = `${finalFirstName} ${finalLastName}`.trim();
+      const finalFullNorm = normalizeNameKey(finalFullName);
+
       // Asignación limpia de equipos en intranet_athlete_teams
       await queryNeon(`DELETE FROM intranet_athlete_teams WHERE athlete_id = $1;`, [reqRow.athlete_id]);
       for (const tid of uniqueTeamIds) {
@@ -2850,6 +3075,8 @@ export async function POST(req: NextRequest) {
         const medicalAllergiesEnc = staged.medicalAllergies
           ? encryptData(staged.medicalAllergies, `${reqRow.athlete_id}:medical_allergies_enc`)
           : null;
+        const finalShirtSize = editedShirtSize || staged.shirtSize;
+        const finalJerseyNumber = dorsal ?? staged.jerseyNumber;
 
         await queryNeon(
           `INSERT INTO intranet_athletes (
@@ -2886,17 +3113,17 @@ export async function POST(req: NextRequest) {
              updated_at = NOW();`,
           [
             reqRow.athlete_id,
-            staged.firstName,
-            staged.lastName,
-            staged.fullNorm,
+            finalFirstName,
+            finalLastName,
+            finalFullNorm,
             staged.birthYear,
             birthDateEnc,
             dniLast5,
             dniEnc,
             staged.dniBlindIndex,
             staged.gender,
-            staged.shirtSize,
-            dorsal ?? staged.jerseyNumber,
+            finalShirtSize,
+            finalJerseyNumber,
             staged.emergencyContactName,
             staged.emergencyContactPhone,
             medicalAllergiesEnc,
@@ -2954,7 +3181,7 @@ export async function POST(req: NextRequest) {
              updated_at = NOW();`,
           [
             reqRow.athlete_id,
-            staged.fullName,
+            finalFullName,
             primaryTeamId,
             secondaryTeamIds,
             staged.birthYear,
@@ -3033,7 +3260,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        await persistSignedConsentV3({
+        const finalConsentId = await persistSignedConsentV3({
           targetPlayerId: reqRow.athlete_id,
           playerName: staged.fullName,
           authoritativeTeamId: staged.authoritativeTeamId,
@@ -3058,73 +3285,229 @@ export async function POST(req: NextRequest) {
           archivePriorActive: true,
           preferredConsentId: staged.consentId,
         });
+
+        try {
+          const signedAtFormatted = `${new Intl.DateTimeFormat('es-ES', {
+            timeZone: 'Europe/Madrid',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          }).format(new Date(staged.signedAtIso))} ${formatMadridTime(staged.signedAtIso)}`;
+
+          await sendConsentReceiptEmail({
+            toEmail: staged.email,
+            playerName: staged.fullName,
+            teamName: getClubTeamNameById(staged.authoritativeTeamId),
+            birthYear: staged.birthYear,
+            birthDate: staged.birthDateIso,
+            isMinor: staged.isMinor,
+            isMinor14To17: staged.isMinor14To17,
+            signerName: staged.signerName,
+            signerDni: staged.signerDni,
+            signerDniMasked: maskDni(staged.signerDni),
+            signerRelationship: staged.signerRelationship,
+            signerPhone: staged.signerPhone,
+            consentId: finalConsentId,
+            documentHash: staged.documentHash,
+            signedAtIso: staged.signedAtIso,
+            signedAtFormatted,
+            signatureMethod: 'OTP_EMAIL',
+            signatureMethodLabel: 'Firma Electrónica Simple (OTP Email + Trazo)',
+            signatureData: staged.signatureData,
+            consentImage: staged.consentImage,
+            consentSocialMedia: staged.consentImage,
+            consentStreaming: staged.consentImage,
+            consentPress: staged.consentImage,
+            consentTravel: staged.consentTravel,
+          });
+        } catch {
+          // No bloquear aprobación administrativa si falla SMTP del resguardo
+        }
       } else {
-        // Activar ficha en intranet_athletes y actualizar censo (SIN tocar player_consents.team_id por HMAC v3)
+        // Activar ficha en intranet_athletes y actualizar censo (SIN tocar player_consents.player_name/team_id por HMAC v3)
         await queryNeon(
           `UPDATE intranet_athletes
-           SET status = 'VERIFICADO',
+           SET first_name = $2,
+               last_name = $3,
+               full_name_normalized = $4,
+               shirt_size = COALESCE($5, shirt_size),
+               status = 'VERIFICADO',
                verified_at = COALESCE(verified_at, NOW()),
-               jersey_number = COALESCE($2, jersey_number),
+               jersey_number = COALESCE($6, jersey_number),
                updated_at = NOW()
            WHERE id = $1;`,
-          [reqRow.athlete_id, dorsal]
+          [reqRow.athlete_id, finalFirstName, finalLastName, finalFullNorm, editedShirtSize, dorsal]
         );
 
         await queryNeon(
           `UPDATE player_census
-           SET team_id = $2,
-               secondary_team_ids = $3::varchar[],
+           SET player_name = $2,
+               team_id = $3,
+               secondary_team_ids = $4::varchar[],
                updated_at = NOW()
            WHERE player_id = $1;`,
-          [reqRow.athlete_id, primaryTeamId, secondaryTeamIds]
+          [reqRow.athlete_id, finalFullName, primaryTeamId, secondaryTeamIds]
         );
+
+        try {
+          const consentRows = await queryNeon<{
+            id: string;
+            player_name: string;
+            is_minor: boolean;
+            is_minor_14_to_17: boolean;
+            signer_name: string;
+            signer_dni: string;
+            signer_relationship: 'PADRE' | 'MADRE' | 'TUTOR_LEGAL' | 'PROPIO_JUGADOR';
+            signer_phone: string | null;
+            consent_social_media: boolean;
+            consent_streaming: boolean;
+            consent_press: boolean;
+            consent_travel: boolean;
+            signature_data: string;
+            document_hash: string;
+            signed_at_iso: string;
+          }>(
+            `SELECT id::text AS id, player_name, is_minor, is_minor_14_to_17,
+                    signer_name, signer_dni, signer_relationship, signer_phone,
+                    consent_social_media, consent_streaming, consent_press, consent_travel,
+                    signature_data, document_hash, signed_at_iso
+             FROM player_consents
+             WHERE player_id = $1 AND status = 'ACTIVE'
+             LIMIT 1;`,
+            [reqRow.athlete_id]
+          );
+          const cr = consentRows[0];
+          if (cr) {
+            const decDni = decryptDataStrict(cr.signer_dni, `${reqRow.athlete_id}:signer_dni`);
+            const decSig = decryptDataStrict(cr.signature_data, `${reqRow.athlete_id}:signature_data`);
+            const decPhone = cr.signer_phone
+              ? decryptDataStrict(cr.signer_phone, `${reqRow.athlete_id}:signer_phone`)
+              : { ok: true, value: '' };
+            if (decDni.ok && decSig.ok) {
+              const signedAtFormatted = `${new Intl.DateTimeFormat('es-ES', {
+                timeZone: 'Europe/Madrid',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+              }).format(new Date(cr.signed_at_iso))} ${formatMadridTime(cr.signed_at_iso)}`;
+
+              await sendConsentReceiptEmail({
+                toEmail: reqRow.contact_email,
+                playerName: cr.player_name,
+                teamName: getClubTeamNameById(primaryTeamId),
+                isMinor: cr.is_minor,
+                isMinor14To17: cr.is_minor_14_to_17,
+                signerName: cr.signer_name,
+                signerDni: decDni.value,
+                signerDniMasked: maskDni(decDni.value),
+                signerRelationship: cr.signer_relationship,
+                signerPhone: decPhone.ok ? decPhone.value : '',
+                consentId: cr.id,
+                documentHash: cr.document_hash,
+                signedAtIso: cr.signed_at_iso,
+                signedAtFormatted,
+                signatureMethod: 'OTP_EMAIL',
+                signatureMethodLabel: 'Firma Electrónica Simple (OTP Email + Trazo)',
+                signatureData: decSig.value,
+                consentImage: Boolean(cr.consent_social_media || cr.consent_streaming || cr.consent_press),
+                consentSocialMedia: cr.consent_social_media,
+                consentStreaming: cr.consent_streaming,
+                consentPress: cr.consent_press,
+                consentTravel: cr.consent_travel,
+              });
+            }
+          }
+        } catch {
+          // No bloquear aprobación si falla SMTP del resguardo
+        }
       }
 
-      const effFirstName = staged?.firstName || reqRow.first_name || '';
-      const effLastName = staged?.lastName || reqRow.last_name || '';
+      const effFirstName = finalFirstName;
+      const effLastName = finalLastName;
       const effIsMinor = staged ? staged.isMinor : reqRow.is_minor;
       const effGuardianName = staged ? staged.guardianName : reqRow.guardian_name;
       const effContactEmail = staged ? staged.email : reqRow.contact_email;
 
-      // Resolver modalidad de pago y generar inscripción + cargos si corresponde
+      // Resolver modalidad de pago (prevalece SIEMPRE la elegida/modificada por el staff)
       let effPricePlanId =
         typeof body.pricePlanId === 'string' && UUID_REGEX.test(body.pricePlanId.trim())
           ? body.pricePlanId.trim()
           : reqRow.selected_price_plan_id;
-      let effProductId =
-        typeof body.productId === 'string' && UUID_REGEX.test(body.productId.trim())
-          ? body.productId.trim()
-          : reqRow.selected_product_id;
-
-      if (effPricePlanId && !effProductId) {
+      let effProductId: string | null = null;
+      if (effPricePlanId) {
         const ppRows = await queryNeon<{ product_id: string }>(
           `SELECT product_id::text AS product_id FROM intranet_price_plans WHERE id = $1::uuid LIMIT 1;`,
           [effPricePlanId]
         );
         effProductId = ppRows[0]?.product_id || null;
       }
+      if (!effProductId) {
+        effProductId =
+          typeof body.productId === 'string' && UUID_REGEX.test(body.productId.trim())
+            ? body.productId.trim()
+            : reqRow.selected_product_id;
+      }
 
       const seasonId = reqRow.season_id || CURRENT_SEASON_SEED.id;
       let enrollmentId: string | null = null;
       let paymentReferenceCode: string | null = null;
+      let confirmedPlanSummary: string | null = null;
 
       if (effProductId && effPricePlanId) {
-        const existingEnrRows = await queryNeon<{ id: string; payment_reference_code: string }>(
-          `SELECT id::text AS id, payment_reference_code
+        const existingEnrRows = await queryNeon<{
+          id: string;
+          product_id: string;
+          price_plan_id: string;
+          payment_reference_code: string;
+        }>(
+          `SELECT id::text AS id, product_id::text AS product_id, price_plan_id::text AS price_plan_id, payment_reference_code
            FROM intranet_enrollments
-           WHERE athlete_id = $1 AND product_id = $2::uuid AND season_id = $3 AND status = 'ACTIVE'
+           WHERE athlete_id = $1 AND season_id = $2 AND status = 'ACTIVE'
+           ORDER BY created_at DESC
            LIMIT 1;`,
-          [reqRow.athlete_id, effProductId, seasonId]
+          [reqRow.athlete_id, seasonId]
         );
 
+        let shouldCreateEnrollment = true;
         if (existingEnrRows[0]) {
-          enrollmentId = existingEnrRows[0].id;
-          paymentReferenceCode = existingEnrRows[0].payment_reference_code;
-        } else {
-          const athleteFullName = `${effFirstName} ${effLastName}`.trim();
+          const ex = existingEnrRows[0];
+          const [paidCountRows, chargePaidRows] = await Promise.all([
+            queryNeon<{ cnt: number }>(
+              `SELECT COUNT(*)::int AS cnt FROM intranet_payments WHERE athlete_id = $1 AND status <> 'VOID';`,
+              [reqRow.athlete_id]
+            ),
+            queryNeon<{ paid_sum: string }>(
+              `SELECT COALESCE(SUM(paid_amount), 0)::text AS paid_sum FROM intranet_charges WHERE enrollment_id = $1::uuid;`,
+              [ex.id]
+            ),
+          ]);
+          const hasPayments =
+            Number(paidCountRows[0]?.cnt || 0) > 0 || Number(chargePaidRows[0]?.paid_sum || 0) > 0;
+          const matchesPlanAndDiscounts =
+            ex.product_id === effProductId &&
+            ex.price_plan_id === effPricePlanId &&
+            (discountRuleIds?.length ?? 0) === 0;
+
+          if (matchesPlanAndDiscounts) {
+            enrollmentId = ex.id;
+            paymentReferenceCode = ex.payment_reference_code;
+            shouldCreateEnrollment = false;
+          } else if (!hasPayments) {
+            await queryNeon(`DELETE FROM intranet_applied_discounts WHERE enrollment_id = $1::uuid;`, [ex.id]);
+            await queryNeon(`DELETE FROM intranet_charges WHERE enrollment_id = $1::uuid;`, [ex.id]);
+            await queryNeon(`DELETE FROM intranet_enrollments WHERE id = $1::uuid;`, [ex.id]);
+          } else {
+            throw new IntranetValidationError(
+              'Ya existen pagos abonados sobre la matrícula actual; no es posible sustituir la modalidad desde la aprobación.',
+              409
+            );
+          }
+        }
+
+        if (shouldCreateEnrollment) {
           const payerName = effIsMinor
             ? effGuardianName || reqRow.user_name
-            : athleteFullName;
+            : finalFullName;
 
           let payerDniPlain: string | undefined;
           if (staged) {
@@ -3172,6 +3555,35 @@ export async function POST(req: NextRequest) {
           enrollmentId = enr.enrollmentId;
           paymentReferenceCode = enr.paymentReferenceCode;
         }
+
+        if (enrollmentId) {
+          const enrMetaRows = await queryNeon<{
+            product_name: string;
+            plan_name: string;
+            installments_count: number;
+            final_total: string;
+            disc_total: string;
+          }>(
+            `SELECT
+               p.name AS product_name,
+               pp.name AS plan_name,
+               pp.installments_count,
+               COALESCE((SELECT SUM(c.final_amount) FROM intranet_charges c WHERE c.enrollment_id = e.id), pp.total_amount)::text AS final_total,
+               COALESCE((SELECT SUM(c.discount_amount) FROM intranet_charges c WHERE c.enrollment_id = e.id), 0)::text AS disc_total
+             FROM intranet_enrollments e
+             INNER JOIN intranet_products p ON p.id = e.product_id
+             INNER JOIN intranet_price_plans pp ON pp.id = e.price_plan_id
+             WHERE e.id = $1::uuid
+             LIMIT 1;`,
+            [enrollmentId]
+          );
+          if (enrMetaRows[0]) {
+            const m = enrMetaRows[0];
+            const netAmt = Number(m.final_total).toFixed(2);
+            const discAmt = Number(m.disc_total);
+            confirmedPlanSummary = `${m.product_name} · ${m.plan_name} (${netAmt} € en ${m.installments_count} plazo${m.installments_count === 1 ? '' : 's'}${discAmt > 0 ? ` · desc. aplicado: -${discAmt.toFixed(2)} €` : ''})`;
+          }
+        }
       }
 
       await queryNeon(
@@ -3182,16 +3594,26 @@ export async function POST(req: NextRequest) {
              admin_notes = $4,
              reviewed_by = $5::uuid,
              reviewed_at = NOW(),
-             pending_payload_enc = NULL
+             pending_payload_enc = NULL,
+             selected_product_id = COALESCE($6::uuid, selected_product_id),
+             selected_price_plan_id = COALESCE($7::uuid, selected_price_plan_id)
          WHERE id = $1::uuid;`,
-        [requestId, uniqueTeamIds, enrollmentId, adminNotes, ctx.user.id]
+        [requestId, uniqueTeamIds, enrollmentId, adminNotes, ctx.user.id, effProductId, effPricePlanId]
       );
 
-      const athleteFullName = `${effFirstName} ${effLastName}`.trim();
+      const athleteFullName = finalFullName;
       const teamNameMap = new Map(foundTeams.map((t) => [t.id, t.name]));
       const assignedTeamNames = uniqueTeamIds
         .map((tid) => teamNameMap.get(tid) || getClubTeamNameById(tid))
         .join(', ');
+      const primaryTeamNameDisplay = teamNameMap.get(primaryTeamId) || getClubTeamNameById(primaryTeamId);
+      const sportDetailsParts: string[] = [];
+      if (dorsal !== null) sportDetailsParts.push(`Dorsal #${dorsal}`);
+      if (position) sportDetailsParts.push(`Posición: ${position}`);
+      if (editedShirtSize || staged?.shirtSize) {
+        sportDetailsParts.push(`Talla: ${editedShirtSize || staged?.shirtSize}`);
+      }
+      const sportDetailsText = sportDetailsParts.length > 0 ? sportDetailsParts.join(' · ') : null;
       const baseUrl = getPublicBaseUrl();
       const accessUrl = `${baseUrl}/acceso`;
       const memberPortalUrl = `${baseUrl}/mi-club`;
@@ -3214,7 +3636,9 @@ export async function POST(req: NextRequest) {
               `Hola ${stripCrlf(recipientName)},`,
               `Tu solicitud de inscripción para ${stripCrlf(athleteFullName)} ha sido aprobada y verificada por la administración del club.`,
               ``,
-              `Equipo(s) asignado(s): ${assignedTeamNames}`,
+              `Equipo(s) asignado(s): ${assignedTeamNames} (Principal: ${primaryTeamNameDisplay})`,
+              ...(sportDetailsText ? [`Datos deportivos confirmados: ${sportDetailsText}`] : []),
+              ...(confirmedPlanSummary ? [`Cuota confirmada: ${confirmedPlanSummary}`] : []),
               ...(paymentReferenceCode
                 ? [`Código de referencia de cuota: ${paymentReferenceCode}`]
                 : []),
@@ -3240,9 +3664,19 @@ export async function POST(req: NextRequest) {
                 </div>
                 <div style="padding: 24px; color: #18181b; font-size: 14px; line-height: 1.6;">
                   <p>Hola <strong>${escapeHtml(recipientName)}</strong>,</p>
-                  <p>Nos complace informarte de que tu solicitud de inscripción para <strong>${escapeHtml(athleteFullName)}</strong> ha sido revisada y aprobada por la administración del club.</p>
+                  <p>Nos complace informarte de que tu solicitud de inscripción para <strong>${escapeHtml(athleteFullName)}</strong> ha sido revisada y aprobada por la administración del club con la siguiente configuración definitiva:</p>
                   <div style="background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 8px; padding: 14px 16px; margin: 16px 0;">
-                    <div><strong>Equipo(s) asignado(s):</strong> ${escapeHtml(assignedTeamNames)}</div>
+                    <div><strong>Equipo(s) asignado(s):</strong> ${escapeHtml(assignedTeamNames)} <span style="color:#52525b;">(Principal: ${escapeHtml(primaryTeamNameDisplay)})</span></div>
+                    ${
+                      sportDetailsText
+                        ? `<div style="margin-top: 6px;"><strong>Datos deportivos:</strong> ${escapeHtml(sportDetailsText)}</div>`
+                        : ''
+                    }
+                    ${
+                      confirmedPlanSummary
+                        ? `<div style="margin-top: 6px;"><strong>Cuota confirmada:</strong> ${escapeHtml(confirmedPlanSummary)}</div>`
+                        : ''
+                    }
                     ${
                       paymentReferenceCode
                         ? `<div style="margin-top: 6px;"><strong>Referencia de cuota:</strong> <code>${escapeHtml(paymentReferenceCode)}</code></div>`
@@ -3328,11 +3762,39 @@ export async function POST(req: NextRequest) {
         id: string;
         athlete_id: string;
         status: string;
+        is_minor: boolean;
+        guardian_name: string | null;
+        contact_email: string;
+        category_label: string;
+        pending_payload_enc: string | null;
         default_team_season_id: string | null;
+        link_token: string | null;
+        link_is_active: boolean | null;
+        athlete_status: string | null;
+        first_name: string | null;
+        last_name: string | null;
+        user_name: string;
       }>(
-        `SELECT r.id::text AS id, r.athlete_id, r.status, l.default_team_season_id
+        `SELECT
+           r.id::text AS id,
+           r.athlete_id,
+           r.status,
+           r.is_minor,
+           r.guardian_name,
+           r.contact_email,
+           r.category_label,
+           r.pending_payload_enc,
+           l.default_team_season_id,
+           l.token AS link_token,
+           l.is_active AS link_is_active,
+           a.status AS athlete_status,
+           a.first_name,
+           a.last_name,
+           u.name AS user_name
          FROM intranet_registration_requests r
+         INNER JOIN intranet_users u ON u.id = r.user_id
          LEFT JOIN intranet_category_registration_links l ON l.id = r.link_id
+         LEFT JOIN intranet_athletes a ON a.id = r.athlete_id
          WHERE r.id = $1::uuid
          LIMIT 1;`,
         [requestId]
@@ -3355,11 +3817,39 @@ export async function POST(req: NextRequest) {
         getAuthorizedTeamScope(ctx, 'registration.approve').isGlobal ||
         getAuthorizedTeamScope(ctx, 'athlete.edit').isGlobal;
       if (!hasGlobalApprove) {
-        const targetTid = reqRows[0].default_team_season_id;
-        if (!targetTid || !adminScope.teamIds.includes(targetTid)) {
+        const canAccessReq = await hasScopedRequestAccess(
+          adminScope,
+          reqRows[0].athlete_id,
+          reqRows[0].default_team_season_id
+        );
+        if (!canAccessReq) {
           throw new IntranetForbiddenError('No tienes permiso para rechazar esta solicitud.');
         }
       }
+
+      let stagedRejectMeta: Partial<StagedRegistrationPayload> | null = null;
+      if (reqRows[0].pending_payload_enc) {
+        const decPending = decryptDataStrict(
+          reqRows[0].pending_payload_enc,
+          `reg_pending:${reqRows[0].athlete_id}`
+        );
+        if (decPending.ok && decPending.value) {
+          try {
+            stagedRejectMeta = JSON.parse(decPending.value) as Partial<StagedRegistrationPayload>;
+          } catch {
+            stagedRejectMeta = null;
+          }
+        }
+      }
+
+      const rejAthleteName =
+        stagedRejectMeta?.fullName ||
+        `${reqRows[0].first_name || ''} ${reqRows[0].last_name || ''}`.trim() ||
+        reqRows[0].user_name;
+      const rejIsMinor = stagedRejectMeta?.isMinor ?? reqRows[0].is_minor;
+      const rejGuardianName = stagedRejectMeta?.guardianName || reqRows[0].guardian_name;
+      const rejRecipientName = rejIsMinor ? rejGuardianName || reqRows[0].user_name : rejAthleteName;
+      const rejContactEmail = stagedRejectMeta?.email || reqRows[0].contact_email;
 
       const adminNotes = cleanText(body.adminNotes, 500) || null;
       await queryNeon(
@@ -3373,6 +3863,157 @@ export async function POST(req: NextRequest) {
         [requestId, adminNotes, ctx.user.id]
       );
 
+      // Si es una ficha nueva no verificada (!pending_payload_enc), liberar cuenta/consentimiento para permitir nueva inscripción
+      if (!reqRows[0].pending_payload_enc && reqRows[0].athlete_status !== 'VERIFICADO') {
+        const otherReqs = await queryNeon<{ id: string }>(
+          `SELECT id::text AS id
+           FROM intranet_registration_requests
+           WHERE athlete_id = $1
+             AND id <> $2::uuid
+             AND status IN ('PENDING', 'APPROVED')
+           LIMIT 1;`,
+          [reqRows[0].athlete_id, requestId]
+        );
+
+        if (otherReqs.length === 0) {
+          await queryNeon(
+            `UPDATE intranet_athletes
+             SET status = 'BAJA',
+                 user_id = NULL,
+                 updated_at = NOW()
+             WHERE id = $1 AND status NOT IN ('VERIFICADO', 'SHREDDED');`,
+            [reqRows[0].athlete_id]
+          );
+          await queryNeon(
+            `UPDATE intranet_guardianships
+             SET guardian_user_id = NULL
+             WHERE athlete_id = $1;`,
+            [reqRows[0].athlete_id]
+          );
+
+          const keyRows = await queryNeon<{ wrapped_dek: string | null; shredded_at: string | null }>(
+            `SELECT wrapped_dek, shredded_at::text AS shredded_at
+             FROM player_crypto_keys
+             WHERE player_id = $1
+             LIMIT 1;`,
+            [reqRows[0].athlete_id]
+          );
+          if (!keyRows[0]?.shredded_at) {
+            let subjectDek =
+              keyRows[0]?.wrapped_dek
+                ? unwrapDek(keyRows[0].wrapped_dek, reqRows[0].athlete_id)
+                : null;
+            if (!subjectDek) {
+              subjectDek = generateDek();
+            }
+            const wrappedDek = wrapDek(subjectDek, reqRows[0].athlete_id);
+            await archivePriorActiveConsentBeforeReSign(
+              reqRows[0].athlete_id,
+              subjectDek,
+              wrappedDek
+            );
+          }
+        }
+      } else if (reqRows[0].pending_payload_enc && reqRows[0].athlete_status === 'PENDIENTE_VALIDAR') {
+        const otherReqs = await queryNeon<{ id: string }>(
+          `SELECT id::text AS id
+           FROM intranet_registration_requests
+           WHERE athlete_id = $1
+             AND id <> $2::uuid
+             AND status IN ('PENDING', 'APPROVED')
+           LIMIT 1;`,
+          [reqRows[0].athlete_id, requestId]
+        );
+        if (otherReqs.length === 0) {
+          await queryNeon(
+            `UPDATE intranet_athletes
+             SET status = 'IMPORTADO',
+                 updated_at = NOW()
+             WHERE id = $1
+               AND status = 'PENDIENTE_VALIDAR'
+               AND user_id IS NULL
+               AND NOT EXISTS (
+                 SELECT 1 FROM intranet_guardianships g
+                 WHERE g.athlete_id = $1 AND g.guardian_user_id IS NOT NULL
+               );`,
+            [reqRows[0].athlete_id]
+          );
+        }
+      }
+
+      const reasonDisplay =
+        adminNotes || 'Es necesario revisar y corregir los datos aportados en la solicitud.';
+      const baseUrl = getPublicBaseUrl();
+      const retryUrl =
+        reqRows[0].link_token && reqRows[0].link_is_active
+          ? `${baseUrl}/inscripcion?cat=${encodeURIComponent(reqRows[0].link_token)}`
+          : `${baseUrl}/inscripcion`;
+
+      let emailSent = false;
+      let emailError: string | undefined;
+      try {
+        if (!isStrictEmail(rejContactEmail)) {
+          emailError = 'Correo electrónico de contacto no válido.';
+        } else {
+          const mailRes = await sendSmtpMail({
+            to: rejContactEmail,
+            subject: `[CDV San Pedro] Solicitud de inscripción rechazada · Motivo y subsanación · ${rejAthleteName}`,
+            text: [
+              `${CLUB_INFO.name} · Resolución de Solicitud de Inscripción`,
+              ``,
+              `Hola ${stripCrlf(rejRecipientName)},`,
+              `La solicitud de inscripción para ${stripCrlf(rejAthleteName)} (${reqRows[0].category_label}) ha sido rechazada tras la revisión administrativa.`,
+              ``,
+              `MOTIVO INDICADO POR LA ADMINISTRACIÓN DEL CLUB:`,
+              `${stripCrlf(reasonDisplay)}`,
+              ``,
+              `¿ES UN DATO SUBSANABLE? CÓMO CORREGIRLO:`,
+              `Tu borrador anterior ha quedado anulado para evitar duplicidades. Si se trata de un error subsanable (por ejemplo DNI incorrecto, fecha de nacimiento, datos del tutor o categoría equivocada), puedes volver a enviar la inscripción inmediatamente utilizando tu mismo correo (${rejContactEmail}) y tu misma contraseña:`,
+              `${retryUrl}`,
+              ``,
+              `Si crees que existe un error o necesitas otro enlace de categoría, escribe a ${CLUB_INFO.contactEmail}.`,
+            ].join('\n'),
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden;">
+                <div style="background: #9f1239; padding: 18px 24px; color: #ffffff;">
+                  <div style="font-size: 11px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.9;">${escapeHtml(CLUB_INFO.name)}</div>
+                  <h2 style="margin: 4px 0 0 0; font-size: 20px;">Solicitud de Inscripción No Validada</h2>
+                </div>
+                <div style="padding: 24px; color: #18181b; font-size: 14px; line-height: 1.6;">
+                  <p>Hola <strong>${escapeHtml(rejRecipientName)}</strong>,</p>
+                  <p>Tras revisar la solicitud de inscripción de <strong>${escapeHtml(rejAthleteName)}</strong> (<em>${escapeHtml(reqRows[0].category_label)}</em>), no ha podido aprobarse en su estado actual.</p>
+                  <div style="background: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #e11d48; border-radius: 8px; padding: 14px 16px; margin: 16px 0;">
+                    <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.6px; color: #9f1239; margin-bottom: 4px;">
+                      Motivo indicado por la administración del club
+                    </div>
+                    <div style="color: #881337; font-weight: 600;">${escapeHtml(reasonDisplay)}</div>
+                  </div>
+                  <div style="background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 8px; padding: 14px 16px; margin: 16px 0; font-size: 13px;">
+                    <div style="font-weight: bold; color: #18181b; margin-bottom: 6px;">¿Es un error subsanable? Cómo volver a enviarla</div>
+                    <p style="margin: 0; color: #3f3f46;">
+                      Hemos liberado esta solicitud para que no genere bloqueos ni duplicados. Si el motivo es subsanable, puedes entrar de nuevo en el formulario y volver a completarlo <strong>usando tu mismo correo (<code>${escapeHtml(rejContactEmail)}</code>) y tu misma contraseña</strong> con los datos corregidos.
+                    </p>
+                  </div>
+                  <p style="margin: 22px 0; text-align: center;">
+                    <a href="${escapeHtml(retryUrl)}" style="display: inline-block; background: #d90429; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">
+                      Volver al formulario y corregir datos
+                    </a>
+                  </p>
+                  <p style="font-size: 12px; color: #52525b;">
+                    Enlace directo: <a href="${escapeHtml(retryUrl)}" style="color: #d90429;">${escapeHtml(retryUrl)}</a><br/>
+                    Si necesitas asistencia o un enlace de otra categoría, escribe a <a href="mailto:${escapeHtml(CLUB_INFO.contactEmail)}" style="color: #d90429;">${escapeHtml(CLUB_INFO.contactEmail)}</a>.
+                  </p>
+                </div>
+              </div>
+            `,
+          });
+          emailSent = mailRes.sent;
+          emailError = mailRes.error;
+        }
+      } catch (mailErr) {
+        emailError = mailErr instanceof Error ? mailErr.message : 'Error SMTP enviando correo de rechazo.';
+      }
+
       await recordAuditLog({
         actorUserId: ctx.user.id,
         actorEmail: ctx.user.email,
@@ -3380,11 +4021,11 @@ export async function POST(req: NextRequest) {
         module: 'Inscripciones',
         targetType: 'REGISTRATION_REQUEST',
         targetId: requestId,
-        details: { athleteId: reqRows[0].athlete_id, adminNotes },
+        details: { athleteId: reqRows[0].athlete_id, adminNotes, emailSent },
         ipAddress: clientIp,
       });
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, emailSent, emailError });
     }
 
     return NextResponse.json(

@@ -16,6 +16,7 @@ import {
 } from '@/lib/intranet/catalog';
 import {
   syncCensusFromClubSources,
+  checkFederationDiscrepancies,
   normalizeNameKey,
 } from '@/lib/intranet/census-sync';
 import { getTeamPaymentTrafficLight, type PaymentTrafficLight } from '@/lib/intranet/payments';
@@ -26,6 +27,7 @@ import { encryptData, decryptDataStrict, generateBlindIndex } from '@/lib/encryp
 import { computeAgeInMadrid, parseBirthDateParts } from '@/lib/date-utils';
 import { getClientIp } from '@/lib/rate-limiter';
 import { isStrictEmail, isValidSpanishDniOrNie, stripCrlf } from '@/lib/validators';
+import { isDemoPlayersEnabled } from '@/lib/consent-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,7 +97,7 @@ export async function GET(req: NextRequest) {
     const rgpdFilterParam = req.nextUrl.searchParams.get('rgpdStatus')?.trim() || null;
     const searchParam = req.nextUrl.searchParams.get('search')?.trim().toLowerCase() || null;
 
-    const [teamRows, athleteRows, athleteTeamRows, guardianRows, consentRows] = await Promise.all([
+    const [teamRows, athleteRows, athleteTeamRows, guardianRows, consentRows, pendingReqRows] = await Promise.all([
       queryNeon<{
         id: string;
         name: string;
@@ -137,7 +139,9 @@ export async function GET(req: NextRequest) {
            user_id::text AS user_id, status, is_demo, verified_at::text, updated_at::text
          FROM intranet_athletes
          WHERE status <> 'SHREDDED'
-         ORDER BY last_name ASC, first_name ASC;`
+           AND ($1::boolean = true OR (COALESCE(is_demo, false) = false AND id NOT LIKE 'demo-%' AND id <> 'p-test-prueba'))
+         ORDER BY last_name ASC, first_name ASC;`,
+        [isDemoPlayersEnabled()]
       ),
       queryNeon<{
         athlete_id: string;
@@ -176,7 +180,11 @@ export async function GET(req: NextRequest) {
         `SELECT player_id, status, consent_social_media, consent_streaming, consent_press, consent_travel, signed_at_iso
          FROM player_consents;`
       ),
+      queryNeon<{ athlete_id: string }>(
+        `SELECT DISTINCT athlete_id FROM intranet_registration_requests WHERE status = 'PENDING';`
+      ),
     ]);
+    const pendingReqAthleteIds = new Set(pendingReqRows.map((r) => r.athlete_id));
 
     const teamMap = new Map(teamRows.map((t) => [t.id, t]));
     const authorizedTeams = scope.isGlobal
@@ -272,6 +280,12 @@ export async function GET(req: NextRequest) {
         can(ctx, 'consent.manage') || canForAnyTeam(ctx, 'consent.view_status', teamIds);
       const allowTrafficLight = Object.prototype.hasOwnProperty.call(trafficLightMap, a.id);
 
+      const effectiveStatus: AthleteStatus = isShredded
+        ? 'SHREDDED'
+        : a.status === 'PENDIENTE_VALIDAR' && !pendingReqAthleteIds.has(a.id)
+          ? 'IMPORTADO'
+          : a.status;
+
       return {
         id: a.id,
         firstName: isShredded ? '[SUPRIMIDO]' : a.first_name,
@@ -286,7 +300,7 @@ export async function GET(req: NextRequest) {
         favbLicenseNumber: isShredded ? null : a.favb_license_number,
         shirtSize: isShredded ? null : a.shirt_size,
         jerseyNumber: isShredded ? null : a.jersey_number,
-        status: (isShredded ? 'SHREDDED' : a.status) as AthleteStatus,
+        status: effectiveStatus,
         isDemo: a.is_demo,
         verifiedAt: a.verified_at,
         updatedAt: a.updated_at,
@@ -383,7 +397,12 @@ export async function GET(req: NextRequest) {
         canEdit: can(ctx, 'athlete.edit'),
         canDeactivate: can(ctx, 'athlete.deactivate'),
         canViewEmergency: can(ctx, 'athlete.view_emergency'),
-        canViewSensitive: can(ctx, 'athlete.view_sensitive'),
+        canViewSensitive:
+          ctx.isStaff &&
+          (can(ctx, 'athlete.view_sensitive') ||
+            can(ctx, 'athlete.edit') ||
+            can(ctx, 'athlete.view_emergency') ||
+            can(ctx, 'athlete.view_basic')),
         canViewTrafficLight:
           paymentsGlobalView || paymentsTeamScope.teamIds.length > 0,
       },
@@ -406,7 +425,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Acción no indicada.' }, { status: 400 });
     }
 
-    // 1. Sincronizar fuentes del club (FAVB + player_census + player_consents)
+    // 1. Sincronizar fuentes del club (legado) / Comprobar discrepancias FAVB sin mutar BBDD
     if (action === 'sync_sources') {
       assertCan(ctx, 'athlete.import');
       const summary = await syncCensusFromClubSources({
@@ -417,9 +436,121 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, summary });
     }
 
+    if (action === 'check_federation_discrepancies') {
+      if (!ctx.isStaff || (!can(ctx, 'athlete.edit') && !can(ctx, 'athlete.import'))) {
+        assertCan(ctx, 'athlete.edit');
+      }
+      const scopeEdit = getAuthorizedTeamScope(ctx, 'athlete.edit');
+      const allowedTeamIds = ctx.isPresident || scopeEdit.isGlobal ? null : scopeEdit.teamIds;
+      const report = await checkFederationDiscrepancies({
+        allowedTeamIds,
+        actor: {
+          userId: ctx.user.id,
+          email: ctx.user.email,
+          ipAddress: clientIp,
+        },
+      });
+      return NextResponse.json({ success: true, report });
+    }
+
+    if (action === 'resolve_federation_discrepancy') {
+      assertCan(ctx, 'athlete.edit');
+      const editScope = getAuthorizedTeamScope(ctx, 'athlete.edit');
+      const athleteId = typeof body.athleteId === 'string' ? body.athleteId.trim() : '';
+      if (!athleteId) {
+        return NextResponse.json({ success: false, error: 'athleteId obligatorio.' }, { status: 400 });
+      }
+
+      const [athRows, relRows] = await Promise.all([
+        queryNeon<{ id: string; status: AthleteStatus; jersey_number: number | null }>(
+          `SELECT id, status, jersey_number FROM intranet_athletes WHERE id = $1 LIMIT 1;`,
+          [athleteId]
+        ),
+        queryNeon<{ team_season_id: string }>(
+          `SELECT team_season_id FROM intranet_athlete_teams WHERE athlete_id = $1;`,
+          [athleteId]
+        ),
+      ]);
+      const athlete = athRows[0];
+      if (!athlete || athlete.status === 'SHREDDED') {
+        return NextResponse.json({ success: false, error: 'Deportista no disponible.' }, { status: 404 });
+      }
+      if (!editScope.isGlobal) {
+        const hasAccess = relRows.some((r) => editScope.teamIds.includes(r.team_season_id));
+        if (!hasAccess) {
+          throw new IntranetForbiddenError('No tienes permiso para modificar esta ficha.');
+        }
+      }
+
+      const validTeamSet = new Set(INITIAL_TEAM_SEASONS.map((t) => t.id));
+      const addTeamIdsRaw = Array.isArray(body.addTeamIds)
+        ? body.addTeamIds.filter((x): x is string => typeof x === 'string' && validTeamSet.has(x.trim()))
+        : [];
+      const addTeamIds = Array.from(new Set(addTeamIdsRaw)).filter(
+        (tid) => editScope.isGlobal || editScope.teamIds.includes(tid)
+      );
+
+      let applyDorsal: number | null = null;
+      if (body.applyDorsal !== undefined && body.applyDorsal !== null) {
+        const n = Number(body.applyDorsal);
+        if (Number.isInteger(n) && n >= 1 && n <= 99) {
+          applyDorsal = n;
+        }
+      }
+
+      if (applyDorsal !== null) {
+        await queryNeon(
+          `UPDATE intranet_athletes
+           SET jersey_number = $2,
+               updated_at = NOW()
+           WHERE id = $1;`,
+          [athleteId, applyDorsal]
+        );
+        await queryNeon(
+          `UPDATE intranet_athlete_teams
+           SET dorsal = $2
+           WHERE athlete_id = $1 AND is_primary = true;`,
+          [athleteId, applyDorsal]
+        );
+      }
+
+      const hasPrimary = relRows.length > 0;
+      for (let i = 0; i < addTeamIds.length; i++) {
+        const tid = addTeamIds[i];
+        const isPrimary = !hasPrimary && i === 0;
+        await queryNeon(
+          `INSERT INTO intranet_athlete_teams (athlete_id, team_season_id, is_primary, dorsal)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (athlete_id, team_season_id) DO NOTHING;`,
+          [athleteId, tid, isPrimary, isPrimary ? applyDorsal ?? athlete.jersey_number : null]
+        );
+      }
+
+      await recordAuditLog({
+        actorUserId: ctx.user.id,
+        actorEmail: ctx.user.email,
+        action: 'RESOLVE_FAVB_DISCREPANCY',
+        module: 'Censo',
+        targetType: 'ATHLETE',
+        targetId: athleteId,
+        details: { applyDorsal, addTeamIds },
+        ipAddress: clientIp,
+      });
+
+      return NextResponse.json({ success: true, athleteId, applyDorsal, addTeamIds });
+    }
+
     // 2. Ver datos sensibles auditados (DNI completo, fecha exacta, alergias médicas)
     if (action === 'view_sensitive') {
-      assertCan(ctx, 'athlete.view_sensitive');
+      const staffSensitivePerms: PermissionCode[] = [
+        'athlete.view_sensitive',
+        'athlete.edit',
+        'athlete.view_emergency',
+        'athlete.view_basic',
+      ];
+      if (!ctx.isStaff || !staffSensitivePerms.some((p) => can(ctx, p))) {
+        assertCan(ctx, 'athlete.view_sensitive');
+      }
       const athleteId = typeof body.athleteId === 'string' ? body.athleteId.trim() : '';
       if (!athleteId) {
         return NextResponse.json({ success: false, error: 'athleteId obligatorio.' }, { status: 400 });
@@ -461,9 +592,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Deportista no encontrado.' }, { status: 404 });
       }
 
-      const sensitiveScope = getAuthorizedTeamScope(ctx, 'athlete.view_sensitive');
-      if (!sensitiveScope.isGlobal) {
-        const hasTeamAccess = teamRelRows.some((r) => sensitiveScope.teamIds.includes(r.team_season_id));
+      const allowedScopes = staffSensitivePerms
+        .filter((p) => can(ctx, p))
+        .map((p) => getAuthorizedTeamScope(ctx, p));
+      const isGlobalSensitive =
+        ctx.isPresident || allowedScopes.some((s) => s.isGlobal);
+      const allowedSensitiveTeams = new Set<string>(
+        allowedScopes.flatMap((s) => s.teamIds)
+      );
+      if (!isGlobalSensitive) {
+        const hasTeamAccess = teamRelRows.some((r) => allowedSensitiveTeams.has(r.team_season_id));
         if (!hasTeamAccess) {
           throw new IntranetForbiddenError('No tienes permiso para ver datos sensibles de este equipo.');
         }

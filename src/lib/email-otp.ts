@@ -1,5 +1,8 @@
 import tls from 'tls';
 import crypto from 'crypto';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { CLUB_INFO } from './club-info';
 import { CLUB_LOGO_BASE64 } from './club-logo-base64';
 import { generateConsentPdf } from './pdf-consent';
@@ -57,6 +60,8 @@ const CLUB_LOGO_CID = 'club-logo@voleibolsanpedro.es';
 const SIGNER_SIGNATURE_CID = 'signer-signature@voleibolsanpedro.es';
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_BATCH_TLS_POOL = 15;
+const E2E_LOCAL_MAIL_DOMAIN = '@e2e-test.voleibolsanpedro.local';
+export const DEV_E2E_OUTBOX_FILE = path.join(os.tmpdir(), 'cdv-sanpedro-dev-mail-outbox.jsonl');
 
 /**
  * Devuelve el correo destinatario institucional de copia del club.
@@ -556,6 +561,80 @@ export async function sendBatchEmailsWithTlsPool(
 ): Promise<BatchEmailResult[]> {
   if (!Array.isArray(messages) || messages.length === 0) {
     return [];
+  }
+
+  const isLocalDev = process.env.NODE_ENV === 'development' && process.env.NETLIFY !== 'true';
+  const shouldInterceptLocalMail = (msg: BatchEmailMessage): boolean => {
+    if (!isLocalDev) return false;
+    const toLower = String(msg.to || '').trim().toLowerCase();
+    const ccLower = String(msg.cc || '').trim().toLowerCase();
+    if (toLower.endsWith(E2E_LOCAL_MAIL_DOMAIN) || ccLower.endsWith(E2E_LOCAL_MAIL_DOMAIN)) {
+      return true;
+    }
+    if (
+      process.env.E2E_BLOCK_CLUB_MAIL === 'true' &&
+      (toLower.includes('voleibolsanpedro') || ccLower.includes('voleibolsanpedro'))
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  if (isLocalDev && messages.some(shouldInterceptLocalMail)) {
+    const dummyCfg: SmtpConfig = {
+      host: '127.0.0.1',
+      port: 1025,
+      user: `noreply${E2E_LOCAL_MAIL_DOMAIN}`,
+      pass: 'local-e2e',
+      fromName: stripCrlf(CLUB_INFO.name),
+    };
+    const results: BatchEmailResult[] = new Array(messages.length);
+    const pendingSmtp: Array<{ origIdx: number; msg: BatchEmailMessage }> = [];
+
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      const cleanTo = String(m.to || '').trim();
+      if (shouldInterceptLocalMail(m)) {
+        try {
+          const mimePayload = buildMimeMessagePayload(dummyCfg, m);
+          const record = {
+            timestamp: new Date().toISOString(),
+            to: mimePayload.to,
+            cc: mimePayload.cc || null,
+            subject: stripCrlf(m.subject),
+            text: m.text,
+            html: m.html,
+            mimeBytes: Buffer.byteLength(mimePayload.dataPayload, 'utf8'),
+            attachments: (m.attachments || []).map((a) => ({
+              filename: a.filename,
+              contentType: a.contentType || 'application/octet-stream',
+              sizeBytes: Buffer.from(a.contentBase64, 'base64').length,
+              inline: Boolean(a.inline || a.cid),
+            })),
+          };
+          fs.appendFileSync(DEV_E2E_OUTBOX_FILE, `${JSON.stringify(record)}\n`, 'utf8');
+          results[i] = { index: i, to: cleanTo, sent: true };
+        } catch (err) {
+          results[i] = {
+            index: i,
+            to: cleanTo,
+            sent: false,
+            error: err instanceof Error ? err.message : 'Error guardando outbox local E2E.',
+          };
+        }
+      } else {
+        pendingSmtp.push({ origIdx: i, msg: m });
+      }
+    }
+
+    if (pendingSmtp.length > 0) {
+      const smtpRes = await sendBatchEmailsWithTlsPool(pendingSmtp.map((p) => p.msg));
+      for (let j = 0; j < pendingSmtp.length; j++) {
+        const origIdx = pendingSmtp[j].origIdx;
+        results[origIdx] = { ...smtpRes[j], index: origIdx };
+      }
+    }
+    return results;
   }
 
   const cfg = getSmtpConfig();
@@ -1121,10 +1200,11 @@ export async function sendConsentReceiptEmail(params: {
 
   const clubCopy = getClubCopyEmail();
   const targetTo = isStrictEmail(params.toEmail) ? params.toEmail.trim() : clubCopy;
+  const effectiveCc = process.env.NODE_ENV === 'production' ? clubCopy : undefined;
 
   return sendSmtpMail({
     to: targetTo,
-    cc: clubCopy,
+    cc: effectiveCc,
     subject,
     text,
     html,

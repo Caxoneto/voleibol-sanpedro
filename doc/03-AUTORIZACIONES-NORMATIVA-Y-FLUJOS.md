@@ -48,16 +48,22 @@
 
 ### Flujo D: Auto-Inscripción por Enlace de Categoría (`/inscripcion?cat=<token>`)
 1. **Generación administrativa (`/club/censo?tab=inscripciones`)**: el club genera o copia enlaces bloqueados por categoría (ej. *Cadete Femenino*) listos para pegar en el grupo de WhatsApp de cada equipo.
-2. **Paso 1 — Datos, Modalidad y Credenciales (`/inscripcion`)**:
+2. **Paso 1 — Validación Anticipada, Unificación con Censo, Modalidad y Credenciales (`/inscripcion`)**:
    * La categoría viene **bloqueada** desde el token de enlace (`intranet_category_registration_links`).
-   * Bloque claramente diferenciado de **Datos del Jugador/a**; si el cálculo exacto de edad en `Europe/Madrid` detecta `< 18` años, se despliega obligatoriamente el bloque de **Padre, Madre o Tutor Legal** (en `14–17` se mantiene además la declaración de asentimiento LO 1/1982).
+   * Bloque claramente diferenciado de **Datos del Jugador/a**; si el cálculo exacto de edad en `Europe/Madrid` detecta `< 18` años, se despliega obligatoriamente el bloque de **Padre, Madre o Tutor Legal** (en `14–17` se mantiene además la declaración de asentimiento LO 1/1982) y se bloquea explícitamente que el DNI del menor coincida con el del tutor (`playerDni !== guardianDni`, HTTP `400`).
+   * Antes de avanzar al Paso 2, `POST /api/intranet/registration` (`action: 'validate_step1'`) valida credenciales, conflictos (`409` por correo de staff, contraseña incorrecta de tutor existente, correo duplicado de adulto o ficha ya activa/pendiente) y ejecuta el motor de unificación (`src/lib/intranet/athlete-matcher.ts`):
+     * Emparejamiento exacto por `dni_blind_index` (excluyendo `BAJA` y `SHREDDED`).
+     * Normalización tolerante (`normalizeNameKey` con transliteración previa a NFD de `ł->l`, `ø->o`, `ß->ss`, etc., eliminación de diacríticos, expansión de abreviaturas `Mª`/`Fco.`, manejo de guiones, partículas internas `de/del/la/los/...` y Damerau-Levenshtein distancia `1` para erratas tipográficas de 1 letra) + compatibilidad con años orientativos FAVB cuando `birth_date_verified = false`.
+     * Normalización automática de formato (`formatProperPersonName`) al registrar e informar al usuario en Paso 2 cuando se identifica una ficha deportiva previa (`matchedExistingRoster: true`).
    * Elección de modalidad de pago activa (`Mensual`, `Trimestral`, `Anual`, etc.) y alta de credenciales (`correo` como usuario + contraseña de mínimo 10 caracteres, ≥1 mayúscula y ≥1 dígito).
 3. **Paso 2 — Autorizaciones RGPD + Firma Manuscrita + OTP Email**:
-   * Pre-carga automática de la ficha de autorizaciones con los dos selectores binarios neutros (sin etiquetas *"Anexo 05"/"Anexo 06"*), `SignaturePad` y reto OTP (`otp-v2:SIGN`) al correo del jugador/tutor.
-   * Al completar (`POST /api/intranet/registration` -> `complete_registration`): persiste el usuario, tutoría (si menor), ficha censal, consentimiento firmado HMAC `v3`, deportista en estado `PENDIENTE_VALIDAR` y solicitud `PENDING` en `intranet_registration_requests`.
-4. **Paso 3 — Resguardo y Validación Administrativa**:
-   * Descarga inmediata del resguardo PDF A4 de 1 página y bloqueo de entrada a `/mi-club` (`403 PENDING_ADMIN_APPROVAL`) hasta que administración acepte el alta.
-   * El panel `/club` muestra notificación persistente + badge numérico en *Jugadoras/es*; en `/club/censo?tab=inscripciones` la directiva aprueba la solicitud asignando equipo(s), dorsal, posición y matrícula económica (`VERIFICADO`), enviando notificación por correo con acceso directo a `/acceso` -> `/mi-club` y dejando intactos los campos cubiertos por el HMAC `v3` de `player_consents`. Al registrar el alta (`complete_registration`), si existía una ficha incompleta previa (por `dni_blind_index` o nombre+año+equipo) se cruza y completa evitando duplicados.
+   * Pre-carga automática de la ficha de autorizaciones con los dos selectores binarios neutros (sin etiquetas *"Anexo 05"/"Anexo 06"*), `SignaturePad` y reto OTP (`otp-v2:SIGN`, máx. 5 intentos, el reenvío invalida el código previo) enviado al correo del jugador/tutor (usando `draftPlayerId` `reg-...` para evitar enumeración de IDs internos antes de validar OTP).
+   * Al enviar la solicitud (`complete_registration`), tanto las fichas nuevas (`reg-...`) como las fichas existentes unificadas (`pending_payload_enc`, `AES-256-GCM`, AAD `reg_pending:<athleteId>`) emiten automáticamente el correo `[CDV San Pedro] Solicitud de inscripción recibida (pendiente de revisión)` confirmando categoría, cuota elegida y opciones RGPD en espera de validación. El resguardo oficial `[AUTORIZACION-CDV]` con PDF adjunto se emite una vez aprobada por el staff en `approve_registration`.
+4. **Paso 3 — Resguardo y Validación Administrativa por Staff**:
+   * Descarga inmediata del resguardo PDF A4 de 1 página y bloqueo de entrada a `/mi-club` (`403 PENDING_ADMIN_APPROVAL`, con aviso ámbar específico en `/acceso`) hasta que administración acepte el alta.
+   * El panel `/club/censo?tab=inscripciones` distingue visualmente `"Ficha existente unificada"` vs `"Nueva ficha"`:
+     * **Al aceptar (`approve_registration`)**: activa la cuenta/ficha (`VERIFICADO`, `birth_date_verified = true`), genera cuota/cargos y envía al correo dos emails oficiales: `[CDV San Pedro] Inscripción aprobada y acceso activado` (con equipo asignado, referencia y acceso a `/acceso` -> `/mi-club`) + `[AUTORIZACION-CDV]` con el PDF custodiado adjunto (tanto para `staged` como para fichas nuevas).
+     * **Al rechazar (`reject_registration`)**: exige indicar un motivo en el modal de confirmación, libera la ficha/consentimiento (`status = 'BAJA'`, `user_id = NULL` y consentimiento `'REVOKED'` si era borrador `reg-...`; conservando intacta en `PENDIENTE_VALIDAR` la ficha previa si era `staged`) y envía `[CDV San Pedro] Solicitud de inscripción rechazada · Motivo y subsanación` con el motivo exacto y el botón directo al formulario para re-inscribirse con el mismo correo y contraseña si el error es subsanable.
    * Tras la aprobación, el deportista/tutor entra en `/mi-club` con visibilidad estrictamente limitada (`PROPIO`): sus equipos, horarios/pistas semanales, historial de **Asistencia** propia, estado de cuota y recibos PDF en solo lectura (con aviso de transferencia bancaria) y estado/resguardo RGPD.
 
 ---
@@ -82,8 +88,8 @@
 
 ---
 
-## 6. Jugadores de Prueba (`demo-*` y `p-test-prueba`)
+## 6. Jugadores de Prueba (`demo-*` y `p-test-prueba`) y Estados del Censo
 
-* Existen **11 fichas de prueba** en `player_census` (`demo-cm-1..5`, `demo-sf-1..5`, `p-test-prueba`) marcadas con `is_demo = true`.
-* Permanecen ocultas en estadísticas y listados públicos salvo que `ALLOW_DEMO_PLAYERS=true`.
+* `player_census` e `intranet_athletes` filtran y ocultan las fichas de prueba (`is_demo = true`, `demo-*`, `p-test-prueba`) salvo que `ALLOW_DEMO_PLAYERS=true`. En las bases de datos limpias de producción solo permanecen los deportistas reales del club.
+* En el panel `/club/censo`, las fichas importadas o precargadas sin solicitud online ni cuenta asociada muestran el estado `"Sin registrar"` (`IMPORTADO`), reservando `"Pendiente validar"` (`PENDIENTE_VALIDAR`) exclusivamente para solicitudes de alta activas en revisión. Los distintivos RGPD muestran `"Firmado"` / `"No firmado"` / `"Revocado"` y diferenciación cromática verde (`"Sí autorizo"`) / roja (`"No autorizo"`).
 * Al hacer pruebas destructivas (ej. supresión Art. 17 en `/admin/consentimientos`), la ficha queda en `SHREDDED` y no admite envíos ni firmas hasta rehabilitarla en Neon.

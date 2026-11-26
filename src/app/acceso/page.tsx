@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  Clock,
   Copy,
   Eye,
   EyeOff,
@@ -109,6 +110,7 @@ function AccesoPageContent() {
     errorParam ? ERROR_MESSAGES[errorParam] || 'Error de autenticación.' : ''
   );
   const [globalSuccess, setGlobalSuccess] = useState('');
+  const [pendingApprovalNotice, setPendingApprovalNotice] = useState('');
 
   // Login normal
   const [activeTab, setActiveTab] = useState<LoginTab>('password');
@@ -413,6 +415,7 @@ function AccesoPageContent() {
     e.preventDefault();
     setGlobalError('');
     setGlobalSuccess('');
+    setPendingApprovalNotice('');
     setLoginBusy(true);
     try {
       const res = await fetch('/api/intranet/auth/login', {
@@ -425,6 +428,13 @@ function AccesoPageContent() {
       });
       const data = await res.json();
       if (!res.ok || !data?.success) {
+        if (res.status === 403 && data?.code === 'PENDING_ADMIN_APPROVAL') {
+          setPendingApprovalNotice(
+            data?.error ||
+              'Tu inscripción y autorizaciones ya están registradas, pero aún están pendientes de aceptación y asignación de equipo por parte de la administración del club.'
+          );
+          return;
+        }
         setGlobalError(data?.error || 'Credenciales incorrectas.');
         return;
       }
@@ -553,6 +563,21 @@ function AccesoPageContent() {
       </div>
 
       {/* Alertas globales */}
+      {pendingApprovalNotice && (
+        <div
+          role="status"
+          className="mb-5 bg-amber-950/45 border border-amber-500/50 text-amber-100 px-4 py-3.5 text-xs sm:text-sm flex items-start gap-3"
+        >
+          <Clock className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="space-y-0.5 leading-relaxed">
+            <p className="font-bold uppercase text-xs tracking-wider text-amber-200">
+              Inscripción registrada · Pendiente de validación administrativa
+            </p>
+            <p>{pendingApprovalNotice}</p>
+          </div>
+        </div>
+      )}
+
       {globalError && (
         <div
           role="alert"
@@ -1211,6 +1236,7 @@ function AccesoPageContent() {
                 setActiveTab('password');
                 setGlobalError('');
                 setGlobalSuccess('');
+                setPendingApprovalNotice('');
               }}
               className={`py-3.5 px-3 text-xs font-label-md uppercase tracking-wider font-bold flex items-center justify-center gap-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'password'
@@ -1227,6 +1253,7 @@ function AccesoPageContent() {
                 setActiveTab('magic');
                 setGlobalError('');
                 setGlobalSuccess('');
+                setPendingApprovalNotice('');
               }}
               className={`py-3.5 px-3 text-xs font-label-md uppercase tracking-wider font-bold flex items-center justify-center gap-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'magic'
