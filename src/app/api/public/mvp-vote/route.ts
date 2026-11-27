@@ -34,7 +34,6 @@ interface MvpCandidate {
   lastName: string;
   displayName: string;
   number: number;
-  position: string;
   photoUrl: string;
 }
 
@@ -157,7 +156,6 @@ async function resolveMvpMatchAndCandidates(requestedMatchId?: string): Promise<
       lastName: p.lastName,
       displayName: `${p.firstName} ${p.lastName}`.trim(),
       number: p.number,
-      position: p.position,
       photoUrl: hasActiveSocial ? p.photoUrl || '/images/player-placeholder.svg' : '/images/player-placeholder.svg',
     });
   }

@@ -49,42 +49,19 @@ const ERROR_MESSAGES: Record<string, string> = {
   usa_tu_invitacion: 'Tu cuenta aún no está activada. Utiliza el enlace de invitación recibido por correo.',
   cuenta_suspendida: 'Tu cuenta está suspendida o inactiva. Contacta con la directiva del club.',
   error_interno: 'No se pudo completar el inicio de sesión. Inténtalo de nuevo.',
-  proveedor_no_soportado: 'El proveedor de acceso seleccionado no está soportado.',
-  oauth_no_configurado_google: 'El acceso con Google no está configurado en el servidor.',
-  oauth_no_configurado_microsoft: 'El proveedor OAuth seleccionado no está disponible.',
-  oauth_estado_invalido: 'La sesión de verificación OAuth caducó. Inténtalo de nuevo.',
-  oauth_csrf: 'Error de validación de seguridad en el acceso OAuth.',
-  oauth_token_fallido: 'No se pudo validar el token con el proveedor externo.',
-  oauth_sin_token: 'El proveedor no devolvió un token válido.',
-  oauth_perfil_fallido: 'No se pudo leer tu perfil de correo en el proveedor externo.',
-  oauth_email_no_verificado: 'Tu correo externo debe estar verificado para iniciar sesión.',
+  proveedor_no_soportado: 'El proveedor de acceso externo no está habilitado.',
+  oauth_no_configurado_google: 'El proveedor de acceso externo no está habilitado.',
+  oauth_no_configurado_microsoft: 'El proveedor de acceso externo no está habilitado.',
+  oauth_estado_invalido: 'La sesión de verificación externa caducó. Inténtalo de nuevo.',
+  oauth_csrf: 'Error de validación de seguridad en el acceso externo.',
+  oauth_token_fallido: 'No se pudo validar el acceso con el proveedor externo.',
+  oauth_sin_token: 'El proveedor no devolvió una credencial válida.',
+  oauth_perfil_fallido: 'No se pudo leer tu perfil externo.',
+  oauth_email_no_verificado: 'Tu correo debe estar verificado para iniciar sesión.',
   cuenta_no_invitada: 'No existe ninguna cuenta activa ni invitación vigente asociada a ese correo. No hay registro abierto.',
   cuenta_inactiva: 'Tu cuenta no se encuentra activa en el club.',
-  oauth_error_interno: 'Ocurrió un error al procesar el acceso OAuth.',
+  oauth_error_interno: 'Ocurrió un error al procesar el acceso.',
 };
-
-function GoogleMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" aria-hidden="true">
-      <path
-        fill="#EA4335"
-        d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.3 14.6 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12s4.3 9.6 9.6 9.6c5.5 0 9.2-3.9 9.2-9.4 0-.6-.1-1.1-.2-1.6H12Z"
-      />
-      <path
-        fill="#34A853"
-        d="M3.5 7.4l3.2 2.3C7.6 7.5 9.6 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.3 14.6 2.4 12 2.4c-3.7 0-6.9 2.1-8.5 5Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M12 21.6c2.5 0 4.6-.8 6.2-2.3l-3-2.4c-.8.6-1.9 1-3.2 1-2.5 0-4.6-1.7-5.3-4l-3.2 2.5c1.6 3.1 4.8 5.2 8.5 5.2Z"
-      />
-      <path
-        fill="#4285F4"
-        d="M21.2 12.2c0-.6-.1-1.1-.2-1.6H12v3.9h5.5c-.3 1.2-1 2.2-2 2.8l3 2.4c1.8-1.6 2.7-4.1 2.7-7.5Z"
-      />
-    </svg>
-  );
-}
 
 const magicConsumeInFlight = new Map<
   string,
@@ -104,7 +81,6 @@ function AccesoPageContent() {
 
   const [loadingMe, setLoadingMe] = useState(true);
   const [presidentExists, setPresidentExists] = useState(true);
-  const [oauthConfig, setOauthConfig] = useState({ google: false });
   const [session, setSession] = useState<IntranetMeSession | null>(null);
   const [globalError, setGlobalError] = useState<string>(
     errorParam ? ERROR_MESSAGES[errorParam] || 'Error de autenticación.' : ''
@@ -168,9 +144,6 @@ function AccesoPageContent() {
     }
     const data = (await res.json()) as IntranetMeResponse;
     setPresidentExists(Boolean(data.presidentExists));
-    setOauthConfig({
-      google: Boolean(data.oauth?.google),
-    });
     setSession(data.session || null);
     return data;
   }, []);
@@ -1156,26 +1129,6 @@ function AccesoPageContent() {
                   <span>{invBusy ? 'Activando cuenta...' : 'Activar Cuenta y Entrar'}</span>
                 </button>
               </form>
-
-              {/* OAuth rápido manteniendo ?invite= */}
-              <div className="pt-4 border-t border-white/10 space-y-2.5">
-                <p className="text-[11px] uppercase tracking-wider font-bold text-tertiary text-center">
-                  O activa con tu cuenta de Google vinculada ({inviteInfo.email})
-                </p>
-                {oauthConfig.google ? (
-                  <a
-                    href={`/api/intranet/auth/oauth/google?invite=${encodeURIComponent(inviteToken)}`}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-bold text-on-surface transition-colors active:translate-x-[1px] active:translate-y-[1px]"
-                  >
-                    <GoogleMark />
-                    <span>Activar con Google</span>
-                  </a>
-                ) : (
-                  <p className="text-[11px] text-tertiary text-center">
-                    El acceso rápido con Google estará disponible cuando se configuren las credenciales OAuth en el servidor.
-                  </p>
-                )}
-              </div>
             </div>
           )}
         </section>
@@ -1359,27 +1312,6 @@ function AccesoPageContent() {
                 </button>
               </form>
             )}
-
-            {/* Acceso OAuth Google */}
-            <div className="pt-5 border-t border-white/10 space-y-3">
-              <p className="text-[11px] uppercase tracking-widest font-bold text-tertiary text-center">
-                Acceso rápido con cuenta vinculada
-              </p>
-
-              {oauthConfig.google ? (
-                <a
-                  href="/api/intranet/auth/oauth/google"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-surface-container-high hover:bg-surface-bright border border-white/15 text-xs font-bold text-on-surface transition-colors active:translate-x-[1px] active:translate-y-[1px]"
-                >
-                  <GoogleMark />
-                  <span>Continuar con Google</span>
-                </a>
-              ) : (
-                <div className="bg-surface-container-low border border-white/10 px-3.5 py-2.5 text-[11px] text-tertiary text-center leading-relaxed">
-                  El acceso con <strong className="text-on-surface">Google</strong> estará disponible al configurar las variables OAuth en el servidor.
-                </div>
-              )}
-            </div>
 
             {/* Aviso sin registro abierto */}
             <div className="bg-surface-container-low border-l-2 border-primary-container px-3.5 py-2.5 text-xs text-tertiary leading-relaxed">

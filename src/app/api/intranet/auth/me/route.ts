@@ -4,7 +4,6 @@ import { can } from '@/lib/intranet/rbac';
 import {
   getIntranetSession,
   hasActivePresident,
-  getOAuthProviderConfig,
 } from '@/lib/intranet/auth';
 import { handleIntranetApiError } from '@/lib/intranet/api-helpers';
 
@@ -16,8 +15,6 @@ export async function GET() {
       getIntranetSession(),
       hasActivePresident(),
     ]);
-
-    const googleCfg = getOAuthProviderConfig('google');
 
     const staffEffectivePermissions = session
       ? Object.values(session.effectivePermissions)
@@ -58,7 +55,7 @@ export async function GET() {
       authenticated: Boolean(session),
       presidentExists,
       oauth: {
-        google: googleCfg.configured,
+        google: false,
         microsoft: false,
       },
       session: session

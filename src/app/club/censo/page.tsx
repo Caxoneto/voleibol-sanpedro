@@ -47,6 +47,10 @@ import {
 import { buildCsvString } from '@/lib/intranet/csv-utils';
 import { formatMadridDateString } from '@/lib/date-utils';
 import IntranetModal from '@/components/intranet/IntranetModal';
+import {
+  SiblingSelectorInput,
+  type SiblingCandidateOption,
+} from '@/components/intranet/SiblingSelectorInput';
 
 type AthleteStatus = 'IMPORTADO' | 'PENDIENTE_VALIDAR' | 'VERIFICADO' | 'BAJA' | 'SHREDDED';
 type RgpdStatus = 'ACTIVE' | 'REVOKED' | 'SHREDDED' | 'PENDING';
@@ -204,6 +208,7 @@ interface RegRequestRecord {
   enrollmentId: string | null;
   adminNotes: string | null;
   createdAt: string;
+  familyGroupId?: string | null;
 }
 
 interface FavbMissingReportItem {
@@ -351,6 +356,7 @@ function ClubCensoPageContent() {
   const [regTeams, setRegTeams] = useState<TeamOption[]>([]);
   const [regPaymentPlans, setRegPaymentPlans] = useState<RegPaymentPlanOption[]>([]);
   const [regDiscountRules, setRegDiscountRules] = useState<RegDiscountOption[]>([]);
+  const [regSiblingCandidates, setRegSiblingCandidates] = useState<SiblingCandidateOption[]>([]);
   const [regStatusFilter, setRegStatusFilter] = useState<'PENDING' | 'ALL'>('PENDING');
   const [regTeamFilter, setRegTeamFilter] = useState<string>('');
   const [regPage, setRegPage] = useState<number>(1);
@@ -374,9 +380,9 @@ function ClubCensoPageContent() {
   const [appTeamIds, setAppTeamIds] = useState<string[]>([]);
   const [appPrimaryTeamId, setAppPrimaryTeamId] = useState<string>('');
   const [appDorsal, setAppDorsal] = useState<string>('');
-  const [appPosition, setAppPosition] = useState<string>('');
   const [appPlanId, setAppPlanId] = useState<string>('');
   const [appDiscountIds, setAppDiscountIds] = useState<string[]>([]);
+  const [appSiblingIds, setAppSiblingIds] = useState<string[]>([]);
   const [appNotes, setAppNotes] = useState<string>('');
   const [approvingBusy, setApprovingBusy] = useState(false);
   const [rejectModalReq, setRejectModalReq] = useState<RegRequestRecord | null>(null);
@@ -501,6 +507,7 @@ function ClubCensoPageContent() {
         setRegTeams(Array.isArray(data.teams) ? data.teams : []);
         setRegPaymentPlans(Array.isArray(data.paymentPlans) ? data.paymentPlans : []);
         setRegDiscountRules(Array.isArray(data.discountRules) ? data.discountRules : []);
+        setRegSiblingCandidates(Array.isArray(data.siblingCandidates) ? data.siblingCandidates : []);
       }
     } catch {
       // No bloquear carga principal del censo
@@ -542,12 +549,56 @@ function ClubCensoPageContent() {
     });
   }, [regRequests, regStatusFilter, regTeamFilter, regTeams, teams]);
 
-  const regTotalPages = Math.max(1, Math.ceil(visibleRegRequests.length / REG_PAGE_SIZE));
+  const regDisplayGroups = useMemo(() => {
+    const groups: Array<{
+      key: string;
+      isFamily: boolean;
+      guardianName: string | null;
+      contactEmail: string;
+      contactPhone: string | null;
+      items: RegRequestRecord[];
+    }> = [];
+    const familyGroupIdxMap = new Map<string, number>();
+
+    for (const r of visibleRegRequests) {
+      const fKey = r.familyGroupId ? `fam:${r.familyGroupId}` : null;
+      if (fKey && familyGroupIdxMap.has(fKey)) {
+        groups[familyGroupIdxMap.get(fKey)!].items.push(r);
+      } else {
+        const idx = groups.length;
+        if (fKey) familyGroupIdxMap.set(fKey, idx);
+        groups.push({
+          key: fKey || `single:${r.id}`,
+          isFamily: Boolean(fKey),
+          guardianName: r.guardianName,
+          contactEmail: r.contactEmail,
+          contactPhone: r.contactPhone,
+          items: [r],
+        });
+      }
+    }
+
+    for (const g of groups) {
+      g.isFamily = g.items.length > 1;
+    }
+    return groups;
+  }, [visibleRegRequests]);
+
+  const regTotalPages = Math.max(1, Math.ceil(regDisplayGroups.length / REG_PAGE_SIZE));
   const currentRegPage = Math.min(regPage, regTotalPages);
-  const paginatedRegRequests = useMemo(() => {
+  const paginatedRegGroups = useMemo(() => {
     const start = (currentRegPage - 1) * REG_PAGE_SIZE;
-    return visibleRegRequests.slice(start, start + REG_PAGE_SIZE);
-  }, [visibleRegRequests, currentRegPage]);
+    return regDisplayGroups.slice(start, start + REG_PAGE_SIZE);
+  }, [regDisplayGroups, currentRegPage]);
+
+  const hasSiblingDiscountSelected = useMemo(
+    () =>
+      appDiscountIds.some((id) => {
+        const r = regDiscountRules.find((d) => d.id === id);
+        return Boolean(r && (r.kind === 'SIBLING' || /hermano/i.test(r.name)));
+      }),
+    [appDiscountIds, regDiscountRules]
+  );
 
   useEffect(() => {
     setRegPage(1);
@@ -650,9 +701,9 @@ function ClubCensoPageContent() {
     setAppTeamIds(initialTeams);
     setAppPrimaryTeamId(initialTeams[0] || '');
     setAppDorsal(reqItem.jerseyNumber ? String(reqItem.jerseyNumber) : '');
-    setAppPosition('');
     setAppPlanId(reqItem.selectedPricePlanId || regPaymentPlans[0]?.planId || '');
     setAppDiscountIds([]);
+    setAppSiblingIds([]);
     setAppNotes('');
   };
 
@@ -673,6 +724,10 @@ function ClubCensoPageContent() {
       setErrorBanner('Debes seleccionar al menos un equipo para activar al deportista.');
       return;
     }
+    if (hasSiblingDiscountSelected && appSiblingIds.length === 0) {
+      setErrorBanner('Debes buscar y seleccionar al hermano/a vinculado al aplicar un descuento de hermano.');
+      return;
+    }
     const chosenPlan = regPaymentPlans.find((p) => p.planId === appPlanId) || null;
     setApprovingBusy(true);
     setErrorBanner(null);
@@ -689,10 +744,10 @@ function ClubCensoPageContent() {
           teamSeasonIds: appTeamIds,
           primaryTeamId: appPrimaryTeamId || appTeamIds[0],
           dorsal: appDorsal ? Number(appDorsal) : undefined,
-          position: appPosition.trim() || undefined,
           productId: chosenPlan?.productId || approveModalReq.selectedProductId || undefined,
           pricePlanId: chosenPlan?.planId || approveModalReq.selectedPricePlanId || undefined,
           discountRuleIds: appDiscountIds.length > 0 ? appDiscountIds : undefined,
+          siblingAthleteIds: hasSiblingDiscountSelected ? appSiblingIds : undefined,
           adminNotes: appNotes.trim() || undefined,
         }),
       });
@@ -2044,167 +2099,234 @@ function ClubCensoPageContent() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {paginatedRegRequests.map((req) => (
-                    <div
-                      key={req.id}
-                      className={`rounded-none border p-4 ${
-                        req.status === 'PENDING'
-                          ? 'border-amber-500/40 bg-amber-950/15'
-                          : req.status === 'APPROVED'
-                            ? 'border-emerald-500/30 bg-emerald-950/10'
-                            : 'border-rose-500/30 bg-rose-950/10'
-                      }`}
-                    >
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="space-y-1.5 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded-none px-2.5 py-0.5 text-[11px] font-bold uppercase ${
+                  {paginatedRegGroups.map((group) => {
+                    const renderRequestRow = (req: RegRequestRecord, nested = false) => (
+                      <div
+                        key={req.id}
+                        className={
+                          nested
+                            ? `border p-3.5 ${
                                 req.status === 'PENDING'
-                                  ? 'bg-amber-400 text-black'
+                                  ? 'border-amber-500/35 bg-amber-950/15'
                                   : req.status === 'APPROVED'
-                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                              }`}
-                            >
-                              {req.status === 'PENDING'
-                                ? 'Pendiente validar'
-                                : req.status === 'APPROVED'
-                                  ? 'Aprobada'
-                                  : 'Rechazada'}
-                            </span>
-                            <span className="rounded-none bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-on-surface">
-                              {req.categoryLabel}
-                            </span>
-                            {req.isMinor ? (
-                              <span className="rounded-none bg-sky-500/20 border border-sky-500/30 px-2 py-0.5 text-[11px] font-semibold text-sky-200">
-                                Menor (&lt;18) · Tutor: {req.guardianName}
+                                    ? 'border-emerald-500/30 bg-emerald-950/10'
+                                    : 'border-rose-500/30 bg-rose-950/10'
+                              }`
+                            : `rounded-none border p-4 ${
+                                req.status === 'PENDING'
+                                  ? 'border-amber-500/40 bg-amber-950/15'
+                                  : req.status === 'APPROVED'
+                                    ? 'border-emerald-500/30 bg-emerald-950/10'
+                                    : 'border-rose-500/30 bg-rose-950/10'
+                              }`
+                        }
+                      >
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="space-y-1.5 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`rounded-none px-2.5 py-0.5 text-[11px] font-bold uppercase ${
+                                  req.status === 'PENDING'
+                                    ? 'bg-amber-400 text-black'
+                                    : req.status === 'APPROVED'
+                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                      : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                }`}
+                              >
+                                {req.status === 'PENDING'
+                                  ? 'Pendiente validar'
+                                  : req.status === 'APPROVED'
+                                    ? 'Aprobada'
+                                    : 'Rechazada'}
                               </span>
-                            ) : (
-                              <span className="rounded-none bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 text-[11px] font-semibold text-purple-200">
-                                Adulto (+18)
+                              <span className="rounded-none bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-on-surface">
+                                {req.categoryLabel}
                               </span>
-                            )}
-                            {!req.athleteId.startsWith('reg-') ? (
-                              <span className="rounded-none bg-emerald-500/15 border border-emerald-500/40 px-2 py-0.5 text-[11px] font-bold text-emerald-300">
-                                Ficha existente unificada
-                              </span>
-                            ) : (
-                              <span className="rounded-none bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
-                                Nueva ficha
-                              </span>
-                            )}
-                          </div>
+                              {!nested &&
+                                (req.isMinor ? (
+                                  <span className="rounded-none bg-sky-500/20 border border-sky-500/30 px-2 py-0.5 text-[11px] font-semibold text-sky-200">
+                                    Menor (&lt;18) · Tutor: {req.guardianName}
+                                  </span>
+                                ) : (
+                                  <span className="rounded-none bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 text-[11px] font-semibold text-purple-200">
+                                    Adulto (+18)
+                                  </span>
+                                ))}
+                              {!req.athleteId.startsWith('reg-') ? (
+                                <span className="rounded-none bg-emerald-500/15 border border-emerald-500/40 px-2 py-0.5 text-[11px] font-bold text-emerald-300">
+                                  Ficha existente unificada
+                                </span>
+                              ) : (
+                                <span className="rounded-none bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 text-[11px] font-semibold text-sky-300">
+                                  Nueva ficha
+                                </span>
+                              )}
+                            </div>
 
-                          <h3 className="text-base font-bold text-white">
-                            {req.athleteFullName}{' '}
-                            {req.birthYear ? (
-                              <span className="text-xs font-normal text-tertiary">
-                                ({req.birthYear})
-                              </span>
-                            ) : null}
-                          </h3>
+                            <h3 className="text-base font-bold text-white">
+                              {req.athleteFullName}{' '}
+                              {req.birthYear ? (
+                                <span className="text-xs font-normal text-tertiary">
+                                  ({req.birthYear})
+                                </span>
+                              ) : null}
+                            </h3>
 
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-on-surface/90">
-                            <span>Email acceso: <strong className="text-white">{req.contactEmail}</strong></span>
-                            {req.contactPhone && <span>Tel: {req.contactPhone}</span>}
-                            {req.selectedPlanName && (
-                              <span className="text-emerald-300">
-                                {req.status === 'APPROVED' ? 'Cuota asignada: ' : 'Cuota elegida: '}
-                                <strong>{req.selectedPlanName}</strong>
-                                {req.selectedPlanAmount !== null ? ` (${req.selectedPlanAmount} €)` : ''}
-                              </span>
-                            )}
-                          </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-on-surface/90">
+                              {!nested && (
+                                <>
+                                  <span>Email acceso: <strong className="text-white">{req.contactEmail}</strong></span>
+                                  {req.contactPhone && <span>Tel: {req.contactPhone}</span>}
+                                </>
+                              )}
+                              {req.selectedPlanName && (
+                                <span className="text-emerald-300">
+                                  {req.status === 'APPROVED' ? 'Cuota asignada: ' : 'Cuota elegida: '}
+                                  <strong>{req.selectedPlanName}</strong>
+                                  {req.selectedPlanAmount !== null ? ` (${req.selectedPlanAmount} €)` : ''}
+                                </span>
+                              )}
+                            </div>
 
-                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                            <span
-                              className={`rounded-none border px-2 py-0.5 text-[11px] font-bold ${
-                                req.consentStatus === 'Revocado'
-                                  ? 'border-rose-500/40 bg-rose-500/20 text-rose-200'
+                            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                              <span
+                                className={`rounded-none border px-2 py-0.5 text-[11px] font-bold ${
+                                  req.consentStatus === 'Revocado'
+                                    ? 'border-rose-500/40 bg-rose-500/20 text-rose-200'
+                                    : req.isConsentSigned || req.consentStatus === 'Firmado'
+                                      ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                                      : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
+                                }`}
+                              >
+                                RGPD:{' '}
+                                {req.consentStatus === 'Revocado'
+                                  ? 'Revocado'
                                   : req.isConsentSigned || req.consentStatus === 'Firmado'
+                                    ? 'Firmado'
+                                    : 'No firmado'}
+                              </span>
+                              <span
+                                className={`rounded-none border px-2 py-0.5 text-[11px] font-semibold ${
+                                  req.consentImage
                                     ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
                                     : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
-                              }`}
-                            >
-                              RGPD:{' '}
-                              {req.consentStatus === 'Revocado'
-                                ? 'Revocado'
-                                : req.isConsentSigned || req.consentStatus === 'Firmado'
-                                  ? 'Firmado'
-                                  : 'No firmado'}
-                            </span>
-                            <span
-                              className={`rounded-none border px-2 py-0.5 text-[11px] font-semibold ${
-                                req.consentImage
-                                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
-                                  : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
-                              }`}
-                            >
-                              Imágenes: {req.consentImage ? 'Sí autorizo' : 'No autorizo'}
-                            </span>
-                            <span
-                              className={`rounded-none border px-2 py-0.5 text-[11px] font-semibold ${
-                                req.consentTravel
-                                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
-                                  : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
-                              }`}
-                            >
-                              Viajes: {req.consentTravel ? 'Sí autorizo' : 'No autorizo'}
-                            </span>
+                                }`}
+                              >
+                                Imágenes: {req.consentImage ? 'Sí autorizo' : 'No autorizo'}
+                              </span>
+                              <span
+                                className={`rounded-none border px-2 py-0.5 text-[11px] font-semibold ${
+                                  req.consentTravel
+                                    ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                                    : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
+                                }`}
+                              >
+                                Viajes: {req.consentTravel ? 'Sí autorizo' : 'No autorizo'}
+                              </span>
+                            </div>
+
+                            {req.status === 'REJECTED' && req.adminNotes && (
+                              <p className="text-[11px] text-rose-300/90">
+                                Motivo rechazo: {req.adminNotes}
+                              </p>
+                            )}
+
+                            {req.athleteTeams.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {req.athleteTeams.map((t) => (
+                                  <span
+                                    key={t.teamSeasonId}
+                                    className="rounded-none border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200"
+                                  >
+                                    {t.teamName}{t.isPrimary ? ' (Principal)' : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
-                          {req.status === 'REJECTED' && req.adminNotes && (
-                            <p className="text-[11px] text-rose-300/90">
-                              Motivo rechazo: {req.adminNotes}
-                            </p>
-                          )}
-
-                          {req.athleteTeams.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              {req.athleteTeams.map((t) => (
-                                <span
-                                  key={t.teamSeasonId}
-                                  className="rounded-none border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200"
-                                >
-                                  {t.teamName}{t.isPrimary ? ' (Principal)' : ''}
-                                </span>
-                              ))}
+                          {req.status === 'PENDING' && regCanApprove && (
+                            <div className="flex flex-wrap gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => openApproveModal(req)}
+                                className="inline-flex items-center gap-1.5 rounded-none bg-emerald-600 hover:bg-emerald-500 active:translate-x-[1px] active:translate-y-[1px] px-4 py-2 text-xs font-bold text-white transition"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Aceptar y Asignar Equipo
+                              </button>
+                              <button
+                                type="button"
+                                disabled={rejectingReqId === req.id}
+                                onClick={() => openRejectModal(req)}
+                                className="inline-flex items-center gap-1.5 rounded-none border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/60 px-3 py-2 text-xs font-bold text-rose-200 transition disabled:opacity-50"
+                              >
+                                <X className="h-4 w-4" />
+                                Rechazar
+                              </button>
                             </div>
                           )}
                         </div>
-
-                        {req.status === 'PENDING' && regCanApprove && (
-                          <div className="flex flex-wrap gap-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => openApproveModal(req)}
-                              className="inline-flex items-center gap-1.5 rounded-none bg-emerald-600 hover:bg-emerald-500 active:translate-x-[1px] active:translate-y-[1px] px-4 py-2 text-xs font-bold text-white transition"
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                              Aceptar y Asignar Equipo
-                            </button>
-                            <button
-                              type="button"
-                              disabled={rejectingReqId === req.id}
-                              onClick={() => openRejectModal(req)}
-                              className="inline-flex items-center gap-1.5 rounded-none border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/60 px-3 py-2 text-xs font-bold text-rose-200 transition disabled:opacity-50"
-                            >
-                              <X className="h-4 w-4" />
-                              Rechazar
-                            </button>
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
 
-                  {visibleRegRequests.length > REG_PAGE_SIZE && (
+                    if (!group.isFamily) {
+                      return renderRequestRow(group.items[0], false);
+                    }
+
+                    const famPending = group.items.filter((i) => i.status === 'PENDING').length;
+                    const famApproved = group.items.filter((i) => i.status === 'APPROVED').length;
+                    const famRejected = group.items.filter((i) => i.status === 'REJECTED').length;
+
+                    return (
+                      <div
+                        key={group.key}
+                        className="rounded-none border-2 border-amber-400/50 bg-surface-container-lowest p-4 space-y-3 shadow-[3px_3px_0px_0px_#0e0e0e]"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-none bg-amber-400 px-2.5 py-0.5 text-[11px] font-bold uppercase text-black">
+                              Solicitud Familiar · {group.items.length} Hijos/as
+                            </span>
+                            <span className="text-xs text-white font-bold">
+                              Tutor/a: {group.guardianName || 'Responsable familiar'}
+                            </span>
+                            <span className="text-xs text-tertiary">
+                              ({group.contactEmail}{group.contactPhone ? ` · ${group.contactPhone}` : ''})
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                            {famPending > 0 && (
+                              <span className="border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-amber-300">
+                                {famPending} pend.
+                              </span>
+                            )}
+                            {famApproved > 0 && (
+                              <span className="border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-emerald-300">
+                                {famApproved} aprob.
+                              </span>
+                            )}
+                            {famRejected > 0 && (
+                              <span className="border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-rose-300">
+                                {famRejected} rech.
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          {group.items.map((childReq) => renderRequestRow(childReq, true))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {regDisplayGroups.length > REG_PAGE_SIZE && (
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-on-surface/90">
                       <span>
                         Mostrando {(currentRegPage - 1) * REG_PAGE_SIZE + 1}–
-                        {Math.min(currentRegPage * REG_PAGE_SIZE, visibleRegRequests.length)} de{' '}
-                        <strong>{visibleRegRequests.length}</strong> solicitudes
+                        {Math.min(currentRegPage * REG_PAGE_SIZE, regDisplayGroups.length)} de{' '}
+                        <strong>{regDisplayGroups.length}</strong> tarjetas ({visibleRegRequests.length} fichas)
                       </span>
                       <div className="flex items-center gap-2">
                         <button
@@ -2785,35 +2907,20 @@ function ClubCensoPageContent() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label htmlFor="censo-app-dorsal" className="mb-1 block text-xs font-semibold text-on-surface/90">
-                  Dorsal asignado (opcional)
-                </label>
-                <input
-                  id="censo-app-dorsal"
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={appDorsal}
-                  onChange={(e) => setAppDorsal(e.target.value)}
-                  placeholder="1-99"
-                  className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white placeholder:text-tertiary/75"
-                />
-              </div>
-              <div>
-                <label htmlFor="censo-app-position" className="mb-1 block text-xs font-semibold text-on-surface/90">
-                  Posición (opcional)
-                </label>
-                <input
-                  id="censo-app-position"
-                  type="text"
-                  value={appPosition}
-                  onChange={(e) => setAppPosition(e.target.value)}
-                  placeholder="Colocadora, Receptora, Central..."
-                  className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white placeholder:text-tertiary/75"
-                />
-              </div>
+            <div>
+              <label htmlFor="censo-app-dorsal" className="mb-1 block text-xs font-semibold text-on-surface/90">
+                Dorsal asignado (opcional)
+              </label>
+              <input
+                id="censo-app-dorsal"
+                type="number"
+                min={1}
+                max={99}
+                value={appDorsal}
+                onChange={(e) => setAppDorsal(e.target.value)}
+                placeholder="1-99"
+                className="w-full rounded-none border border-white/15 bg-surface px-3 py-2 text-xs text-white placeholder:text-tertiary/75"
+              />
             </div>
 
             <div className="rounded-none border border-white/10 bg-surface p-3 space-y-3">
@@ -2864,6 +2971,19 @@ function ClubCensoPageContent() {
                       );
                     })}
                   </div>
+
+                  {hasSiblingDiscountSelected && (
+                    <div className="pt-2">
+                      <SiblingSelectorInput
+                        candidates={regSiblingCandidates}
+                        excludedAthleteId={approveModalReq.athleteId}
+                        selectedIds={appSiblingIds}
+                        onChange={setAppSiblingIds}
+                        matchGuardianEmail={approveModalReq.contactEmail}
+                        inputId="censo-app-sibling-search"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

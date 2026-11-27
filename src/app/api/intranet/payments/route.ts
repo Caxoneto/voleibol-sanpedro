@@ -972,6 +972,11 @@ export async function POST(req: NextRequest) {
             .map((id: unknown) => String(id).trim())
             .filter((id: string) => UUID_REGEX.test(id))
         : [];
+      const siblingAthleteIds = Array.isArray(body?.siblingAthleteIds)
+        ? body.siblingAthleteIds
+            .map((id: unknown) => String(id).trim())
+            .filter(Boolean)
+        : [];
       const manualDiscount =
         body?.manualDiscount && Number(body.manualDiscount.value) > 0
           ? {
@@ -1050,6 +1055,7 @@ export async function POST(req: NextRequest) {
         payerEmail,
         payerDni,
         discountRuleIds,
+        siblingAthleteIds,
         manualDiscount,
         startMonth,
         notes,

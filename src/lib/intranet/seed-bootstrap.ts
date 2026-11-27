@@ -69,11 +69,20 @@ async function ensureIntranetSupplementalTables(): Promise<void> {
   `);
   await queryNeon(`
     ALTER TABLE public.intranet_registration_requests
-    ADD COLUMN IF NOT EXISTS pending_payload_enc text;
+    ADD COLUMN IF NOT EXISTS pending_payload_enc text,
+    ADD COLUMN IF NOT EXISTS family_group_id uuid;
   `);
   await queryNeon(`
     CREATE INDEX IF NOT EXISTS idx_intranet_reg_requests_status
     ON public.intranet_registration_requests USING btree (status, created_at DESC);
+  `);
+  await queryNeon(`
+    CREATE INDEX IF NOT EXISTS idx_intranet_reg_req_family_group
+    ON public.intranet_registration_requests USING btree (family_group_id);
+  `);
+  await queryNeon(`
+    ALTER TABLE public.intranet_applied_discounts
+    ADD COLUMN IF NOT EXISTS sibling_athlete_ids text[] DEFAULT '{}'::text[];
   `);
 
   await queryNeon(`
@@ -195,6 +204,7 @@ export async function ensureIntranetSeeded(force = false): Promise<void> {
         venues_cnt: string;
         links_cnt: string;
         plans_cnt: string;
+        sibling_rules_cnt: string;
       }>(
         `SELECT
            (SELECT COUNT(*) FROM intranet_roles)::text AS roles_cnt,
@@ -202,7 +212,8 @@ export async function ensureIntranetSeeded(force = false): Promise<void> {
            (SELECT COUNT(*) FROM intranet_team_seasons WHERE season_id = $1)::text AS teams_cnt,
            (SELECT COUNT(*) FROM intranet_venues)::text AS venues_cnt,
            (SELECT COUNT(*) FROM intranet_category_registration_links WHERE season_id = $1)::text AS links_cnt,
-           (SELECT COUNT(*) FROM intranet_price_plans pp INNER JOIN intranet_products p ON p.id = pp.product_id WHERE p.season_id = $1)::text AS plans_cnt;`,
+           (SELECT COUNT(*) FROM intranet_price_plans pp INNER JOIN intranet_products p ON p.id = pp.product_id WHERE p.season_id = $1)::text AS plans_cnt,
+           (SELECT COUNT(*) FROM intranet_discount_rules WHERE season_id = $1 AND kind = 'SIBLING' AND is_active = true)::text AS sibling_rules_cnt;`,
         [CURRENT_SEASON_SEED.id]
       );
 
@@ -215,7 +226,8 @@ export async function ensureIntranetSeeded(force = false): Promise<void> {
         Number(row.teams_cnt) >= INITIAL_TEAM_SEASONS.length &&
         Number(row.venues_cnt) >= INITIAL_VENUES_AND_COURTS.length &&
         Number(row.links_cnt) >= INITIAL_CATEGORY_REGISTRATION_LINKS.length &&
-        Number(row.plans_cnt) >= 3;
+        Number(row.plans_cnt) >= 3 &&
+        Number(row.sibling_rules_cnt) >= 2;
 
       if (alreadySeeded) {
         seededAtMs = Date.now();
@@ -429,6 +441,30 @@ export async function ensureIntranetSeeded(force = false): Promise<void> {
               dp.months,
               dp.proration,
             ]
+          );
+        }
+
+        // 9. Reglas de descuento familiares idempotentes (2º Hermano y 3º Hermano)
+        const existingDiscRows = await queryNeon<{ name: string; kind: string }>(
+          `SELECT name, kind FROM intranet_discount_rules WHERE season_id = $1;`,
+          [CURRENT_SEASON_SEED.id]
+        );
+        const hasSecondSibling = existingDiscRows.some((r) => /2[ºo]/i.test(r.name) && /hermano/i.test(r.name));
+        const hasThirdSibling = existingDiscRows.some((r) => /3[ºoer]{1,2}/i.test(r.name) && /hermano/i.test(r.name));
+        if (!hasSecondSibling) {
+          await queryNeon(
+            `INSERT INTO intranet_discount_rules (
+               season_id, name, kind, value_type, value, applicable_product_ids, stackable, requires_reason, is_active
+             ) VALUES ($1, '2º Hermano (-10€)', 'SIBLING', 'FIXED', 10, ARRAY[$2::uuid], false, false, true);`,
+            [CURRENT_SEASON_SEED.id, feeProductId]
+          );
+        }
+        if (!hasThirdSibling) {
+          await queryNeon(
+            `INSERT INTO intranet_discount_rules (
+               season_id, name, kind, value_type, value, applicable_product_ids, stackable, requires_reason, is_active
+             ) VALUES ($1, '3º Hermano (-20€)', 'SIBLING', 'FIXED', 20, ARRAY[$2::uuid], false, false, true);`,
+            [CURRENT_SEASON_SEED.id, feeProductId]
           );
         }
       }

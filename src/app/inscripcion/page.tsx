@@ -23,10 +23,13 @@ import {
   Loader2,
   Lock,
   Mail,
+  Plus,
   ShieldAlert,
   ShieldCheck,
+  Trash2,
   User,
   UserCheck,
+  Users,
 } from 'lucide-react';
 import { CLUB_INFO } from '@/lib/club-info';
 import { evaluateMemberPassword } from '@/lib/intranet/catalog';
@@ -46,6 +49,32 @@ interface RegistrationLinkInfo {
   categoryLabel: string;
   defaultTeamSeasonId: string | null;
   seasonId: string;
+}
+
+interface AvailableCategoryOption {
+  id: string;
+  token: string;
+  categoryCode: string;
+  categoryLabel: string;
+  defaultTeamSeasonId: string | null;
+}
+
+interface ChildFormDraft {
+  id: string;
+  linkToken: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  gender: 'FEMENINO' | 'MASCULINO';
+  playerDni: string;
+  shirtSize: string;
+  jerseyNumber: string;
+  medicalAllergies: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  selectedPlanId: string;
+  consentImage: boolean | null;
+  consentTravel: boolean | null;
 }
 
 interface PaymentPlanOption {
@@ -189,11 +218,12 @@ function InscripcionContent() {
   const [loadingLink, setLoadingLink] = useState(true);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkInfo, setLinkInfo] = useState<RegistrationLinkInfo | null>(null);
+  const [availableCategories, setAvailableCategories] = useState<AvailableCategoryOption[]>([]);
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlanOption[]>([]);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Paso 1 · Bloque 1: Deportista
+  // Paso 1 · Bloque 1: Deportista 1 (o titular)
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -204,6 +234,9 @@ function InscripcionContent() {
   const [medicalAllergies, setMedicalAllergies] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
+
+  // Hijos/as adicionales (misma solicitud familiar bajo un único tutor)
+  const [additionalChildren, setAdditionalChildren] = useState<ChildFormDraft[]>([]);
 
   // Paso 1 · Bloque 2: Tutor Legal (si <18)
   const [guardianRelationship, setGuardianRelationship] = useState<'MADRE' | 'PADRE' | 'TUTOR_LEGAL'>('MADRE');
@@ -246,6 +279,9 @@ function InscripcionContent() {
   // Paso 3 · Confirmación y Resguardo PDF
   const [confirmedRequestId, setConfirmedRequestId] = useState('');
   const [confirmedReceipt, setConfirmedReceipt] = useState<RegistrationReceipt | null>(null);
+  const [confirmedReceipts, setConfirmedReceipts] = useState<RegistrationReceipt[]>([]);
+  const [confirmedRequestIds, setConfirmedRequestIds] = useState<string[]>([]);
+  const [confirmedFamilyGroupId, setConfirmedFamilyGroupId] = useState<string | null>(null);
   const [receiptEmailSent, setReceiptEmailSent] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
@@ -280,7 +316,20 @@ function InscripcionContent() {
           );
           return;
         }
-        setLinkInfo(json.link as RegistrationLinkInfo);
+        const primaryLink = json.link as RegistrationLinkInfo;
+        setLinkInfo(primaryLink);
+        const cats = Array.isArray(json.availableCategories) && json.availableCategories.length > 0
+          ? (json.availableCategories as AvailableCategoryOption[])
+          : [
+              {
+                id: primaryLink.id,
+                token: primaryLink.token,
+                categoryCode: primaryLink.categoryCode,
+                categoryLabel: primaryLink.categoryLabel,
+                defaultTeamSeasonId: primaryLink.defaultTeamSeasonId,
+              },
+            ];
+        setAvailableCategories(cats);
         const plans = Array.isArray(json.paymentPlans)
           ? (json.paymentPlans as PaymentPlanOption[])
           : [];
@@ -337,8 +386,74 @@ function InscripcionContent() {
     parsedBirth && ageEvaluation.age !== null && ageEvaluation.age >= 14
   );
 
-  function buildStep1Payload() {
-    return {
+  const anyMinor14To17 = useMemo(() => {
+    if (isMinor14To17) return true;
+    return additionalChildren.some((c) => {
+      const p = parseBirthDateParts(c.birthDate);
+      if (!p) return false;
+      return computeAgeInMadrid(c.birthDate, p.year).isMinor14To17;
+    });
+  }, [isMinor14To17, additionalChildren]);
+
+  function addAdditionalChild() {
+    const newDraft: ChildFormDraft = {
+      id: `child-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      linkToken: linkInfo?.token || catToken,
+      firstName: '',
+      lastName: lastName.trim(),
+      birthDate: '',
+      gender: 'FEMENINO',
+      playerDni: '',
+      shirtSize: '',
+      jerseyNumber: '',
+      medicalAllergies: '',
+      emergencyContactName: emergencyContactName.trim(),
+      emergencyContactPhone: emergencyContactPhone.trim(),
+      selectedPlanId: selectedPlan?.planId || paymentPlans[0]?.planId || '',
+      consentImage: null,
+      consentTravel: null,
+    };
+    setAdditionalChildren((prev) => [...prev, newDraft]);
+  }
+
+  function updateAdditionalChild(id: string, patch: Partial<ChildFormDraft>) {
+    setAdditionalChildren((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  }
+
+  function removeAdditionalChild(id: string) {
+    setAdditionalChildren((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  function buildStep1Payload(includeConsents = false) {
+    const commonBase = {
+      linkToken: linkInfo?.token || catToken,
+      guardianRelationship: isMinor ? guardianRelationship : undefined,
+      guardianName: isMinor ? guardianName.trim() : undefined,
+      guardianDni: isMinor ? guardianDni.trim().toUpperCase() : undefined,
+      guardianPhone: isMinor ? guardianPhone.trim() : undefined,
+      email: email.trim().toLowerCase(),
+      password,
+    };
+
+    if (additionalChildren.length === 0) {
+      return {
+        ...commonBase,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        birthDate: birthDate.trim(),
+        gender,
+        playerDni: playerDni.trim().toUpperCase(),
+        shirtSize: shirtSize || undefined,
+        jerseyNumber: jerseyNumber.trim() ? Number(jerseyNumber.trim()) : undefined,
+        medicalAllergies: medicalAllergies.trim() || undefined,
+        emergencyContactName: emergencyContactName.trim(),
+        emergencyContactPhone: emergencyContactPhone.trim(),
+        selectedProductId: selectedPlan?.productId || '',
+        selectedPricePlanId: selectedPlan?.planId || '',
+      };
+    }
+
+    const child1 = {
       linkToken: linkInfo?.token || catToken,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -350,14 +465,41 @@ function InscripcionContent() {
       medicalAllergies: medicalAllergies.trim() || undefined,
       emergencyContactName: emergencyContactName.trim(),
       emergencyContactPhone: emergencyContactPhone.trim(),
-      guardianRelationship: isMinor ? guardianRelationship : undefined,
-      guardianName: isMinor ? guardianName.trim() : undefined,
-      guardianDni: isMinor ? guardianDni.trim().toUpperCase() : undefined,
-      guardianPhone: isMinor ? guardianPhone.trim() : undefined,
       selectedProductId: selectedPlan?.productId || '',
       selectedPricePlanId: selectedPlan?.planId || '',
-      email: email.trim().toLowerCase(),
-      password,
+      ...(includeConsents ? { consentImage, consentTravel } : {}),
+    };
+
+    const extraMapped = additionalChildren.map((c) => {
+      const cPlan = paymentPlans.find((p) => p.planId === c.selectedPlanId) || selectedPlan;
+      return {
+        linkToken: c.linkToken || linkInfo?.token || catToken,
+        firstName: c.firstName.trim(),
+        lastName: c.lastName.trim(),
+        birthDate: c.birthDate.trim(),
+        gender: c.gender,
+        playerDni: c.playerDni.trim().toUpperCase(),
+        shirtSize: c.shirtSize || undefined,
+        jerseyNumber: c.jerseyNumber.trim() ? Number(c.jerseyNumber.trim()) : undefined,
+        medicalAllergies: c.medicalAllergies.trim() || undefined,
+        emergencyContactName: (c.emergencyContactName || emergencyContactName).trim(),
+        emergencyContactPhone: (c.emergencyContactPhone || emergencyContactPhone).trim(),
+        selectedProductId: cPlan?.productId || '',
+        selectedPricePlanId: cPlan?.planId || '',
+        ...(includeConsents ? { consentImage: c.consentImage, consentTravel: c.consentTravel } : {}),
+      };
+    });
+
+    return {
+      ...commonBase,
+      firstName: child1.firstName,
+      lastName: child1.lastName,
+      birthDate: child1.birthDate,
+      gender: child1.gender,
+      playerDni: child1.playerDni,
+      selectedProductId: child1.selectedProductId,
+      selectedPricePlanId: child1.selectedPricePlanId,
+      children: [child1, ...extraMapped],
     };
   }
 
@@ -438,6 +580,73 @@ function InscripcionContent() {
       return;
     }
 
+    if (additionalChildren.length > 0) {
+      if (!isMinor) {
+        setStep1Error('Las solicitudes familiares multi-hijo solo están disponibles para deportistas menores de edad bajo un mismo tutor legal.');
+        return;
+      }
+      const seenChildDnis = new Set<string>(cleanPlayerDni ? [cleanPlayerDni] : []);
+      const cleanGuardianDniUpper = guardianDni.trim().toUpperCase().replace(/[\s-]/g, '');
+
+      for (let idx = 0; idx < additionalChildren.length; idx += 1) {
+        const c = additionalChildren[idx];
+        const label = `Hijo/a #${idx + 2}`;
+        if (c.firstName.trim().length < 2 || c.lastName.trim().length < 2) {
+          setStep1Error(`Introduce el nombre y apellidos completos para ${label}.`);
+          return;
+        }
+        const cBirth = parseBirthDateParts(c.birthDate);
+        const cAgeEval = cBirth
+          ? computeAgeInMadrid(c.birthDate, cBirth.year)
+          : { age: null, isMinor: false, isMinor14To17: false, isBoundaryUnverified: true };
+        if (!cBirth || cAgeEval.age === null || cAgeEval.age < 4 || cAgeEval.age > 95) {
+          setStep1Error(`Introduce una fecha de nacimiento válida para ${label}.`);
+          return;
+        }
+        if (!cAgeEval.isMinor) {
+          setStep1Error(`${label} (${c.firstName.trim()}) es mayor de edad (+18) y debe tramitar su inscripción de forma individual.`);
+          return;
+        }
+        const cDni = c.playerDni.trim().toUpperCase().replace(/[\s-]/g, '');
+        if (cAgeEval.age >= 14 && !isValidSpanishDniOrNie(cDni)) {
+          setStep1Error(`${label} tiene 14 años o más y requiere un DNI/NIE/Pasaporte propio válido.`);
+          return;
+        }
+        if (cDni && !isValidSpanishDniOrNie(cDni)) {
+          setStep1Error(`El documento introducido para ${label} no es válido.`);
+          return;
+        }
+        if (cDni && cDni === cleanGuardianDniUpper) {
+          setStep1Error(`El DNI de ${label} no puede coincidir con el del padre/madre o tutor legal.`);
+          return;
+        }
+        if (cDni) {
+          if (seenChildDnis.has(cDni)) {
+            setStep1Error(`El documento ${cDni} está duplicado entre hermanos en esta solicitud.`);
+            return;
+          }
+          seenChildDnis.add(cDni);
+        }
+        if (c.jerseyNumber.trim()) {
+          const n = Number(c.jerseyNumber.trim());
+          if (!Number.isInteger(n) || n < 1 || n > 99) {
+            setStep1Error(`El dorsal de ${label} debe estar entre 1 y 99.`);
+            return;
+          }
+        }
+        const cEmName = (c.emergencyContactName || emergencyContactName).trim();
+        const cEmPhone = (c.emergencyContactPhone || emergencyContactPhone).replace(/\D/g, '');
+        if (cEmName.length < 2 || cEmPhone.length < 7) {
+          setStep1Error(`Indica un contacto y teléfono de emergencia válidos para ${label}.`);
+          return;
+        }
+        if (!paymentPlans.some((p) => p.planId === c.selectedPlanId)) {
+          setStep1Error(`Selecciona una modalidad de pago para ${label}.`);
+          return;
+        }
+      }
+    }
+
     if (!isStrictEmail(email.trim())) {
       setStep1Error('Introduce un correo electrónico válido.');
       return;
@@ -487,6 +696,7 @@ function InscripcionContent() {
     setOtpRemainingSec(0);
     setConsentImage(null);
     setConsentTravel(null);
+    setAdditionalChildren((prev) => prev.map((c) => ({ ...c, consentImage: null, consentTravel: null })));
     setPatriaPotestadAccepted(false);
     setMinorConsentAccepted(false);
     setPolicySummaryAccepted(false);
@@ -549,9 +759,19 @@ function InscripcionContent() {
 
     if (consentImage === null || consentTravel === null) {
       setStep2Error(
-        'Debes seleccionar explícitamente "Autorizo" o "No autorizo" tanto en Imágenes Deportivas como en Desplazamientos Oficiales.'
+        `Debes seleccionar explícitamente "Autorizo" o "No autorizo" en Imágenes Deportivas y Desplazamientos Oficiales para ${fullPlayerName || 'el/la deportista principal'}.`
       );
       return;
+    }
+
+    for (let i = 0; i < additionalChildren.length; i += 1) {
+      const ch = additionalChildren[i];
+      if (ch.consentImage === null || ch.consentTravel === null) {
+        setStep2Error(
+          `Debes marcar "Autorizo" o "No autorizo" en Imágenes y Desplazamientos para ${ch.firstName.trim() || `Hijo/a #${i + 2}`}.`
+        );
+        return;
+      }
     }
 
     if (isMinor && !patriaPotestadAccepted) {
@@ -561,7 +781,7 @@ function InscripcionContent() {
       return;
     }
 
-    if (isMinor14To17 && !minorConsentAccepted) {
+    if (anyMinor14To17 && !minorConsentAccepted) {
       setStep2Error(
         'Para deportistas de 14 a 17 años debes confirmar que el/la menor ha sido informado/a y presta su asentimiento.'
       );
@@ -606,14 +826,14 @@ function InscripcionContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'complete_registration',
-          ...buildStep1Payload(),
+          ...buildStep1Payload(true),
           playerId: draftPlayerId,
           challengeId: otpChallengeId,
           otpCode: otpCode.trim(),
           consentImage,
           consentTravel,
           patriaPotestadAccepted: isMinor ? patriaPotestadAccepted : undefined,
-          minorConsentAccepted: isMinor14To17 ? minorConsentAccepted : undefined,
+          minorConsentAccepted: anyMinor14To17 ? minorConsentAccepted : undefined,
           policySummaryAccepted,
           conductCodeAccepted,
           signatureData,
@@ -627,8 +847,18 @@ function InscripcionContent() {
         return;
       }
 
+      const primaryReceipt = data.receipt as RegistrationReceipt;
+      const allReceipts =
+        Array.isArray(data.receipts) && data.receipts.length > 0
+          ? (data.receipts as RegistrationReceipt[])
+          : [primaryReceipt];
       setConfirmedRequestId(String(data.requestId || ''));
-      setConfirmedReceipt(data.receipt as RegistrationReceipt);
+      setConfirmedRequestIds(
+        Array.isArray(data.requestIds) ? (data.requestIds as string[]) : [String(data.requestId || '')]
+      );
+      setConfirmedFamilyGroupId(typeof data.familyGroupId === 'string' ? data.familyGroupId : null);
+      setConfirmedReceipt(primaryReceipt);
+      setConfirmedReceipts(allReceipts);
       setReceiptEmailSent(Boolean(data.receiptEmailSent));
       setStep(3);
       if (typeof window !== 'undefined') {
@@ -641,36 +871,37 @@ function InscripcionContent() {
     }
   }
 
-  async function handleDownloadReceiptPdf() {
-    if (!confirmedReceipt) return;
+  async function handleDownloadReceiptPdf(targetReceipt?: RegistrationReceipt) {
+    const rec = targetReceipt || confirmedReceipt;
+    if (!rec) return;
     setDownloadingPdf(true);
     try {
       const { generateConsentPdf } = await import('@/lib/pdf-consent');
       const doc = generateConsentPdf({
-        consentId: confirmedReceipt.consentId,
-        playerName: confirmedReceipt.playerName,
-        teamName: confirmedReceipt.teamName,
-        birthYear: confirmedReceipt.birthYear,
-        birthDate: confirmedReceipt.birthDate,
-        isMinor: confirmedReceipt.isMinor,
-        isMinor14To17: confirmedReceipt.isMinor14To17,
-        signerName: confirmedReceipt.signerName,
-        signerDni: confirmedReceipt.signerDni,
-        signerRelationship: confirmedReceipt.signerRelationship,
-        signerPhone: confirmedReceipt.signerPhone,
-        signerEmail: confirmedReceipt.signerEmail,
-        consentImage: confirmedReceipt.consentSocialMedia,
-        consentSocialMedia: confirmedReceipt.consentSocialMedia,
-        consentStreaming: confirmedReceipt.consentStreaming,
-        consentPress: confirmedReceipt.consentPress,
-        consentTravel: confirmedReceipt.consentTravel,
-        signatureMethod: confirmedReceipt.signatureMethod,
-        signatureData: confirmedReceipt.signatureData,
-        documentHash: confirmedReceipt.documentHash,
-        signedAt: confirmedReceipt.signedAt,
+        consentId: rec.consentId,
+        playerName: rec.playerName,
+        teamName: rec.teamName,
+        birthYear: rec.birthYear,
+        birthDate: rec.birthDate,
+        isMinor: rec.isMinor,
+        isMinor14To17: rec.isMinor14To17,
+        signerName: rec.signerName,
+        signerDni: rec.signerDni,
+        signerRelationship: rec.signerRelationship,
+        signerPhone: rec.signerPhone,
+        signerEmail: rec.signerEmail,
+        consentImage: rec.consentSocialMedia,
+        consentSocialMedia: rec.consentSocialMedia,
+        consentStreaming: rec.consentStreaming,
+        consentPress: rec.consentPress,
+        consentTravel: rec.consentTravel,
+        signatureMethod: rec.signatureMethod,
+        signatureData: rec.signatureData,
+        documentHash: rec.documentHash,
+        signedAt: rec.signedAt,
       });
       const safeName =
-        confirmedReceipt.playerName
+        rec.playerName
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, '_')
           .replace(/^_+|_+$/g, '') || 'deportista';
@@ -1129,7 +1360,9 @@ function InscripcionContent() {
               <CreditCard className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
               <div>
                 <h2 className="font-headline text-lg font-bold uppercase text-white">
-                  {isMinor ? '3. Modalidad de Pago' : '2. Modalidad de Pago'}
+                  {isMinor
+                    ? `3. Modalidad de Pago${additionalChildren.length > 0 ? ` · ${fullPlayerName || 'Hijo/a 1'}` : ''}`
+                    : '2. Modalidad de Pago'}
                 </h2>
                 <p className="text-xs text-tertiary">
                   Elige cómo deseas fraccionar o abonar la cuota de la temporada. La emisión de
@@ -1199,6 +1432,235 @@ function InscripcionContent() {
               </div>
             )}
           </section>
+
+          {/* BLOQUE FAMILIAR OPCIONAL: AÑADIR MÁS HIJOS/AS (SOLO MENORES) */}
+          {isMinor && (
+            <section className="bg-surface-container border border-white/15 p-5 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <Users className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
+                  <div>
+                    <h2 className="font-headline text-lg font-bold uppercase text-white">
+                      Inscripción Familiar · Añadir más hijos/as (hermanos/as)
+                    </h2>
+                    <p className="text-xs text-tertiary">
+                      Si inscribes a más de un hijo/a menor bajo el mismo tutor, añádelos aquí para crear una única solicitud familiar y gestionarlos con un solo usuario.
+                    </p>
+                  </div>
+                </div>
+                {additionalChildren.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={addAdditionalChild}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_#0e0e0e] cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    <span>Añadir otro/a hijo/a</span>
+                  </button>
+                )}
+              </div>
+
+              {additionalChildren.length === 0 ? (
+                <p className="text-xs text-tertiary">
+                  Actualmente estás tramitando la inscripción de 1 menor. Pulsa <strong>“Añadir otro/a hijo/a”</strong> si deseas incluir hermanos/as en esta misma solicitud.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {additionalChildren.map((child, idx) => {
+                    const childNum = idx + 2;
+                    const cBirth = parseBirthDateParts(child.birthDate);
+                    const cAgeEval = cBirth
+                      ? computeAgeInMadrid(child.birthDate, cBirth.year)
+                      : { age: null, isMinor: false, isMinor14To17: false, isBoundaryUnverified: true };
+                    const cRequiresDni = Boolean(cBirth && cAgeEval.age !== null && cAgeEval.age >= 14);
+                    return (
+                      <div
+                        key={child.id}
+                        className="bg-surface-container-low border border-white/15 p-4 space-y-4"
+                      >
+                        <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 bg-primary-container/25 border border-primary-container/50 text-primary text-[11px] font-bold uppercase">
+                              Hijo/a #{childNum}
+                            </span>
+                            {cAgeEval.age !== null && (
+                              <span className="text-xs text-tertiary">({cAgeEval.age} años)</span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeAdditionalChild(child.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-950/50 hover:bg-rose-900/70 border border-rose-500/40 text-rose-200 text-[11px] font-bold uppercase cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                            <span>Quitar</span>
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="sm:col-span-2">
+                            <label htmlFor={`child-cat-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
+                              Categoría de inscripción <span className="text-primary">*</span>
+                            </label>
+                            <select
+                              id={`child-cat-${child.id}`}
+                              value={child.linkToken}
+                              onChange={(e) => updateAdditionalChild(child.id, { linkToken: e.target.value })}
+                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                            >
+                              {availableCategories.map((cat) => (
+                                <option key={cat.token} value={cat.token}>
+                                  {cat.categoryLabel}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label htmlFor={`child-fn-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
+                              Nombre <span className="text-primary">*</span>
+                            </label>
+                            <input
+                              id={`child-fn-${child.id}`}
+                              type="text"
+                              required
+                              value={child.firstName}
+                              onChange={(e) => updateAdditionalChild(child.id, { firstName: e.target.value })}
+                              placeholder="Nombre del menor"
+                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label htmlFor={`child-ln-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
+                              Apellidos <span className="text-primary">*</span>
+                            </label>
+                            <input
+                              id={`child-ln-${child.id}`}
+                              type="text"
+                              required
+                              value={child.lastName}
+                              onChange={(e) => updateAdditionalChild(child.id, { lastName: e.target.value })}
+                              placeholder="Apellidos completos"
+                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label htmlFor={`child-birth-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
+                              Fecha de nacimiento <span className="text-primary">*</span>
+                            </label>
+                            <input
+                              id={`child-birth-${child.id}`}
+                              type="date"
+                              required
+                              max={todayMadrid}
+                              value={child.birthDate}
+                              onChange={(e) => updateAdditionalChild(child.id, { birthDate: e.target.value })}
+                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label htmlFor={`child-gender-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
+                              Sexo <span className="text-primary">*</span>
+                            </label>
+                            <select
+                              id={`child-gender-${child.id}`}
+                              value={child.gender}
+                              onChange={(e) =>
+                                updateAdditionalChild(child.id, {
+                                  gender: e.target.value as 'FEMENINO' | 'MASCULINO',
+                                })
+                              }
+                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                            >
+                              <option value="FEMENINO">Femenino</option>
+                              <option value="MASCULINO">Masculino</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label htmlFor={`child-dni-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
+                              DNI / NIE / Pasaporte{' '}
+                              {cRequiresDni ? (
+                                <span className="text-primary">* (Oblig. &ge; 14 años)</span>
+                              ) : (
+                                <span className="text-tertiary font-normal">(Opcional si &lt; 14)</span>
+                              )}
+                            </label>
+                            <input
+                              id={`child-dni-${child.id}`}
+                              type="text"
+                              value={child.playerDni}
+                              onChange={(e) =>
+                                updateAdditionalChild(child.id, { playerDni: e.target.value.toUpperCase() })
+                              }
+                              placeholder="Ej. 12345678Z"
+                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm font-mono uppercase text-white focus:border-primary-container focus:outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label htmlFor={`child-shirt-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
+                              Talla de equipación
+                            </label>
+                            <select
+                              id={`child-shirt-${child.id}`}
+                              value={child.shirtSize}
+                              onChange={(e) => updateAdditionalChild(child.id, { shirtSize: e.target.value })}
+                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                            >
+                              <option value="">Sin especificar</option>
+                              {SHIRT_SIZES.map((s) => (
+                                <option key={s} value={s}>
+                                  Talla {s}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label htmlFor={`child-plan-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
+                              Modalidad de Pago para Hijo/a #{childNum} <span className="text-primary">*</span>
+                            </label>
+                            <select
+                              id={`child-plan-${child.id}`}
+                              value={child.selectedPlanId}
+                              onChange={(e) => updateAdditionalChild(child.id, { selectedPlanId: e.target.value })}
+                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                            >
+                              {paymentPlans.map((pl) => (
+                                <option key={pl.planId} value={pl.planId}>
+                                  {pl.planName} ({pl.totalAmount.toFixed(2)} €)
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label htmlFor={`child-dorsal-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
+                              Dorsal preferido (opcional)
+                            </label>
+                            <input
+                              id={`child-dorsal-${child.id}`}
+                              type="number"
+                              min={1}
+                              max={99}
+                              value={child.jerseyNumber}
+                              onChange={(e) => updateAdditionalChild(child.id, { jerseyNumber: e.target.value })}
+                              placeholder="1-99"
+                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* BLOQUE 4: CREDENCIALES DE ACCESO AL CLUB */}
           <section className="bg-surface-container border border-white/15 p-5 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
@@ -1404,7 +1866,9 @@ function InscripcionContent() {
                   Revisar datos personales introducidos en el Paso 1
                 </span>
                 <span className="text-tertiary truncate">
-                  {fullPlayerName} · {linkInfo.categoryLabel}
+                  {additionalChildren.length > 0
+                    ? `Solicitud familiar (${1 + additionalChildren.length} hijos/as)`
+                    : `${fullPlayerName} · ${linkInfo.categoryLabel}`}
                 </span>
               </div>
               <ChevronDown className="w-4 h-4 text-tertiary shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -1413,24 +1877,29 @@ function InscripcionContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/10 p-4">
               <div className="space-y-1">
                 <p className="text-[10px] font-bold uppercase text-tertiary">
-                  Deportista Inscrito/a
+                  {additionalChildren.length > 0 ? 'Deportistas incluidos en la solicitud' : 'Deportista Inscrito/a'}
                 </p>
                 <p className="text-sm font-bold text-white">{fullPlayerName}</p>
                 <p className="text-tertiary">
-                  Nacimiento: <strong className="text-on-surface">{formatDisplayDate(birthDate)}</strong> (
-                  {ageEvaluation.age} años ·{' '}
-                  {isMinor
-                    ? isMinor14To17
-                      ? 'Menor 14–17 años'
-                      : 'Menor <14 años'
-                    : 'Mayor de edad +18'}
-                  )
+                  {linkInfo.categoryLabel} · {formatDisplayDate(birthDate)} ({ageEvaluation.age} años)
                 </p>
-                {playerDni && (
-                  <p className="text-tertiary">
-                    Documento: <span className="font-mono text-on-surface">{playerDni}</span>
-                  </p>
-                )}
+                {additionalChildren.map((ch, idx) => {
+                  const catLabel =
+                    availableCategories.find((c) => c.token === ch.linkToken)?.categoryLabel ||
+                    linkInfo.categoryLabel;
+                  const chPlan = paymentPlans.find((p) => p.planId === ch.selectedPlanId);
+                  return (
+                    <div key={ch.id} className="pt-1.5 mt-1.5 border-t border-white/10">
+                      <p className="text-sm font-bold text-white">
+                        #{idx + 2}: {ch.firstName.trim()} {ch.lastName.trim()}
+                      </p>
+                      <p className="text-tertiary">
+                        {catLabel} · {formatDisplayDate(ch.birthDate)}
+                        {chPlan ? ` · ${chPlan.planName}` : ''}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="space-y-1">
@@ -1464,6 +1933,12 @@ function InscripcionContent() {
               Decisiones Expresas e Independientes (sin preselección) <span className="text-primary">*</span>
             </h3>
 
+            {additionalChildren.length > 0 && (
+              <div className="px-3 py-2 bg-primary-container/15 border border-primary-container/40 text-xs font-bold uppercase text-white">
+                Autorizaciones RGPD para Hijo/a #1: {fullPlayerName} ({linkInfo.categoryLabel})
+              </div>
+            )}
+
             <DecisionRadioGroup
               idPrefix="reg-consent-image"
               title="1. Tratamiento y Difusión de Imágenes Deportivas"
@@ -1485,6 +1960,41 @@ function InscripcionContent() {
               value={consentTravel}
               onChange={setConsentTravel}
             />
+
+            {additionalChildren.map((child, idx) => {
+              const catLabel =
+                availableCategories.find((c) => c.token === child.linkToken)?.categoryLabel ||
+                linkInfo.categoryLabel;
+              return (
+                <div key={child.id} className="space-y-3 pt-4 border-t border-white/10">
+                  <div className="px-3 py-2 bg-primary-container/15 border border-primary-container/40 text-xs font-bold uppercase text-white">
+                    Autorizaciones RGPD para Hijo/a #{idx + 2}: {child.firstName.trim()} {child.lastName.trim()} ({catLabel})
+                  </div>
+
+                  <DecisionRadioGroup
+                    idPrefix={`reg-consent-image-${child.id}`}
+                    title="1. Tratamiento y Difusión de Imágenes Deportivas"
+                    description="Fotos y vídeos deportivos sin fines comerciales en web oficial, redes sociales del club y prensa."
+                    icon={<Camera className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />}
+                    allowLabel="Autorizo el tratamiento y difusión de imágenes deportivas"
+                    denyLabel="No autorizo el tratamiento ni difusión de imágenes"
+                    value={child.consentImage}
+                    onChange={(val) => updateAdditionalChild(child.id, { consentImage: val })}
+                  />
+
+                  <DecisionRadioGroup
+                    idPrefix={`reg-consent-travel-${child.id}`}
+                    title="2. Desplazamientos y Viajes Deportivos Oficiales"
+                    description="Traslado en autobuses o vehículos oficiales del club a partidos FAVB/AFADE, CADEBA y torneos."
+                    icon={<Bus className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />}
+                    allowLabel="Autorizo los desplazamientos y viajes deportivos oficiales"
+                    denyLabel="No autorizo los desplazamientos deportivos"
+                    value={child.consentTravel}
+                    onChange={(val) => updateAdditionalChild(child.id, { consentTravel: val })}
+                  />
+                </div>
+              );
+            })}
           </div>
 
           {/* 1ª Capa RGPD Art. 13 plegable */}
@@ -1527,7 +2037,7 @@ function InscripcionContent() {
               </label>
             )}
 
-            {isMinor14To17 && (
+            {anyMinor14To17 && (
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -1731,16 +2241,32 @@ function InscripcionContent() {
             </div>
             <div>
               <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-300">
-                Solicitud y Autorización Registradas
+                {confirmedReceipts.length > 1
+                  ? `Solicitud Familiar (${confirmedReceipts.length} hijos/as) Registrada`
+                  : 'Solicitud y Autorización Registradas'}
               </span>
               <h2 className="font-headline text-2xl font-bold uppercase text-white mt-0.5">
-                ¡Inscripción Enviada Correctamente!
+                {confirmedReceipts.length > 1
+                  ? '¡Solicitud Familiar Enviada Correctamente!'
+                  : '¡Inscripción Enviada Correctamente!'}
               </h2>
               <p className="text-xs sm:text-sm text-tertiary mt-1 leading-relaxed">
-                Tu usuario de acceso (<strong className="text-white">{confirmedReceipt.signerEmail}</strong>) ha sido creado y la solicitud de{' '}
-                <strong className="text-white">{confirmedReceipt.playerName}</strong> queda{' '}
+                Tu usuario único de acceso (<strong className="text-white">{confirmedReceipt.signerEmail}</strong>) ha sido registrado y{' '}
+                {confirmedReceipts.length > 1 ? (
+                  <>
+                    las solicitudes de{' '}
+                    <strong className="text-white">
+                      {confirmedReceipts.map((r) => r.playerName).join(', ')}
+                    </strong>{' '}
+                    quedan
+                  </>
+                ) : (
+                  <>
+                    la solicitud de <strong className="text-white">{confirmedReceipt.playerName}</strong> queda
+                  </>
+                )}{' '}
                 <strong className="text-amber-300">
-                  pendiente de validación y asignación de equipo por la administración del club
+                  pendientes de validación y asignación de equipo por la administración del club
                 </strong>
                 .
               </p>
@@ -1751,61 +2277,84 @@ function InscripcionContent() {
             <Clock className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" aria-hidden="true" />
             <div className="space-y-1">
               <p className="font-bold uppercase text-amber-200">
-                Activación de acceso pendiente de revisión
+                Seguimiento en directo desde /mi-club
               </p>
               <p className="leading-relaxed">
-                Por seguridad, la entrada a tu zona privada <strong>/mi-club</strong> permanecerá
-                en espera hasta que Secretaría o Coordinación valide la ficha y asigne equipo.
-                Recibirás un correo electrónico de confirmación en cuanto esté activo.
+                Ya puedes entrar en <strong>/acceso</strong> con tu correo y contraseña para ver el estado
+                de revisión de cada hijo/a en tiempo real. Recibirás además un correo electrónico por cada resolución del club.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-surface-container-low border border-white/10 p-4">
-            <div>
-              <span className="text-tertiary block text-[10px] uppercase font-bold">
-                Categoría solicitada
+          {confirmedFamilyGroupId && (
+            <div className="text-xs bg-surface-container-low border border-white/10 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-tertiary uppercase font-bold text-[10px]">
+                Referencia de Solicitud Familiar Agrupada
               </span>
-              <strong className="text-white">{confirmedReceipt.teamName}</strong>
+              <code className="text-primary font-bold">{confirmedFamilyGroupId}</code>
             </div>
-            <div>
-              <span className="text-tertiary block text-[10px] uppercase font-bold">
-                Referencia de solicitud
-              </span>
-              <code className="text-primary font-bold">{confirmedRequestId || confirmedReceipt.consentId}</code>
-            </div>
-            <div>
-              <span className="text-tertiary block text-[10px] uppercase font-bold">
-                1. Imágenes Deportivas
-              </span>
-              <strong
-                className={
-                  confirmedReceipt.consentSocialMedia ? 'text-emerald-300' : 'text-rose-300'
-                }
+          )}
+
+          <div className="space-y-3">
+            {confirmedReceipts.map((rec, idx) => (
+              <div
+                key={rec.consentId || `${rec.playerId}-${idx}`}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs bg-surface-container-low border border-white/10 p-4 items-center"
               >
-                {confirmedReceipt.consentSocialMedia ? 'Autorizado' : 'No autorizado'}
-              </strong>
-            </div>
-            <div>
-              <span className="text-tertiary block text-[10px] uppercase font-bold">
-                2. Desplazamientos Oficiales
-              </span>
-              <strong
-                className={confirmedReceipt.consentTravel ? 'text-emerald-300' : 'text-rose-300'}
-              >
-                {confirmedReceipt.consentTravel ? 'Autorizado' : 'No autorizado'}
-              </strong>
-            </div>
+                <div>
+                  <span className="text-tertiary block text-[10px] uppercase font-bold">
+                    Deportista #{idx + 1}
+                  </span>
+                  <strong className="text-white">{rec.playerName}</strong>
+                </div>
+                <div>
+                  <span className="text-tertiary block text-[10px] uppercase font-bold">
+                    Categoría / Solicitud
+                  </span>
+                  <strong className="text-white">{rec.teamName}</strong>
+                  <span className="block text-[10px] font-mono text-tertiary truncate">
+                    {confirmedRequestIds[idx] || confirmedRequestId || rec.consentId}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-tertiary block text-[10px] uppercase font-bold">
+                    1. Imágenes
+                  </span>
+                  <strong className={rec.consentSocialMedia ? 'text-emerald-300' : 'text-rose-300'}>
+                    {rec.consentSocialMedia ? 'Autorizado' : 'No autorizado'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-tertiary block text-[10px] uppercase font-bold">
+                    2. Desplazamientos
+                  </span>
+                  <strong className={rec.consentTravel ? 'text-emerald-300' : 'text-rose-300'}>
+                    {rec.consentTravel ? 'Autorizado' : 'No autorizado'}
+                  </strong>
+                </div>
+                <div className="flex justify-start lg:justify-end">
+                  <button
+                    type="button"
+                    disabled={downloadingPdf}
+                    onClick={() => handleDownloadReceiptPdf(rec)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Descargar PDF</span>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
 
           {receiptEmailSent ? (
             <div className="bg-emerald-950/40 border border-emerald-500/35 p-3.5 text-xs text-emerald-200">
-              ✓ Hemos enviado una copia oficial con el resguardo en PDF a{' '}
+              ✓ Hemos enviado el acuse oficial con {confirmedReceipts.length > 1 ? `los ${confirmedReceipts.length} resguardos en PDF` : 'el resguardo en PDF'} a{' '}
               <strong>{confirmedReceipt.signerEmail}</strong>.
             </div>
           ) : (
             <div className="bg-surface-container-low border border-white/15 p-3.5 text-xs text-tertiary">
-              Descarga y conserva el resguardo oficial en PDF desde el botón inferior como
+              Descarga y conserva el resguardo oficial en PDF desde los botones superiores o inferiores como
               justificante de tu firma electrónica y solicitud.
             </div>
           )}
@@ -1814,7 +2363,7 @@ function InscripcionContent() {
             <button
               type="button"
               disabled={downloadingPdf}
-              onClick={handleDownloadReceiptPdf}
+              onClick={() => handleDownloadReceiptPdf(confirmedReceipt)}
               className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0px_0px_#0e0e0e] cursor-pointer disabled:opacity-50"
             >
               {downloadingPdf ? (

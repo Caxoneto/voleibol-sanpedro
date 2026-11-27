@@ -3,7 +3,7 @@
 import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { Award, CheckCircle2, CircleDot, RefreshCw, Users } from 'lucide-react';
+import { Award, CheckCircle2, RefreshCw, Users } from 'lucide-react';
 import {
   CLUB_CATEGORIES_META,
   CLUB_TEAMS_META,
@@ -11,7 +11,7 @@ import {
   formatPlayerNameWithInitials,
   getTeamColorTheme,
 } from '@/lib/club-info';
-import { Position, POSITION_SHORT_LABELS, STAFF_ROLE_LABELS, Player, Staff } from '@/lib/types';
+import { STAFF_ROLE_LABELS, Player, Staff } from '@/lib/types';
 import SponsorBanner from '@/components/SponsorBanner';
 import CategoryTeamSelectorBar from '@/components/CategoryTeamSelectorBar';
 
@@ -32,7 +32,6 @@ function formatSyncHourMadrid(iso?: string): string {
 function PlantillasContent() {
   const searchParams = useSearchParams();
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('senior-femenino');
-  const [selectedPosition, setSelectedPosition] = useState<Position | 'ALL'>('ALL');
   const [players, setPlayers] = useState<Player[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
@@ -187,25 +186,12 @@ function PlantillasContent() {
   }, [activeCategory]);
 
   const filteredPlayers = useMemo(() => {
-    return players.filter((player) => {
-      const matchTeam = player.teamId === activeTeam.id;
-      const matchPos = selectedPosition === 'ALL' || player.position === selectedPosition;
-      return matchTeam && matchPos;
-    });
-  }, [players, activeTeam, selectedPosition]);
+    return players.filter((player) => player.teamId === activeTeam.id);
+  }, [players, activeTeam]);
 
   const staffMembers = useMemo(() => {
     return staffList.filter((s) => s.teamId === activeTeam.id);
   }, [staffList, activeTeam]);
-
-  const positionFilters: { label: string; value: Position | 'ALL' }[] = [
-    { label: 'Todos', value: 'ALL' },
-    { label: 'Colocadores', value: 'SETTER' },
-    { label: 'Opuestos', value: 'OPPOSITE' },
-    { label: 'Receptores / Puntas', value: 'OUTSIDE_HITTER' },
-    { label: 'Centrales', value: 'MIDDLE_BLOCKER' },
-    { label: 'Líberos', value: 'LIBERO' },
-  ];
 
   const isAfade = activeCategory.association === 'AFADE' || activeCategory.name.includes('AFADE');
 
@@ -256,7 +242,6 @@ function PlantillasContent() {
         ariaLabel="Categorías y equipos de plantillas"
         onSelect={(slug) => {
           setSelectedCategorySlug(slug);
-          setSelectedPosition('ALL');
         }}
         rightSlot={
           !isAfade ? (
@@ -285,7 +270,7 @@ function PlantillasContent() {
         </div>
       )}
 
-      {/* Categoría Info & Filtros de Posición */}
+      {/* Categoría Info */}
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 relative z-10">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-white/5">
           <div>
@@ -304,30 +289,6 @@ function PlantillasContent() {
             {activeCategory.description && (
               <p className="text-xs text-tertiary mt-0.5">{activeCategory.description}</p>
             )}
-          </div>
-
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 sm:flex-wrap">
-            <span className="text-xs text-tertiary uppercase mr-2 hidden sm:inline">
-              Posición:
-            </span>
-            {positionFilters.map((pf) => {
-              const isPosActive = selectedPosition === pf.value;
-              return (
-                <button
-                  key={pf.value}
-                  type="button"
-                  onClick={() => setSelectedPosition(pf.value)}
-                  aria-pressed={isPosActive}
-                  className={`px-3 py-2 sm:py-1.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                    isPosActive
-                      ? 'bg-white text-black font-bold'
-                      : 'bg-surface-container-high text-tertiary hover:text-white'
-                  }`}
-                >
-                  {pf.label}
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -364,39 +325,20 @@ function PlantillasContent() {
               </button>
             </div>
           ) : filteredPlayers.length === 0 ? (
-            selectedPosition === 'ALL' ? (
-              <div className="bg-surface-container-low border border-white/5 p-8 sm:p-14 text-center flex flex-col items-center justify-center max-w-2xl mx-auto shadow-2xl">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-container/20 flex items-center justify-center mb-4 text-primary">
-                  <Users className="w-8 h-8" aria-hidden="true" />
-                </div>
-                <span className="px-2.5 py-1 bg-surface-container-highest text-tertiary font-bold text-[10px] uppercase tracking-widest border border-white/10 mb-3">
-                  {isAfade ? 'Competición Liga AFADE 26/27' : 'Competición Oficial FAVB 26/27'}
-                </span>
-                <h3 className="font-display-xl text-xl sm:text-2xl uppercase text-white font-bold mb-2">
-                  Plantilla en fase de configuración
-                </h3>
-                <p className="text-xs sm:text-sm text-tertiary max-w-md leading-relaxed">
-                  Las licencias oficiales y la relación de jugadoras de esta categoría se publicarán en cuanto la organización valide las actas de juego.
-                </p>
+            <div className="bg-surface-container-low border border-white/5 p-8 sm:p-14 text-center flex flex-col items-center justify-center max-w-2xl mx-auto shadow-2xl">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-container/20 flex items-center justify-center mb-4 text-primary">
+                <Users className="w-8 h-8" aria-hidden="true" />
               </div>
-            ) : (
-              <div className="bg-surface-container-low border border-white/5 p-12 text-center flex flex-col items-center justify-center">
-                <CircleDot className="w-9 h-9 text-tertiary mb-2" aria-hidden="true" />
-                <h3 className="font-headline-sm text-lg uppercase text-white font-bold">
-                  No hay jugadores registrados en esta posición
-                </h3>
-                <p className="text-xs text-tertiary mt-1">
-                  Selecciona otra demarcación o restablece el filtro para ver la plantilla completa.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPosition('ALL')}
-                  className="mt-4 px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs uppercase font-bold cursor-pointer"
-                >
-                  Ver todos los jugadores
-                </button>
-              </div>
-            )
+              <span className="px-2.5 py-1 bg-surface-container-highest text-tertiary font-bold text-[10px] uppercase tracking-widest border border-white/10 mb-3">
+                {isAfade ? 'Competición Liga AFADE 26/27' : 'Competición Oficial FAVB 26/27'}
+              </span>
+              <h3 className="font-display-xl text-xl sm:text-2xl uppercase text-white font-bold mb-2">
+                Plantilla en fase de configuración
+              </h3>
+              <p className="text-xs sm:text-sm text-tertiary max-w-md leading-relaxed">
+                Las licencias oficiales y la relación de jugadoras de esta categoría se publicarán en cuanto la organización valide las actas de juego.
+              </p>
+            </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {filteredPlayers.map((player) => {
@@ -448,12 +390,6 @@ function PlantillasContent() {
                             Federado FAVB
                           </span>
                         )}
-                      </div>
-
-                      <div className="pointer-events-none absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-3 sm:right-3">
-                        <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-surface-container-highest/90 backdrop-blur-sm text-primary font-label-sm text-[10px] sm:text-[11px] uppercase tracking-widest font-bold inline-block truncate max-w-full">
-                          {POSITION_SHORT_LABELS[player.position]}
-                        </span>
                       </div>
                     </div>
 

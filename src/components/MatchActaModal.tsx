@@ -8,7 +8,6 @@ import {
   MapPin,
   Scale,
   Users,
-  Shield,
   ExternalLink,
   Award,
   Sparkles,
@@ -467,12 +466,6 @@ export default function MatchActaModal({
                             <span>C · CAPITÁN/A</span>
                           </span>
                         )}
-                        {p.isLibero && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">
-                            <Shield className="w-3 h-3 text-emerald-400 shrink-0" />
-                            <span>L · LÍBERO</span>
-                          </span>
-                        )}
                         {p.originCategory && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-violet-500/20 border border-violet-400/50 text-violet-300 text-[10px] font-bold uppercase tracking-wider max-w-[165px] sm:max-w-none truncate">
                             <Sparkles className="w-2.5 h-2.5 text-violet-400 shrink-0" />
@@ -841,9 +834,6 @@ export default function MatchActaModal({
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider flex-wrap">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/15 border border-amber-400/40 text-amber-300">
                   C · Capitán/a
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/15 border border-emerald-400/40 text-emerald-300">
-                  L · Líbero
                 </span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-500/15 border border-violet-400/40 text-violet-300">
                   Promoción Cantera

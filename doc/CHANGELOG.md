@@ -4,6 +4,23 @@ Este registro documenta el estado consolidado del proyecto y los cambios recient
 
 ---
 
+## 2026-11-26 (Rev. Familiar Multi-Hijo, Hermanos, OAuth y Posiciones) — Alta Agrupada, Descuentos Vinculados y Confirmación de Pago
+
+* **Retirada de Posiciones de Juego y Google OAuth**:
+  * Eliminadas todas las referencias de demarcación deportiva en UI y endpoints de plantillas/votación (`src/app/plantillas/page.tsx`, `src/app/fan-zone/page.tsx`, `src/components/MatchActaModal.tsx`, `src/app/mi-club/page.tsx`, `src/app/club/censo/page.tsx`, `src/app/api/public/mvp-vote/route.ts`, `src/app/api/intranet/registration/route.ts`), manteniendo la columna *Posición* en `/clasificacion`.
+  * Desactivado por completo el inicio de sesión con Google OAuth en `/acceso`, `/api/intranet/auth/me` y `/api/intranet/auth/oauth/[provider]*`.
+* **Buscador Autocompletable de Hermano (`>= 3` caracteres) y Reglas `2º/3º Hermano`**:
+  * Añadida columna `sibling_athlete_ids` en `intranet_applied_discounts` y sembradas las reglas `2º Hermano (-10€)` y `3º Hermano (-20€)` en `src/lib/intranet/seed-bootstrap.ts`.
+  * Creado `src/components/intranet/SiblingSelectorInput.tsx` e integrado en `/club/censo` y `/club/pagos`: filtra a partir de 3 caracteres priorizando misma familia por email tutor y obliga a elegir al hermano al aplicar descuento `SIBLING`.
+* **Inscripción Familiar Multi-Hijo y Portal `/mi-club` Único**:
+  * Añadida columna `family_group_id` en `intranet_registration_requests`. Desde `/inscripcion`, un tutor legal puede añadir múltiples hijos/as en una única solicitud familiar (`children[]`, una sola cuenta `TUTOR`, consentimientos RGPD por hijo y firma/OTP únicos) con tarjeta agrupada en `/club/censo` (`SOLICITUD FAMILIAR · N HIJOS/AS`) y resolución individual por hijo.
+  * Habilitado acceso directo a `/mi-club` para familias con solicitudes en revisión o rechazadas (`src/lib/intranet/auth.ts`, `src/app/api/intranet/member/route.ts`, `src/app/mi-club/page.tsx`), mostrando estado en vivo por hijo, motivo de rechazo + botón de subsanación, selector único multi-hijo y detalle de descuentos aplicados en `Mis Pagos`.
+* **Correo Automático de Pago Confirmado (`src/lib/intranet/payments.ts`)**:
+  * `recordManualPayment` genera y adjunta automáticamente el recibo PDF oficial (`REC-...`) enviando email de confirmación al tutor/pagador.
+* **Validación E2E en Desarrollo**: Recorrido íntegro en `http://localhost:3000` (familia de 3 hijos bajo usuario único, OTP, acuse familiar, aprobación individual con `2º Hermano (-10€)` y búsqueda >= 3 letras, rechazo subsanable de un hermano, cobro confirmado + recibo PDF y limpieza completa en `dev-intranet`).
+
+---
+
 ## 2026-11-26 (Rev. UI/API Censo y Solicitudes) — Refinamiento Operativo de `/club/censo` y Limpieza de Producción
 
 * **Inscripciones y Aprobación (`src/app/club/censo/page.tsx`, `src/app/api/intranet/registration/route.ts`)**:

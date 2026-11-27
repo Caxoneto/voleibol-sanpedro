@@ -108,6 +108,11 @@ interface MemberAthlete {
       payerEmail: string | null;
       paymentReferenceCode: string;
       status: string;
+      appliedDiscounts?: Array<{
+        label: string;
+        computedAmount: number;
+        reason: string | null;
+      }>;
     }>;
     charges: Array<{
       id: string;
@@ -163,6 +168,28 @@ interface MemberAthlete {
   };
 }
 
+interface MemberRegistrationRequest {
+  id: string;
+  athleteId: string;
+  athleteFullName: string;
+  categoryLabel: string;
+  productName: string | null;
+  planName: string | null;
+  planAmount: number | null;
+  isMinor: boolean;
+  guardianName: string | null;
+  consentImage: boolean;
+  consentTravel: boolean;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  assignedTeamNames: string[];
+  enrollmentId: string | null;
+  adminNotes: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+  familyGroupId: string | null;
+  resubmitPath: string | null;
+}
+
 interface MemberApiResponse {
   success: boolean;
   user: {
@@ -173,6 +200,7 @@ interface MemberApiResponse {
   };
   selectedAthleteId: string | null;
   athletes: MemberAthlete[];
+  registrationRequests?: MemberRegistrationRequest[];
   pendingRegistrationCount?: number;
   bankIban: string | null;
 }
@@ -644,23 +672,121 @@ export default function MiClubPage() {
         </div>
       )}
 
-      {Boolean(memberData?.pendingRegistrationCount && memberData.pendingRegistrationCount > 0) && (
-        <div className="bg-amber-950/35 border border-amber-500/40 text-amber-100 px-4 py-3 text-xs sm:text-sm flex items-start gap-2.5">
-          <Clock className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" aria-hidden="true" />
-          <span>
-            Tienes <strong>{memberData?.pendingRegistrationCount}</strong> solicitud(es) de inscripción adicional(es) pendiente(s) de aceptación y asignación de equipo por parte del club.
-          </span>
-        </div>
+      {((memberData?.registrationRequests &&
+        (memberData.athletes.length === 0 ||
+          memberData.registrationRequests.some((r) => r.status !== 'APPROVED'))) ||
+        false) && (
+        <section
+          aria-label="Solicitudes de inscripción familiar"
+          className="bg-surface-container border border-white/10 p-4 sm:p-5 space-y-3 shadow-[4px_4px_0px_0px_#0e0e0e]"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+            <div className="flex items-center gap-2">
+              <FileCheck2 className="w-4 h-4 text-primary" aria-hidden="true" />
+              <h2 className="font-headline text-sm sm:text-base font-bold uppercase text-white">
+                Estado de Solicitudes e Inscripciones
+              </h2>
+            </div>
+            <span className="text-[11px] text-tertiary">
+              {memberData.registrationRequests!.filter((r) => r.status === 'PENDING').length} pendiente(s) ·{' '}
+              {memberData.registrationRequests!.filter((r) => r.status === 'APPROVED').length} aceptada(s) ·{' '}
+              {memberData.registrationRequests!.filter((r) => r.status === 'REJECTED').length} rechazada(s)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {memberData.registrationRequests!.map((req) => {
+              const isPending = req.status === 'PENDING';
+              const isApproved = req.status === 'APPROVED';
+              const borderCls = isApproved
+                ? 'border-emerald-500/40 bg-emerald-950/20'
+                : isPending
+                ? 'border-amber-500/40 bg-amber-950/20'
+                : 'border-rose-500/45 bg-rose-950/25';
+              const badgeCls = isApproved
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35'
+                : isPending
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/35'
+                : 'bg-rose-500/15 text-rose-300 border-rose-500/35';
+              const badgeLabel = isApproved
+                ? 'Aceptada'
+                : isPending
+                ? 'Pendiente validar por el club'
+                : 'Rechazada · Subsanable';
+
+              return (
+                <div key={req.id} className={`border p-3.5 space-y-2 ${borderCls}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-headline font-bold text-sm uppercase text-white truncate">
+                        {req.athleteFullName}
+                      </p>
+                      <p className="text-[11px] text-tertiary">
+                        {req.categoryLabel}
+                        {req.planName
+                          ? ` · ${req.planName}${req.planAmount !== null ? ` (${req.planAmount.toFixed(2)} €)` : ''}`
+                          : ''}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase border shrink-0 ${badgeCls}`}>
+                      {badgeLabel}
+                    </span>
+                  </div>
+
+                  {isApproved && req.assignedTeamNames.length > 0 && (
+                    <p className="text-xs text-emerald-200">
+                      Equipo asignado: <strong>{req.assignedTeamNames.join(', ')}</strong>
+                    </p>
+                  )}
+
+                  {isPending && (
+                    <p className="text-xs text-amber-100/90 leading-relaxed">
+                      Documentación y RGPD recibidos. Secretaría o Coordinación revisará la solicitud y asignará equipo en breve.
+                    </p>
+                  )}
+
+                  {req.status === 'REJECTED' && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-rose-100 leading-relaxed">
+                        <strong>Motivo comunicado por el club:</strong>{' '}
+                        {req.adminNotes || 'Revisión requerida por parte de secretaría.'}
+                      </p>
+                      {req.resubmitPath && (
+                        <Link
+                          href={req.resubmitPath}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-container hover:bg-cta-hover text-white text-[11px] font-bold uppercase"
+                        >
+                          <span>Subsanar inscripción</span>
+                          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {!selectedAthlete ? (
         <div className="bg-surface-container border border-white/10 p-6 text-center space-y-2">
-          <p className="font-headline text-lg uppercase text-white">Sin deportistas vinculados</p>
+          <p className="font-headline text-lg uppercase text-white">
+            {memberData?.registrationRequests && memberData.registrationRequests.length > 0
+              ? 'Tus solicitudes están registradas arriba'
+              : 'Sin deportistas vinculados'}
+          </p>
           <p className="text-sm text-tertiary">
-            Todavía no hay ninguna ficha de deportista asociada a tu cuenta. Si acabas de recibir una invitación o crees que falta un vínculo familiar, contacta con{' '}
-            <a href={`mailto:${CLUB_INFO.contactEmail}`} className="text-primary underline">
-              {CLUB_INFO.contactEmail}
-            </a>.
+            {memberData?.registrationRequests && memberData.registrationRequests.some((r) => r.status === 'PENDING')
+              ? 'En cuanto Secretaría valide la inscripción y asigne equipo, aparecerán aquí automáticamente todas las fichas, horarios, asistencias y cuotas de tus hijos/as.'
+              : (
+                <>
+                  Todavía no hay ninguna ficha de deportista asociada a tu cuenta. Si acabas de recibir una invitación o crees que falta un vínculo familiar, contacta con{' '}
+                  <a href={`mailto:${CLUB_INFO.contactEmail}`} className="text-primary underline">
+                    {CLUB_INFO.contactEmail}
+                  </a>.
+                </>
+              )}
           </p>
         </div>
       ) : (
@@ -770,11 +896,9 @@ export default function MiClubPage() {
                           <div className="min-w-0">
                             <p className="font-bold text-white">{t.teamName}</p>
                             <p className="text-[11px] text-tertiary">{t.division}</p>
-                            {(t.dorsal !== null || t.position) && (
+                            {t.dorsal !== null && (
                               <p className="text-[11px] text-on-surface mt-0.5">
-                                {t.dorsal !== null ? `Dorsal #${t.dorsal}` : ''}
-                                {t.dorsal !== null && t.position ? ' · ' : ''}
-                                {t.position ? `Posición: ${t.position}` : ''}
+                                {`Dorsal #${t.dorsal}`}
                               </p>
                             )}
                           </div>
@@ -1572,6 +1696,18 @@ export default function MiClubPage() {
                             Ref. transferencia:{' '}
                             <code className="text-primary font-bold">{enr.paymentReferenceCode}</code>
                           </p>
+                          {enr.appliedDiscounts && enr.appliedDiscounts.length > 0 && (
+                            <div className="mt-1.5 space-y-0.5">
+                              {enr.appliedDiscounts.map((disc, dIdx) => (
+                                <p key={dIdx} className="text-[11px] text-emerald-300 font-semibold">
+                                  Descuento aplicado: {disc.label} (-{disc.computedAmount.toFixed(2)} €)
+                                  {disc.reason ? (
+                                    <span className="text-emerald-200/80 font-normal"> · {disc.reason}</span>
+                                  ) : null}
+                                </p>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 shrink-0">
                           {enr.status}

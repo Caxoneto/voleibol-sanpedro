@@ -68,6 +68,117 @@ function safeDecryptBirthDate(enc: string | null, athleteId: string): string | n
   return fallback.ok && fallback.value ? fallback.value : null;
 }
 
+async function loadMemberRegistrationRequests(
+  userId: string,
+  accessibleIds: string[]
+) {
+  const [reqRows, teamRows] = await Promise.all([
+    queryNeon<{
+      id: string;
+      athlete_id: string;
+      category_code: string;
+      category_label: string;
+      link_token: string | null;
+      link_is_active: boolean | null;
+      product_name: string | null;
+      plan_name: string | null;
+      plan_amount: string | null;
+      is_minor: boolean;
+      guardian_name: string | null;
+      consent_image: boolean;
+      consent_travel: boolean;
+      status: 'PENDING' | 'APPROVED' | 'REJECTED';
+      assigned_team_ids: string[];
+      enrollment_id: string | null;
+      admin_notes: string | null;
+      created_at: string;
+      reviewed_at: string | null;
+      family_group_id: string | null;
+      first_name: string | null;
+      last_name: string | null;
+      pending_payload_enc: string | null;
+    }>(
+      `SELECT
+         r.id::text AS id,
+         r.athlete_id,
+         r.category_code,
+         r.category_label,
+         l.token AS link_token,
+         l.is_active AS link_is_active,
+         p.name AS product_name,
+         pp.name AS plan_name,
+         pp.total_amount::text AS plan_amount,
+         r.is_minor,
+         r.guardian_name,
+         r.consent_image,
+         r.consent_travel,
+         r.status,
+         COALESCE(r.assigned_team_ids, '{}'::text[]) AS assigned_team_ids,
+         r.enrollment_id::text AS enrollment_id,
+         r.admin_notes,
+         r.created_at::text AS created_at,
+         r.reviewed_at::text AS reviewed_at,
+         r.family_group_id::text AS family_group_id,
+         a.first_name,
+         a.last_name,
+         r.pending_payload_enc
+       FROM intranet_registration_requests r
+       LEFT JOIN intranet_athletes a ON a.id = r.athlete_id
+       LEFT JOIN intranet_category_registration_links l ON l.id = r.link_id
+       LEFT JOIN intranet_products p ON p.id = r.selected_product_id
+       LEFT JOIN intranet_price_plans pp ON pp.id = r.selected_price_plan_id
+       WHERE r.user_id = $1::uuid
+          OR ($2::int > 0 AND r.athlete_id = ANY($3::text[]))
+       ORDER BY
+         CASE r.status WHEN 'REJECTED' THEN 0 WHEN 'PENDING' THEN 1 ELSE 2 END,
+         r.created_at DESC;`,
+      [userId, accessibleIds.length, accessibleIds]
+    ),
+    queryNeon<{ id: string; name: string }>(`SELECT id, name FROM intranet_team_seasons;`),
+  ]);
+
+  const teamMap = new Map(teamRows.map((t) => [t.id, t.name]));
+
+  return reqRows.map((r) => {
+    let athleteFullName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
+    if (r.status === 'PENDING' && r.pending_payload_enc) {
+      const dec = decryptDataStrict(r.pending_payload_enc, `reg_pending:${r.athlete_id}`);
+      if (dec.ok && dec.value) {
+        try {
+          const parsed = JSON.parse(dec.value) as { fullName?: string };
+          if (parsed.fullName) athleteFullName = parsed.fullName;
+        } catch {
+          // conservar fallback
+        }
+      }
+    }
+    return {
+      id: r.id,
+      athleteId: r.athlete_id,
+      athleteFullName: athleteFullName || r.athlete_id,
+      categoryLabel: r.category_label,
+      productName: r.product_name,
+      planName: r.plan_name,
+      planAmount: r.plan_amount ? Number(r.plan_amount) : null,
+      isMinor: r.is_minor,
+      guardianName: r.guardian_name,
+      consentImage: r.consent_image,
+      consentTravel: r.consent_travel,
+      status: r.status,
+      assignedTeamNames: (r.assigned_team_ids || []).map((tid) => teamMap.get(tid) || getClubTeamNameById(tid)),
+      enrollmentId: r.enrollment_id,
+      adminNotes: r.admin_notes,
+      createdAt: r.created_at,
+      reviewedAt: r.reviewed_at,
+      familyGroupId: r.family_group_id,
+      resubmitPath:
+        r.status === 'REJECTED' && r.link_token && r.link_is_active !== false
+          ? `/inscripcion?cat=${encodeURIComponent(r.link_token)}`
+          : null,
+    };
+  });
+}
+
 export async function GET(req: NextRequest) {
   try {
     await ensureIntranetSeeded();
@@ -87,28 +198,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const registrationRequests = await loadMemberRegistrationRequests(session.user.id, accessibleIds);
+
     if (accessibleIds.length === 0) {
-      if (!session.isStaff) {
-        const pendingReqs = await queryNeon<{ cnt: string }>(
-          `SELECT COUNT(*)::text AS cnt
-           FROM intranet_registration_requests
-           WHERE user_id = $1::uuid AND status = 'PENDING';`,
-          [session.user.id]
-        );
-        const pendingCount = Number(pendingReqs[0]?.cnt || 0);
-        if (pendingCount > 0) {
-          return NextResponse.json(
-            {
-              success: false,
-              code: 'PENDING_ADMIN_APPROVAL',
-              pendingRegistrationCount: pendingCount,
-              error:
-                'Tu inscripción y autorizaciones ya están registradas, pero aún están pendientes de aceptación y asignación de equipo por parte de la administración del club.',
-            },
-            { status: 403 }
-          );
-        }
-      }
+      const pendingCount = registrationRequests.filter((r) => r.status === 'PENDING').length;
       return NextResponse.json({
         success: true,
         user: {
@@ -119,7 +212,8 @@ export async function GET(req: NextRequest) {
         },
         selectedAthleteId: null,
         athletes: [],
-        pendingRegistrationCount: 0,
+        registrationRequests,
+        pendingRegistrationCount: pendingCount,
         bankIban: process.env.CLUB_BANK_IBAN?.trim() || null,
       });
     }
@@ -189,24 +283,6 @@ export async function GET(req: NextRequest) {
           return true;
         });
 
-    if (!session.isStaff && athleteRows.length === 0) {
-      if (
-        pendingRegistrationCount > 0 ||
-        allAthleteRows.some((a) => a.status === 'PENDIENTE_VALIDAR')
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            code: 'PENDING_ADMIN_APPROVAL',
-            pendingRegistrationCount,
-            error:
-              'Tu inscripción y autorizaciones ya están registradas, pero aún están pendientes de aceptación y asignación de equipo por parte de la administración del club. Recibirás un correo en cuanto se active tu acceso.',
-          },
-          { status: 403 }
-        );
-      }
-    }
-
     if (
       requestedAthleteId &&
       !session.isStaff &&
@@ -229,6 +305,7 @@ export async function GET(req: NextRequest) {
         },
         selectedAthleteId: null,
         athletes: [],
+        registrationRequests,
         pendingRegistrationCount,
         bankIban: process.env.CLUB_BANK_IBAN?.trim() || null,
       });
@@ -244,6 +321,7 @@ export async function GET(req: NextRequest) {
       chargeRows,
       paymentRows,
       attendanceRows,
+      appliedDiscountRows,
     ] = await Promise.all([
         queryNeon<{
           athlete_id: string;
@@ -398,6 +476,19 @@ export async function GET(req: NextRequest) {
            ORDER BY s.starts_at_utc DESC, s.madrid_date DESC;`,
           [visibleIds]
         ),
+        queryNeon<{
+          enrollment_id: string;
+          label: string;
+          computed_amount: string;
+          reason: string | null;
+        }>(
+          `SELECT ad.enrollment_id::text, ad.label, ad.computed_amount::text, ad.reason
+           FROM intranet_applied_discounts ad
+           INNER JOIN intranet_enrollments e ON e.id = ad.enrollment_id
+           WHERE e.athlete_id = ANY($1::text[])
+           ORDER BY ad.created_at ASC;`,
+          [visibleIds]
+        ),
       ]);
 
     const visibleTeamIds = Array.from(new Set(teamRows.map((t) => t.team_season_id)));
@@ -530,6 +621,13 @@ export async function GET(req: NextRequest) {
           payerEmail: isOwnMinor ? null : e.payer_email,
           paymentReferenceCode: e.payment_reference_code,
           status: e.status,
+          appliedDiscounts: appliedDiscountRows
+            .filter((ad) => ad.enrollment_id === e.id)
+            .map((ad) => ({
+              label: ad.label,
+              computedAmount: Number(ad.computed_amount),
+              reason: ad.reason,
+            })),
         }));
 
       const athleteCharges = chargeRows
@@ -713,6 +811,7 @@ export async function GET(req: NextRequest) {
       },
       selectedAthleteId: requestedAthleteId || athletesPayload[0]?.id || null,
       athletes: athletesPayload,
+      registrationRequests,
       pendingRegistrationCount,
       bankIban: process.env.CLUB_BANK_IBAN?.trim() || null,
     });

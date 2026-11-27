@@ -868,8 +868,10 @@ export async function isMemberBlockedByPendingApproval(
     (a) => a.status === 'PENDIENTE_VALIDAR' && !a.has_accepted_invite
   ).length;
 
+  // Si existen solicitudes de inscripción (pendientes, aprobadas o rechazadas),
+  // permitimos entrar a /mi-club para consultar el estado y subsanar en caso necesario.
   return {
-    blocked: !hasVerifiedAthlete && (pendingRequests > 0 || pendingAthletes > 0),
+    blocked: !hasVerifiedAthlete && regReqRows.length === 0 && pendingAthletes > 0,
     pendingRequests,
     pendingAthletes,
   };

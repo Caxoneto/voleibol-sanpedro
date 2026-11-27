@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useClubSession } from '@/components/intranet/ClubShell';
 import IntranetModal from '@/components/intranet/IntranetModal';
+import { SiblingSelectorInput } from '@/components/intranet/SiblingSelectorInput';
 import { buildCsvString } from '@/lib/intranet/csv-utils';
 import { formatDisplayDate, formatMadridDateString } from '@/lib/date-utils';
 import { getShortTeamLabelInFamily, groupByCategoryFamily } from '@/lib/club-info';
@@ -312,6 +313,7 @@ export default function ClubPagosPage() {
   const [enrPlanId, setEnrPlanId] = useState('');
   const [enrStartMonth, setEnrStartMonth] = useState<number>(9);
   const [enrDiscountIds, setEnrDiscountIds] = useState<string[]>([]);
+  const [enrSiblingIds, setEnrSiblingIds] = useState<string[]>([]);
   const [enrManualActive, setEnrManualActive] = useState(false);
   const [enrManualLabel, setEnrManualLabel] = useState('');
   const [enrManualType, setEnrManualType] = useState<'PERCENTAGE' | 'FIXED'>('PERCENTAGE');
@@ -465,6 +467,27 @@ export default function ClubPagosPage() {
         (r.applicableProductIds.length === 0 || r.applicableProductIds.includes(enrProductId))
     );
   }, [data, enrProductId]);
+
+  const hasSiblingDiscountEnr = useMemo(
+    () =>
+      enrDiscountIds.some((id) => {
+        const rule = applicableRulesForEnr.find((r) => r.id === id);
+        return Boolean(rule && (rule.kind === 'SIBLING' || /hermano/i.test(rule.name)));
+      }),
+    [enrDiscountIds, applicableRulesForEnr]
+  );
+
+  const enrSiblingCandidates = useMemo(
+    () =>
+      (data?.athletes || []).map((a) => ({
+        athleteId: a.id,
+        fullName: a.name,
+        teamOrCategory: a.teamName,
+        guardianEmail: a.guardianEmail,
+        guardianName: a.guardianName,
+      })),
+    [data?.athletes]
+  );
 
   const enrollmentPreview = useMemo(() => {
     if (!selectedEnrPlan) return null;
@@ -753,6 +776,7 @@ export default function ClubPagosPage() {
         payerEmail: enrPayerEmail || undefined,
         payerDni: enrPayerDni || undefined,
         discountRuleIds: enrDiscountIds,
+        siblingAthleteIds: hasSiblingDiscountEnr ? enrSiblingIds : undefined,
         manualDiscount:
           enrManualActive && Number(enrManualValue) > 0
             ? {
@@ -773,6 +797,7 @@ export default function ClubPagosPage() {
       setEnrProductId('');
       setEnrPlanId('');
       setEnrDiscountIds([]);
+      setEnrSiblingIds([]);
       setEnrManualActive(false);
       setEnrManualLabel('');
       setEnrManualValue('');
@@ -1920,6 +1945,18 @@ export default function ClubPagosPage() {
                     </label>
                   );
                 })}
+                {hasSiblingDiscountEnr && (
+                  <div className="pt-2">
+                    <SiblingSelectorInput
+                      candidates={enrSiblingCandidates}
+                      excludedAthleteId={enrAthleteId}
+                      selectedIds={enrSiblingIds}
+                      onChange={setEnrSiblingIds}
+                      matchGuardianEmail={enrPayerEmail || undefined}
+                      inputId="pagos-enr-sibling-search"
+                    />
+                  </div>
+                )}
               </div>
             )}
 

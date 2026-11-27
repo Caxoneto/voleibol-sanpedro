@@ -2,8 +2,21 @@ import crypto from 'crypto';
 import { queryNeon } from '@/lib/streaming-store';
 import { formatMadridDateString, getCurrentMadridYear } from '@/lib/date-utils';
 import { encryptData } from '@/lib/encryption';
+import { sendSmtpMail } from '@/lib/email-otp';
+import { CLUB_INFO } from '@/lib/club-info';
+import { isStrictEmail, stripCrlf } from '@/lib/validators';
+import { generatePaymentReceiptPdf, getPaymentMethodLabel } from './pdf-receipt';
 import { recordAuditLog } from './audit';
 import { IntranetValidationError } from './rbac';
+
+function escapeHtml(text: string): string {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export type PaymentTrafficLight = 'GREEN' | 'YELLOW' | 'RED' | 'NONE';
 
@@ -15,6 +28,7 @@ export interface DiscountCalcInput {
   stackable: boolean;
   maxDiscountAmount?: number | null;
   reason?: string;
+  siblingAthleteIds?: string[];
 }
 
 export interface DiscountCalcResult {
@@ -26,6 +40,7 @@ export interface DiscountCalcResult {
     value: number;
     computedAmount: number;
     reason?: string;
+    siblingAthleteIds?: string[];
   }>;
 }
 
@@ -81,6 +96,7 @@ export function computeConfiguredDiscounts(
         value: bestRule.value,
         computedAmount: bestAmount,
         reason: bestRule.reason,
+        siblingAthleteIds: bestRule.siblingAthleteIds,
       });
       accumulated = roundMoney(accumulated + bestAmount);
     }
@@ -98,6 +114,7 @@ export function computeConfiguredDiscounts(
         value: rule.value,
         computedAmount: amt,
         reason: rule.reason,
+        siblingAthleteIds: rule.siblingAthleteIds,
       });
       accumulated = roundMoney(accumulated + amt);
     }
@@ -160,6 +177,7 @@ export async function createAthleteEnrollment(params: {
   payerDni?: string;
   payerUserId?: string | null;
   discountRuleIds?: string[];
+  siblingAthleteIds?: string[];
   manualDiscount?: { label: string; valueType: 'PERCENTAGE' | 'FIXED'; value: number; reason: string };
   startMonth?: number;
   notes?: string;
@@ -209,22 +227,57 @@ export async function createAthleteEnrollment(params: {
     effectiveBaseTotal = roundMoney((effectiveBaseTotal / activeMonths.length) * targetMonths.length);
   }
 
+  const cleanSiblingIds = Array.from(
+    new Set(
+      (params.siblingAthleteIds || [])
+        .map((id) => String(id || '').trim())
+        .filter((id) => Boolean(id) && id !== params.athleteId)
+    )
+  );
+
   const rulesToApply: DiscountCalcInput[] = [];
   if (params.discountRuleIds && params.discountRuleIds.length > 0) {
     const ruleRows = await queryNeon<{
       id: string;
       name: string;
+      kind: string;
       value_type: 'PERCENTAGE' | 'FIXED';
       value: string;
       stackable: boolean;
       max_discount_amount: string | null;
     }>(
-      `SELECT id::text, name, value_type, value::text, stackable, max_discount_amount::text
+      `SELECT id::text, name, kind, value_type, value::text, stackable, max_discount_amount::text
        FROM intranet_discount_rules
        WHERE id = ANY($1::uuid[]) AND is_active = true;`,
       [params.discountRuleIds]
     );
+
+    let resolvedSiblingReason: string | undefined;
+    const hasSiblingRule = ruleRows.some(
+      (r) => r.kind === 'SIBLING' || /hermano/i.test(r.name)
+    );
+    if (hasSiblingRule) {
+      if (cleanSiblingIds.length === 0) {
+        throw new IntranetValidationError(
+          'Debes seleccionar el hermano/a de referencia para aplicar el descuento de hermano.',
+          400
+        );
+      }
+      const sibRows = await queryNeon<{ id: string; first_name: string; last_name: string }>(
+        `SELECT id, first_name, last_name
+         FROM intranet_athletes
+         WHERE id = ANY($1::text[]) AND status <> 'SHREDDED';`,
+        [cleanSiblingIds]
+      );
+      const sibNames = cleanSiblingIds.map((sid) => {
+        const found = sibRows.find((s) => s.id === sid);
+        return found ? `${found.first_name} ${found.last_name}`.trim() : sid;
+      });
+      resolvedSiblingReason = `Hermano/a vinculado/a: ${sibNames.join(', ')}`;
+    }
+
     for (const r of ruleRows) {
+      const isSib = r.kind === 'SIBLING' || /hermano/i.test(r.name);
       rulesToApply.push({
         id: r.id,
         label: r.name,
@@ -232,6 +285,8 @@ export async function createAthleteEnrollment(params: {
         value: Number(r.value),
         stackable: r.stackable,
         maxDiscountAmount: r.max_discount_amount ? Number(r.max_discount_amount) : null,
+        reason: isSib ? resolvedSiblingReason : undefined,
+        siblingAthleteIds: isSib ? cleanSiblingIds : undefined,
       });
     }
   }
@@ -283,8 +338,8 @@ export async function createAthleteEnrollment(params: {
   for (const appDisc of discountRes.applied) {
     await queryNeon(
       `INSERT INTO intranet_applied_discounts (
-         enrollment_id, discount_rule_id, label, value_type, value, computed_amount, reason, applied_by
-       ) VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8::uuid);`,
+         enrollment_id, discount_rule_id, label, value_type, value, computed_amount, reason, applied_by, sibling_athlete_ids
+       ) VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8::uuid, $9::text[]);`,
       [
         enrollmentId,
         appDisc.discountRuleId,
@@ -294,6 +349,7 @@ export async function createAthleteEnrollment(params: {
         appDisc.computedAmount,
         appDisc.reason || null,
         params.actor.userId,
+        appDisc.siblingAthleteIds || [],
       ]
     );
   }
@@ -386,7 +442,7 @@ export async function recordManualPayment(params: {
   notes?: string;
   chargeAllocations?: Array<{ chargeId: string; amount: number }>;
   actor: { userId: string; email: string; ipAddress?: string | null };
-}): Promise<{ paymentId: string; receiptNumber: string }> {
+}): Promise<{ paymentId: string; receiptNumber: string; emailSent: boolean }> {
   const cleanAmount = roundMoney(params.amount);
   if (cleanAmount <= 0) {
     throw new IntranetValidationError('El importe del cobro debe ser mayor que 0.');
@@ -557,7 +613,162 @@ export async function recordManualPayment(params: {
     ipAddress: params.actor.ipAddress,
   });
 
-  return { paymentId, receiptNumber };
+  // Enviar email de confirmación de pago + recibo oficial en PDF al tutor o deportista
+  let emailSent = false;
+  try {
+    const [athMetaRows, teamMetaRows, enrMetaRows, guardMetaRows, allocConceptRows, remainingRows] =
+      await Promise.all([
+        queryNeon<{ first_name: string; last_name: string; user_email: string | null }>(
+          `SELECT a.first_name, a.last_name, u.email AS user_email
+           FROM intranet_athletes a
+           LEFT JOIN intranet_users u ON u.id = a.user_id
+           WHERE a.id = $1 LIMIT 1;`,
+          [params.athleteId]
+        ),
+        queryNeon<{ team_name: string }>(
+          `SELECT ts.name AS team_name
+           FROM intranet_athlete_teams at2
+           INNER JOIN intranet_team_seasons ts ON ts.id = at2.team_season_id
+           WHERE at2.athlete_id = $1
+           ORDER BY at2.is_primary DESC, ts.sort_order ASC
+           LIMIT 1;`,
+          [params.athleteId]
+        ),
+        enrollmentId
+          ? queryNeon<{ payer_name: string; payer_email: string | null }>(
+              `SELECT payer_name, payer_email FROM intranet_enrollments WHERE id = $1::uuid LIMIT 1;`,
+              [enrollmentId]
+            )
+          : queryNeon<{ payer_name: string; payer_email: string | null }>(
+              `SELECT payer_name, payer_email FROM intranet_enrollments WHERE athlete_id = $1 ORDER BY created_at DESC LIMIT 1;`,
+              [params.athleteId]
+            ),
+        queryNeon<{ full_name: string; email: string | null }>(
+          `SELECT full_name, email FROM intranet_guardianships WHERE athlete_id = $1 ORDER BY is_primary_payer DESC, created_at ASC LIMIT 1;`,
+          [params.athleteId]
+        ),
+        queryNeon<{ concept: string; allocated_amount: string }>(
+          `SELECT c.concept, pa.allocated_amount::text
+           FROM intranet_payment_allocations pa
+           INNER JOIN intranet_charges c ON c.id = pa.charge_id
+           WHERE pa.payment_id = $1::uuid
+           ORDER BY c.installment_number ASC;`,
+          [paymentId]
+        ),
+        queryNeon<{ pending_sum: string }>(
+          `SELECT COALESCE(SUM(GREATEST(0, final_amount - paid_amount)), 0)::text AS pending_sum
+           FROM intranet_charges
+           WHERE athlete_id = $1 AND status IN ('PENDIENTE', 'PARCIAL', 'VENCIDO');`,
+          [params.athleteId]
+        ),
+      ]);
+
+    const athMeta = athMetaRows[0];
+    const athleteFullName = athMeta
+      ? `${athMeta.first_name} ${athMeta.last_name}`.trim()
+      : params.athleteId;
+    const teamName = teamMetaRows[0]?.team_name || 'C.D. Voleibol San Pedro';
+    const payerName =
+      enrMetaRows[0]?.payer_name || guardMetaRows[0]?.full_name || athleteFullName;
+    const recipientEmail = [
+      enrMetaRows[0]?.payer_email,
+      guardMetaRows[0]?.email,
+      athMeta?.user_email,
+    ].find((e) => e && isStrictEmail(e));
+
+    if (recipientEmail) {
+      const items =
+        allocConceptRows.length > 0
+          ? allocConceptRows.map((it) => ({
+              concept: it.concept,
+              amount: Number(it.allocated_amount),
+            }))
+          : [{ concept: 'Abono de cuota deportiva', amount: cleanAmount }];
+      const methodLabel = getPaymentMethodLabel(params.method);
+      const pendingBalance = roundMoney(Number(remainingRows[0]?.pending_sum || 0));
+
+      const pdfBuf = generatePaymentReceiptPdf({
+        receiptNumber,
+        paidMadridDate: paidDate,
+        athleteName: athleteFullName,
+        teamName,
+        payerName,
+        payerEmail: recipientEmail,
+        methodLabel,
+        reference: params.reference?.trim() || null,
+        amount: cleanAmount,
+        items,
+        notes: params.notes?.trim() || null,
+      });
+      const pdfBase64 = Buffer.from(pdfBuf).toString('base64');
+
+      const itemsListHtml = items
+        .map(
+          (i) =>
+            `<li>${escapeHtml(i.concept)}: <strong>${i.amount.toFixed(2)} &euro;</strong></li>`
+        )
+        .join('');
+      const balanceHtml =
+        pendingBalance <= 0
+          ? `<span style="color:#047857;font-weight:700;">Al corriente de pago (0.00 &euro; pendientes)</span>`
+          : `Saldo pendiente restante: <strong>${pendingBalance.toFixed(2)} &euro;</strong>`;
+
+      const mailRes = await sendSmtpMail({
+        to: recipientEmail.trim().toLowerCase(),
+        subject: stripCrlf(
+          `[CDV San Pedro] Pago confirmado y recibo oficial · ${receiptNumber} (${athleteFullName})`
+        ),
+        text: [
+          `${CLUB_INFO.name} — Confirmación de Pago y Recibo Oficial`,
+          ``,
+          `Deportista: ${athleteFullName} (${teamName})`,
+          `Pagador / Responsable: ${payerName}`,
+          `Recibo Nº: ${receiptNumber}`,
+          `Fecha de abono: ${paidDate}`,
+          `Importe abonado: ${cleanAmount.toFixed(2)} EUR`,
+          `Método: ${methodLabel}`,
+          params.reference ? `Referencia: ${params.reference}` : null,
+          pendingBalance <= 0
+            ? `Estado de cuota: Al corriente de pago`
+            : `Saldo pendiente: ${pendingBalance.toFixed(2)} EUR`,
+          ``,
+          `Adjuntamos el recibo oficial en PDF. También puedes consultarlo y descargarlo en tu portal /mi-club.`,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#111;color:#f4f4f5;border:1px solid #27272a;padding:24px;">
+            <p style="color:#ef4444;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 8px;">${escapeHtml(CLUB_INFO.name)} · Tesorería</p>
+            <h1 style="font-size:20px;margin:0 0 12px;color:#ffffff;">Pago confirmado y recibo oficial</h1>
+            <p style="font-size:14px;line-height:1.5;color:#d4d4d8;">Hemos registrado correctamente el abono de la cuota deportiva de <strong>${escapeHtml(athleteFullName)}</strong>.</p>
+            <div style="background:#18181b;border:1px solid #27272a;padding:16px;margin:16px 0;font-size:13px;line-height:1.6;">
+              <p style="margin:4px 0;"><strong>Recibo oficial:</strong> ${escapeHtml(receiptNumber)}</p>
+              <p style="margin:4px 0;"><strong>Fecha de pago:</strong> ${escapeHtml(paidDate)}</p>
+              <p style="margin:4px 0;"><strong>Equipo:</strong> ${escapeHtml(teamName)}</p>
+              <p style="margin:4px 0;"><strong>Importe abonado:</strong> <span style="color:#34d399;font-weight:700;">${cleanAmount.toFixed(2)} &euro;</span></p>
+              <p style="margin:4px 0;"><strong>Método de pago:</strong> ${escapeHtml(methodLabel)}</p>
+              <p style="margin:8px 0 4px;"><strong>Conceptos imputados:</strong></p>
+              <ul style="margin:4px 0 8px 18px;padding:0;color:#e4e4e7;">${itemsListHtml}</ul>
+              <p style="margin:6px 0 0;">${balanceHtml}</p>
+            </div>
+            <p style="font-size:13px;color:#a1a1aa;">Adjuntamos en este correo el recibo oficial en formato PDF. También lo tienes disponible en cualquier momento dentro de tu zona privada <strong>/mi-club</strong>.</p>
+          </div>
+        `,
+        attachments: [
+          {
+            filename: `recibo_${receiptNumber.replace(/[^A-Za-z0-9_-]/g, '_')}.pdf`,
+            contentType: 'application/pdf',
+            contentBase64: pdfBase64,
+          },
+        ],
+      });
+      emailSent = mailRes.sent;
+    }
+  } catch (mailErr) {
+    console.warn('[Payments] No se pudo enviar el correo de confirmación de pago:', mailErr);
+  }
+
+  return { paymentId, receiptNumber, emailSent };
 }
 
 /**

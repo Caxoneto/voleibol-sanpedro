@@ -20,7 +20,6 @@ import { formatMadridDate } from '@/lib/date-utils';
 import { sanitizeHttpsUrl } from '@/lib/validators';
 import SponsorBanner from '@/components/SponsorBanner';
 import { InstagramIcon, FacebookIcon } from '@/components/SocialIcons';
-import { POSITION_SHORT_LABELS } from '@/lib/types';
 
 interface MvpMatchInfo {
   id: string;
@@ -358,12 +357,9 @@ export default function FanZonePage() {
                           </div>
                         </div>
 
-                        <h3 className="font-display-xl text-base sm:text-lg uppercase text-white leading-tight">
+                        <h3 className="font-display-xl text-base sm:text-lg uppercase text-white leading-tight mb-2.5 sm:mb-3">
                           {fullLabel}
                         </h3>
-                        <span className="text-[10px] text-tertiary uppercase block mb-2.5 sm:mb-3">
-                          {(POSITION_SHORT_LABELS as Record<string, string>)[candidate.position] || candidate.position}
-                        </span>
                       </div>
 
                       {/* Resultados / Porcentaje */}
