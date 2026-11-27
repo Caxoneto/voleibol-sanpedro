@@ -52,6 +52,28 @@ function OnboardingWizardInner() {
   const inviteToken = searchParams.get('invite')?.trim() || '';
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const isFirstStepRenderRef = useRef(true);
+
+  useEffect(() => {
+    if (isFirstStepRenderRef.current) {
+      isFirstStepRenderRef.current = false;
+      return;
+    }
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    const resetTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    resetTop();
+    const rafId = window.requestAnimationFrame(() => {
+      resetTop();
+      window.dispatchEvent(new Event('resize'));
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [step]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -536,7 +558,7 @@ function OnboardingWizardInner() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
+                <div className="min-w-0">
                   <label htmlFor="onb-birth-date" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                     Fecha de nacimiento
                   </label>
@@ -545,7 +567,7 @@ function OnboardingWizardInner() {
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                    className="w-full max-w-full min-w-0 appearance-none block px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
                   />
                 </div>
                 <div>

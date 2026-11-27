@@ -4,6 +4,18 @@ Este registro documenta el estado consolidado del proyecto y los cambios recient
 
 ---
 
+## 2026-11-27 — Simplificación de `/plantillas`, Entrenadores Completos y Estabilidad Mobile en Solicitudes
+
+* **Plantillas Públicas (`src/app/plantillas/page.tsx`, `src/app/api/favb/rosters/route.ts`, `src/lib/favb-scraper.ts`, `src/lib/favb-data.ts`)**:
+  * Eliminada la cabecera redundante triple (división repetida, `"Sincronizado con favoley.net (HH:MM)"` y descripción duplicada), los badges `"Capitán"` / `"Federado FAVB"` y la fila inferior repetida `"Dorsal #... / Estado FAVB Inscrito"` (y texto `"Inscrito/a"` sin actas).
+  * Enriquecimiento del Cuerpo Técnico desde `intranet_team_staff` / `intranet_users` (filtrando cuentas demo), preservación `"APELLIDOS, NOMBRE"` en `formatCoachFullName` y nombre completo sin truncado en las tarjetas de entrenadores.
+* **Correcciones Responsive y Navegación Mobile (`globals.css`, `layout.tsx`, `ViewportScrollReset.tsx`, `/inscripcion`, `/autorizaciones`, `/mi-club*`)**:
+  * Corregido desbordamiento horizontal de `<input type="date">` en móviles (`appearance: none`, `min-width: 0`, `max-width: 100%` en contenedores y campos).
+  * Fijado `font-size: 16px` en inputs/selects/textareas bajo `640px` y añadido `viewport` explícito en `layout.tsx` para evitar el zoom automático del navegador móvil que descuadraba la vista tras cambiar de campo o paso.
+  * Nuevo componente `ViewportScrollReset` y reseteo síncrono de scroll + `blur()` + `resize` al cambiar de ruta o de `step` en `/inscripcion`, `/autorizaciones` y `/mi-club/onboarding`.
+
+---
+
 ## 2026-11-26 (Rev. Familiar Multi-Hijo, Hermanos, OAuth y Posiciones) — Alta Agrupada, Descuentos Vinculados y Confirmación de Pago
 
 * **Retirada de Posiciones de Juego y Google OAuth**:

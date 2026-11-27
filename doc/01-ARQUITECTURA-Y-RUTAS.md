@@ -6,7 +6,7 @@
 src/
 ├── middleware.ts              # Seguridad de rutas, protección de cabeceras y validación de origen/host
 ├── app/                       # App Router de Next.js 14 (páginas y Route Handlers API)
-├── components/                # Componentes UI compartidos (Navbar, Footer, Modales, SignaturePad, CookieConsent, Intranet)
+├── components/                # Componentes UI compartidos (Navbar, Footer, Modales, SignaturePad, ViewportScrollReset, CookieConsent, Intranet)
 └── lib/                       # Lógica de dominio, Neon SQL, criptografía, PDF, SMTP, scrapers, validadores e Intranet
 ```
 
@@ -21,7 +21,7 @@ src/
 | `/partidos` | `src/app/partidos/page.tsx` | Resultados y próximos partidos FAVB/AFADE con polling escalonado y modal de acta. |
 | `/calendario` | `src/app/calendario/page.tsx` | Calendario de jornada/temporada con badge `LIVE`, descarga `.ics` y acceso a actas. |
 | `/clasificacion` | `src/app/clasificacion/page.tsx` | Clasificaciones oficiales FAVB por categoría y reglas de clasificación. |
-| `/plantillas` | `src/app/plantillas/page.tsx` | Plantillas de equipos con filtro `?categoria=...` (`useSearchParams` + `Suspense`), dorsales y protección de privacidad en menores (sin demarcaciones/posiciones de juego). |
+| `/plantillas` | `src/app/plantillas/page.tsx` | Plantillas oficiales de equipos con filtro `?categoria=...` (`useSearchParams` + `Suspense`), cabecera limpia sin redundancias federativas, tarjetas centradas en dorsal/nombre/convocatorias, cuerpo técnico con nombre completo y protección de privacidad en menores. |
 | `/noticias` y `/noticias/[slug]` | `src/app/noticias/page.tsx`, `src/app/noticias/[slug]/page.tsx` | Crónicas y noticias del club convertidas a **Server Component** con `generateStaticParams()`, `generateMetadata()`, JSON-LD `NewsArticle` e iconos `lucide-react` (via `src/components/CopyLinkButton.tsx`). |
 | `/fan-zone` | `src/app/fan-zone/page.tsx` | Votación MVP del partido (`"FanVote"`) y comunidad. |
 | `/patrocinio` | `src/app/patrocinio/page.tsx` | Dossier y formulario de contacto para patrocinadores. |

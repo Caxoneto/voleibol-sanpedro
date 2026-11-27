@@ -1089,7 +1089,7 @@ export default function MiClubPage() {
                           ))}
                         </select>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <label htmlFor="miclub-birth-date" className="block text-[11px] font-bold uppercase text-tertiary mb-1">
                           Fecha de nacimiento
                         </label>
@@ -1098,7 +1098,7 @@ export default function MiClubPage() {
                           type="date"
                           value={birthDateInput}
                           onChange={(e) => setBirthDateInput(e.target.value)}
-                          className="w-full px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
+                          className="w-full max-w-full min-w-0 appearance-none block px-3 py-2 bg-surface-container-low border border-white/15 text-xs text-white"
                         />
                       </div>
                     </div>

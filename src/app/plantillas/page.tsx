@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { Award, CheckCircle2, RefreshCw, Users } from 'lucide-react';
+import { Award, RefreshCw, Users } from 'lucide-react';
 import {
   CLUB_CATEGORIES_META,
   CLUB_TEAMS_META,
@@ -15,41 +15,13 @@ import { STAFF_ROLE_LABELS, Player, Staff } from '@/lib/types';
 import SponsorBanner from '@/components/SponsorBanner';
 import CategoryTeamSelectorBar from '@/components/CategoryTeamSelectorBar';
 
-function formatSyncHourMadrid(iso?: string): string {
-  try {
-    const date = iso ? new Date(iso) : new Date();
-    return date.toLocaleTimeString('es-ES', {
-      timeZone: 'Europe/Madrid',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    });
-  } catch {
-    return 'Reciente';
-  }
-}
-
 function PlantillasContent() {
   const searchParams = useSearchParams();
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('senior-femenino');
   const [players, setPlayers] = useState<Player[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
-  const [syncing, setSyncing] = useState<boolean>(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string>('Sincronizado');
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const showToast = useCallback((msg: string) => {
-    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-    setSyncFeedback(msg);
-    feedbackTimerRef.current = setTimeout(() => {
-      setSyncFeedback(null);
-      feedbackTimerRef.current = null;
-    }, 3500);
-  }, []);
 
   // Reemplazo limpio autorizado desde servidor (respeta anonimización y revocaciones en tiempo real)
   const applyServerRosters = useCallback(
@@ -86,8 +58,7 @@ function PlantillasContent() {
   );
 
   const fetchLiveRosters = useCallback(
-    async (manual = false, targetTeamId?: string) => {
-      if (manual) setSyncing(true);
+    async (targetTeamId?: string) => {
       try {
         const teamQuery = targetTeamId ? `?teamId=${encodeURIComponent(targetTeamId)}` : '';
         const res = await fetch(`/api/favb/rosters${teamQuery}`, { cache: 'no-store' });
@@ -97,9 +68,6 @@ function PlantillasContent() {
           setLoadError(
             data?.error || 'No se pudieron consultar las plantillas oficiales en este momento.'
           );
-          if (manual) {
-            showToast('No se pudo actualizar en este momento. Inténtalo de nuevo.');
-          }
           return;
         }
 
@@ -108,22 +76,13 @@ function PlantillasContent() {
         const incomingStaff: Staff[] = Array.isArray(data.staff) ? data.staff : [];
 
         applyServerRosters(incomingPlayers, incomingStaff, targetTeamId);
-        setLastSyncTime(formatSyncHourMadrid(data.lastSync));
-
-        if (manual) {
-          showToast('Plantillas y cuerpo técnico actualizados desde el portal oficial.');
-        }
       } catch {
         setLoadError('Error de conexión al cargar las plantillas oficiales.');
-        if (manual) {
-          showToast('Error de conexión al sincronizar plantillas.');
-        }
       } finally {
         setLoadingInitial(false);
-        if (manual) setSyncing(false);
       }
     },
-    [applyServerRosters, showToast]
+    [applyServerRosters]
   );
 
   // Hidratar categoría reactivamente desde query params (?categoria=...)
@@ -161,16 +120,15 @@ function PlantillasContent() {
       // Ignorar errores de limpieza en localStorage
     }
 
-    void fetchLiveRosters(false);
+    void fetchLiveRosters();
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        void fetchLiveRosters(false);
+        void fetchLiveRosters();
       }
     }, 90000);
 
     return () => {
       clearInterval(interval);
-      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
   }, [applyServerRosters, fetchLiveRosters]);
 
@@ -243,53 +201,14 @@ function PlantillasContent() {
         onSelect={(slug) => {
           setSelectedCategorySlug(slug);
         }}
-        rightSlot={
-          !isAfade ? (
-            <button
-              type="button"
-              onClick={() => void fetchLiveRosters(true, activeTeam.id)}
-              disabled={syncing}
-              className="w-10 h-10 sm:w-9 sm:h-9 bg-primary-container hover:bg-cta-hover disabled:opacity-50 text-white flex items-center justify-center border border-white/20 shadow-[2px_2px_0px_0px_#0e0e0e] active:translate-x-[1px] active:translate-y-[1px] transition-all shrink-0 cursor-pointer"
-              title={`Actualizar plantillas desde favoley.net (Última: ${lastSyncTime})`}
-              aria-label="Actualizar plantillas"
-            >
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} aria-hidden="true" />
-            </button>
-          ) : undefined
-        }
       />
-
-      {syncFeedback && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-5 right-5 z-50 bg-surface-container-highest border border-primary/40 text-white px-4 py-2.5 shadow-2xl flex items-center gap-2 text-xs font-semibold animate-fade-in"
-        >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
-          <span>{syncFeedback}</span>
-        </div>
-      )}
 
       {/* Categoría Info */}
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 relative z-10">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-white/5">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-primary font-bold uppercase tracking-wider">
-                {activeTeam.division}
-              </span>
-              <span className="text-tertiary" aria-hidden="true">•</span>
-              <span className="text-[11px] font-mono text-tertiary">
-                Sincronizado con {isAfade ? 'ligaafade.es' : 'favoley.net'} ({lastSyncTime})
-              </span>
-            </div>
-            <h2 className={`font-display-xl text-3xl uppercase mt-1 ${getTeamColorTheme(activeCategory.name).colorKey ? getTeamColorTheme(activeCategory.name).textClass : 'text-white'}`}>
-              {activeCategory.name}
-            </h2>
-            {activeCategory.description && (
-              <p className="text-xs text-tertiary mt-0.5">{activeCategory.description}</p>
-            )}
-          </div>
+        <div className="pb-5 border-b border-white/5">
+          <h2 className={`font-display-xl text-3xl uppercase ${getTeamColorTheme(activeCategory.name).colorKey ? getTeamColorTheme(activeCategory.name).textClass : 'text-white'}`}>
+            {activeCategory.name}
+          </h2>
         </div>
 
         {/* Grid de Jugadores */}
@@ -299,7 +218,7 @@ function PlantillasContent() {
               <span>{loadError}</span>
               <button
                 type="button"
-                onClick={() => void fetchLiveRosters(true, activeTeam.id)}
+                onClick={() => void fetchLiveRosters(activeTeam.id)}
                 className="px-3 py-1 bg-primary-container hover:bg-cta-hover text-white font-bold uppercase cursor-pointer"
               >
                 Reintentar
@@ -318,7 +237,7 @@ function PlantillasContent() {
               <p className="text-sm text-red-200 font-semibold">{loadError}</p>
               <button
                 type="button"
-                onClick={() => void fetchLiveRosters(true, activeTeam.id)}
+                onClick={() => void fetchLiveRosters(activeTeam.id)}
                 className="px-4 py-2 bg-primary-container hover:bg-cta-hover text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
               >
                 Reintentar carga
@@ -378,19 +297,6 @@ function PlantillasContent() {
                           {player.number}
                         </span>
                       </div>
-
-                      <div className="pointer-events-none absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex flex-col items-end gap-1">
-                        {player.isCaptain && !isGenericSlot && (
-                          <span className="px-1.5 sm:px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] uppercase tracking-wider shadow">
-                            Capitán
-                          </span>
-                        )}
-                        {player.isHomegrown && !isGenericSlot && (
-                          <span className="px-1.5 sm:px-2 py-0.5 bg-primary-container text-white font-bold text-[10px] uppercase tracking-wider shadow">
-                            Federado FAVB
-                          </span>
-                        )}
-                      </div>
                     </div>
 
                     <div className="p-3 sm:p-4 flex flex-col justify-between flex-1">
@@ -417,9 +323,9 @@ function PlantillasContent() {
                         )}
                       </div>
 
-                      <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/5 flex flex-col gap-2">
-                        {!isGenericSlot && (
-                          <div className="flex flex-col gap-1.5">
+                      {!isGenericSlot && (callUps > 0 || hasOtherCallUps) && (
+                        <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/5 flex flex-col gap-1.5">
+                          {callUps > 0 && (
                             <div
                               className="px-2 sm:px-2.5 py-1.5 bg-surface-container-highest/70 border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-2"
                               title={`Convocado/a en ${callUps} ${callUps === 1 ? 'partido oficial' : 'partidos oficiales'} con ${activeCategory.name}`}
@@ -429,71 +335,54 @@ function PlantillasContent() {
                               </span>
                               <span className="text-[11px] sm:text-xs font-bold text-white flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                {callUps > 0
-                                  ? `${callUps} ${callUps === 1 ? 'Convocatoria' : 'Convocatorias'}`
-                                  : 'Inscrito/a'}
+                                {callUps} {callUps === 1 ? 'Convocatoria' : 'Convocatorias'}
                               </span>
                             </div>
+                          )}
 
-                            {hasOtherCallUps && (
-                              <div
-                                className="px-2 sm:px-2.5 py-1.5 bg-violet-500/10 border border-violet-400/25 flex flex-col gap-1"
-                                title={`Participación en doble dinámica: ${totalClubCallUps} partidos oficiales acumulados en el club`}
-                              >
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5">
-                                  <span className="text-[10px] uppercase tracking-wider text-violet-300 font-bold">
-                                    Doble Dinámica
-                                  </span>
-                                  <span className="text-[10px] font-mono text-violet-200 font-bold">
-                                    Total Club: {totalClubCallUps}{' '}
-                                    {totalClubCallUps === 1 ? 'partido' : 'partidos'}
-                                  </span>
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                  {player.otherTeamCallUps!.map((split) => {
-                                    const rawSplitLabel =
-                                      split.teamName ||
-                                      (split as { categoryName?: string }).categoryName ||
-                                      split.teamId;
-                                    const splitLabel = rawSplitLabel
-                                      .replace(/\s*·\s*Grupo Único/gi, '')
-                                      .replace(/\s*\(?Grupo Único\)?/gi, '')
-                                      .replace(/\bGrupo\s+([A-Za-z0-9]+)/gi, 'G$1')
-                                      .trim();
-                                    return (
-                                      <span
-                                        key={split.teamId}
-                                        title={`+${split.count} ${split.count === 1 ? 'convocatoria oficial' : 'convocatorias oficiales'} en ${splitLabel} · Total Club: ${totalClubCallUps} partidos`}
-                                        className="text-[10px] sm:text-[11px] text-white/90 leading-snug bg-black/30 border border-white/10 px-1.5 py-0.5 block"
-                                      >
-                                        <strong className="text-violet-300">
-                                          +{split.count} conv.
-                                        </strong>{' '}
-                                        en {splitLabel}
-                                      </span>
-                                    );
-                                  })}
-                                </div>
+                          {hasOtherCallUps && (
+                            <div
+                              className="px-2 sm:px-2.5 py-1.5 bg-violet-500/10 border border-violet-400/25 flex flex-col gap-1"
+                              title={`Participación en doble dinámica: ${totalClubCallUps} partidos oficiales acumulados en el club`}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5">
+                                <span className="text-[10px] uppercase tracking-wider text-violet-300 font-bold">
+                                  Doble Dinámica
+                                </span>
+                                <span className="text-[10px] font-mono text-violet-200 font-bold">
+                                  Total Club: {totalClubCallUps}{' '}
+                                  {totalClubCallUps === 1 ? 'partido' : 'partidos'}
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-xs">
-                          <div>
-                            <span className="text-tertiary block text-[10px] uppercase">Dorsal</span>
-                            <span className="font-headline-sm text-xs sm:text-sm text-white font-bold">
-                              #{player.number}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-tertiary block text-[10px] uppercase">Estado FAVB</span>
-                            <span className="font-headline-sm text-xs sm:text-sm font-bold text-emerald-400">
-                              Inscrito
-                            </span>
-                          </div>
+                              <div className="flex flex-col gap-1">
+                                {player.otherTeamCallUps!.map((split) => {
+                                  const rawSplitLabel =
+                                    split.teamName ||
+                                    (split as { categoryName?: string }).categoryName ||
+                                    split.teamId;
+                                  const splitLabel = rawSplitLabel
+                                    .replace(/\s*·\s*Grupo Único/gi, '')
+                                    .replace(/\s*\(?Grupo Único\)?/gi, '')
+                                    .replace(/\bGrupo\s+([A-Za-z0-9]+)/gi, 'G$1')
+                                    .trim();
+                                  return (
+                                    <span
+                                      key={split.teamId}
+                                      title={`+${split.count} ${split.count === 1 ? 'convocatoria oficial' : 'convocatorias oficiales'} en ${splitLabel} · Total Club: ${totalClubCallUps} partidos`}
+                                      className="text-[10px] sm:text-[11px] text-white/90 leading-snug bg-black/30 border border-white/10 px-1.5 py-0.5 block"
+                                    >
+                                      <strong className="text-violet-300">
+                                        +{split.count} conv.
+                                      </strong>{' '}
+                                      en {splitLabel}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -518,7 +407,7 @@ function PlantillasContent() {
               {staffMembers.map((staff) => {
                 const isPresident = Boolean(
                   CLUB_INFO.president &&
-                    staff.name.toLowerCase() === CLUB_INFO.president.toLowerCase()
+                    staff.name.toLowerCase().includes(CLUB_INFO.president.toLowerCase())
                 );
                 return (
                   <div
@@ -527,7 +416,7 @@ function PlantillasContent() {
                       isPresident
                         ? 'border-primary/40 bg-gradient-to-r from-surface-container-low to-primary/5'
                         : 'border-white/5'
-                    } p-4 flex items-center gap-4`}
+                    } p-4 flex items-center gap-4 min-w-0`}
                   >
                     <div className="relative w-16 h-16 shrink-0 overflow-hidden border border-white/10 bg-[#18181b]">
                       <Image
@@ -537,7 +426,7 @@ function PlantillasContent() {
                         className="object-cover"
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] uppercase tracking-wider text-primary font-bold block">
                           {isPresident
@@ -550,7 +439,7 @@ function PlantillasContent() {
                           </span>
                         )}
                       </div>
-                      <h4 className="font-headline-sm text-sm uppercase text-white font-bold mt-0.5">
+                      <h4 className="font-headline-sm text-sm uppercase text-white font-bold mt-0.5 break-words">
                         {staff.name}
                       </h4>
                       <span className="text-[11px] text-tertiary">{CLUB_INFO.name}</span>

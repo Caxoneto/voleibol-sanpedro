@@ -1,11 +1,18 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Anton, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import TopMarquee from '@/components/TopMarquee';
 import CookieConsent from '@/components/CookieConsent';
+import ViewportScrollReset from '@/components/ViewportScrollReset';
 import { CLUB_INFO } from '@/lib/club-info';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 const anton = Anton({
   weight: '400',
@@ -111,9 +118,10 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`dark scroll-smooth ${anton.variable} ${spaceGrotesk.variable}`}
+      className={`dark ${anton.variable} ${spaceGrotesk.variable}`}
     >
       <body className="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col selection:bg-primary-container selection:text-white">
+        <ViewportScrollReset />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

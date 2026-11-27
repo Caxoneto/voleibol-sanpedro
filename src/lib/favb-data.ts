@@ -3245,7 +3245,7 @@ export const FAVB_STAFF: Staff[] = [
   {
     "id": "st-team-if-gris-2",
     "teamId": "team-if-gris",
-    "name": "Alcántara",
+    "name": "Carlos Alberto Alcántara González",
     "role": "ASSISTANT",
     "photoUrl": "/images/staff-placeholder.svg"
   },

@@ -206,6 +206,28 @@ function AutorizacionesContent() {
 
   // Paso actual (1: Identificación / Desbloqueo, 2: Formulario y Firma, 3: Resguardo)
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const isFirstStepRenderRef = useRef(true);
+
+  useEffect(() => {
+    if (isFirstStepRenderRef.current) {
+      isFirstStepRenderRef.current = false;
+      return;
+    }
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    const resetTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    resetTop();
+    const rafId = window.requestAnimationFrame(() => {
+      resetTop();
+      window.dispatchEvent(new Event('resize'));
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [step]);
 
   // Paso 1: Selección de equipo y deportista desde /api/consent/roster-options
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');

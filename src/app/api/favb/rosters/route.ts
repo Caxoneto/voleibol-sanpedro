@@ -2,13 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { syncFavbRosters } from '@/lib/favb-scraper';
 import { FAVB_PLAYERS, resolveCanonicalPlayerId } from '@/lib/favb-data';
-import { formatPlayerNameWithInitials } from '@/lib/club-info';
+import { CLUB_INFO, formatPlayerNameWithInitials } from '@/lib/club-info';
 import { resolveCensusBirthDate } from '@/lib/consent-store';
 import { queryNeon, NeonUnavailableError } from '@/lib/streaming-store';
 import { checkNeonRateLimit, getClientIp, verifyAdminSessionToken } from '@/lib/rate-limiter';
-import type { Player } from '@/lib/types';
+import type { Player, Staff, StaffRole } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+
+interface IntranetTeamStaffRow {
+  team_season_id: string;
+  staff_function: string;
+  user_id: string;
+  name: string;
+  email: string;
+}
+
+const DEMO_STAFF_EMAILS = new Set([
+  'entrenador.senior@voleibolsanpedro.es',
+  'entrenador.cadete@voleibolsanpedro.es',
+]);
+
+function isDemoStaffAccount(row: { name?: string | null; email?: string | null }): boolean {
+  const email = String(row.email || '').trim().toLowerCase();
+  const name = String(row.name || '').trim();
+  if (!name || !email) return true;
+  if (email.endsWith('@e2e-test.voleibolsanpedro.local')) return true;
+  if (DEMO_STAFF_EMAILS.has(email)) return true;
+  if (/\((Entrenador|Coordinadora|Secretar[íi]a|Tesorer[íi]a|Delegado)/i.test(name)) return true;
+  return false;
+}
 
 interface CensusPrivacyRow {
   player_id: string;
@@ -99,7 +122,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. Consulta obligatoria fail-closed en Neon antes de exponer plantillas públicas
-    const [censusRows, consentRows, result] = await Promise.all([
+    const [censusRows, consentRows, intranetStaffRows, allActiveUsersRows, result] = await Promise.all([
       queryNeon<CensusPrivacyRow>(
         `SELECT player_id, canonical_player_id, player_name, team_id,
                 birth_year, birth_date, birth_date_encrypted, COALESCE(is_demo, false) AS is_demo
@@ -110,6 +133,25 @@ export async function GET(req: NextRequest) {
          FROM player_consents
          ORDER BY (CASE WHEN status = 'ACTIVE' THEN 0 ELSE 1 END), updated_at DESC;`
       ),
+      queryNeon<IntranetTeamStaffRow>(
+        `SELECT ts.team_season_id, ts.staff_function, u.id::text AS user_id, u.name, u.email
+         FROM intranet_team_staff ts
+         INNER JOIN intranet_users u ON u.id = ts.user_id
+         WHERE ts.valid_to IS NULL
+           AND u.status = 'ACTIVE'
+           AND ts.staff_function IN ('HEAD_COACH', 'ASSISTANT')
+         ORDER BY CASE WHEN ts.staff_function = 'HEAD_COACH' THEN 0 ELSE 1 END, u.name ASC;`
+      ).catch(() => [] as IntranetTeamStaffRow[]),
+      queryNeon<{ id: string; name: string; email: string }>(
+        `SELECT u.id::text AS id, u.name, u.email
+         FROM intranet_users u
+         WHERE u.status = 'ACTIVE'
+           AND EXISTS (
+             SELECT 1 FROM intranet_user_roles ur
+             WHERE ur.user_id = u.id
+               AND ur.role_code IN ('PRESIDENTE', 'DIRECTOR_DEPORTIVO', 'ENTRENADOR', 'COORDINADOR')
+           );`
+      ).catch(() => [] as Array<{ id: string; name: string; email: string }>),
       syncFavbRosters(force, teamId),
     ]);
 
@@ -228,9 +270,114 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const filteredStaff = teamId
+    const baseStaff = teamId
       ? result.staff.filter((s) => s.teamId === teamId)
       : result.staff;
+
+    // Resolver nombres completos reales de entrenadores desde intranet_team_staff y usuarios activos de cuerpo técnico
+    const realIntranetStaff = intranetStaffRows.filter((r) => !isDemoStaffAccount(r));
+    const activeCoachUsers = allActiveUsersRows.filter((r) => !isDemoStaffAccount(r));
+
+    const intranetByTeam = new Map<string, IntranetTeamStaffRow[]>();
+    for (const row of realIntranetStaff) {
+      if (teamId && row.team_season_id !== teamId) continue;
+      const list = intranetByTeam.get(row.team_season_id) || [];
+      list.push(row);
+      intranetByTeam.set(row.team_season_id, list);
+    }
+
+    const resolveSingleTokenCoach = (rawName: string, tId: string): string => {
+      const clean = String(rawName || '').trim();
+      const tokens = clean.split(/\s+/).filter(Boolean);
+      if (tokens.length > 1) return clean;
+      const tokenKey = normalizeNameKey(clean);
+      if (!tokenKey) return clean;
+
+      // 1) Coincidencia con el presidente si su apellido coincide inequívocamente
+      const presName = String(CLUB_INFO.president || '').trim();
+      const presKey = normalizeNameKey(presName);
+      if (tokenKey === 'ALCANTARA' || (presKey && presKey.split(' ').includes(tokenKey))) {
+        return 'Carlos Alberto Alcántara González';
+      }
+
+      // 2) Coincidencia en entrenadores asignados al equipo en intranet_team_staff
+      const teamMatches = (intranetByTeam.get(tId) || []).filter((r) =>
+        normalizeNameKey(r.name).split(' ').includes(tokenKey)
+      );
+      if (teamMatches.length === 1) {
+        return teamMatches[0].name.trim();
+      }
+
+      // 3) Coincidencia inequívoca única entre entrenadores/dirección activos del club
+      const globalMatches = activeCoachUsers.filter((u) =>
+        normalizeNameKey(u.name).split(' ').includes(tokenKey)
+      );
+      if (globalMatches.length === 1) {
+        return globalMatches[0].name.trim();
+      }
+      return clean;
+    };
+
+    const mergedStaffByTeam = new Map<string, Map<string, Staff>>();
+    const ensureTeamStaffMap = (tId: string) => {
+      let m = mergedStaffByTeam.get(tId);
+      if (!m) {
+        m = new Map<string, Staff>();
+        mergedStaffByTeam.set(tId, m);
+      }
+      return m;
+    };
+
+    // Primero incorporamos entrenadores reales asignados en intranet_team_staff (prioridad máxima)
+    for (const [tId, rows] of Array.from(intranetByTeam.entries())) {
+      const tMap = ensureTeamStaffMap(tId);
+      for (const r of rows) {
+        const fullName = r.name.trim();
+        const key = normalizeNameKey(fullName);
+        if (!key || tMap.has(key)) continue;
+        const mappedRole: StaffRole =
+          r.staff_function === 'HEAD_COACH' ? 'HEAD_COACH' : 'ASSISTANT';
+        tMap.set(key, {
+          id: `st-intranet-${tId}-${r.user_id}`,
+          teamId: tId,
+          name: fullName,
+          role: mappedRole,
+          photoUrl: '/images/staff-placeholder.svg',
+        });
+      }
+    }
+
+    // Luego fusionamos FAVB/scraper resolviendo apellidos sueltos sin duplicar nombres completos ya cargados
+    for (const st of baseStaff) {
+      const tMap = ensureTeamStaffMap(st.teamId);
+      const resolvedName = resolveSingleTokenCoach(st.name, st.teamId);
+      const resolvedKey = normalizeNameKey(resolvedName);
+      if (!resolvedKey) continue;
+
+      const resolvedTokens = resolvedKey.split(' ').filter(Boolean);
+      const isCoveredByFullName = Array.from(tMap.keys()).some((existingKey) => {
+        if (existingKey === resolvedKey) return true;
+        if (resolvedTokens.length === 1) {
+          return existingKey.split(' ').includes(resolvedTokens[0]);
+        }
+        return false;
+      });
+      if (isCoveredByFullName) continue;
+
+      tMap.set(resolvedKey, {
+        ...st,
+        name: resolvedName,
+      });
+    }
+
+    const filteredStaff: Staff[] = [];
+    for (const tMap of Array.from(mergedStaffByTeam.values())) {
+      const list = Array.from(tMap.values()).sort((a, b) => {
+        if (a.role === b.role) return a.name.localeCompare(b.name, 'es');
+        return a.role === 'HEAD_COACH' ? -1 : 1;
+      });
+      filteredStaff.push(...list);
+    }
 
     return NextResponse.json(
       {

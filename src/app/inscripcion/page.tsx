@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -222,6 +222,28 @@ function InscripcionContent() {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlanOption[]>([]);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const isFirstStepRenderRef = useRef(true);
+
+  useEffect(() => {
+    if (isFirstStepRenderRef.current) {
+      isFirstStepRenderRef.current = false;
+      return;
+    }
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    const resetTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    resetTop();
+    const rafId = window.requestAnimationFrame(() => {
+      resetTop();
+      window.dispatchEvent(new Event('resize'));
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [step]);
 
   // Paso 1 · Bloque 1: Deportista 1 (o titular)
   const [firstName, setFirstName] = useState('');
@@ -704,7 +726,7 @@ function InscripcionContent() {
     setSignatureData(null);
     setStep(2);
     if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     }
   }
 
@@ -862,7 +884,7 @@ function InscripcionContent() {
       setReceiptEmailSent(Boolean(data.receiptEmailSent));
       setStep(3);
       if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       }
     } catch {
       setStep2Error('Error de conexión con el servidor al finalizar la inscripción.');
@@ -1017,7 +1039,7 @@ function InscripcionContent() {
       </div>
 
       {/* Progreso de pasos */}
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs">
         {[
           { num: 1, label: '1. Datos y Acceso', icon: User },
           { num: 2, label: '2. RGPD y Firma OTP', icon: FileCheck2 },
@@ -1029,7 +1051,7 @@ function InscripcionContent() {
           return (
             <div
               key={item.num}
-              className={`px-2.5 py-2.5 border flex items-center justify-center gap-1.5 font-bold uppercase text-[11px] sm:text-xs ${
+              className={`min-w-0 px-1.5 sm:px-2.5 py-2 sm:py-2.5 border flex items-center justify-center gap-1 sm:gap-1.5 font-bold uppercase text-[10px] sm:text-xs ${
                 active
                   ? 'bg-primary-container text-white border-primary-container shadow-[3px_3px_0px_0px_#0e0e0e]'
                   : done
@@ -1050,7 +1072,7 @@ function InscripcionContent() {
       {step === 1 && (
         <form onSubmit={handleStep1Continue} className="space-y-6">
           {/* BLOQUE 1: DATOS DEL JUGADOR / DEPORTISTA */}
-          <section className="bg-surface-container border-2 border-sky-500/40 p-5 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
+          <section className="min-w-0 bg-surface-container border-2 border-sky-500/40 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
               <div className="flex items-center gap-2.5">
                 <User className="w-5 h-5 text-sky-400 shrink-0" aria-hidden="true" />
@@ -1101,7 +1123,7 @@ function InscripcionContent() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
+              <div className="min-w-0">
                 <label htmlFor="reg-birth-date" className="block text-xs font-bold text-on-surface mb-1.5">
                   Fecha de nacimiento <span className="text-primary">*</span>
                 </label>
@@ -1112,7 +1134,7 @@ function InscripcionContent() {
                   max={todayMadrid}
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
-                  className="w-full bg-surface-container-low border border-white/15 px-3 py-2.5 text-sm text-white focus:border-primary-container focus:outline-none"
+                  className="w-full max-w-full min-w-0 appearance-none block bg-surface-container-low border border-white/15 px-3 py-2.5 text-sm text-white focus:border-primary-container focus:outline-none"
                 />
                 {parsedBirth && ageEvaluation.age !== null ? (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1140,7 +1162,7 @@ function InscripcionContent() {
                 )}
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <label htmlFor="reg-gender" className="block text-xs font-bold text-on-surface mb-1.5">
                   Sexo / Categoría deportiva <span className="text-primary">*</span>
                 </label>
@@ -1148,7 +1170,7 @@ function InscripcionContent() {
                   id="reg-gender"
                   value={gender}
                   onChange={(e) => setGender(e.target.value as 'FEMENINO' | 'MASCULINO')}
-                  className="w-full bg-surface-container-low border border-white/15 px-3 py-2.5 text-sm text-white focus:border-primary-container focus:outline-none"
+                  className="w-full max-w-full min-w-0 bg-surface-container-low border border-white/15 px-3 py-2.5 text-sm text-white focus:border-primary-container focus:outline-none"
                 >
                   <option value="FEMENINO">Femenino</option>
                   <option value="MASCULINO">Masculino</option>
@@ -1264,7 +1286,7 @@ function InscripcionContent() {
 
           {/* BLOQUE 2: PADRE, MADRE O TUTOR LEGAL (AUTOMÁTICO SI <18) */}
           {isMinor && (
-            <section className="bg-amber-950/25 border-2 border-amber-400/70 p-5 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
+            <section className="min-w-0 bg-amber-950/25 border-2 border-amber-400/70 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
               <div className="bg-amber-500/20 border border-amber-400/50 px-3.5 py-2.5 flex items-start gap-2.5 text-xs sm:text-sm text-amber-100">
                 <ShieldAlert className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" aria-hidden="true" />
                 <span>
@@ -1355,7 +1377,7 @@ function InscripcionContent() {
           )}
 
           {/* BLOQUE 3: MODALIDAD DE PAGO */}
-          <section className="bg-surface-container border border-white/15 p-5 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
+          <section className="min-w-0 bg-surface-container border border-white/15 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
             <div className="flex items-center gap-2.5 border-b border-white/10 pb-3">
               <CreditCard className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
               <div>
@@ -1435,7 +1457,7 @@ function InscripcionContent() {
 
           {/* BLOQUE FAMILIAR OPCIONAL: AÑADIR MÁS HIJOS/AS (SOLO MENORES) */}
           {isMinor && (
-            <section className="bg-surface-container border border-white/15 p-5 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
+            <section className="min-w-0 bg-surface-container border border-white/15 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2.5">
                   <Users className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
@@ -1476,7 +1498,7 @@ function InscripcionContent() {
                     return (
                       <div
                         key={child.id}
-                        className="bg-surface-container-low border border-white/15 p-4 space-y-4"
+                        className="min-w-0 bg-surface-container-low border border-white/15 p-4 space-y-4"
                       >
                         <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
                           <div className="flex items-center gap-2">
@@ -1498,7 +1520,7 @@ function InscripcionContent() {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="sm:col-span-2">
+                          <div className="min-w-0 sm:col-span-2">
                             <label htmlFor={`child-cat-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
                               Categoría de inscripción <span className="text-primary">*</span>
                             </label>
@@ -1506,7 +1528,7 @@ function InscripcionContent() {
                               id={`child-cat-${child.id}`}
                               value={child.linkToken}
                               onChange={(e) => updateAdditionalChild(child.id, { linkToken: e.target.value })}
-                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                              className="w-full max-w-full min-w-0 bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
                             >
                               {availableCategories.map((cat) => (
                                 <option key={cat.token} value={cat.token}>
@@ -1546,7 +1568,7 @@ function InscripcionContent() {
                             />
                           </div>
 
-                          <div>
+                          <div className="min-w-0">
                             <label htmlFor={`child-birth-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
                               Fecha de nacimiento <span className="text-primary">*</span>
                             </label>
@@ -1557,11 +1579,11 @@ function InscripcionContent() {
                               max={todayMadrid}
                               value={child.birthDate}
                               onChange={(e) => updateAdditionalChild(child.id, { birthDate: e.target.value })}
-                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                              className="w-full max-w-full min-w-0 appearance-none block bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
                             />
                           </div>
 
-                          <div>
+                          <div className="min-w-0">
                             <label htmlFor={`child-gender-${child.id}`} className="block text-xs font-bold text-on-surface mb-1">
                               Sexo <span className="text-primary">*</span>
                             </label>
@@ -1573,7 +1595,7 @@ function InscripcionContent() {
                                   gender: e.target.value as 'FEMENINO' | 'MASCULINO',
                                 })
                               }
-                              className="w-full bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
+                              className="w-full max-w-full min-w-0 bg-surface-container border border-white/15 px-3 py-2 text-sm text-white focus:border-primary-container focus:outline-none"
                             >
                               <option value="FEMENINO">Femenino</option>
                               <option value="MASCULINO">Masculino</option>
@@ -1663,7 +1685,7 @@ function InscripcionContent() {
           )}
 
           {/* BLOQUE 4: CREDENCIALES DE ACCESO AL CLUB */}
-          <section className="bg-surface-container border border-white/15 p-5 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
+          <section className="min-w-0 bg-surface-container border border-white/15 p-4 sm:p-6 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-4">
             <div className="flex items-center gap-2.5 border-b border-white/10 pb-3">
               <KeyRound className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
               <div>
@@ -1820,7 +1842,7 @@ function InscripcionContent() {
       {step === 2 && (
         <form
           onSubmit={handleCompleteRegistration}
-          className="bg-surface-container border border-white/15 p-5 sm:p-7 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-6"
+          className="min-w-0 bg-surface-container border border-white/15 p-4 sm:p-7 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-6"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div>
@@ -2129,14 +2151,14 @@ function InscripcionContent() {
                 type="button"
                 disabled={sendingOtp || submittingFinal}
                 onClick={handleSendOtp}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-container-high hover:bg-surface-bright border border-primary-container/60 text-xs font-bold uppercase text-white cursor-pointer disabled:opacity-50 shrink-0"
+                className="w-full sm:w-auto max-w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-container-high hover:bg-surface-bright border border-primary-container/60 text-xs font-bold uppercase text-white cursor-pointer disabled:opacity-50 sm:shrink-0"
               >
                 {sendingOtp ? (
-                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
                 ) : (
-                  <Mail className="w-4 h-4 text-primary" aria-hidden="true" />
+                  <Mail className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
                 )}
-                <span>
+                <span className="min-w-0 whitespace-normal break-words text-center leading-snug">
                   {otpChallengeId
                     ? 'Reenviar código OTP'
                     : `Enviar código OTP de verificación a ${email.trim().toLowerCase()}`}
@@ -2234,7 +2256,7 @@ function InscripcionContent() {
       {/* PASO 3: SOLICITUD REGISTRADA Y RESGUARDO PDF                          */}
       {/* ===================================================================== */}
       {step === 3 && confirmedReceipt && (
-        <section className="bg-surface-container border-2 border-emerald-500/50 p-6 sm:p-8 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-6">
+        <section className="min-w-0 bg-surface-container border-2 border-emerald-500/50 p-4 sm:p-8 shadow-[4px_4px_0px_0px_#0e0e0e] space-y-6">
           <div className="flex items-start gap-3 border-b border-white/10 pb-4">
             <div className="w-11 h-11 bg-emerald-600 text-white flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
@@ -2287,11 +2309,11 @@ function InscripcionContent() {
           </div>
 
           {confirmedFamilyGroupId && (
-            <div className="text-xs bg-surface-container-low border border-white/10 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs bg-surface-container-low border border-white/10 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 min-w-0">
               <span className="text-tertiary uppercase font-bold text-[10px]">
                 Referencia de Solicitud Familiar Agrupada
               </span>
-              <code className="text-primary font-bold">{confirmedFamilyGroupId}</code>
+              <code className="text-primary font-bold min-w-0 break-all">{confirmedFamilyGroupId}</code>
             </div>
           )}
 
@@ -2299,20 +2321,20 @@ function InscripcionContent() {
             {confirmedReceipts.map((rec, idx) => (
               <div
                 key={rec.consentId || `${rec.playerId}-${idx}`}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs bg-surface-container-low border border-white/10 p-4 items-center"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs bg-surface-container-low border border-white/10 p-4 items-center min-w-0"
               >
-                <div>
+                <div className="min-w-0">
                   <span className="text-tertiary block text-[10px] uppercase font-bold">
                     Deportista #{idx + 1}
                   </span>
-                  <strong className="text-white">{rec.playerName}</strong>
+                  <strong className="text-white break-words">{rec.playerName}</strong>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <span className="text-tertiary block text-[10px] uppercase font-bold">
                     Categoría / Solicitud
                   </span>
                   <strong className="text-white">{rec.teamName}</strong>
-                  <span className="block text-[10px] font-mono text-tertiary truncate">
+                  <span className="block text-[10px] font-mono text-tertiary break-all">
                     {confirmedRequestIds[idx] || confirmedRequestId || rec.consentId}
                   </span>
                 </div>

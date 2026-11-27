@@ -615,6 +615,62 @@ export function madridDateTimeToUtcIso(fechaStr: string, horaStr = '12:00'): str
   return madridLocalToUtcIso(fechaStr, horaStr);
 }
 
+const STAFF_TECHNICAL_SUFFIXES = new Set(['C', 'AC1', 'AC2', 'E1', 'E2', 'T', 'M', 'D']);
+const STAFF_SPANISH_ACCENTS: Record<string, string> = {
+  vazquez: 'Vázquez',
+  alcantara: 'Alcántara',
+  martinez: 'Martínez',
+  gomez: 'Gómez',
+  rodriguez: 'Rodríguez',
+  galan: 'Galán',
+  garcia: 'García',
+  saenz: 'Sáenz',
+  munoz: 'Muñoz',
+  gonzalez: 'González',
+  hernandez: 'Hernández',
+  jimenez: 'Jiménez',
+  diaz: 'Díaz',
+  perez: 'Pérez',
+  lopez: 'López',
+  sanchez: 'Sánchez',
+  fernandez: 'Fernández',
+  martin: 'Martín',
+};
+
+function formatCoachFullName(rawInput: string): string {
+  const trimmed = String(rawInput || '').trim();
+  if (!trimmed) return '';
+
+  let base = trimmed;
+  const commaIdx = trimmed.indexOf(',');
+  if (commaIdx !== -1) {
+    const left = trimmed.slice(0, commaIdx).trim();
+    const right = trimmed.slice(commaIdx + 1).trim();
+    if (right && STAFF_TECHNICAL_SUFFIXES.has(right.toUpperCase())) {
+      base = left;
+    } else if (left && right) {
+      base = `${right} ${left}`.trim();
+    } else {
+      base = left || right;
+    }
+  }
+
+  const cased = titleCase(base);
+  const words = cased.split(/\s+/).filter(Boolean).map((w) => {
+    const plain = w.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return STAFF_SPANISH_ACCENTS[plain] || w;
+  });
+  const finalName = words.join(' ').trim();
+  const normalized = finalName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+  if (normalized === 'ALCANTARA') {
+    return 'Carlos Alberto Alcántara González';
+  }
+  return finalName;
+}
+
 /**
  * Consulta el endpoint JSON ligero de favoley.net (`competicion_partido_datos.php?id=XXXX`)
  * que devuelve estado, programación (fecha, hora, instalación), parciales y plantillas oficiales.
@@ -759,8 +815,8 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
       const staffCodes = new Set(['C', 'AC1', 'AC2', 'T', 'M', 'D']);
       const list: MatchRosterPerson[] = [];
       for (const item of rawList) {
-        const rawName = String(item?.nombre || '').replace(/,[a-zA-Z]+$/, '').trim();
-        if (!rawName) continue;
+        const rawNombre = String(item?.nombre || '').trim();
+        if (!rawNombre) continue;
         const rawTipo = String(item?.tipo || '').trim();
         const tUpper = rawTipo.toUpperCase();
         const dorsal = String(item?.dorsal ?? '').trim();
@@ -772,8 +828,9 @@ export async function fetchMatchDetailsJson(favbId: string): Promise<FavbJsonMat
           else if (tUpper === 'AC2') staffRole = 'Asistente Técnico';
           else if (tUpper === 'M') staffRole = 'Médico / Fisio';
           else if (tUpper === 'D') staffRole = 'Delegado/a';
-          list.push({ name: titleCase(rawName), isStaff: true, staffRole });
+          list.push({ name: formatCoachFullName(rawNombre), isStaff: true, staffRole });
         } else {
+          const rawName = rawNombre.replace(/,[a-zA-Z]+$/, '').trim();
           const isCaptain = Number(item?.capitan) === 1 || tUpper.includes('CAPIT');
           const isLibero = Number(item?.libero) === 1 || tUpper.includes('LÍBERO') || tUpper.includes('LIBERO');
           const cleanOrigin = tUpper
@@ -1868,18 +1925,8 @@ export async function syncFavbRosters(
         }
 
         if (hasRealScrapedStaff) {
-          const staffAccentMap: Record<string, string> = {
-            Vazquez: 'Vázquez',
-            Alcantara: 'Alcántara',
-            Martinez: 'Martínez',
-            Gomez: 'Gómez',
-            Rodriguez: 'Rodríguez',
-            Galan: 'Galán',
-            Garcia: 'García',
-          };
           for (const sp of scrapedStaffList) {
-            let cleanName = titleCase(sp.nombre.replace(/,[a-zA-Z]+$/, ''));
-            if (staffAccentMap[cleanName]) cleanName = staffAccentMap[cleanName];
+            const cleanName = formatCoachFullName(sp.nombre);
             const key = normalizeNameKey(cleanName);
             if (!key || staffByKey.has(key)) continue;
 
